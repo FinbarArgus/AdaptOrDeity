@@ -22,5 +22,8 @@ tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
   outside `unity/` references UnityEngine. See [`docs/conventions.md`](docs/conventions.md).
 - Physiology equations live upstream in CellML (authored in circulatory-autogen-modules, tested with
   cam_testing); generated kernels in `src/AdaptOrDeity.Sim.Kernels.Generated/Kernels/` are never edited.
+- Every module must be **verified** (cam_testing's full test set upstream; golden traces for kernels;
+  analytic and conservation tests for native code; homogenisation checks between levels) and ideally
+  **validated** against data. See "Verification and validation" in `adapting_plan.md`.
 - Canonical SI in the simulation; display units only in the UI.
 - Design records for cross-cutting choices: [`docs/adr/`](docs/adr/).

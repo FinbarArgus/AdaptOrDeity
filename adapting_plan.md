@@ -95,6 +95,35 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   bond graph the game runs). Their comparison is the level 0 ↔ 1 homogenisation check, with a cell-size
   sweep from 2 µm (gradients negligible) to giant cells (where η(Φ) takes over).
 
+## Verification and validation (every module)
+Every module in the game must be **verified**, and ideally **validated**. This covers upstream CellML
+modules and the game's native elements (transport solver, level interfaces, effectiveness factor η(Φ),
+shader reconstruction).
+
+**Verification (required before a module is used in a release build):**
+- Upstream CellML modules pass cam_testing's full set: structure, run, invariants (exact solutions,
+  conservation of mass, charge and energy, second law), parameter/boundary-condition sweeps over the
+  ranges the game exposes, time-step convergence, and solver stability at the game's integrator and step.
+- Generated C# kernels match their Myokit golden traces (NRMSE < 1e-6).
+- Native C# elements match analytic solutions and conserve exactly (1e-12), and agree with an upstream
+  reference model where one exists.
+- Every pair of levels passes its homogenisation check (steady 1%, transient NRMSE 5%, sweeps, mass,
+  energy, second law).
+
+**Validation (ideally every module):**
+- Compared with experimental data in cam_testing's validation tests (baseline against data with an NRMSE
+  threshold; calibrate on one data set and predict held-out data), recording the data source.
+- A module without validation data is marked **"verified, not validated"**. The game's inspector shows this
+  status, and the module is listed below until it is validated.
+
+**Modules still to validate:**
+| Module | Candidate validation data |
+|---|---|
+| `energy_metabolism` (mitochondrial, later stage) | Simultaneous calorimetric heat flux and O₂ flux in cultured cells (Gnaiger & Kemp 1990); ATP turnover rates |
+| fermenter cell (bond graph, in progress) | Maintenance ATP vs cell volume (Lynch & Marinov 2015); lactate production of homolactic bacteria |
+| `membrane_carrier_face` (GLUT1, MCT1; Glf for the fermenter) | Uptake-vs-concentration data (Mueckler & Thorens 2013; Weisser et al. 1995; Halestrap & Price 1999) |
+| `thermal_volume`, `heat_conduction_face` | Tissue thermal property measurements (IT'IS database) |
+
 ## Architecture
 - **Engine:** Unity 6 desktop front end; the simulation is a pure C# engine-agnostic library
   (netstandard2.1 + net8.0) shipped to Unity as DLLs (ADR 0001).
@@ -164,6 +193,9 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 - **2026-10-07** Lumped cells in the game (levels 1 and 2 only), within-cell gradients drawn by shader
   from the analytic profile; level-0 finite volumes kept upstream as the validation reference; giant cells
   corrected by the effectiveness factor η(Φ).
+
+- **2026-10-07** Every module must be verified and ideally validated against data; unvalidated modules
+  are flagged "verified, not validated" in the game and tracked in this plan.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
