@@ -20,7 +20,7 @@ boundaries and conventions are first-class.
 ## Status
 | Milestone | State | Notes |
 |---|---|---|
-| M3 Multi-level transport | In progress | Upstream: homogenisation pairs built, comparison test not written; fermenter cell modules (bond graph) being written |
+| M3 Cell network, lumped cells, shaders | In progress | Upstream: homogenisation pairs built, comparison test not written; fermenter cell modules (bond graph) being written |
 | M4–M10 | Not started | |
 
 Upstream work lives on branch `homogenisation-checks` of `circulatory-autogen-modules`, checked out as a
@@ -61,9 +61,22 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
 | UX | Oxygen Not Included style: hotkeyed overlay tabs, legends, hover tooltips, category build menu, speed controls, warnings, level report; live plots on click; flux arrows; educational parameter inspector; stylised 2D art; the evolutionary time bar on top. |
 
 ## Physiology modelling
-- **Three levels of detail on one finite-volume graph**, chosen per region by the player:
-  level 0 sub-cellular (a cell meshed into sub-volumes, gradients through the cell), level 1 lumped cell,
-  level 2 homogenised tissue. Interfaces between levels are ordinary conservative faces.
+- **Lumped cells in the game, shaders for within-cell detail.** The game runs two levels on one
+  finite-volume graph, chosen per region by the player: **level 1 lumped cells** (one well-mixed volume per
+  cell; the network *between* cells resolves tissue-scale gradients) and **level 2 homogenised tissue**.
+  There is no sub-cellular PDE at runtime: the dip inside a cell is under 1% up to ~15–20 µm radius
+  (0.01% for the 2 µm starting cell), and sub-cell diffusion modes (µs–ms) would be the stiffest part of
+  fast-forward. Interfaces between levels are ordinary conservative faces.
+- **Within-cell visuals by shader:** render the Delaunay triangulation (dual of the Voronoi mesh) with cell
+  values at the vertices so the GPU interpolates between cells, and add the analytic within-cell profile
+  the lumped model implies, C(r) = C̄ + (q/4D)(R²/2 − r²) (mean-preserving; a per-cell shape function
+  precomputed at mesh build replaces r² for Voronoi polygons). The inspector labels it as reconstructed.
+- **Giant cells:** a live per-cell number Φ = qR²/(D·C). Below ~0.1 lumping is within 1%; above it the
+  cell's rates are multiplied by the **effectiveness factor** η(Φ) (Thiele/Aris; cylinder, first order:
+  η = 2I₁(Φ)/(Φ·I₀(Φ))), validated upstream against the finite-volume reference.
+- **Level 0 lives upstream only**, as the finite-volume **reference model** (a cell meshed into rings) in the
+  homogenisation checks. It validates the lumped bond-graph cell, d_eff, the shader profile and η(Φ)
+  across a cell-size sweep.
 - **Upscaling:** coarse parameters derived from the finer level where a formula exists, calibrated to it
   where not; both values recorded.
 - **Homogenisation checks upstream** (fine vs coarse system-model pairs): steady state within 1%,
@@ -77,10 +90,10 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   phosphate are conserved by construction). Each process uses the most widely accepted rate law, or an
   existing module from the repo: common modular rate law (Liebermeister et al. 2010) for lumped enzymes,
   symmetric carrier for facilitated transport, Fick for diffusion.
-- **Diffusion version vs lumped version:** the same bond-graph modules build both: N rings of
-  `cytosol_volume` joined by `cytosol_face` (diffusion version) and one `cytosol_volume` (lumped bond
-  graph). Their comparison is the level 0 ↔ 1 homogenisation check, including a cell-size sweep (2 µm,
-  where gradients are negligible, up to giant cells, where they are not).
+- **Diffusion (reference) vs lumped (game) version:** the same bond-graph modules build both: N rings of
+  `cytosol_volume` joined by `cytosol_face` (the upstream reference) and one `cytosol_volume` (the lumped
+  bond graph the game runs). Their comparison is the level 0 ↔ 1 homogenisation check, with a cell-size
+  sweep from 2 µm (gradients negligible) to giant cells (where η(Φ) takes over).
 
 ## Architecture
 - **Engine:** Unity 6 desktop front end; the simulation is a pure C# engine-agnostic library
@@ -115,7 +128,7 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 ## Stage-1 milestones
 | # | Milestone | Verification |
 |---|---|---|
-| M3 | Upstream homogenisation checks; fermenter cell as bond graph (diffusion + lumped versions); Voronoi mesh with level-0 sub-cell meshing; paint/erase, depth and level selection; native multi-level transport; flux arrows; benchmark | Homogenisation, mass, energy, second-law checks green upstream; analytic diffusion + conservation 1e-12; level interfaces conserve mass; perf baseline |
+| M3 | Upstream homogenisation checks; fermenter cell as bond graph (FV reference + lumped game version) with η(Φ); Voronoi mesh; paint/erase, depth and level selection (cell/tissue); native transport on the cell network; shader field rendering (Delaunay interpolation + within-cell profile); flux arrows; benchmark | Homogenisation, mass, energy, second-law checks green upstream incl. size sweep; analytic diffusion + conservation 1e-12; level interfaces conserve mass; shader profile mean equals the cell value; perf baseline |
 | M4 | Full stage-1 species + temperature + Q10; stiff/implicit kinetics for fast-forward; all overlays | Carbon/adenine/phosphate and enthalpy balances close; dissipation ≥ 0; speeds to ~10⁵× stable |
 | M5 | Damage, necrosis, Damage tab, warnings; save/load v1 | Starvation timeline matches the golden; bit-identical save round trip |
 | M6 | Cell palette; build menu; educational inspector | Module goldens; inspector clamps to tested ranges |
@@ -147,6 +160,10 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   each level simulated in real time or faster for a few days/weeks of that period. This replaces the
   earlier "EpochSteadyState over months–years" mode as the way time advances; the steady-state solver is
   kept for initialisation and fast-forward. *(Confirm.)*
+
+- **2026-10-07** Lumped cells in the game (levels 1 and 2 only), within-cell gradients drawn by shader
+  from the analytic profile; level-0 finite volumes kept upstream as the validation reference; giant cells
+  corrected by the effectiveness factor η(Φ).
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
