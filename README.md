@@ -5,7 +5,7 @@ A physiology evolution game. Start as a single cell living by diffusion, then ad
 of a changing planet. The physiology is quantitative, built from CellML modules in
 [circulatory-autogen-modules](https://github.com/physiomelinks/circulatory-autogen-modules).
 
-- Architecture and Stage-1 plan: [docs/architecture-plan.md](docs/architecture-plan.md)
+- The plan: [adapting_plan.md](adapting_plan.md) (feature plans in [docs/plans/](docs/plans/))
 - Conventions: [docs/conventions.md](docs/conventions.md)
 - Design decisions: [docs/adr/](docs/adr/)
 

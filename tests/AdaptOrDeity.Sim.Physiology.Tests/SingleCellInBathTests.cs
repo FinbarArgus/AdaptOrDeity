@@ -7,7 +7,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
     {
         // 20 µm square cell, 20 µm deep (V_P = 8e-15 m³ in the default instance); O2 diffusivity in cytoplasm
         // ~2e-9 m²/s; diffusion distance = half the cell width. Only the four in-plane faces exchange; the
-        // into-screen and out-of-screen surfaces are insulated (docs/architecture-plan.md, "Exchange").
+        // into-screen and out-of-screen surfaces are insulated (adapting_plan.md, "Game design").
         private const double CellWidth = 20e-6;
         private const double CellDepth = 20e-6;
         private const double DiffusivityO2 = 2e-9;

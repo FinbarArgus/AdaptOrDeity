@@ -7,7 +7,7 @@ using System.Xml.Linq;
 namespace AdaptOrDeity.ArchitectureTests
 {
     /// <summary>
-    /// Enforces the layering in docs/architecture-plan.md: a project may only reference projects in a lower
+    /// Enforces the layering in adapting_plan.md (Architecture): a project may only reference projects in a lower
     /// layer, Sim.* never references Game.*, and nothing outside unity/ references UnityEngine.
     /// Checked on the csproj graph because the compiler drops unused assembly references.
     /// </summary>
