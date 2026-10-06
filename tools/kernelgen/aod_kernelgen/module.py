@@ -14,9 +14,6 @@ import libcellml as lc
 from . import units as U
 
 ROLES = {"variable", "boundary_condition", "constant", "global_constant"}
-# Port variables must already be canonical SI (multiplier 1) until the assembler supports declared
-# conversions; see docs/architecture-plan.md "CellML pipeline", units gate.
-PORT_SI_TOLERANCE = 1e-12
 
 
 class ModuleError(ValueError):
@@ -215,6 +212,8 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
         kind = lc.AnalyserEquation.typeAsString(eq.type())
         if kind == "external":
             continue
+        if kind in ("true_constant", "variable_based_constant"):
+            kind = "computed_constant"   # e.g. a flux fixed at zero: evaluated like any algebraic equation
         if kind not in ("algebraic", "ode", "computed_constant"):
             raise ModuleError(f"{module_type}/{version}: unsupported equation type {kind!r} (non-linear algebraic?)")
         if kind == "ode":
@@ -228,16 +227,12 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
         for p in cfg.get(key, []):
             ports.append(Port(p["port_type"], direction, list(p["variables"]), _multi_port(p.get("multi_port"))))
 
-    # Units gate on port variables.
+    # Port variables need not be SI: the library's electrophysiology modules use mV, nA, pF and um2. Each variable's SI
+    # multiplier is recorded in the descriptor, and the runtime assembler checks that both ends of a connection agree.
     for p in ports:
         for name in p.variables:
-            var = next((v for v in states + externals + algebraic if v.name == name), None)
-            if var is None:
+            if not any(v.name == name for v in states + externals + algebraic):
                 raise ModuleError(f"{module_type}/{version}: port {p.port_type} variable {name} not found")
-            if abs(var.si_multiplier - 1.0) > PORT_SI_TOLERANCE:
-                raise ModuleError(
-                    f"{module_type}/{version}: port variable {name} is in {var.units} "
-                    f"(×{var.si_multiplier:g} to SI); port variables must be canonical SI")
 
     module = AnalysedModule(
         category=category, module_type=module_type, version=version, component=component.name(),

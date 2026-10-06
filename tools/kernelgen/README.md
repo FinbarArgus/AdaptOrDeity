@@ -21,8 +21,9 @@ tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
    variable (except the variable of integration) and every constant/boundary condition becomes an
    *external* the runtime fills; states initialised from another variable copy that external at
    `Initialise`.
-3. **Units gate**: the variable of integration must be seconds; port variables must be canonical SI
-   (multiplier 1, e.g. mM = mol/m³).
+3. **Units**: the variable of integration must be seconds. Every variable's SI multiplier is recorded in
+   the descriptor (port variables may be in mV, nA, pF, …, as in the library's electrophysiology modules);
+   the runtime assembler checks that both ends of a connection agree.
 4. **Emit**: one structure-of-arrays C# class per module version, walking libcellml's equation ASTs.
    Algebraic equations run before the ODEs that use them.
 5. **Goldens**: the module runs standalone in Myokit (CVODE, rtol 1e-10) with inputs held at instance

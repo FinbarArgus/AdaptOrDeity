@@ -120,7 +120,7 @@ shader reconstruction).
 | Module | Candidate validation data |
 |---|---|
 | `energy_metabolism` (mitochondrial, later stage) | Simultaneous calorimetric heat flux and O₂ flux in cultured cells (Gnaiger & Kemp 1990); ATP turnover rates |
-| fermenter cell (bond graph, in progress) | Maintenance ATP vs cell volume (Lynch & Marinov 2015); lactate production of homolactic bacteria |
+| fermenter cell (`cell/prokaryote/fermenter` and its new submodules) | Maintenance ATP vs cell volume (Lynch & Marinov 2015); lactate production of homolactic bacteria; bacterial membrane potential and K⁺/Na⁺ contents vs medium |
 | `membrane_carrier_face` (GLUT1, MCT1; Glf for the fermenter) | Uptake-vs-concentration data (Mueckler & Thorens 2013; Weisser et al. 1995; Halestrap & Price 1999) |
 | `thermal_volume`, `heat_conduction_face` | Tissue thermal property measurements (IT'IS database) |
 
@@ -128,7 +128,8 @@ shader reconstruction).
 - **Engine:** Unity 6 desktop front end; the simulation is a pure C# engine-agnostic library
   (netstandard2.1 + net8.0) shipped to Unity as DLLs (ADR 0001).
 - **CellML:** build-time C# kernels from libcellml (`tools/kernelgen`, ADR 0003); a runtime assembler
-  wires kernels per cell by libcuflynx's port rules; a native finite-volume solver owns spatial transport,
+  wires kernels per cell by libcuflynx's port rules and checks that both ends of each connection have the same
+  units (module ports may be in mV, nA, pF, …; every variable's SI multiplier is in its descriptor); a native finite-volume solver owns spatial transport,
   kernels own local kinetics, coupled by Strang splitting (ADR 0002). Algebraic-only modules (faces,
   carriers) are supported.
 - **Upstream-first:** new physiology is authored in circulatory-autogen-modules, passes cam_testing, then
