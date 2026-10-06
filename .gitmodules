@@ -1,0 +1,4 @@
+[submodule "external/circulatory-autogen-modules"]
+	path = external/circulatory-autogen-modules
+	url = https://github.com/physiomelinks/circulatory-autogen-modules.git
+	branch = devel_module_tests

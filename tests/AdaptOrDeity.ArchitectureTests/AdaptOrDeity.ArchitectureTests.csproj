@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- References every src assembly so the dependency rules can be checked by reflection. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/AdaptOrDeity.Game.Session/AdaptOrDeity.Game.Session.csproj" />
+    <ProjectReference Include="../../src/AdaptOrDeity.Headless/AdaptOrDeity.Headless.csproj" />
+  </ItemGroup>
+</Project>

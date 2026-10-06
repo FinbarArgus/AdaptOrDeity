@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../AdaptOrDeity.Sim.Core/AdaptOrDeity.Sim.Core.csproj" />
+  </ItemGroup>
+</Project>

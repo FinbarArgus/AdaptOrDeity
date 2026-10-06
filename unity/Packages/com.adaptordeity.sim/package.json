@@ -1,0 +1,7 @@
+{
+  "name": "com.adaptordeity.sim",
+  "displayName": "AdaptOrDeity Simulation",
+  "version": "0.1.0",
+  "unity": "6000.3",
+  "description": "Engine-agnostic AdaptOrDeity simulation assemblies (netstandard2.1), built from src/ by tools/scripts/build_sim_for_unity.sh. Do not edit here."
+}

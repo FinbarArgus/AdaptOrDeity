@@ -1,0 +1,8 @@
+Copyright (c) 2026 Finbar Argus. All rights reserved.
+
+This software and its source code are proprietary and confidential. No licence is granted to use, copy,
+modify, merge, publish, distribute, sublicense or sell copies of this software, in whole or in part,
+without prior written permission from the copyright holder.
+
+Third-party components, including the CellML modules in external/circulatory-autogen-modules, are
+licensed under their own terms; see THIRD_PARTY_NOTICES.md.

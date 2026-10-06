@@ -1,0 +1,12 @@
+{
+  "name": "AOD.Presentation",
+  "rootNamespace": "AdaptOrDeity.Presentation",
+  "references": [],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "noEngineReferences": false
+}

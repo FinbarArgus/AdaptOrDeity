@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../AdaptOrDeity.Sim.Core/AdaptOrDeity.Sim.Core.csproj" />
+    <ProjectReference Include="../AdaptOrDeity.Sim.Mesh/AdaptOrDeity.Sim.Mesh.csproj" />
+    <ProjectReference Include="../AdaptOrDeity.Sim.Modules/AdaptOrDeity.Sim.Modules.csproj" />
+    <ProjectReference Include="../AdaptOrDeity.Sim.Transport/AdaptOrDeity.Sim.Transport.csproj" />
+  </ItemGroup>
+</Project>

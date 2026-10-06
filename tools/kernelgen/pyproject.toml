@@ -1,0 +1,20 @@
+[project]
+name = "aod-kernelgen"
+version = "0.1.0"
+description = "Generates AdaptOrDeity C# kernels and golden traces from circulatory-autogen-modules CellML"
+requires-python = ">=3.10"
+# libcellml 0.7 changes the analyser/generator API; libcuflynx pins the same range.
+dependencies = ["libcellml>=0.6.3,<0.7", "myokit>=1.35", "numpy"]
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+aod-kernelgen = "aod_kernelgen.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["aod_kernelgen"]

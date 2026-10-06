@@ -1,0 +1,30 @@
+<Project>
+  <!-- Shared settings for every C# project. Sim/Game libraries multi-target netstandard2.1 (what Unity 6
+       consumes) and net8.0 (fast headless runs, tests, benchmarks). See docs/adr/0001-engine-agnostic-core.md. -->
+  <PropertyGroup>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <DebugType>portable</DebugType>
+    <RootNamespace>$(MSBuildProjectName)</RootNamespace>
+    <Company>AdaptOrDeity</Company>
+    <Copyright>Copyright (c) 2026 Finbar Argus. All rights reserved.</Copyright>
+  </PropertyGroup>
+
+  <!-- Every src/AdaptOrDeity.Sim.* and Game.* project is an engine-agnostic library. -->
+  <PropertyGroup Condition="'$(IsTestProject)' != 'true' And ($(MSBuildProjectName.StartsWith('AdaptOrDeity.Sim.')) Or $(MSBuildProjectName.StartsWith('AdaptOrDeity.Game.')))">
+    <TargetFrameworks>netstandard2.1;net8.0</TargetFrameworks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Missing XML docs are not errors while the API settles. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <TargetFramework>net8.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- Tests never ship to Unity, so they may use newer C#. -->
+    <LangVersion>12.0</LangVersion>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,39 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+BenchmarkDotNet.Artifacts/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Unity (project lives in unity/)
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Bb]uild/
+unity/[Bb]uilds/
+unity/[Ll]ogs/
+unity/[Uu]ser[Ss]ettings/
+unity/*.csproj
+unity/*.sln
+unity/.vsconfig
+# Sim DLLs are built by tools/scripts/build_sim_for_unity.sh, never committed
+unity/Packages/com.adaptordeity.sim/Plugins/*.dll
+unity/Packages/com.adaptordeity.sim/Plugins/*.pdb
+unity/Packages/com.adaptordeity.sim/Plugins/*.xml
+unity/Packages/com.adaptordeity.sim/Plugins/*.dll.meta
+unity/Packages/com.adaptordeity.sim/Plugins/*.pdb.meta
+unity/Packages/com.adaptordeity.sim/Plugins/*.xml.meta
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

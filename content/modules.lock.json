@@ -1,0 +1,21 @@
+{
+  "modules_root": "external/circulatory-autogen-modules/modules",
+  "licence_allowlist": [
+    "CC0-1.0"
+  ],
+  "modules": [
+    {
+      "category": "transport",
+      "module_type": "tissue_diffusion_volume",
+      "version": "nn",
+      "instances": [
+        "default"
+      ],
+      "golden": {
+        "duration_s": 600.0,
+        "interval_s": 2.0
+      },
+      "sha256": "1082421495af55d12c74fd77920ad1c7704f50f9ffec93e44c5d6fe629ca6c3a"
+    }
+  ]
+}
