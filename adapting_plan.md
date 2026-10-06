@@ -172,6 +172,9 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 - Unit mismatches between modules (build-time gate); Mono/IL2CPP performance (benchmark in the player).
 - Multi-species wiring upstream: one port carrying every species with per-variable `multi_port`.
 - Upstream-first is slower solo: temporary pins to feature branches allowed; releases need reviewed modules.
+- cam_testing's stability test: libcuflynx's `solve_ivp` route disagrees with CVODE by 0.77 (normalised) for
+  `energy_metabolism`, while an independent libcellml Python + scipy run matches CVODE to 5e-9. Likely the
+  route ignores the test's run_parameters; investigate in libcuflynx before relying on that route.
 
 ## Decision log
 - **2026-10-06** Unity 6 + engine-agnostic C# core; 2.5D Voronoi mesh; quantitative SI physiology from
