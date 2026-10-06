@@ -54,7 +54,7 @@ class AnalysedModule:
     component: str
     licence: str
     sha256: str
-    voi: str
+    voi: str | None
     states: list[Var]
     externals: list[Var]
     algebraic: list[Var]
@@ -139,6 +139,9 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
     # variable of integration, plus anything the config marks as a constant or boundary condition.
     # libcellml maps both "in" and "out" to "public", so the direction is read from the XML.
     interfaces, bvars = _interfaces_and_bvars(cellml_text, cfg["component_type"])
+    if not bvars and component.variable("t") is not None:
+        # Algebraic-only module: the library still declares t; it is unused, so drop it before analysis.
+        component.removeVariable("t")
     state_init_ref: dict[str, str] = {}
     external_names: list[str] = []
     for i in range(component.variableCount()):
@@ -160,12 +163,14 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
     if errors or not am.isValid():
         raise ModuleError(f"{module_type}/{version}: libcellml analyser failed: {errors}")
 
+    # Algebraic-only modules (faces, carriers) have no variable of integration; ODE modules must integrate in seconds.
     voi = am.voi().variable().name() if am.voi() else None
-    if voi is None:
-        raise ModuleError(f"{module_type}/{version}: no variable of integration (not an ODE model)")
-    voi_factor, voi_dim = U.resolve(am.voi().variable().units().name(), model)
-    if voi_factor != 1.0 or voi_dim != U.BUILTIN["second"][1]:
-        raise ModuleError(f"{module_type}/{version}: variable of integration must be in seconds")
+    if voi is None and am.stateCount() > 0:
+        raise ModuleError(f"{module_type}/{version}: states but no variable of integration")
+    if voi is not None:
+        voi_factor, voi_dim = U.resolve(am.voi().variable().units().name(), model)
+        if voi_factor != 1.0 or voi_dim != U.BUILTIN["second"][1]:
+            raise ModuleError(f"{module_type}/{version}: variable of integration must be in seconds")
 
     def make_var(name: str, units_name: str) -> Var:
         factor, _dim = U.resolve(units_name, model)

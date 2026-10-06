@@ -64,6 +64,34 @@ AdaptOrDeity/
 - **ITransportBackend** (CPU): implicit diffusion (PCG on the body graph Laplacian; ADI/CG on the env grid), upwind/semi-Lagrangian advection with CFL substeps, and body↔env coupling `A/(d/σ + δ_BL/σ_env)` with δ_BL from a Sherwood correlation (velocity ⇒ better exchange). The flux law is identical to `tissue_diffusion_face` (G = σA/(d_up+d_down)).
 - **Game rules**: `SimClock` (single source of truth for time); multi-rate `Scheduler`; `IFitnessHeuristic {IsActive, Requests, Evaluate → [0,1] + explanation}`; `ForwardPredictor` (immutable snapshot + region env + scenario, i.e. famine ladder or tolerance sweep, run on a background pool, deterministic); `PopulationModel` (player fitness vs regional competitors × reproductive_organ multiplier → reproductive output → budget); `MutationBudget` ledger; `Checkpoint` → `CycleReport`.
 
+## Multi-scale representation (decided 2026-10-06)
+The body is one **finite-volume transport graph** whose volumes can sit at three levels of detail. The
+**player chooses the level per region** (no automatic switching):
+
+| Level | One volume is | Local kinetics | Use |
+|---|---|---|---|
+| 0 Sub-cellular | part of a cell (each cell's Voronoi polygon is meshed into sub-volumes) | per sub-volume kinetics (e.g. `tissue_diffusion_volume`) | single cell / few cells; gradients *through* a cell |
+| 1 Cell | a whole cell, well mixed | lumped CellML cell module | small organisms |
+| 2 Tissue | a patch of N cells | CellML tissue module (homogenised) | large organisms |
+
+- **Interfaces between levels are ordinary faces** between volumes of different sizes, using the same flux law
+  (G = σA/(d_up+d_down)), so mass is conserved across every interface by construction.
+- **Upscaling:** coarse parameters (effective internal distance, effective diffusivity, volumetric
+  consumption, …) are **derived** from the finer level by a documented formula where possible, and
+  **calibrated** to the finer level where not.
+- **Homogenisation checks live upstream** in `circulatory-autogen-modules` as system-model pairs
+  (fine model vs coarse model). Each check compares:
+  1. steady-state coarse value vs fine volume-weighted mean, and total boundary flux, within **1%**;
+  2. the transient (initial-condition step) coarse vs fine volume-average time course, NRMSE ≤ **5%**;
+  3. both of the above **across a parameter sweep** of the ranges the game exposes;
+  4. **mass conservation** (zero loss, consumption accounted) in both models;
+  5. **energy (first law)**: total enthalpy changes only by boundary fluxes, zero loss;
+  6. **second law**: every element's dissipation ≥ 0.
+- **Heat generation (first/second-law split):** an element's heat equals its enthalpy release. Viscous
+  and Joule dissipation → heat. Reactions → reaction enthalpy ΔH (not ΔG). Ideal diffusion of a dilute
+  solute → **no heat** (its free-energy dissipation is entropic, ΔH_mix = 0). Every element's free-energy
+  dissipation must be ≥ 0.
+
 ## Per-step data flow (sim thread, Strang split)
 1. Drain the command queue (Paint/Erase/SetDepth/SetParam/Speed/Probe/Region) → validate against the budget → rebuild the mesh and topology if dirty.
 2. Mechanics: contractile ATP use → thrust; Stokes drag → velocity → boundary layer δ.
@@ -128,8 +156,8 @@ Existing modules to reuse: `modules/transport/tissue_diffusion_volume` and `tiss
 | M0 | Skeleton: sln, props, submodule, schemas, CI (python + dotnet matrix + GameCI), Unity loads the stub DLL | CI green on 3 OSes; architecture test; Unity PlayMode smoke |
 | M1 | kernelgen → C# kernel for `tissue_diffusion_volume/Fang2008_v01`; headless single cell in a well-mixed bath | Golden NRMSE < 1e-6 vs Myokit; analytic steady state matches |
 | M2 | **Vertical slice in Unity**: SimHost, clock, commands, snapshots, one cell, O2 overlay + legend, tooltip, click → live plot, speed controls | No per-frame GC; sim rate ±1% of preset; deterministic pause |
-| M3 | Voronoi body mesh + paint/erase + depth brush; native transport (body graph + 256² env + advection + perimeter-edge coupling); flux arrows; benchmark | Analytic diffusion + conservation (1e-12); parity vs a libcuflynx face/volume model; perf baseline in the Unity player |
-| M4 | Upstream metabolism set → all species + temperature + Q10; stiff integrator; all overlays | cam_testing green upstream; goldens; carbon/energy balance closes; hypoxic core appears at the analytic critical radius (in-plane, r ≈ √(4DC₀/M)) |
+| M3 | Upstream homogenisation checks (level 0↔1, 1↔2) + lumped cell / tissue module parameters; Voronoi body mesh with level-0 sub-cell meshing; paint/erase + depth brush + per-region level selection; native transport on the multi-level graph (body + 256² env + advection + perimeter-edge coupling); flux arrows; benchmark | Upstream homogenisation, mass, energy and second-law checks green; analytic diffusion + conservation (1e-12); parity vs a libcuflynx face/volume model; level interfaces conserve mass; perf baseline in the Unity player |
+| M4 | Upstream metabolism set → all species + temperature + Q10 (heat = enthalpy release); stiff integrator; all overlays | cam_testing green upstream incl. homogenisation at every level; goldens; carbon and enthalpy balances close; dissipation ≥ 0; hypoxic core appears at the analytic critical radius (in-plane, r ≈ √(4DC₀/M)) |
 | M5 | Damage + necrosis + Damage tab + warnings; save/load v1 | Starvation timeline matches the golden; save round trip is bit-identical |
 | M6 | Cell palette (barrier, storage, sensory, contractile → velocity → Sherwood); build menu; educational inspector with tested ranges | Module goldens; motility raises uptake as Sh predicts; inspector clamps to bc_sweep ranges |
 | M7 | Checkpoints, non-predictive heuristics, PopulationModel + competitor tables, MutationBudget, cycle report | Heuristic unit tests on synthetic organisms; ledger invariants; report snapshot tests |
