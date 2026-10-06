@@ -39,6 +39,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdaptOrDeity.Sim.Kernels.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdaptOrDeity.Sim.Physiology.Tests", "tests\AdaptOrDeity.Sim.Physiology.Tests\AdaptOrDeity.Sim.Physiology.Tests.csproj", "{2256DFA9-261B-47EE-906B-4D7229E554E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AdaptOrDeity.Game.Session.Tests", "tests\AdaptOrDeity.Game.Session.Tests\AdaptOrDeity.Game.Session.Tests.csproj", "{1C464AAF-E1CC-43A2-A507-1CDC3F1C4FA5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -112,6 +114,10 @@ Global
 		{2256DFA9-261B-47EE-906B-4D7229E554E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2256DFA9-261B-47EE-906B-4D7229E554E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2256DFA9-261B-47EE-906B-4D7229E554E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C464AAF-E1CC-43A2-A507-1CDC3F1C4FA5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C464AAF-E1CC-43A2-A507-1CDC3F1C4FA5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C464AAF-E1CC-43A2-A507-1CDC3F1C4FA5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C464AAF-E1CC-43A2-A507-1CDC3F1C4FA5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{F1D016CD-22B3-474D-A971-EF1599546A49} = {2BC035DF-6B42-4D8A-9E15-67B941C1F501}
@@ -130,5 +136,6 @@ Global
 		{96DAD9DD-EE5F-4478-9399-106CF0F0A7A1} = {1754230E-DBBF-400D-ABBC-EEBC30CF862B}
 		{03D78573-D234-420D-BF67-844472F6BC9B} = {1754230E-DBBF-400D-ABBC-EEBC30CF862B}
 		{2256DFA9-261B-47EE-906B-4D7229E554E8} = {1754230E-DBBF-400D-ABBC-EEBC30CF862B}
+		{1C464AAF-E1CC-43A2-A507-1CDC3F1C4FA5} = {1754230E-DBBF-400D-ABBC-EEBC30CF862B}
 	EndGlobalSection
 EndGlobal

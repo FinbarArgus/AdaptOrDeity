@@ -1,46 +1,53 @@
 using System;
-using AdaptOrDeity.Sim.Core;
 
 namespace AdaptOrDeity.Game.Session
 {
     /// <summary>
-    /// Facade the front end (Unity, Headless) talks to. M0 stub: it only advances the clock on the caller's
-    /// thread. M2 moves stepping to a dedicated SimHost thread behind a command queue and snapshot buffers.
+    /// The facade front ends use (Unity, Headless). Commands go in, snapshots and events come out; the front
+    /// end never touches simulation state. Call <see cref="Start"/> for real-time play, or
+    /// <see cref="RunHeadless"/> for an unpaced run on the calling thread.
     /// </summary>
-    public sealed class SimSession
+    public sealed class SimSession : IDisposable
     {
-        /// <summary>Sim-seconds per real second for each speed preset (index 0 = paused).</summary>
-        private static readonly double[] SpeedPresets = { 0.0, 1.0, 2.0, 3.0 };
+        private readonly SimLoop _loop;
+        private readonly SimHost _host;
 
-        private readonly SimClock _clock;
-        private int _speedIndex = 1;
-
-        public SimSession(double checkpointInterval = 600.0)
+        public SimSession(ISimWorld world, SimLoopOptions? options = null)
         {
-            _clock = new SimClock(checkpointInterval);
+            _loop = new SimLoop(world, options);
+            _host = new SimHost(_loop);
         }
 
-        public double SimTime => _clock.SimTime;
+        /// <summary>The M2 session: one cell in an oxygenated bath.</summary>
+        public static SimSession CreateOneCell() => new SimSession(new OneCellWorld());
 
-        public long CheckpointIndex => _clock.CheckpointIndex;
+        public SessionSchema Schema => _loop.Schema;
 
-        public int SpeedIndex
+        public bool IsRunning => _host.IsRunning;
+
+        public void Start() => _host.Start();
+
+        public void Enqueue(ISimCommand command) => _loop.Enqueue(command);
+
+        public bool TryGetFrame(out SnapshotFrame frame) => _host.TryAcquire(out frame);
+
+        public bool TryDequeueEvent(out SimEvent? simEvent) => _loop.TryDequeueEvent(out simEvent);
+
+        /// <summary>
+        /// Applies queued commands, then simulates <paramref name="simSeconds"/> as fast as possible on the
+        /// calling thread and returns a fresh snapshot. Not allowed while the threaded host is running.
+        /// </summary>
+        public SnapshotFrame RunHeadless(double simSeconds)
         {
-            get => _speedIndex;
-            set
-            {
-                if (value < 0 || value >= SpeedPresets.Length)
-                    throw new ArgumentOutOfRangeException(nameof(value));
-                _speedIndex = value;
-            }
+            if (_host.IsRunning)
+                throw new InvalidOperationException("session is running on its own thread");
+            _loop.ApplyCommands();
+            _loop.StepExactly((long)Math.Round(simSeconds / _loop.World.MacroDt));
+            var frame = _loop.CreateFrame();
+            _loop.WriteSnapshot(frame);
+            return frame;
         }
 
-        /// <summary>Advances the simulation by the amount of sim time that corresponds to <paramref name="realDt"/>.</summary>
-        public void Update(double realDt)
-        {
-            double simDt = realDt * SpeedPresets[_speedIndex];
-            if (simDt > 0.0)
-                _clock.Advance(simDt);
-        }
+        public void Dispose() => _host.Dispose();
     }
 }

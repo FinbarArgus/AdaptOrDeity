@@ -1,0 +1,262 @@
+using AdaptOrDeity.Game.Session;
+using AdaptOrDeity.Presentation;
+using UnityEngine;
+
+namespace AdaptOrDeity.UI
+{
+    /// <summary>
+    /// M2 heads-up display in the style of Oxygen Not Included: overlay tabs with hotkeys, speed controls,
+    /// a legend, hover tooltips and a probe plot for the clicked cell. IMGUI for the vertical slice; all input
+    /// comes through IMGUI events so it works with either Unity input backend.
+    /// </summary>
+    public sealed class Hud : MonoBehaviour
+    {
+        private const float BarHeight = 34f;
+        private static readonly string[] SpeedLabels = { "II", ">", ">>", ">>>" };
+
+        private int _lastRunningSpeed = 1;
+        private Material _lineMaterial;
+        private GUIStyle _tooltipStyle;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Bootstrap()
+        {
+            if (FindAnyObjectByType<Hud>() == null)
+                new GameObject("Hud").AddComponent<Hud>();
+        }
+
+        private void OnGUI()
+        {
+            var bridge = SessionBridge.Instance;
+            var frame = bridge != null ? bridge.Frame : null;
+            if (frame == null)
+                return;
+
+            HandleInput(bridge, frame);
+            DrawTopBar(bridge, frame);
+            if (bridge.ActiveOverlay >= 0)
+                DrawLegend(bridge.Schema.Overlays[bridge.ActiveOverlay]);
+            DrawProbePlot(bridge, frame);
+            DrawTooltip(bridge, frame);
+        }
+
+        private void HandleInput(SessionBridge bridge, SnapshotFrame frame)
+        {
+            var e = Event.current;
+            if (e.type == EventType.KeyDown)
+            {
+                var overlays = bridge.Schema.Overlays;
+                for (int i = 0; i < overlays.Count; i++)
+                    if (e.keyCode.ToString() == overlays[i].Hotkey)
+                    {
+                        bridge.ActiveOverlay = bridge.ActiveOverlay == i ? -1 : i;
+                        e.Use();
+                    }
+                switch (e.keyCode)
+                {
+                    case KeyCode.Escape:
+                        bridge.ActiveOverlay = -1;
+                        e.Use();
+                        break;
+                    case KeyCode.Space:
+                        SetSpeed(bridge, frame.SpeedIndex == 0 ? _lastRunningSpeed : 0);
+                        e.Use();
+                        break;
+                    case KeyCode.Alpha1:
+                    case KeyCode.Alpha2:
+                    case KeyCode.Alpha3:
+                        SetSpeed(bridge, e.keyCode - KeyCode.Alpha0);
+                        e.Use();
+                        break;
+                }
+            }
+            else if (e.type == EventType.MouseDown && e.mousePosition.y > BarHeight)
+            {
+                var cell = CellUnderMouse(e.mousePosition);
+                if (e.button == 0 && cell != null)
+                {
+                    // One probe at a time for now: follow the clicked cell on the shown overlay (oxygen by default).
+                    bridge.Send(SimCommands.ClearProbes());
+                    bridge.Send(SimCommands.AddProbe(cell.CellIndex, Mathf.Max(0, bridge.ActiveOverlay)));
+                    e.Use();
+                }
+                else if (e.button == 1)
+                {
+                    bridge.Send(SimCommands.ClearProbes());
+                    e.Use();
+                }
+            }
+        }
+
+        private void SetSpeed(SessionBridge bridge, int index)
+        {
+            if (index > 0)
+                _lastRunningSpeed = index;
+            bridge.Send(SimCommands.SetSpeed(index));
+        }
+
+        private void DrawTopBar(SessionBridge bridge, SnapshotFrame frame)
+        {
+            GUI.Box(new Rect(0, 0, Screen.width, BarHeight), GUIContent.none);
+            GUILayout.BeginArea(new Rect(8, 5, Screen.width - 16, BarHeight - 8));
+            GUILayout.BeginHorizontal();
+
+            if (GUILayout.Toggle(bridge.ActiveOverlay < 0, "Plain [Esc]", GUI.skin.button, GUILayout.Width(100)))
+                bridge.ActiveOverlay = -1;
+            var overlays = bridge.Schema.Overlays;
+            for (int i = 0; i < overlays.Count; i++)
+            {
+                bool on = GUILayout.Toggle(bridge.ActiveOverlay == i, $"{overlays[i].Name} [{overlays[i].Hotkey}]",
+                    GUI.skin.button, GUILayout.Width(120));
+                if (on && bridge.ActiveOverlay != i)
+                    bridge.ActiveOverlay = i;
+                else if (!on && bridge.ActiveOverlay == i)
+                    bridge.ActiveOverlay = -1;
+            }
+
+            GUILayout.FlexibleSpace();
+            if (frame.Lagging)
+            {
+                var old = GUI.color;
+                GUI.color = new Color(1f, 0.45f, 0.35f);
+                GUILayout.Label("Simulation lagging", GUILayout.Width(140));
+                GUI.color = old;
+            }
+            GUILayout.Label($"t = {FormatTime(frame.SimTime)}", GUILayout.Width(130));
+            int speed = GUILayout.Toolbar(frame.SpeedIndex, SpeedLabels, GUILayout.Width(200));
+            if (speed != frame.SpeedIndex)
+                SetSpeed(bridge, speed);
+
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
+        }
+
+        private void DrawLegend(OverlayInfo info)
+        {
+            const float width = 26f, height = 220f;
+            var area = new Rect(Screen.width - 120, BarHeight + 16, 110, height + 50);
+            GUI.Box(area, info.Name);
+            var bar = new Rect(area.x + 10, area.y + 24, width, height);
+            if (Event.current.type == EventType.Repaint)
+            {
+                const int bands = 64;
+                for (int i = 0; i < bands; i++)
+                {
+                    float t0 = (float)i / bands;
+                    var band = new Rect(bar.x, bar.yMax - (t0 + 1f / bands) * height, width, height / bands + 1f);
+                    GUI.DrawTexture(band, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f,
+                        Colormap.Evaluate(t0 + 0.5f / bands), 0f, 0f);
+                }
+            }
+            GUI.Label(new Rect(bar.xMax + 6, bar.y - 8, 70, 20), $"{info.DisplayMax:G4}");
+            GUI.Label(new Rect(bar.xMax + 6, bar.yMax - 12, 70, 20), $"{info.DisplayMin:G4}");
+            GUI.Label(new Rect(bar.xMax + 6, bar.y + height * 0.5f - 10, 70, 20), info.DisplayUnit);
+        }
+
+        private void DrawTooltip(SessionBridge bridge, SnapshotFrame frame)
+        {
+            var mouse = Event.current.mousePosition;
+            var cell = CellUnderMouse(mouse);
+            if (cell == null)
+                return;
+            var overlays = bridge.Schema.Overlays;
+            var text = $"Cell {cell.CellIndex}";
+            for (int c = 0; c < overlays.Count; c++)
+                text += $"\n{overlays[c].Name}: {frame.Channels[c][cell.CellIndex] * overlays[c].DisplayMultiplier:F1} {overlays[c].DisplayUnit}";
+            text += "\n<i>Click to plot, right-click to clear</i>";
+
+            _tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, richText = true, padding = new RectOffset(8, 8, 6, 6) };
+            var content = new GUIContent(text);
+            var size = _tooltipStyle.CalcSize(content);
+            GUI.Box(new Rect(mouse.x + 16, mouse.y + 16, size.x, size.y), content, _tooltipStyle);
+        }
+
+        private void DrawProbePlot(SessionBridge bridge, SnapshotFrame frame)
+        {
+            if (frame.ProbeCount == 0)
+                return;
+            var probe = frame.Probes[0];
+            if (probe.Count < 2)
+                return;
+            var info = bridge.Schema.Overlays[probe.Channel];
+
+            var area = new Rect(Screen.width - 420, Screen.height - 240, 410, 230);
+            GUI.Box(area, $"Cell {probe.Cell}: {info.Name} ({info.DisplayUnit})");
+            var plot = new Rect(area.x + 50, area.y + 28, area.width - 64, area.height - 58);
+
+            float min = float.MaxValue, max = float.MinValue;
+            for (int i = 0; i < probe.Count; i++)
+            {
+                float v = probe.Values[i] * (float)info.DisplayMultiplier;
+                min = Mathf.Min(min, v);
+                max = Mathf.Max(max, v);
+            }
+            float pad = Mathf.Max(1e-3f, 0.05f * (max - min));
+            min -= pad;
+            max += pad;
+            double t0 = probe.Times[0], t1 = probe.Times[probe.Count - 1];
+
+            GUI.Label(new Rect(area.x + 4, plot.y - 8, 46, 20), $"{max:G4}");
+            GUI.Label(new Rect(area.x + 4, plot.yMax - 12, 46, 20), $"{min:G4}");
+            GUI.Label(new Rect(plot.x, plot.yMax + 4, 150, 20), FormatTime(t0));
+            GUI.Label(new Rect(plot.xMax - 90, plot.yMax + 4, 90, 20), FormatTime(t1));
+
+            if (Event.current.type != EventType.Repaint)
+                return;
+            if (_lineMaterial == null)
+            {
+                _lineMaterial = new Material(Shader.Find("Hidden/Internal-Colored")) { hideFlags = HideFlags.HideAndDontSave };
+            }
+            _lineMaterial.SetPass(0);
+            GL.PushMatrix();
+            GL.LoadPixelMatrix();
+            GL.Begin(GL.LINES);
+            GL.Color(Colormap.Evaluate(0.8f));
+            Vector2 previous = default;
+            for (int i = 0; i < probe.Count; i++)
+            {
+                float x = plot.x + (float)((probe.Times[i] - t0) / System.Math.Max(t1 - t0, 1e-12)) * plot.width;
+                float v = probe.Values[i] * (float)info.DisplayMultiplier;
+                float y = plot.yMax - (v - min) / (max - min) * plot.height;
+                var point = new Vector2(x, Screen.height - y); // GUI y-down → pixel y-up
+                if (i > 0)
+                {
+                    GL.Vertex3(previous.x, previous.y, 0f);
+                    GL.Vertex3(point.x, point.y, 0f);
+                }
+                previous = point;
+            }
+            GL.End();
+            GL.PopMatrix();
+        }
+
+        private static CellView CellUnderMouse(Vector2 guiMouse)
+        {
+            var cam = Camera.main;
+            if (cam == null)
+                return null;
+            var world = (Vector2)cam.ScreenToWorldPoint(new Vector3(guiMouse.x, Screen.height - guiMouse.y, 0f));
+            foreach (var cell in FindObjectsByType<CellView>(FindObjectsSortMode.None))
+                if (cell.Contains(world))
+                    return cell;
+            return null;
+        }
+
+        private static string FormatTime(double seconds)
+        {
+            if (seconds < 60.0)
+                return $"{seconds:F2} s";
+            if (seconds < 3600.0)
+                return $"{seconds / 60.0:F1} min";
+            if (seconds < 86400.0)
+                return $"{seconds / 3600.0:F2} h";
+            return $"{seconds / 86400.0:F1} d";
+        }
+
+        private void OnDestroy()
+        {
+            if (_lineMaterial != null)
+                Destroy(_lineMaterial);
+        }
+    }
+}
