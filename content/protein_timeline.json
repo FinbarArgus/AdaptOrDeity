@@ -36,8 +36,10 @@
    "name": "AdaptOrDeity begins",
    "ga": 2.0,
    "certainty": "established",
-   "sources": [],
-   "notes": "The evolutionary time bar starts here: a ~2 um prokaryote-grade fermenter."
+   "sources": [
+    "https://doi.org/10.1126/science.aal4151"
+   ],
+   "notes": "The evolutionary time bar starts here: a ~2 um prokaryote fermenter in a sea of pH 7.3 (placeholder between Halevy & Bachan 2017's Archean 6.5-7.0 and Phanerozoic 7.5-9.0)."
   },
   {
    "id": "leca",
@@ -80,13 +82,17 @@
    "latest_ga": 4.2,
    "available_from_ga": 4.2,
    "certainty": "established",
-   "game_role": "A fermenter runs it backwards (ATP hydrolysis) to pump ions out; with respiration it makes ATP. The prokaryote-appropriate ion pump for the starting cell.",
-   "models": [],
+   "game_role": "The fermenter's only primary pump: the F1Fo ATPase hydrolyses fermentation ATP to pump 10/3 H+ out per ATP, which powers every other gradient. With respiration it runs the other way and makes ATP.",
+   "models": [
+    "cell/ion_channels/i_H_ATPase"
+   ],
    "sources": [
     "https://academic.oup.com/femsre/article/8268875",
-    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2359735/"
+    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2359735/",
+    "https://doi.org/10.1016/s0021-9258(18)89694-6",
+    "https://doi.org/10.1073/pnas.081424898"
    ],
-   "notes": "Present in LUCA (Modjewski et al. 2025). Mulkidjanian et al. 2008 argue the Na+-coupled form is ancestral (hypothesis)."
+   "notes": "Present in LUCA (Modjewski et al. 2025). Mulkidjanian et al. 2008 argue the Na+-coupled form is ancestral (hypothesis). Kobayashi 1985: fermenting Enterococcus hirae uses it in hydrolysis mode to regulate cytoplasmic pH. Jiang et al. 2001: E. coli c10 ring, so 10/3 H+ per ATP."
   },
   {
    "id": "k_channel_2tm",
@@ -98,10 +104,8 @@
    "latest_ga": null,
    "available_from_ga": 4.2,
    "certainty": "likely",
-   "game_role": "The fermenter's K+ leak.",
-   "models": [
-    "cell/ion_channels/i_leak_K"
-   ],
+   "game_role": "Passive K+ conductance; the fermenter's K+ path is the Trk entry.",
+   "models": [],
    "sources": [
     "https://rupress.org/jgp/article-abstract/125/6/521/44090/Microbial-K-Channels"
    ],
@@ -117,13 +121,16 @@
    "latest_ga": null,
    "available_from_ga": 2.0,
    "certainty": "assumed",
-   "game_role": "Prokaryotic K+ uptake to replace the animal Na/K pump's K+ side.",
-   "models": [],
+   "game_role": "The fermenter's K+ uptake: a channel-like K+ path driven by the membrane potential (i_leak_K maths).",
+   "models": [
+    "cell/ion_channels/i_leak_K"
+   ],
    "sources": [
     "https://biostat.wisc.edu/bmi776/text-data/abstracts/10423425",
-    "https://pmc.ncbi.nlm.nih.gov/articles/PMC107312/"
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC107312/",
+    "https://doi.org/10.1038/nature09731"
    ],
-   "notes": "Durell et al. 1999: symporters arose from K+ channels by duplication and fusion. Widespread in bacteria today; no date found."
+   "notes": "Durell et al. 1999: symporters arose from K+ channels by duplication and fusion. Widespread in bacteria today; no date found. Cao et al. 2011: TrkH has a channel-like selectivity filter."
   },
   {
    "id": "kdp",
@@ -152,15 +159,70 @@
    "latest_ga": null,
    "available_from_ga": 1.0,
    "certainty": "debated",
-   "game_role": "Used now in the fermenter cell as an analogue. Historically it belongs to eukaryotes: unlock with eukaryotes (opisthokonts at the latest).",
+   "game_role": "Not in the 2.0 Ga fermenter any more (replaced by the H+-ATPase, NhaA, Trk and KefC). Unlock with eukaryotes (opisthokonts at the latest).",
    "models": [
-    "cell/ion_channels/i_NaK"
+    "cell/ion_channels/i_NaK (ATP_ArgusUNPUBLISHED_v01)"
    ],
    "sources": [
     "https://link.springer.com/article/10.1007/s10709-009-9356-0",
     "https://busqueda.bvsalud.org/portal/resource/pt/mdl-9602120"
    ],
    "notes": "Saez et al. 2009: the IIC subfamily most likely originated in prokaryotes, and IIC proteins occur in algae, protozoa and fungi; the animal-fungal ancestor had a Na,K-ATPase-like alpha (Blastocladiella, 1998). Not documented as a 3Na/2K pump in prokaryotes. available_from_ga is a placeholder for the opisthokont ancestor (date not checked)."
+  },
+  {
+   "id": "nhaa",
+   "name": "NhaA Na+/H+ antiporter (CPA2 family)",
+   "category": "transporter",
+   "function": "1 Na+ out for 2 H+ in, electrogenic; driven by the proton motive force",
+   "clade": "Bacteria (Na+/H+ antiporters in all domains)",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "The fermenter's Na+ export. It fails above about pH 7.8 outside at -105 mV, so modern seawater (8.1) needs a primary Na+ pump.",
+   "models": [
+    "cell/ion_channels/i_NaH"
+   ],
+   "sources": [
+    "https://doi.org/10.1016/s0021-9258(18)53333-0"
+   ],
+   "notes": "Taglicht et al. 1993: 2 H+ per Na+, independent of pH 7.2-8.1. Not dated."
+  },
+  {
+   "id": "kefc",
+   "name": "KefC-type K+/H+ exchanger",
+   "category": "transporter",
+   "function": "1 K+ out for 1 H+ in, electroneutral",
+   "clade": "Bacteria",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "The fermenter's K+ export, which lets the membrane sit below E_K.",
+   "models": [
+    "cell/ion_channels/i_KH"
+   ],
+   "sources": [
+    "https://doi.org/10.1038/s41467-024-49082-7"
+   ],
+   "notes": "Gulati et al. 2024: structure of E. coli KefC, glutathione-gated (mostly closed in vivo); its basal activity stands in for all K+ efflux. Not dated."
+  },
+  {
+   "id": "primary_na_pumps",
+   "name": "Primary Na+ pumps (Na+-NQR, Na+-translocating decarboxylases, Na+-ATPases)",
+   "category": "pump",
+   "function": "Pump Na+ out directly with redox or decarboxylation energy",
+   "clade": "Bacteria and Archaea (many marine)",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "unverified",
+   "game_role": "Evolvable upgrade that keeps Na+ out when the ocean turns alkaline (pH 8.1 today) and NhaA alone fails.",
+   "models": [],
+   "sources": [
+    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2359735/"
+   ],
+   "notes": "Mulkidjanian et al. 2008 argue Na+ bioenergetics is ancient. The individual pumps were not dated here."
   },
   {
    "id": "ncx_prokaryotic",
