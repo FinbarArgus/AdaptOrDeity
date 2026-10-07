@@ -1,0 +1,495 @@
+{
+ "schema_version": 1,
+ "description": "When important proteins (and protein families) became available in Earth's history, so the game can offer each one only from the evolutionary time it existed. Ages are in billions of years ago (Ga). earliest_ga and latest_ga bound the estimates found (null = not dated); available_from_ga is the conservative date the game uses: from then on the protein certainly existed (anything older than the game's start, 2.0 Ga, is available from the start). certainty: established | likely | debated | assumed (plausible, no dating found) | unverified (to check). Sources are what the estimate rests on; notes say what they do and do not show.",
+ "game_start_ga": 2.0,
+ "events": [
+  {
+   "id": "earth",
+   "name": "Earth forms",
+   "ga": 4.54,
+   "certainty": "established",
+   "sources": []
+  },
+  {
+   "id": "luca",
+   "name": "Last universal common ancestor (LUCA)",
+   "ga": 4.2,
+   "certainty": "debated",
+   "sources": [
+    "https://discovery.ucl.ac.uk/id/eprint/10195667/1/Moody%20et%20al%20(2024)%20LUCA%20paper.pdf"
+   ],
+   "notes": "Moody et al. 2024, Nature Ecology & Evolution: about 4.2 Ga, genome of at least 2.5 Mb."
+  },
+  {
+   "id": "goe",
+   "name": "Great Oxidation Event",
+   "ga": 2.43,
+   "certainty": "established",
+   "sources": [
+    "https://eos.org/articles/timing-of-earths-oxygenation-may-need-a-100-million-year-revision"
+   ],
+   "notes": "Poulton et al. 2021 (Nature): first rise above 1e-5 PAL at ~2.43 Ga, oscillating until permanent at ~2.22 Ga. The deep ocean stays largely anoxic long after.",
+   "end_ga": 2.22
+  },
+  {
+   "id": "game_start",
+   "name": "AdaptOrDeity begins",
+   "ga": 2.0,
+   "certainty": "established",
+   "sources": [],
+   "notes": "The evolutionary time bar starts here: a ~2 um prokaryote-grade fermenter."
+  },
+  {
+   "id": "leca",
+   "name": "Last eukaryotic common ancestor (LECA)",
+   "ga": 1.8,
+   "certainty": "debated",
+   "sources": [
+    "https://research-information.bris.ac.uk/en/studentTheses/the-timing-of-pre-leca-gene-duplications-and-the-resulting-implic/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/6152910"
+   ],
+   "notes": "Placeholder date. A 2024 Bristol thesis puts LECA in the early Proterozoic; Betts et al. 2018 date it relative to fossils (their numbers not checked here)."
+  },
+  {
+   "id": "crown_animals",
+   "name": "Crown-group animals (Metazoa)",
+   "ga": 0.75,
+   "certainty": "debated",
+   "sources": [
+    "https://discovery.ucl.ac.uk/id/eprint/1473653/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC5447329"
+   ],
+   "notes": "Molecular clocks: Tonian to Cryogenian (about 0.8 to 0.64 Ga); dos Reis et al. 2015 favour the Cryogenian and stress the uncertainty."
+  },
+  {
+   "id": "cambrian",
+   "name": "Cambrian explosion begins",
+   "ga": 0.541,
+   "certainty": "established",
+   "sources": []
+  }
+ ],
+ "proteins": [
+  {
+   "id": "rotary_atpase",
+   "name": "Rotary ATP synthase / ATPase (F-, V-, A-type)",
+   "category": "bioenergetics",
+   "function": "Couples ATP synthesis or hydrolysis to Na+ or H+ flow across the membrane",
+   "clade": "all life (LUCA)",
+   "earliest_ga": 4.2,
+   "latest_ga": 4.2,
+   "available_from_ga": 4.2,
+   "certainty": "established",
+   "game_role": "A fermenter runs it backwards (ATP hydrolysis) to pump ions out; with respiration it makes ATP. The prokaryote-appropriate ion pump for the starting cell.",
+   "models": [],
+   "sources": [
+    "https://academic.oup.com/femsre/article/8268875",
+    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2359735/"
+   ],
+   "notes": "Present in LUCA (Modjewski et al. 2025). Mulkidjanian et al. 2008 argue the Na+-coupled form is ancestral (hypothesis)."
+  },
+  {
+   "id": "k_channel_2tm",
+   "name": "K+ channel, two-transmembrane (KcsA-like)",
+   "category": "ion channel",
+   "function": "Passive K+ conductance",
+   "clade": "Bacteria and Archaea",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 4.2,
+   "certainty": "likely",
+   "game_role": "The fermenter's K+ leak.",
+   "models": [
+    "cell/ion_channels/i_leak_K"
+   ],
+   "sources": [
+    "https://rupress.org/jgp/article-abstract/125/6/521/44090/Microbial-K-Channels"
+   ],
+   "notes": "Loukin et al. 2005 (secondary summary) place K+ channels before the Bacteria/Archaea divergence; not dated in years."
+  },
+  {
+   "id": "trk_ktr",
+   "name": "Trk / Ktr K+ uptake transporters",
+   "category": "transporter",
+   "function": "K+ uptake (low affinity, fast), derived from K+ channel pore motifs",
+   "clade": "Bacteria and Archaea; Trk1,2 in fungi",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "Prokaryotic K+ uptake to replace the animal Na/K pump's K+ side.",
+   "models": [],
+   "sources": [
+    "https://biostat.wisc.edu/bmi776/text-data/abstracts/10423425",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC107312/"
+   ],
+   "notes": "Durell et al. 1999: symporters arose from K+ channels by duplication and fusion. Widespread in bacteria today; no date found."
+  },
+  {
+   "id": "kdp",
+   "name": "KdpFABC K+-ATPase",
+   "category": "pump",
+   "function": "ATP-driven high-affinity K+ uptake (P-type ATPase)",
+   "clade": "Bacteria",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "ATP-driven K+ uptake when K+ is scarce; a prokaryotic alternative to the Na/K pump.",
+   "models": [],
+   "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC1300629"
+   ],
+   "notes": "KdpA derives from 2TM K+ channels. No date found; treated as present in prokaryotes by the game's start."
+  },
+  {
+   "id": "na_k_atpase",
+   "name": "Na+/K+-ATPase (P2C alpha subunit)",
+   "category": "pump",
+   "function": "3 Na+ out, 2 K+ in per ATP; electrogenic",
+   "clade": "eukaryotes (fungi, choanoflagellates, animals, some algae and protists)",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 1.0,
+   "certainty": "debated",
+   "game_role": "Used now in the fermenter cell as an analogue. Historically it belongs to eukaryotes: unlock with eukaryotes (opisthokonts at the latest).",
+   "models": [
+    "cell/ion_channels/i_NaK"
+   ],
+   "sources": [
+    "https://link.springer.com/article/10.1007/s10709-009-9356-0",
+    "https://busqueda.bvsalud.org/portal/resource/pt/mdl-9602120"
+   ],
+   "notes": "Saez et al. 2009: the IIC subfamily most likely originated in prokaryotes, and IIC proteins occur in algae, protozoa and fungi; the animal-fungal ancestor had a Na,K-ATPase-like alpha (Blastocladiella, 1998). Not documented as a 3Na/2K pump in prokaryotes. available_from_ga is a placeholder for the opisthokont ancestor (date not checked)."
+  },
+  {
+   "id": "ncx_prokaryotic",
+   "name": "Na+/Ca2+ exchanger, prokaryotic (CaCA family, e.g. NCX_Mj)",
+   "category": "transporter",
+   "function": "3 Na+ in, 1 Ca2+ out",
+   "clade": "Archaea and Bacteria; NCX in animals",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "The fermenter's Ca2+ extrusion (prokaryotic equivalent of the SN exchanger).",
+   "models": [
+    "cell/ion_channels/i_NaCa"
+   ],
+   "sources": [
+    "https://rcsb.org/structure/3V5U",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC4753433"
+   ],
+   "notes": "Liao et al. 2012 (Science): archaeal NCX_Mj from Methanococcus jannaschii exchanges Na+ for Ca2+; Liao et al. 2016 establish 3:1 stoichiometry. Not dated."
+  },
+  {
+   "id": "bacterial_nav",
+   "name": "Bacterial voltage-gated Na+ channel (NaChBac family)",
+   "category": "ion channel",
+   "function": "Voltage-gated Na+ conductance",
+   "clade": "Bacteria",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "A Na+ conductance for prokaryotic cells (the fermenter's Na+ leak is unspecific).",
+   "models": [
+    "cell/ion_channels/i_leak_Na"
+   ],
+   "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC4969801"
+   ],
+   "notes": "Sodium selectivity evolved independently in bacterial and animal channels (Liebeskind et al. 2013). Not dated."
+  },
+  {
+   "id": "mfs_sugar_porter",
+   "name": "Major facilitator superfamily sugar transporters",
+   "category": "transporter",
+   "function": "Facilitated or H+-coupled sugar uptake",
+   "clade": "all domains (MFS); sugar-porter subfamily distribution not checked",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "likely",
+   "game_role": "The fermenter's glucose facilitator (Glf-type).",
+   "models": [
+    "transport/cell_membrane_face"
+   ],
+   "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC3425384"
+   ],
+   "notes": "MFS is ancient and ubiquitous in bacteria, archaea and eukarya (Pao et al. 1998; Reddy et al. 2012). Glf itself is a Zymomonas protein; its kinetics stand in for an early MFS facilitator."
+  },
+  {
+   "id": "glycolysis_sugar",
+   "name": "Sugar-using glycolysis (Embden-Meyerhof)",
+   "category": "metabolism",
+   "function": "Glucose to pyruvate with net ATP",
+   "clade": "many bacteria, archaea (variants), eukaryotes",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "The fermenter's ATP source.",
+   "models": [
+    "cell/energy_metabolism"
+   ],
+   "sources": [
+    "https://academic.oup.com/femsre/article/8268875"
+   ],
+   "notes": "Modjewski et al. 2025: trunk glycolysis (gluconeogenic direction) in LUCA; glucose-using routes arose later and spread by gene transfer; glycolysis is not universal among prokaryotes. No date for sugar-using glycolysis; assumed present by 2.0 Ga."
+  },
+  {
+   "id": "lactate_dehydrogenase",
+   "name": "Lactate dehydrogenase (fermentative)",
+   "category": "metabolism",
+   "function": "Pyruvate to lactate, regenerating NAD+",
+   "clade": "Bacteria and Eukarya (absent from Archaea)",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "likely",
+   "game_role": "Homolactic fermentation's last step.",
+   "models": [
+    "cell/energy_metabolism"
+   ],
+   "sources": [
+    "https://pubmed.ncbi.nlm.nih.gov/12029364/",
+    "https://hal.univ-grenoble-alpes.fr/hal-03358405"
+   ],
+   "notes": "LDH/MDH superfamily from ancient gene duplications (Madern 2002); MDHs span all three domains, LDHs only Bacteria and Eukarya. No absolute date; a bacterial fermenter with LDH at 2.0 Ga is plausible."
+  },
+  {
+   "id": "lactate_carrier_bacterial",
+   "name": "Bacterial lactate carriers (LctP family)",
+   "category": "transporter",
+   "function": "H+-coupled lactate uptake; the export route of lactic acid bacteria is not established here",
+   "clade": "Bacteria",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "The fermenter's lactate exit (its kinetics currently borrow MCT1's Km).",
+   "models": [
+    "transport/cell_membrane_face"
+   ],
+   "sources": [
+    "https://gowiki.tamu.edu/wiki/index.php/ECOLI:LLDP",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC6606885"
+   ],
+   "notes": "LldP / LutP are lactate permeases described for uptake. A prokaryotic export carrier for homolactic fermenters needs a source."
+  },
+  {
+   "id": "psii",
+   "name": "Photosystem II (oxygenic photosynthesis)",
+   "category": "bioenergetics",
+   "function": "Splits water, releases O2",
+   "clade": "cyanobacteria (later plastids)",
+   "earliest_ga": 3.7,
+   "latest_ga": 2.4,
+   "available_from_ga": 2.4,
+   "certainty": "debated",
+   "game_role": "The source of the planet's O2; a later player-evolvable trait (photosynthesis).",
+   "models": [],
+   "sources": [
+    "https://www.biorxiv.org/content/10.1101/109447v5",
+    "https://opus.cloud1.lib.uts.edu.au/bitstream/10453/147284/2/1-s2.0-S0005272821000335-main.pdf"
+   ],
+   "notes": "Cardona et al. 2018 argue for an early Archean water-splitting photosystem; geochemical evidence spans 3.7 Ga to the GOE; origin unresolved."
+  },
+  {
+   "id": "heme_copper_oxidase",
+   "name": "Heme-copper oxygen reductases (aerobic respiration)",
+   "category": "bioenergetics",
+   "function": "Reduce O2 to water at the end of respiratory chains",
+   "clade": "Bacteria and Archaea (mitochondria later)",
+   "earliest_ga": 3.2,
+   "latest_ga": 2.3,
+   "available_from_ga": 2.3,
+   "certainty": "debated",
+   "game_role": "Membrane respiration: the starting fermenter's first big evolvable upgrade (once O2 is available locally).",
+   "models": [],
+   "sources": [
+    "https://pages.uoregon.edu/slouca/LoucaLab/SECTION_Publications/MODULE_Publications/Files/Husain2026Molecular.pdf",
+    "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7618691/"
+   ],
+   "notes": "Husain et al. 2026: Mesoarchean origin (before the GOE). Trost et al. 2025: arose in the wake of the GOE (~2.4 Ga). Either way present by the game's start."
+  },
+  {
+   "id": "globins_bacterial",
+   "name": "Bacterial globins (flavohemoglobins, sensors)",
+   "category": "oxygen",
+   "function": "NO detoxification, O2 sensing (not O2 transport)",
+   "clade": "Bacteria; eukaryotes by gene transfer",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "O2 sensing for the sensory cell type.",
+   "models": [],
+   "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC1183549"
+   ],
+   "notes": "Vinogradov and colleagues: all three globin lineages are bacterial in origin; not dated."
+  },
+  {
+   "id": "mitochondrion",
+   "name": "Mitochondrion (alphaproteobacterial endosymbiont)",
+   "category": "organelle",
+   "function": "Internalised respiratory membranes: ~30 ATP per glucose",
+   "clade": "eukaryotes",
+   "earliest_ga": 2.7,
+   "latest_ga": 1.5,
+   "available_from_ga": 1.5,
+   "certainty": "debated",
+   "game_role": "Major milestone: lifts the membrane-area energy limit (energy_metabolism mitochondrial version).",
+   "models": [
+    "cell/energy_metabolism"
+   ],
+   "sources": [
+    "https://research-information.bris.ac.uk/en/studentTheses/the-timing-of-pre-leca-gene-duplications-and-the-resulting-implic/",
+    "https://www.nature.com/articles/nature16941",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC8175051"
+   ],
+   "notes": "Timing disputed (mitochondria-early vs late). The Bristol thesis allows endosymbiosis in or before the late Archean; latest_ga 1.5 is a placeholder for LECA, to refine."
+  },
+  {
+   "id": "eukaryotic_cytoskeleton",
+   "name": "Actin, tubulin, myosin (eukaryotic cytoskeleton and motors)",
+   "category": "structure",
+   "function": "Cell shape, motility, contraction",
+   "clade": "eukaryotes (LECA)",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 1.5,
+   "certainty": "unverified",
+   "game_role": "Prerequisite for contractile (proto-muscle) cells.",
+   "models": [],
+   "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/11627563"
+   ],
+   "notes": "Widely regarded as present in LECA; not checked against the 2024 consensus review text."
+  },
+  {
+   "id": "integrins",
+   "name": "Integrin adhesion complex",
+   "category": "adhesion",
+   "function": "Cell-matrix adhesion",
+   "clade": "opisthokont protists and animals",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 1.0,
+   "certainty": "likely",
+   "game_role": "Multicellular attachment to a matrix.",
+   "models": [],
+   "sources": [
+    "https://digfir-published.macmillanusa.com/morris2e/morris2e_ch28_11.html"
+   ],
+   "notes": "Integrin-complex proteins occur in protists near the base of the opisthokonts. available_from_ga is a placeholder."
+  },
+  {
+   "id": "cadherins",
+   "name": "Cadherins",
+   "category": "adhesion",
+   "function": "Cell-cell adhesion",
+   "clade": "choanoflagellates and animals",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 0.8,
+   "certainty": "established",
+   "game_role": "Gluing cells into tissues (multicellular body plans).",
+   "models": [],
+   "sources": [
+    "https://dx.doi.org/10.1038/nature06617",
+    "https://www.sciencedaily.com/releases/2008/02/080214144412.htm"
+   ],
+   "notes": "King et al. 2008: Monosiga brevicollis has 23 cadherin genes, so cadherins predate animals. Date tied to the choanoflagellate-animal split (placeholder)."
+  },
+  {
+   "id": "collagen",
+   "name": "Collagen",
+   "category": "structure",
+   "function": "Extracellular matrix, tensile strength",
+   "clade": "animals (possibly pre-metazoan)",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 0.75,
+   "certainty": "debated",
+   "game_role": "Tissues with mechanical strength; larger bodies.",
+   "models": [],
+   "sources": [
+    "https://astrobiology.nasa.gov/nai/annual-reports/2010/mit/origins-of-multicellularity/index.html"
+   ],
+   "notes": "A project summary says collagen evolved before the choanoflagellate-animal divergence; not confirmed from the primary paper."
+  },
+  {
+   "id": "animal_nav",
+   "name": "Animal voltage-gated Na+ channels (Nav)",
+   "category": "ion channel",
+   "function": "Fast action potentials",
+   "clade": "choanoflagellate-animal ancestor onward",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 0.8,
+   "certainty": "likely",
+   "game_role": "Excitable cells and fast signalling (nerves later).",
+   "models": [],
+   "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC4969801",
+    "https://uwnxt.nationalacademies.org/read/13462/chapter/4"
+   ],
+   "notes": "Zakon: Nav evolved from Ca2+ channels and was present in the choanoflagellate-animal ancestor; clustering at axon initial segments ~0.5 Ga in early chordates."
+  },
+  {
+   "id": "hemoglobin_transport",
+   "name": "Hemoglobin as an O2 carrier",
+   "category": "oxygen",
+   "function": "O2 transport in body fluids",
+   "clade": "animals",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 0.75,
+   "certainty": "likely",
+   "game_role": "Unlocks O2 transport in a circulatory system.",
+   "models": [],
+   "sources": [
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC1183549"
+   ],
+   "notes": "Globins outside animals are enzymes or sensors; O2 transport likely accompanied multicellular animals (globin census, 2006)."
+  },
+  {
+   "id": "glut_slc2",
+   "name": "GLUT glucose facilitators (SLC2)",
+   "category": "transporter",
+   "function": "Facilitated glucose transport",
+   "clade": "eukaryotes (animal GLUT1)",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 0.75,
+   "certainty": "unverified",
+   "game_role": "Glucose uptake in animal-like cells (membrane_carrier_face default instance).",
+   "models": [
+    "transport/membrane_carrier_face"
+   ],
+   "sources": [],
+   "notes": "Part of the MFS sugar porters; the SLC2 family's age was not checked (placeholder date, no source yet)."
+  },
+  {
+   "id": "mct_slc16",
+   "name": "Monocarboxylate transporters (SLC16, MCT1)",
+   "category": "transporter",
+   "function": "H+-coupled lactate transport",
+   "clade": "eukaryotes",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 0.75,
+   "certainty": "unverified",
+   "game_role": "Lactate transport in animal-like cells (membrane_carrier_face MCT1_lactate instance).",
+   "models": [
+    "transport/membrane_carrier_face"
+   ],
+   "sources": [],
+   "notes": "Age not checked (placeholder date, no source yet)."
+  }
+ ]
+}

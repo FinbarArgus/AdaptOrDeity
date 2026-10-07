@@ -200,6 +200,10 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 
 - **2026-10-07** Every module must be verified and ideally validated against data; unvalidated modules
   are flagged "verified, not validated" in the game and tracked in this plan.
+- **2026-10-08** Proteins are unlocked by evolutionary time from
+  [`content/protein_timeline.json`](content/protein_timeline.json) (unlock = the conservative, latest
+  published date; family-level presence counts). The 2.0 Ga fermenter's Na⁺/K⁺-ATPase is a eukaryotic
+  protein and an anachronism; its MCT1-based lactate carrier is an animal stand-in.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
@@ -209,4 +213,7 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 5. Homogenisation rules when an element = N cells.
 6. Modding interpreter/JIT and sandboxing; distribution platform.
 7. Placeholder parameters still needing sources (listed on the review page and in module CSVs).
+9. Replace the fermenter's Na⁺/K⁺-ATPase with a prokaryotic set (Na⁺-pumping rotary ATPase or Na⁺/H⁺
+   antiporter for Na⁺; Trk/Ktr or KdpFABC for K⁺), likely together with protons and pH? Undated and
+   placeholder entries in the protein timeline still need sources.
 8. Unfilled copyright line in `circulatory-autogen-modules/LICENSE`, and the NOTICE text.

@@ -52,3 +52,5 @@ A ~2 µm prokaryote-grade cell (disc, radius 1 µm, depth 2 µm) in seawater, wi
 - Only metabolism has a Q10; the pump and leaks do not, so cooling unbalances ATP.
 - The Ca buffer (~1 µs) is the stiffest part; a rapid-buffer approximation is a candidate for the game.
 - Without protons the cell rests at −70 mV (E. coli ≈ −105 mV).
+- Era check (content/protein_timeline.json): Na⁺/K⁺-ATPase is eukaryotic, not present in a 2.0 Ga
+  prokaryote; the lactate carrier uses MCT1 (animal) kinetics. Everything else has prokaryotic equivalents.
