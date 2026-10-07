@@ -213,7 +213,7 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 5. Homogenisation rules when an element = N cells.
 6. Modding interpreter/JIT and sandboxing; distribution platform.
 7. Placeholder parameters still needing sources (listed on the review page and in module CSVs).
+8. Unfilled copyright line in `circulatory-autogen-modules/LICENSE`, and the NOTICE text.
 9. Replace the fermenter's Na⁺/K⁺-ATPase with a prokaryotic set (Na⁺-pumping rotary ATPase or Na⁺/H⁺
    antiporter for Na⁺; Trk/Ktr or KdpFABC for K⁺), likely together with protons and pH? Undated and
    placeholder entries in the protein timeline still need sources.
-8. Unfilled copyright line in `circulatory-autogen-modules/LICENSE`, and the NOTICE text.
