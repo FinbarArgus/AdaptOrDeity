@@ -116,8 +116,8 @@
  "midpoints": "Kinetic midpoints are fixed (user decision 2026-10-08): ±10% changed almost nothing.",
  "membrane_share_max": 0.08,
  "membrane_share_note": "placeholder: the adaptable transporters may take 8% of the cell surface (baseline 2.3%); footprints are placeholders (F1Fo ~100 nm², 12-TM transporters ~12-15 nm²). The ceiling scales with membrane area.",
- "build_capacity": 1.0,
- "build_capacity_note": "placeholder: at most 1x the resting ATP turnover goes into building new protein (ribosome capacity)",
+ "build_capacity": 5.0,
+ "build_capacity_note": "placeholder: at most 5x the resting ATP turnover goes into building new protein (growing cells build protein at many times their maintenance rate)",
  "build_atp_floor_mM": 4.0,
  "build_atp_floor_note": "placeholder control rule (stringent response): building runs at full speed at the resting ATP and stops at 4 mM, so it never starves the cell"
 }

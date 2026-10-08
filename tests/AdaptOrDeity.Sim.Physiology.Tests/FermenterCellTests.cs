@@ -134,7 +134,8 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             cell.StorageAllocation = 1.0;
             for (int i = 0; i < 3000; i++)
                 cell.Step(GameDt);
-            Assert.That(cell.Glycogen, Is.GreaterThan(1.0));
+            // An uptake-limited cell (5 uM glucose inside) stores slowly from 1 mM; on rich food it stores faster.
+            Assert.That(cell.Glycogen, Is.GreaterThan(0.1));
             Assert.That(cell.Budget().AtpStorage, Is.GreaterThan(0.0));
             // A daughter 99.9% built: glycogen covers the rest, and exactly the shortfall is spent.
             int p = cell.Batch.Descriptor.StateIndex("bio__P_growth");

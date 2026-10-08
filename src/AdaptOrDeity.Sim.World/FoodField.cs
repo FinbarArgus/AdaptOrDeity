@@ -49,13 +49,16 @@ namespace AdaptOrDeity.Sim.World
         public int MainTrace { get; internal set; }
 
         public bool Active { get; internal set; }
+
+        /// <summary>True once the packet has met a cell: it stops drifting and stays until it is eaten.</summary>
+        public bool Stuck { get; internal set; }
     }
 
     /// <summary>
     /// Food in the medium around the organism: packets of glucose, each with traces of other species, that enter from
     /// any boundary of a square field, drift across it and leave. A cell in contact with a packet sees the packet's
     /// glucose concentration (on top of the background) at its membrane, and takes glucose up through its own carriers;
-    /// the packet loses what the cells take. Traces are recorded at the cell surface for sensing later; nothing takes
+    /// the packet stops on contact and loses what the cells take until it is used up. Traces are recorded at the cell surface for sensing later; nothing takes
     /// them up yet. Deterministic for a given seed. This stands in for the environment field of the transport graph
     /// (adapting_plan.md: structured field, advection-diffusion), which replaces it.
     /// </summary>
@@ -97,23 +100,29 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Glucose between packets [mol/m³].</summary>
         public double BackgroundGlucose { get; set; } = 1.0;
 
-        /// <summary>Glucose concentration of a new packet [mol/m³] (placeholder: a rich patch, 10 mM).</summary>
-        public double PacketGlucose { get; set; } = 10.0;
+        /// <summary>
+        /// Glucose concentration of a new packet [mol/m³] (placeholder: a rich patch, 50 mM). A fermenting 2 µm cell needs about
+        /// 1.5e-13 mol of glucose per division, so a packet of this size feeds about a sixth of a daughter.
+        /// </summary>
+        public double PacketGlucose { get; set; } = 50.0;
 
         /// <summary>Trace concentration of a new packet's main species [mol/m³] (others at a tenth).</summary>
         public double PacketTrace { get; set; } = 0.01;
 
         /// <summary>Packet radius [m].</summary>
-        public double PacketRadius { get; set; } = 3e-6;
+        public double PacketRadius { get; set; } = 5e-6;
 
         /// <summary>Sheet depth, for packet volume [m] (the cell's depth).</summary>
         public double Depth { get; set; } = 2e-6;
 
         /// <summary>Drift speed [m/s] (placeholder: a slow current past a cell).</summary>
-        public double DriftSpeed { get; set; } = 0.05e-6;
+        public double DriftSpeed { get; set; } = 0.1e-6;
+
+        /// <summary>A packet whose glucose falls below this [mol/m³] is used up and removed.</summary>
+        public double UsedUpGlucose { get; set; } = 0.05;
 
         /// <summary>Mean time between new packets [s].</summary>
-        public double MeanInterval { get; set; } = 300.0;
+        public double MeanInterval { get; set; } = 120.0;
 
         /// <summary>Packet volume [m³].</summary>
         public double PacketVolume => Math.PI * PacketRadius * PacketRadius * Depth;
@@ -138,9 +147,13 @@ namespace AdaptOrDeity.Sim.World
             {
                 if (!p.Active)
                     continue;
-                p.X += p.Vx * dt;
-                p.Y += p.Vy * dt;
-                if (Math.Abs(p.X) > HalfSize + margin || Math.Abs(p.Y) > HalfSize + margin || p.Glucose <= 0.0)
+                if (!p.Stuck)
+                {
+                    p.X += p.Vx * dt;
+                    p.Y += p.Vy * dt;
+                }
+                if (Math.Abs(p.X) > HalfSize + margin || Math.Abs(p.Y) > HalfSize + margin
+                    || p.Glucose / PacketVolume < UsedUpGlucose)
                     p.Active = false;
             }
             _untilNext -= dt;
@@ -191,6 +204,17 @@ namespace AdaptOrDeity.Sim.World
                     p.Glucose -= p.Glucose * share;
         }
 
+        /// <summary>Stops every packet that touches a cell at (x, y) of radius r: food stays with the cell that found it.</summary>
+        public void StickTo(double x, double y, double r)
+        {
+            foreach (var p in _packets)
+                if (p.Active && !p.Stuck && Touches(p, x, y, r))
+                {
+                    p.Stuck = true;
+                    p.Vx = p.Vy = 0.0;
+                }
+        }
+
         public bool Touches(FoodPacket p, double x, double y, double r)
         {
             double dx = p.X - x, dy = p.Y - y, d = p.Radius + r;
@@ -229,6 +253,7 @@ namespace AdaptOrDeity.Sim.World
             slot.MainTrace = _random.Next(TraceSpecies.Count);
             for (int i = 0; i < slot.Traces.Length; i++)
                 slot.Traces[i] = PacketTrace * PacketVolume * (i == slot.MainTrace ? 1.0 : 0.1);
+            slot.Stuck = false;
             slot.Active = true;
         }
     }

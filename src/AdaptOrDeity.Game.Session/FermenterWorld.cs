@@ -38,8 +38,9 @@ namespace AdaptOrDeity.Game.Session
 
         private static readonly ControlInfo[] ControlList =
         {
-            new ControlInfo("growth", "Energy to growth", 0.0, 2.0, 0.0, GameFeatures.GrowthAndDivision, "× resting ATP use",
-                "ATP put into building a daughter, as a multiple of the cell's resting ATP use"),
+            new ControlInfo("growth", "Energy to growth", 0.0, 20.0, 0.0, GameFeatures.GrowthAndDivision, "× resting ATP use",
+                "ATP put into building a daughter, as a multiple of the cell's resting ATP use (growing fermenters run 10-30x " +
+                "their maintenance); limited by the glucose the cell can take up"),
             new ControlInfo("storage", "Glycogen storage", 0.0, 1.0, 0.0, GameFeatures.GlycogenStorage, "of capacity",
                 "how hard the cell stores glucose as glycogen (2 ATP per glucose, 3 back later)"),
             new ControlInfo("repair", "Repair", 0.0, 1.0, 1.0, GameFeatures.RepairLevel, "",
@@ -236,6 +237,8 @@ namespace AdaptOrDeity.Game.Session
             for (int i = 0; i < _cells.Count; i++)
             {
                 ColonyLayout.Slot(i, out double x, out double y);
+                if (_cells[i].Alive)
+                    _food.StickTo(x, y, CellRadius);
                 double c = _food.GlucoseAt(x, y, CellRadius);
                 _cells[i].SetExternal("C_glc_e_mod_membrane_face", c);
                 for (int tr = 0; tr < nt; tr++)

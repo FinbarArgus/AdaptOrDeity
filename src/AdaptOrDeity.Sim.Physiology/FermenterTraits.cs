@@ -54,8 +54,9 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Most of the membrane the adaptable transporters may take, as a fraction of the cell surface (placeholder).</summary>
         public const double MembraneShareMax = 0.08;
 
-        /// <summary>Most ATP the cell can put into building protein, as a multiple of its resting ATP turnover (placeholder).</summary>
-        public const double BuildCapacity = 1.0;
+        /// <summary>Most ATP the cell can put into building protein, as a multiple of its resting ATP turnover (placeholder;
+        /// a growing cell builds protein at many times its maintenance rate).</summary>
+        public const double BuildCapacity = 5.0;
 
         /// <summary>ATP [mM] at which building new protein stops; full speed at the resting ATP (placeholder).</summary>
         public const double BuildAtpFloor = 4.0;

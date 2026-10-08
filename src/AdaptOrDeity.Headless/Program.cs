@@ -90,7 +90,9 @@ namespace AdaptOrDeity.Headless
                         var parts = arg.Split('=');
                         double v = double.Parse(parts[1], CultureInfo.InvariantCulture);
                         int control = schema.Controls.ToList().FindIndex(c => c.Id == parts[0]);
-                        if (parts[0] == "level")
+                        if (parts[0] == "glucose")
+                            world.BathConcentration = v;   // background glucose [mM], e.g. to stand for sitting on a packet
+                        else if (parts[0] == "level")
                             loop.Enqueue(SimCommands.SetLevel((int)v));
                         else if (control >= 0)
                             loop.Enqueue(SimCommands.SetControl(0, control, v));

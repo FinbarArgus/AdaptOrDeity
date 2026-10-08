@@ -126,10 +126,11 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   falls below rest (stopping at 4 mM: a stringent-response rule in C#), so large changes take minutes. Transporters may take at
   most 8% of the membrane (baseline 2.3%), a ceiling that scales with membrane area. Kinetic midpoints are fixed
   (±10% changed almost nothing). Energy controls: growth (0–2× resting ATP use), glycogen storage (0–1), repair
-  (0–1; below ~0.1 damage outruns repair). The whole-cell upstream sweep covers every trait and control over its
+  (0–1; below ~0.1 damage outruns repair); growth goes to 20× the resting ATP use. The whole-cell upstream sweep covers every trait and control over its
   range, temperature 0–40 °C and glucose 0–2 mM.
-- **Food packets.** Packets of glucose (10 mM, placeholder) with traces of other species (aspartate, serine, ribose,
-  dimethyl sulfide) enter from any boundary of a 30 µm field, drift across (0.05 µm/s) and leave. A cell touching a
+- **Food packets.** Packets of glucose (50 mM, 5 µm radius, one every ~2 min, placeholders) with traces of other species
+  (aspartate, serine, ribose, dimethyl sulfide) enter from any boundary of a 30 µm field and drift across (0.1 µm/s); a
+  packet that touches a cell stops there until it is eaten (removed below 0.05 mM). A cell touching a
   packet sees background + packet glucose at its membrane and takes it up through its own carriers (Glf); what it
   takes beyond the background comes out of the packet. Traces are recorded at the membrane for smell (level 3); nothing
   takes them up yet. `Sim.World.FoodField` stands in for the environment field of the transport graph.
@@ -275,10 +276,10 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 10. Expression range (×0.25–4), the build capacity (1× resting ATP use), the build ATP floor (4 mM) and the membrane
     ceiling (8%, transporter footprints) are placeholders; transporter copy numbers rest on placeholder turnover
     numbers (100–1,000/s).
-12. Growth is slow: glycolysis lets total ATP use rise only ~1.3–1.5× above rest, and growth is throttled as ATP falls
-    (the same rule as protein building), so a daughter takes ~6–10 days at 20 °C (0.4–0.7% per hour for growth 0.5–2);
-    about 10 min of real time at 1000×. Raising glycolytic enzymes and Glf helps. Is that the pace you want, or should
-    level 2 be warmer or richer in glucose?
+12. Growth pace (recalibrated 2026-10-08): the cell is uptake-limited (5 µM glucose inside, glycolysis with 21×
+    headroom, as growing fermenters run 10–30× their maintenance flux). From 1 mM background it builds ~1% of a
+    daughter per hour; on 10 mM with growth 20× and Glf ×4, ~15% per hour (~7 h per division, ~25 s at 1000×). A
+    division needs ~1.5×10⁻¹³ mol of glucose, so food packets are rich (50 mM, 5 µm, placeholders). Confirm the feel.
 13. Damage model placeholders: 10-day unrepaired lifetime, repair capacity 10× accrual, repair costing 10% of a
     daughter per lethal load, Q10 2; damage does nothing until lethal. Daughters inherit the parent's damage.
 11. libcuflynx relabels some conversion-factor literals with the inverse or a dimensionless unit when flattening
