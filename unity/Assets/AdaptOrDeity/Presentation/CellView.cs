@@ -23,13 +23,13 @@ namespace AdaptOrDeity.Presentation
         /// <summary>Radius in world units.</summary>
         public float Radius => 0.5f * transform.localScale.x;
 
-        public void Initialise(SessionBridge bridge, int cellIndex)
+        public void Initialise(SessionBridge bridge, int cellIndex, float diameterMetres)
         {
             _bridge = bridge;
             _cellIndex = cellIndex;
             _renderer = gameObject.AddComponent<SpriteRenderer>();
             _renderer.sprite = CircleSprite();
-            float diameter = 20e-6f * UnitsPerMetre;
+            float diameter = diameterMetres * UnitsPerMetre;
             transform.localScale = new Vector3(diameter, diameter, 1f);
         }
 
@@ -39,7 +39,7 @@ namespace AdaptOrDeity.Presentation
         {
             var frame = _bridge.Frame;
             int overlay = _bridge.ActiveOverlay;
-            if (frame == null || overlay < 0)
+            if (frame == null || overlay < 0 || overlay >= frame.Channels.Length)
             {
                 _renderer.color = PlainColour;
                 return;

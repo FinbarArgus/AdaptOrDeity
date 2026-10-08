@@ -16,6 +16,26 @@
         "interval_s": 2.0
       },
       "sha256": "1082421495af55d12c74fd77920ad1c7704f50f9ffec93e44c5d6fe629ca6c3a"
+    },
+    {
+      "category": "",
+      "module_type": "prokaryote",
+      "version": "fermenter",
+      "root": "content/assembled",
+      "note": "whole cell assembled at build time: libcuflynx flat model of cell/prokaryote/versions/fermenter merged into one component by aod_kernelgen.flatten (literal units restored from the sources)",
+      "instances": [
+        "default",
+        "famine"
+      ],
+      "golden": {
+        "duration_s": 600.0,
+        "interval_s": 5.0,
+        "integrator": "backward_euler",
+        "dt": 0.05,
+        "nrmse_tolerance": 0.01,
+        "compare": "states"
+      },
+      "sha256": "96d9814bf741ccc49fc87496c38d8a455205cd8e1fd8e6343dc341f4b017e9f8"
     }
   ]
 }

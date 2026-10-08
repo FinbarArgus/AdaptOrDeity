@@ -21,6 +21,10 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>The M2 session: one cell in an oxygenated bath.</summary>
         public static SimSession CreateOneCell() => new SimSession(new OneCellWorld());
 
+        /// <summary>The stage-1 session: the fermenter cell in a Proterozoic sea, at 1x, 10x and 100x.</summary>
+        public static SimSession CreateFermenter() =>
+            new SimSession(new FermenterWorld(), new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets, ProbeInterval = 1.0 });
+
         public SessionSchema Schema => _loop.Schema;
 
         public bool IsRunning => _host.IsRunning;

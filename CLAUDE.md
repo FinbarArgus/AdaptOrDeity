@@ -14,6 +14,9 @@ dotnet build -c Release && dotnet test -c Release        # needs ~/.dotnet on PA
 dotnet run --project src/AdaptOrDeity.Headless -- 1.0   # headless one-cell run
 tools/scripts/build_sim_for_unity.sh                     # copy sim DLLs into unity/
 tools/kernelgen/.venv/bin/aod-kernelgen [--goldens|--check|--update-lock]
+tools/kernelgen/.venv/bin/aod-kernelgen-flatten <flat.cellml> content/assembled <type> <version> \
+    --modules-root <modules> --supermodule-config <config.json>   # whole cell -> one kernel (ADR 0007)
+dotnet run --project src/AdaptOrDeity.Headless -- fermenter 600 H_ATPase_expression=2   # cell panel, headless
 tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
 ```
 

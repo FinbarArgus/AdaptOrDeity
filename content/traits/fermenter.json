@@ -1,0 +1,157 @@
+{
+ "schema_version": 1,
+ "organism": "cell/prokaryote/fermenter",
+ "description": "Traits the player can adapt on the fermenter cell. Each trait scales supermodule parameters (<variable>_<submodule>) of the default instance by a multiplier within [min, max]. Expression traits scale how many copies of a transport protein the cell makes (density, capacity or flux-force coefficient); midpoint traits scale a half-saturation or half-activation constant of its kinetics. A cell with new traits starts at the steady state of its new parameters (its baseline). Proteins are offered only once they exist (content/protein_timeline.json). Leaks are membrane properties, not proteins, so they are not traits. An expression trait scales the transporter's own density or capacity and its copy number in protein_expression together, so more copies cost more ATP to keep; raising expression also spends the ATP to build the new copies (n L (c_syn + c_poly) / N_A), paced over expression_time_constant_s.",
+ "ranges": {
+  "expression": {
+   "min": 0.25,
+   "max": 4.0,
+   "scale": "log",
+   "note": "placeholder range (2026-10-08): two octaves either way"
+  },
+  "midpoint": {
+   "min": 0.9,
+   "max": 1.1,
+   "scale": "linear",
+   "note": "+-10% on kinetic midpoints (user decision 2026-10-08)"
+  }
+ },
+ "traits": [
+  {
+   "id": "H_ATPase_expression",
+   "protein": "rotary_atpase",
+   "kind": "expression",
+   "label": "F1Fo H+-ATPase copies",
+   "parameters": [
+    "rho_H_ATPase_i_H_ATPase",
+    "n_H_ATPase_protein"
+   ],
+   "copy_key": "H_ATPase"
+  },
+  {
+   "id": "H_ATPase_ATP_midpoint",
+   "protein": "rotary_atpase",
+   "kind": "midpoint",
+   "label": "H+-ATPase ATP half-saturation",
+   "parameters": [
+    "K_m_ATP_H_i_H_ATPase"
+   ]
+  },
+  {
+   "id": "H_ATPase_pH_midpoint",
+   "protein": "rotary_atpase",
+   "kind": "midpoint",
+   "label": "H+-ATPase H+ half-activation (pH set point)",
+   "parameters": [
+    "K_act_H_i_H_ATPase"
+   ]
+  },
+  {
+   "id": "NhaA_expression",
+   "protein": "nhaa",
+   "kind": "expression",
+   "label": "NhaA Na+/H+ antiporter copies",
+   "note": "linear flux-force kinetics: no midpoint yet",
+   "parameters": [
+    "g_spec_i_NaH",
+    "n_NhaA_protein"
+   ],
+   "copy_key": "NhaA"
+  },
+  {
+   "id": "KefC_expression",
+   "protein": "kefc",
+   "kind": "expression",
+   "label": "KefC K+/H+ exchanger copies",
+   "note": "linear flux-force kinetics: no midpoint yet",
+   "parameters": [
+    "g_spec_i_KH",
+    "n_KefC_protein"
+   ],
+   "copy_key": "KefC"
+  },
+  {
+   "id": "Trk_expression",
+   "protein": "trk_ktr",
+   "kind": "expression",
+   "label": "Trk K+ channel copies",
+   "note": "ungated channel: no midpoint",
+   "parameters": [
+    "rho_leak_K_i_K_Trk",
+    "n_Trk_protein"
+   ],
+   "copy_key": "Trk"
+  },
+  {
+   "id": "NCX_expression",
+   "protein": "ncx_prokaryotic",
+   "kind": "expression",
+   "label": "Na+/Ca2+ exchanger copies",
+   "parameters": [
+    "rho_NaCa_i_NaCa",
+    "n_NCX_protein"
+   ],
+   "copy_key": "NCX"
+  },
+  {
+   "id": "NCX_Ca_midpoint",
+   "protein": "ncx_prokaryotic",
+   "kind": "midpoint",
+   "label": "NCX Ca2+ half-saturation",
+   "parameters": [
+    "KmCa_i_NaCa"
+   ]
+  },
+  {
+   "id": "NCX_Na_midpoint",
+   "protein": "ncx_prokaryotic",
+   "kind": "midpoint",
+   "label": "NCX Na+ half-saturation",
+   "parameters": [
+    "KmNai_i_NaCa"
+   ]
+  },
+  {
+   "id": "Glf_expression",
+   "protein": "mfs_sugar_porter",
+   "kind": "expression",
+   "label": "Glf glucose facilitator copies",
+   "parameters": [
+    "jmax_glc_membrane_face",
+    "n_Glf_protein"
+   ],
+   "copy_key": "Glf"
+  },
+  {
+   "id": "Glf_midpoint",
+   "protein": "mfs_sugar_porter",
+   "kind": "midpoint",
+   "label": "Glf glucose half-saturation",
+   "parameters": [
+    "K_glc_t_membrane_face"
+   ]
+  },
+  {
+   "id": "lactate_exporter_expression",
+   "protein": "lactate_carrier_bacterial",
+   "kind": "expression",
+   "label": "Lactate-/H+ symporter copies",
+   "parameters": [
+    "jmax_lac_membrane_face",
+    "n_LacT_protein"
+   ],
+   "copy_key": "LacT"
+  },
+  {
+   "id": "lactate_exporter_midpoint",
+   "protein": "lactate_carrier_bacterial",
+   "kind": "midpoint",
+   "label": "Lactate exporter half-saturation",
+   "parameters": [
+    "K_lac_t_membrane_face"
+   ]
+  }
+ ],
+ "expression_time_constant_s": 1800.0,
+ "expression_time_constant_note": "placeholder: copies approach a new expression level with this time constant (order of a bacterial generation)"
+}

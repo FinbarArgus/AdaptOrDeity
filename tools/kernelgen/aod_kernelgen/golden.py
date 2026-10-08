@@ -55,6 +55,8 @@ def run(module: AnalysedModule, instance: str, duration: float, interval: float)
         path.write_text(text)
         model = myokit.formats.importer("cellml").model(str(path))
     columns = [v.name for v in module.states] + [v.name for v in module.algebraic]
+    # Myokit cannot log quantities that are constant once inputs are fixed (e.g. membrane area); leave them out.
+    columns = [n for n in columns if not model.get(f"{module.component}.{n}").is_constant()]
     qnames = [f"{module.component}.{n}" for n in columns]
     sim = myokit.Simulation(model)
     sim.set_tolerance(ATOL, RTOL)
@@ -65,7 +67,7 @@ def run(module: AnalysedModule, instance: str, duration: float, interval: float)
 
 
 def write(module: AnalysedModule, instance: str, duration: float, interval: float, out_dir: Path,
-          modules_commit: str) -> Path:
+          modules_commit: str, replay: dict | None = None) -> Path:
     header, rows = run(module, instance, duration, interval)
     target = out_dir / module.module_type / module.version
     target.mkdir(parents=True, exist_ok=True)
@@ -86,6 +88,8 @@ def write(module: AnalysedModule, instance: str, duration: float, interval: floa
         "duration_s": duration,
         "interval_s": interval,
         "inputs": "externals held at instance values; unconnected port inputs = 0",
+        # how the C# test replays it: integrator (rk4 | backward_euler), its step, and the NRMSE it must reach
+        "replay": replay or {"integrator": "rk4", "dt": 0.01, "nrmse_tolerance": 1e-6},
     }
     (target / f"{instance}.meta.json").write_text(json.dumps(meta, indent=2) + "\n")
     return csv_path

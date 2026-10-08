@@ -44,7 +44,8 @@ def main(argv: list[str] | None = None) -> int:
     for entry in lock["modules"]:
         label = f"{entry['module_type']}/{entry['version']}"
         try:
-            module = load(modules_root, entry["category"], entry["module_type"], entry["version"], allow)
+            root = (REPO / entry["root"]).resolve() if "root" in entry else modules_root
+            module = load(root, entry["category"], entry["module_type"], entry["version"], allow)
         except ModuleError as exc:
             failures.append(str(exc))
             continue
@@ -61,8 +62,11 @@ def main(argv: list[str] | None = None) -> int:
         if args.goldens:
             for instance in entry.get("instances", ["default"]):
                 g = entry.get("golden", {})
+                replay = {"integrator": g.get("integrator", "rk4"), "dt": float(g.get("dt", 0.01)),
+                          "nrmse_tolerance": float(g.get("nrmse_tolerance", 1e-6)),
+                          "compare": g.get("compare", "all")}
                 path = golden.write(module, instance, float(g.get("duration_s", 100.0)),
-                                    float(g.get("interval_s", 1.0)), GOLDEN_DIR, commit)
+                                    float(g.get("interval_s", 1.0)), GOLDEN_DIR, commit, replay)
                 print(f"golden  {path.relative_to(REPO)}")
     expected[KERNEL_DIR / "GeneratedKernels.g.cs"] = emit_csharp.emit_registry(classes)
 

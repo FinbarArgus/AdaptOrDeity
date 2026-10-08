@@ -1,0 +1,18 @@
+{
+  "module": "/prokaryote/versions/fermenter",
+  "instance": "famine",
+  "source_sha256": "96d9814bf741ccc49fc87496c38d8a455205cd8e1fd8e6343dc341f4b017e9f8",
+  "modules_commit": "948630794801cc388c317dda0b16ae74181d27d5",
+  "solver": "myokit 1.39.2 CVODE",
+  "rtol": 1e-10,
+  "atol": 1e-12,
+  "duration_s": 600.0,
+  "interval_s": 5.0,
+  "inputs": "externals held at instance values; unconnected port inputs = 0",
+  "replay": {
+    "integrator": "backward_euler",
+    "dt": 0.05,
+    "nrmse_tolerance": 0.01,
+    "compare": "states"
+  }
+}

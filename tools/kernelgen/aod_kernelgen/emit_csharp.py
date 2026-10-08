@@ -218,6 +218,9 @@ def emit(module: AnalysedModule) -> str:
         f"new[] {{ {', '.join(_cs_string(v) for v in p.variables)} }}, MultiPortMode.{p.multi_port})"
         for p in m.ports)
 
+    # A whole assembled cell exposes no ports (it is not connected to anything yet).
+    ports_block = ("new[]\n            {\n" + ports + ",\n            }") if m.ports else "new PortInfo[0]"
+
     def instance(name: str, values: dict[str, float]) -> str:
         pairs = ", ".join(f"[{_cs_string(k)}] = {_literal(v)}" for k, v in values.items())
         return f"                [{_cs_string(name)}] = new Dictionary<string, double> {{ {pairs} }}"
@@ -256,10 +259,7 @@ namespace {NAMESPACE}
             algebraic: {var_list(m.algebraic)},
             stateInitExternal: new int[] {{ {init_ext} }},
             stateInitLiteral: new double[] {{ {init_lit} }},
-            ports: new[]
-            {{
-{ports},
-            }},
+            ports: {ports_block},
             instances: new Dictionary<string, IReadOnlyDictionary<string, double>>
             {{
 {instances},

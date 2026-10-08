@@ -40,6 +40,7 @@ without mitochondria:
 | `cell/ion_channels/i_NaK` | `ATP_ArgusUNPUBLISHED_v01` | renamed from `fermenter_…`; eukaryotic, not in this cell |
 | `cell/ion_channels/i_leak_Ca` | `ArgusUNPUBLISHED_v01` | new |
 | `transport/cell_membrane_face` | `fermenter_ArgusUNPUBLISHED_v01` | new (glucose facilitator + lactate⁻/H⁺ symporter) |
+| `cell/protein_expression` | `fermenter_ArgusUNPUBLISHED_v01` | new (ATP cost of protein turnover and construction) |
 | `cell/prokaryote` | `fermenter` (supermodule) | new: the whole lumped cell |
 | `transport/cytosol_face`, `transport/medium_volume` | `ArgusUNPUBLISHED_v01` | new (finite-volume reference only) |
 
@@ -54,8 +55,11 @@ without mitochondria:
    depolarises to −80 mV, as the NhaA thermodynamics predict.
 3. ~~Review page~~ Done: https://claude.ai/artifact/9hj7fSRpauDueTco2w4ZwC (shows the earlier Na/K-pump cell).
 3b. ~~Prokaryotic ion set with protons and pH~~ Done (2026-10-08).
+3c. ~~Protein expression costs, traits and the cell panel~~ Done (2026-10-08): upstream `protein_expression`; the
+   whole cell assembled into one kernel (`content/assembled/`, ADR 0007), backward Euler, goldens (rest, famine);
+   `FermenterCell`/`FermenterWorld` with 13 traits; Unity `CellPanel`. Upstream sweeps cover the trait space.
 4. Then: finite-volume reference (rings) and the homogenisation test, cell-size sweep, η(Φ).
-5. Then: submodule bump, kernels, goldens in AdaptOrDeity.
+5. Then: commit upstream, bump the submodule, regenerate `content/assembled/` from the pinned modules.
 
 ## Findings to resolve (from building it)
 - Resolved: the SN pump law had no thermodynamic brake (ran against the second law at 40 °C); i_NaK

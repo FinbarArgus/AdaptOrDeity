@@ -20,7 +20,7 @@ boundaries and conventions are first-class.
 ## Status
 | Milestone | State | Notes |
 |---|---|---|
-| M3 Cell network, lumped cells, shaders | In progress | Upstream: homogenisation pairs built, comparison test not written; fermenter cell modules (bond graph) being written |
+| M3 Cell network, lumped cells, shaders | In progress | Fermenter cell verified upstream and running in the game as one assembled kernel, with traits and a cell panel; homogenisation comparison test, cell network, shaders still to do |
 | M4–M10 | Not started | |
 
 Upstream work lives on branch `homogenisation-checks` of `circulatory-autogen-modules`, checked out as a
@@ -90,6 +90,23 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   phosphate are conserved by construction). Each process uses the most widely accepted rate law, or an
   existing module from the repo: common modular rate law (Liebermeister et al. 2010) for lumped enzymes,
   symmetric carrier for facilitated transport, Fick for diffusion.
+- **Energy budget and protein costs.** Glycolysis makes the ATP; it is spent by the H⁺-ATPase, by protein
+  turnover (`cell/protein_expression`: copies × length × (4 + 1 + 0.5) ~P per amino acid × 1%/h), by building new
+  protein when expression rises (copies × length × (24 + 4) ~P from glucose, charged over the adaptation time) and by
+  the remaining maintenance ATPase (DNA, RNA, lipids and the not-yet-modelled; Lynch & Marinov total). Every ATP
+  hydrolysed releases one H⁺, which the cytosol accounts for. At rest: pumps 25%, protein turnover 16%, the rest
+  59%. Keeping a transporter costs little (all 2,850 H⁺-ATPases: ~200 ATP/s); building it costs a lot (~4×10⁸ ATP,
+  ~12 min of the cell's output), and a daughter pays it again, so expression is a growth and reproduction cost.
+- **Energy uses still to add** (in rough order of size for a growing cell): growth and division (building a
+  daughter: Lynch & Marinov growth cost ~2.7×10¹⁰ V^0.97 ATP; ties to reproductive output), RNA turnover (mRNA
+  half-life minutes; ribosome upkeep), lipid and membrane synthesis (scales with membrane area as cells grow),
+  DNA replication and repair (damage heuristic), motility (flagellar motors run on the proton motive force,
+  ~1,000 H⁺ per turn), glycogen storage and mobilisation (famine resistance), osmoregulation (compatible solutes
+  when salinity changes), stress proteins (chaperones, ~ATP per folding cycle; heat damage), sensing and signalling
+  (small), and membrane crowding (transporters take membrane area, a ceiling on expression rather than an ATP cost).
+- **Traits:** the player adapts transport-protein expression (×0.25–4, placeholder range) and kinetic midpoints
+  (±10%) from a cell panel ([`content/traits/fermenter.json`](content/traits/fermenter.json)); expression moves
+  with a 30-min time constant (placeholder), midpoints at once. Upstream sweeps verify the cell over this space.
 - **Diffusion (reference) vs lumped (game) version:** the same bond-graph modules build both: N rings of
   `cytosol_volume` joined by `cytosol_face` (the upstream reference) and one `cytosol_volume` (the lumped
   bond graph the game runs). Their comparison is the level 0 ↔ 1 homogenisation check, with a cell-size
@@ -208,6 +225,10 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   primary pump, NhaA, Trk and KefC, buffered cytosolic H⁺, resting at −105 mV and pH 7.6. Ocean pH is an
   environment parameter per epoch (7.3 at 2 Ga, placeholder): above ~7.8 the cell cannot keep Na⁺ out
   without a primary Na⁺ pump, an evolvable trait.
+- **2026-10-08** Protein expression costs ATP (turnover always, construction when expression rises), modelled
+  upstream in `cell/protein_expression`; the player adapts expression (×0.25–4) and kinetic midpoints (±10%) in a
+  right-hand cell panel that shows the metabolic rate and ATP budget. Whole cells are assembled at build time into one
+  kernel stepped by backward Euler (ADR 0007).
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
@@ -219,3 +240,7 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 7. Placeholder parameters still needing sources (listed on the review page and in module CSVs).
 8. Unfilled copyright line in `circulatory-autogen-modules/LICENSE`, and the NOTICE text.
 9. Undated and placeholder entries in the protein timeline still need sources.
+10. Expression range (×0.25–4 placeholder) and its time constant (30 min placeholder): what limits how fast and
+    how far a cell can change a protein? Transporter copy numbers rest on placeholder turnover numbers (100–1,000/s).
+11. libcuflynx relabels some conversion-factor literals with the inverse or a dimensionless unit when flattening
+    (`m3_per_um3` → `um3_per_m3`, `milliV_per_kiloV` → `dim`); values are right, units are not. Fix upstream?

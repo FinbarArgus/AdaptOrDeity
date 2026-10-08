@@ -9,8 +9,6 @@ namespace AdaptOrDeity.Sim.Kernels.Tests
 {
     public class GeneratedKernelTests
     {
-        private const double GoldenNrmseTolerance = 1e-6;
-
         public static IEnumerable<TestCaseData> GoldenCases()
         {
             foreach (var kernel in GeneratedKernels.All())
@@ -30,9 +28,17 @@ namespace AdaptOrDeity.Sim.Kernels.Tests
             var golden = GoldenTrace.Load(goldenPath);
             double[] times = golden.Column("time");
 
+            // The golden's meta says how to replay it: RK4 for non-stiff kernels, backward Euler for stiff whole cells.
+            using var meta = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.ChangeExtension(goldenPath, ".meta.json")));
+            var replay = meta.RootElement.GetProperty("replay");
+            string integrator = replay.GetProperty("integrator").GetString()!;
+            double dt = replay.GetProperty("dt").GetDouble();
+            double tolerance = replay.GetProperty("nrmse_tolerance").GetDouble();
+            // "states": compare states only (whole cells: derived ratios such as mass-action quotients are ill-conditioned).
+            bool statesOnly = replay.TryGetProperty("compare", out var cmp) && cmp.GetString() == "states";
             var batch = NewBatch(kernel, instance, 1);
-            const double dt = 0.01;
             var rk4 = new Rk4Integrator();
+            var be = new BackwardEulerIntegrator();
             var actual = golden.Columns.Skip(1).ToDictionary(c => c, _ => new double[times.Length]);
 
             double t = 0.0;
@@ -41,7 +47,10 @@ namespace AdaptOrDeity.Sim.Kernels.Tests
                 while (t < times[row] - 1e-9)
                 {
                     double h = Math.Min(dt, times[row] - t);
-                    rk4.Step(kernel, batch, t, h, 0, 1);
+                    if (integrator == "backward_euler")
+                        be.Step(kernel, batch, t, h, 0, 1);
+                    else
+                        rk4.Step(kernel, batch, t, h, 0, 1);
                     t += h;
                 }
                 kernel.ComputeVariables(t, batch, 0, 1);
@@ -51,9 +60,11 @@ namespace AdaptOrDeity.Sim.Kernels.Tests
 
             foreach (var pair in actual)
             {
+                if (statesOnly && kernel.Descriptor.StateIndex(pair.Key) < 0)
+                    continue;
                 double nrmse = GoldenTrace.Nrmse(golden.Column(pair.Key), pair.Value);
                 TestContext.WriteLine($"{kernel.Descriptor.Key} {instance} {pair.Key}: NRMSE {nrmse:E2}");
-                Assert.That(nrmse, Is.LessThan(GoldenNrmseTolerance), $"{kernel.Descriptor.Key} {pair.Key}");
+                Assert.That(nrmse, Is.LessThan(tolerance), $"{kernel.Descriptor.Key} {pair.Key}");
             }
         }
 

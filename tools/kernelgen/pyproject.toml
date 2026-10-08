@@ -11,6 +11,7 @@ test = ["pytest"]
 
 [project.scripts]
 aod-kernelgen = "aod_kernelgen.cli:main"
+aod-kernelgen-flatten = "aod_kernelgen.flatten:main"
 
 [build-system]
 requires = ["setuptools>=61"]

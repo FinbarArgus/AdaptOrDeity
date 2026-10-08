@@ -5,8 +5,8 @@ using UnityEngine;
 namespace AdaptOrDeity.UI
 {
     /// <summary>
-    /// M2 heads-up display in the style of Oxygen Not Included: overlay tabs with hotkeys, speed controls,
-    /// a legend, hover tooltips and a probe plot for the clicked cell. IMGUI for the vertical slice; all input
+    /// Heads-up display in the style of Oxygen Not Included: overlay tabs with hotkeys, speed controls, a legend, hover
+    /// tooltips and a probe plot for the clicked cell; clicking a cell also opens the <see cref="CellPanel"/>. IMGUI for the vertical slice; all input
     /// comes through IMGUI events so it works with either Unity input backend.
     /// </summary>
     public sealed class Hud : MonoBehaviour
@@ -70,18 +70,21 @@ namespace AdaptOrDeity.UI
                         break;
                 }
             }
-            else if (e.type == EventType.MouseDown && e.mousePosition.y > BarHeight)
+            else if (e.type == EventType.MouseDown && e.mousePosition.y > BarHeight
+                     && e.mousePosition.x < Screen.width - RightInset())
             {
                 var cell = CellUnderMouse(e.mousePosition);
                 if (e.button == 0 && cell != null)
                 {
-                    // One probe at a time for now: follow the clicked cell on the shown overlay (oxygen by default).
+                    // Select the cell (opens the cell panel) and follow it on the shown overlay with one probe.
+                    bridge.SelectedCell = cell.CellIndex;
                     bridge.Send(SimCommands.ClearProbes());
                     bridge.Send(SimCommands.AddProbe(cell.CellIndex, Mathf.Max(0, bridge.ActiveOverlay)));
                     e.Use();
                 }
-                else if (e.button == 1)
+                else if (e.button == 1 && e.mousePosition.x < Screen.width - RightInset())
                 {
+                    bridge.SelectedCell = -1;
                     bridge.Send(SimCommands.ClearProbes());
                     e.Use();
                 }
@@ -123,6 +126,9 @@ namespace AdaptOrDeity.UI
                 GUI.color = old;
             }
             GUILayout.Label($"t = {FormatTime(frame.SimTime)}", GUILayout.Width(130));
+            var presets = bridge.Schema.SpeedPresets;
+            if (frame.SpeedIndex > 0 && frame.SpeedIndex < presets.Count)
+                GUILayout.Label($"{presets[frame.SpeedIndex]:G3}×", GUILayout.Width(50));
             int speed = GUILayout.Toolbar(frame.SpeedIndex, SpeedLabels, GUILayout.Width(200));
             if (speed != frame.SpeedIndex)
                 SetSpeed(bridge, speed);
@@ -134,7 +140,7 @@ namespace AdaptOrDeity.UI
         private void DrawLegend(OverlayInfo info)
         {
             const float width = 26f, height = 220f;
-            var area = new Rect(Screen.width - 120, BarHeight + 16, 110, height + 50);
+            var area = new Rect(Screen.width - RightInset() - 120, BarHeight + 16, 110, height + 50);
             GUI.Box(area, info.Name);
             var bar = new Rect(area.x + 10, area.y + 24, width, height);
             if (Event.current.type == EventType.Repaint)
@@ -162,8 +168,8 @@ namespace AdaptOrDeity.UI
             var overlays = bridge.Schema.Overlays;
             var text = $"Cell {cell.CellIndex}";
             for (int c = 0; c < overlays.Count; c++)
-                text += $"\n{overlays[c].Name}: {frame.Channels[c][cell.CellIndex] * overlays[c].DisplayMultiplier:F1} {overlays[c].DisplayUnit}";
-            text += "\n<i>Click to plot, right-click to clear</i>";
+                text += $"\n{overlays[c].Name}: {frame.Channels[c][cell.CellIndex] * overlays[c].DisplayMultiplier:G4} {overlays[c].DisplayUnit}";
+            text += "\n<i>Click to inspect and plot, right-click to close</i>";
 
             _tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, richText = true, padding = new RectOffset(8, 8, 6, 6) };
             var content = new GUIContent(text);
@@ -180,7 +186,7 @@ namespace AdaptOrDeity.UI
                 return;
             var info = bridge.Schema.Overlays[probe.Channel];
 
-            var area = new Rect(Screen.width - 420, Screen.height - 240, 410, 230);
+            var area = new Rect(Screen.width - RightInset() - 420, Screen.height - 240, 410, 230);
             GUI.Box(area, $"Cell {probe.Cell}: {info.Name} ({info.DisplayUnit})");
             var plot = new Rect(area.x + 50, area.y + 28, area.width - 64, area.height - 58);
 
@@ -229,6 +235,9 @@ namespace AdaptOrDeity.UI
             GL.End();
             GL.PopMatrix();
         }
+
+        /// <summary>Width taken by the cell panel on the right, if open.</summary>
+        private static float RightInset() => CellPanel.Visible ? CellPanel.Width : 0f;
 
         private static CellView CellUnderMouse(Vector2 guiMouse)
         {

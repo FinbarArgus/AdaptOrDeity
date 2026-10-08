@@ -22,6 +22,34 @@ namespace AdaptOrDeity.Game.Session
 
         public static ISimCommand SetBathConcentration(double concentration) => new SetBathCommand(concentration);
 
+        /// <summary>Sets the target multiplier of trait <paramref name="trait"/> (schema index) on <paramref name="cell"/>.</summary>
+        public static ISimCommand SetTrait(int cell, int trait, double multiplier) => new SetTraitCommand(cell, trait, multiplier);
+
+        private sealed class SetTraitCommand : ISimCommand
+        {
+            private readonly int _cell;
+            private readonly int _trait;
+            private readonly double _multiplier;
+
+            public SetTraitCommand(int cell, int trait, double multiplier)
+            {
+                _cell = cell;
+                _trait = trait;
+                _multiplier = multiplier;
+            }
+
+            public void Apply(SimLoop loop)
+            {
+                if (!(loop.World is IInspectableWorld world))
+                    throw new InvalidOperationException("this world has no adaptable traits");
+                if (_cell < 0 || _cell >= loop.World.CellCount)
+                    throw new ArgumentOutOfRangeException(nameof(_cell), $"no cell {_cell}");
+                if (_trait < 0 || _trait >= world.Traits.Count)
+                    throw new ArgumentOutOfRangeException(nameof(_trait), $"no trait {_trait}");
+                world.SetTrait(_cell, _trait, _multiplier);
+            }
+        }
+
         private sealed class SetSpeedCommand : ISimCommand
         {
             private readonly int _index;

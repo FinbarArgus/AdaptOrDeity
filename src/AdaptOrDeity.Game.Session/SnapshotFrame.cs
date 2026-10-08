@@ -8,8 +8,12 @@ namespace AdaptOrDeity.Game.Session
     /// </summary>
     public sealed class SnapshotFrame
     {
-        public SnapshotFrame(int channelCount, int cellCapacity, int probeCapacity, int probeSamples)
+        public SnapshotFrame(int channelCount, int cellCapacity, int probeCapacity, int probeSamples, int detailCount = 0,
+            int traitCount = 0)
         {
+            Details = Allocate<double>(detailCount, cellCapacity);
+            TraitValues = Allocate(traitCount, cellCapacity);
+            TraitTargets = Allocate(traitCount, cellCapacity);
             Channels = new float[channelCount][];
             for (int c = 0; c < channelCount; c++)
                 Channels[c] = new float[cellCapacity];
@@ -40,6 +44,25 @@ namespace AdaptOrDeity.Game.Session
         public ProbeSeries[] Probes { get; }
 
         public int ProbeCount { get; internal set; }
+
+        /// <summary>Per cell-panel detail (schema order), per cell: value in SI.</summary>
+        public double[][] Details { get; }
+
+        /// <summary>Per trait (schema order), per cell: current multiplier.</summary>
+        public float[][] TraitValues { get; }
+
+        /// <summary>Per trait, per cell: target multiplier.</summary>
+        public float[][] TraitTargets { get; }
+
+        private static T[][] Allocate<T>(int rows, int cells)
+        {
+            var a = new T[rows][];
+            for (int i = 0; i < rows; i++)
+                a[i] = new T[cells];
+            return a;
+        }
+
+        private static float[][] Allocate(int rows, int cells) => Allocate<float>(rows, cells);
     }
 
     /// <summary>A copied-out probe time series in chronological order.</summary>

@@ -19,6 +19,9 @@ namespace AdaptOrDeity.Presentation
         /// <summary>Overlay channel shown, or -1 for the plain view.</summary>
         public int ActiveOverlay { get; set; } = -1;
 
+        /// <summary>Cell shown in the cell panel, or -1 for none.</summary>
+        public int SelectedCell { get; set; } = -1;
+
         public static SessionBridge Instance { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -35,7 +38,7 @@ namespace AdaptOrDeity.Presentation
         private void Awake()
         {
             Instance = this;
-            _session = SimSession.CreateOneCell();
+            _session = SimSession.CreateFermenter();
             _session.TryGetFrame(out var first);
             Frame = first;
             _session.Start();
@@ -43,7 +46,7 @@ namespace AdaptOrDeity.Presentation
             EnsureCamera();
             var cell = new GameObject("Cell");
             cell.transform.SetParent(transform, false);
-            cell.AddComponent<CellView>().Initialise(this, cellIndex: 0);
+            cell.AddComponent<CellView>().Initialise(this, cellIndex: 0, diameterMetres: 2e-6f);
         }
 
         private void Update()
@@ -73,8 +76,8 @@ namespace AdaptOrDeity.Presentation
                 cam.tag = "MainCamera";
             }
             cam.orthographic = true;
-            cam.orthographicSize = 5f; // world units: 1 unit = 10 µm
-            cam.transform.position = new Vector3(0f, 0f, -10f);
+            cam.orthographicSize = 0.6f; // world units: 1 unit = 10 µm, so the view is 12 µm tall around a 2 µm cell
+            cam.transform.position = new Vector3(0.25f, 0f, -10f); // cell left of centre, clear of the cell panel
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.10f, 0.23f, 0.33f); // water
         }
