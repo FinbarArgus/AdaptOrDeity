@@ -1,19 +1,13 @@
 {
  "schema_version": 1,
  "organism": "cell/prokaryote/fermenter",
- "description": "Traits the player can adapt on the fermenter cell. Each trait scales supermodule parameters (<variable>_<submodule>) of the default instance by a multiplier within [min, max]. Expression traits scale how many copies of a transport protein the cell makes (density, capacity or flux-force coefficient); midpoint traits scale a half-saturation or half-activation constant of its kinetics. A cell with new traits starts at the steady state of its new parameters (its baseline). Proteins are offered only once they exist (content/protein_timeline.json). Leaks are membrane properties, not proteins, so they are not traits. An expression trait scales the transporter's own density or capacity and its copy number in protein_expression together, so more copies cost more ATP to keep; raising expression also spends the ATP to build the new copies (n L (c_syn + c_poly) / N_A), paced over expression_time_constant_s.",
+ "description": "Traits the player can adapt on the fermenter cell. Each trait scales supermodule parameters (<variable>_<submodule>) of the default instance by a multiplier within [min, max]. Each trait scales how many copies of a protein the cell group makes (density, capacity or flux-force coefficient). Sliders change every cell of the selected cell's group. A cell with new traits starts at the steady state of its new parameters (its baseline). Proteins are offered only once they exist (content/timeline.json). Leaks are membrane properties, not proteins, so they are not traits. An expression trait scales the transporter's own density or capacity and its copy number in protein_expression together, so more copies cost more ATP to keep; raising expression also spends the ATP to build the new copies (n L (c_syn + c_poly) / N_A), paced over expression_time_constant_s.",
  "ranges": {
   "expression": {
    "min": 0.25,
    "max": 4.0,
    "scale": "log",
    "note": "placeholder range (2026-10-08): two octaves either way"
-  },
-  "midpoint": {
-   "min": 0.9,
-   "max": 1.1,
-   "scale": "linear",
-   "note": "+-10% on kinetic midpoints (user decision 2026-10-08)"
   }
  },
  "traits": [
@@ -26,25 +20,8 @@
     "rho_H_ATPase_i_H_ATPase",
     "n_H_ATPase_protein"
    ],
-   "copy_key": "H_ATPase"
-  },
-  {
-   "id": "H_ATPase_ATP_midpoint",
-   "protein": "rotary_atpase",
-   "kind": "midpoint",
-   "label": "H+-ATPase ATP half-saturation",
-   "parameters": [
-    "K_m_ATP_H_i_H_ATPase"
-   ]
-  },
-  {
-   "id": "H_ATPase_pH_midpoint",
-   "protein": "rotary_atpase",
-   "kind": "midpoint",
-   "label": "H+-ATPase H+ half-activation (pH set point)",
-   "parameters": [
-    "K_act_H_i_H_ATPase"
-   ]
+   "copy_key": "H_ATPase",
+   "footprint_nm2": 100
   },
   {
    "id": "NhaA_expression",
@@ -56,7 +33,8 @@
     "g_spec_i_NaH",
     "n_NhaA_protein"
    ],
-   "copy_key": "NhaA"
+   "copy_key": "NhaA",
+   "footprint_nm2": 15
   },
   {
    "id": "KefC_expression",
@@ -68,7 +46,8 @@
     "g_spec_i_KH",
     "n_KefC_protein"
    ],
-   "copy_key": "KefC"
+   "copy_key": "KefC",
+   "footprint_nm2": 20
   },
   {
    "id": "Trk_expression",
@@ -80,7 +59,8 @@
     "rho_leak_K_i_K_Trk",
     "n_Trk_protein"
    ],
-   "copy_key": "Trk"
+   "copy_key": "Trk",
+   "footprint_nm2": 60
   },
   {
    "id": "NCX_expression",
@@ -91,25 +71,8 @@
     "rho_NaCa_i_NaCa",
     "n_NCX_protein"
    ],
-   "copy_key": "NCX"
-  },
-  {
-   "id": "NCX_Ca_midpoint",
-   "protein": "ncx_prokaryotic",
-   "kind": "midpoint",
-   "label": "NCX Ca2+ half-saturation",
-   "parameters": [
-    "KmCa_i_NaCa"
-   ]
-  },
-  {
-   "id": "NCX_Na_midpoint",
-   "protein": "ncx_prokaryotic",
-   "kind": "midpoint",
-   "label": "NCX Na+ half-saturation",
-   "parameters": [
-    "KmNai_i_NaCa"
-   ]
+   "copy_key": "NCX",
+   "footprint_nm2": 12
   },
   {
    "id": "Glf_expression",
@@ -120,16 +83,8 @@
     "jmax_glc_membrane_face",
     "n_Glf_protein"
    ],
-   "copy_key": "Glf"
-  },
-  {
-   "id": "Glf_midpoint",
-   "protein": "mfs_sugar_porter",
-   "kind": "midpoint",
-   "label": "Glf glucose half-saturation",
-   "parameters": [
-    "K_glc_t_membrane_face"
-   ]
+   "copy_key": "Glf",
+   "footprint_nm2": 12
   },
   {
    "id": "lactate_exporter_expression",
@@ -140,18 +95,29 @@
     "jmax_lac_membrane_face",
     "n_LacT_protein"
    ],
-   "copy_key": "LacT"
+   "copy_key": "LacT",
+   "footprint_nm2": 15
   },
   {
-   "id": "lactate_exporter_midpoint",
-   "protein": "lactate_carrier_bacterial",
-   "kind": "midpoint",
-   "label": "Lactate exporter half-saturation",
+   "id": "glycolysis_expression",
+   "protein": "glycolysis_sugar",
+   "kind": "expression",
+   "label": "Glycolytic enzymes copies",
    "parameters": [
-    "K_lac_t_membrane_face"
-   ]
+    "V_gly_cytosol",
+    "n_Glyc_protein"
+   ],
+   "copy_key": "Glyc",
+   "footprint_nm2": 0
   }
  ],
- "expression_time_constant_s": 1800.0,
- "expression_time_constant_note": "placeholder: copies approach a new expression level with this time constant (order of a bacterial generation)"
+ "expression_time_constant_s": 10.0,
+ "expression_time_constant_note": "user decision 2026-10-08: changes show within seconds; building is limited by build_capacity and by ATP, so large increases take minutes",
+ "midpoints": "Kinetic midpoints are fixed (user decision 2026-10-08): ±10% changed almost nothing.",
+ "membrane_share_max": 0.08,
+ "membrane_share_note": "placeholder: the adaptable transporters may take 8% of the cell surface (baseline 2.3%); footprints are placeholders (F1Fo ~100 nm², 12-TM transporters ~12-15 nm²). The ceiling scales with membrane area.",
+ "build_capacity": 1.0,
+ "build_capacity_note": "placeholder: at most 1x the resting ATP turnover goes into building new protein (ribosome capacity)",
+ "build_atp_floor_mM": 4.0,
+ "build_atp_floor_note": "placeholder control rule (stringent response): building runs at full speed at the resting ATP and stops at 4 mM, so it never starves the cell"
 }

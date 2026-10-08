@@ -22,33 +22,28 @@ namespace AdaptOrDeity.Game.Session
 
         public static ISimCommand SetBathConcentration(double concentration) => new SetBathCommand(concentration);
 
-        /// <summary>Sets the target multiplier of trait <paramref name="trait"/> (schema index) on <paramref name="cell"/>.</summary>
-        public static ISimCommand SetTrait(int cell, int trait, double multiplier) => new SetTraitCommand(cell, trait, multiplier);
+        /// <summary>Sets the target multiplier of trait <paramref name="trait"/> for every cell of <paramref name="group"/>.</summary>
+        public static ISimCommand SetTrait(int group, int trait, double multiplier) =>
+            new WorldCommand(w => w.SetTrait(group, trait, multiplier));
 
-        private sealed class SetTraitCommand : ISimCommand
+        /// <summary>Sets an energy control (growth, storage, repair) for every cell of <paramref name="group"/>.</summary>
+        public static ISimCommand SetControl(int group, int control, double value) =>
+            new WorldCommand(w => w.SetControl(group, control, value));
+
+        /// <summary>Divides <paramref name="cell"/>, spending glycogen to finish the daughter if needed.</summary>
+        public static ISimCommand Divide(int cell) => new WorldCommand(w => w.Divide(cell));
+
+        /// <summary>Turns an unlocked optional feature on or off.</summary>
+        public static ISimCommand SetFeature(int feature, bool enabled) =>
+            new WorldCommand(w => w.SetFeature(feature, enabled));
+
+        /// <summary>Sets the level being played (unlocks features); a development control until the time bar drives it.</summary>
+        public static ISimCommand SetLevel(int level) => new WorldCommand(w =>
         {
-            private readonly int _cell;
-            private readonly int _trait;
-            private readonly double _multiplier;
-
-            public SetTraitCommand(int cell, int trait, double multiplier)
-            {
-                _cell = cell;
-                _trait = trait;
-                _multiplier = multiplier;
-            }
-
-            public void Apply(SimLoop loop)
-            {
-                if (!(loop.World is IInspectableWorld world))
-                    throw new InvalidOperationException("this world has no adaptable traits");
-                if (_cell < 0 || _cell >= loop.World.CellCount)
-                    throw new ArgumentOutOfRangeException(nameof(_cell), $"no cell {_cell}");
-                if (_trait < 0 || _trait >= world.Traits.Count)
-                    throw new ArgumentOutOfRangeException(nameof(_trait), $"no trait {_trait}");
-                world.SetTrait(_cell, _trait, _multiplier);
-            }
-        }
+            if (level < 1)
+                throw new ArgumentOutOfRangeException(nameof(level), "levels start at 1");
+            w.Level = level;
+        });
 
         private sealed class SetSpeedCommand : ISimCommand
         {
@@ -89,6 +84,28 @@ namespace AdaptOrDeity.Game.Session
                 if (!(loop.World is IBathWorld bath))
                     throw new InvalidOperationException("this world has no bath");
                 bath.BathConcentration = _concentration;
+            }
+        }
+
+        /// <summary>Development aid: completes <paramref name="cell"/>'s daughter without charging its ATP (not for play).</summary>
+        public static ISimCommand DevCompleteDaughter(int cell) => new WorldCommand(w =>
+        {
+            if (!(w is FermenterWorld f))
+                throw new InvalidOperationException("this world has no growing cells");
+            f.DevCompleteDaughter(cell);
+        });
+
+        private sealed class WorldCommand : ISimCommand
+        {
+            private readonly Action<IInspectableWorld> _action;
+
+            public WorldCommand(Action<IInspectableWorld> action) => _action = action;
+
+            public void Apply(SimLoop loop)
+            {
+                if (!(loop.World is IInspectableWorld world))
+                    throw new InvalidOperationException("this world has no adaptable cells");
+                _action(world);
             }
         }
     }

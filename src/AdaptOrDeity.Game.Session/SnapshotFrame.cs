@@ -9,8 +9,14 @@ namespace AdaptOrDeity.Game.Session
     public sealed class SnapshotFrame
     {
         public SnapshotFrame(int channelCount, int cellCapacity, int probeCapacity, int probeSamples, int detailCount = 0,
-            int traitCount = 0)
+            int traitCount = 0, int controlCount = 0, int groupCapacity = 0, int featureCount = 0)
         {
+            CellGroup = new int[cellCapacity];
+            CellAlive = new bool[cellCapacity];
+            CellCanDivide = new bool[cellCapacity];
+            Controls = Allocate<float>(controlCount, groupCapacity);
+            FeatureUnlocked = new bool[featureCount];
+            FeatureEnabled = new bool[featureCount];
             Details = Allocate<double>(detailCount, cellCapacity);
             TraitValues = Allocate(traitCount, cellCapacity);
             TraitTargets = Allocate(traitCount, cellCapacity);
@@ -53,6 +59,27 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Per trait, per cell: target multiplier.</summary>
         public float[][] TraitTargets { get; }
+
+        /// <summary>Per cell: its group.</summary>
+        public int[] CellGroup { get; }
+
+        public bool[] CellAlive { get; }
+
+        /// <summary>Per cell: a daughter is built (or glycogen can finish it).</summary>
+        public bool[] CellCanDivide { get; }
+
+        /// <summary>Per energy control (schema order), per group: its value.</summary>
+        public float[][] Controls { get; }
+
+        public int GroupCount { get; internal set; }
+
+        /// <summary>Level of the evolutionary time bar being played.</summary>
+        public int Level { get; internal set; }
+
+        /// <summary>Per feature (schema order).</summary>
+        public bool[] FeatureUnlocked { get; }
+
+        public bool[] FeatureEnabled { get; }
 
         private static T[][] Allocate<T>(int rows, int cells)
         {

@@ -12,7 +12,7 @@ namespace AdaptOrDeity.UI
     public sealed class Hud : MonoBehaviour
     {
         private const float BarHeight = 34f;
-        private static readonly string[] SpeedLabels = { "II", ">", ">>", ">>>" };
+        private static readonly string[] SpeedLabels = { "II", "1x", "10x", "100x", "1000x" };
 
         private int _lastRunningSpeed = 1;
         private Material _lineMaterial;
@@ -32,6 +32,7 @@ namespace AdaptOrDeity.UI
             if (frame == null)
                 return;
 
+            bridge.RightPanelWidth = RightInset();
             HandleInput(bridge, frame);
             DrawTopBar(bridge, frame);
             if (bridge.ActiveOverlay >= 0)
@@ -65,10 +66,18 @@ namespace AdaptOrDeity.UI
                     case KeyCode.Alpha1:
                     case KeyCode.Alpha2:
                     case KeyCode.Alpha3:
-                        SetSpeed(bridge, e.keyCode - KeyCode.Alpha0);
+                    case KeyCode.Alpha4:
+                        if (e.keyCode - KeyCode.Alpha0 < bridge.Schema.SpeedPresets.Count)
+                            SetSpeed(bridge, e.keyCode - KeyCode.Alpha0);
                         e.Use();
                         break;
                 }
+            }
+            else if (e.type == EventType.ScrollWheel && e.mousePosition.x < Screen.width - RightInset()
+                     && e.mousePosition.y > BarHeight)
+            {
+                bridge.Zoom(e.delta.y > 0 ? 1f : -1f);   // wheel down zooms out
+                e.Use();
             }
             else if (e.type == EventType.MouseDown && e.mousePosition.y > BarHeight
                      && e.mousePosition.x < Screen.width - RightInset())
@@ -126,10 +135,20 @@ namespace AdaptOrDeity.UI
                 GUI.color = old;
             }
             GUILayout.Label($"t = {FormatTime(frame.SimTime)}", GUILayout.Width(130));
-            var presets = bridge.Schema.SpeedPresets;
-            if (frame.SpeedIndex > 0 && frame.SpeedIndex < presets.Count)
-                GUILayout.Label($"{presets[frame.SpeedIndex]:G3}×", GUILayout.Width(50));
-            int speed = GUILayout.Toolbar(frame.SpeedIndex, SpeedLabels, GUILayout.Width(200));
+            if (bridge.Schema.Features.Count > 0)
+            {
+                // Development control until the evolutionary time bar sets the level: features unlock by level.
+                GUILayout.Label($"Level {frame.Level}", GUILayout.Width(56));
+                if (GUILayout.Button("−", GUILayout.Width(24)) && frame.Level > 1)
+                    bridge.Send(SimCommands.SetLevel(frame.Level - 1));
+                if (GUILayout.Button("+", GUILayout.Width(24)))
+                    bridge.Send(SimCommands.SetLevel(frame.Level + 1));
+                GUILayout.Space(12);
+            }
+            var labels = new string[bridge.Schema.SpeedPresets.Count];
+            for (int i = 0; i < labels.Length; i++)
+                labels[i] = i < SpeedLabels.Length ? SpeedLabels[i] : $"{bridge.Schema.SpeedPresets[i]:G3}x";
+            int speed = GUILayout.Toolbar(frame.SpeedIndex, labels, GUILayout.Width(56 * labels.Length));
             if (speed != frame.SpeedIndex)
                 SetSpeed(bridge, speed);
 
@@ -169,6 +188,8 @@ namespace AdaptOrDeity.UI
             var text = $"Cell {cell.CellIndex}";
             for (int c = 0; c < overlays.Count; c++)
                 text += $"\n{overlays[c].Name}: {frame.Channels[c][cell.CellIndex] * overlays[c].DisplayMultiplier:G4} {overlays[c].DisplayUnit}";
+            if (frame.CellAlive.Length > cell.CellIndex && !frame.CellAlive[cell.CellIndex])
+                text += "\n<b>Dead</b>";
             text += "\n<i>Click to inspect and plot, right-click to close</i>";
 
             _tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, richText = true, padding = new RectOffset(8, 8, 6, 6) };

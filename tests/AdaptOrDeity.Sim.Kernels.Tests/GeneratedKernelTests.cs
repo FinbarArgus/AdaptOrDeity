@@ -48,7 +48,7 @@ namespace AdaptOrDeity.Sim.Kernels.Tests
                 {
                     double h = Math.Min(dt, times[row] - t);
                     if (integrator == "backward_euler")
-                        be.Step(kernel, batch, t, h, 0, 1);
+                        be.StepRobust(kernel, batch, t, h, 0, 1);
                     else
                         rk4.Step(kernel, batch, t, h, 0, 1);
                     t += h;
@@ -62,7 +62,8 @@ namespace AdaptOrDeity.Sim.Kernels.Tests
             {
                 if (statesOnly && kernel.Descriptor.StateIndex(pair.Key) < 0)
                     continue;
-                double nrmse = GoldenTrace.Nrmse(golden.Column(pair.Key), pair.Value);
+                double atol = meta.RootElement.TryGetProperty("atol", out var at) ? at.GetDouble() : 1e-300;
+                double nrmse = GoldenTrace.Nrmse(golden.Column(pair.Key), pair.Value, statesOnly ? atol : 1e-300);
                 TestContext.WriteLine($"{kernel.Descriptor.Key} {instance} {pair.Key}: NRMSE {nrmse:E2}");
                 Assert.That(nrmse, Is.LessThan(tolerance), $"{kernel.Descriptor.Key} {pair.Key}");
             }

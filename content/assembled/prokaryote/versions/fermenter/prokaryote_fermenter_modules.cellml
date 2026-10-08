@@ -481,6 +481,7 @@
     <unit exponent="-1" units="milliV"/>
   </units>
   <component name="cell">
+    <variable name="ATP_ref_mod_bio" units="millimolar"/>
     <variable name="ATP_ref_mod_protein" units="millimolar"/>
     <variable name="B_Ca_init_mod_Ca" units="millimolar"/>
     <variable name="B_Ca_total_mod_Ca" units="millimolar"/>
@@ -489,8 +490,11 @@
     <variable name="C_Pi_init_mod_cytosol" units="millimolar"/>
     <variable name="C_glc_e_mod_membrane_face" units="millimolar"/>
     <variable name="C_glc_init_mod_cytosol" units="millimolar"/>
+    <variable name="C_glyc_init_mod_cytosol" units="millimolar"/>
+    <variable name="C_glyc_max_mod_cytosol" units="millimolar"/>
     <variable name="C_lac_e_mod_membrane_face" units="millimolar"/>
     <variable name="C_lac_init_mod_cytosol" units="millimolar"/>
+    <variable name="C_repair_mod_bio" units="mole"/>
     <variable name="Ca__B_Cai" units="millimolar" initial_value="B_Ca_init_mod_Ca"/>
     <variable name="Ca__CaB_Cai" units="millimolar"/>
     <variable name="Ca__Ca_total" units="millimolar"/>
@@ -498,6 +502,7 @@
     <variable name="Cai_init_mod_Ca" units="millimolar"/>
     <variable name="Cao_mod_i_NaCa" units="millimolar"/>
     <variable name="Cao_mod_i_leak_Ca" units="millimolar"/>
+    <variable name="D_init_mod_bio" units="dimensionless"/>
     <variable name="F" units="C_per_mol"/>
     <variable name="H__E_H" units="milliV"/>
     <variable name="H__H_i" units="millimolar" initial_value="H_i_init_mod_H"/>
@@ -510,18 +515,27 @@
     <variable name="H_ref_mod_membrane_face" units="millimolar"/>
     <variable name="I_in_mod_membrane" units="nanoA"/>
     <variable name="J_build_mod_protein" units="mol_per_s"/>
+    <variable name="J_growth_mod_bio" units="mol_per_s"/>
     <variable name="K_ADP_gly_mod_cytosol" units="millimolar"/>
     <variable name="K_ADP_hyd_mod_cytosol" units="millimolar"/>
+    <variable name="K_ADP_mob_mod_cytosol" units="millimolar"/>
     <variable name="K_ATP_gly_mod_cytosol" units="millimolar"/>
     <variable name="K_ATP_hyd_mod_cytosol" units="millimolar"/>
+    <variable name="K_ATP_store_mod_cytosol" units="millimolar"/>
+    <variable name="K_D_mod_bio" units="dimensionless"/>
     <variable name="K_Pi_gly_mod_cytosol" units="millimolar"/>
     <variable name="K_Pi_hyd_mod_cytosol" units="millimolar"/>
+    <variable name="K_Pi_mob_mod_cytosol" units="millimolar"/>
     <variable name="K_act_H_mod_i_H_ATPase" units="millimolar"/>
     <variable name="K_glc_mod_cytosol" units="millimolar"/>
+    <variable name="K_glc_store_mod_cytosol" units="millimolar"/>
     <variable name="K_glc_t_mod_membrane_face" units="millimolar"/>
+    <variable name="K_glyc_mob_mod_cytosol" units="millimolar"/>
+    <variable name="K_i_ATP_mob_mod_cytosol" units="millimolar"/>
     <variable name="K_lac_mod_cytosol" units="millimolar"/>
     <variable name="K_lac_t_mod_membrane_face" units="millimolar"/>
     <variable name="K_m_ATP_H_mod_i_H_ATPase" units="millimolar"/>
+    <variable name="K_m_ATP_bio_mod_bio" units="millimolar"/>
     <variable name="K_m_ATP_prot_mod_protein" units="millimolar"/>
     <variable name="Ki_init_mod_Na_K" units="millimolar"/>
     <variable name="KmCa_mod_i_NaCa" units="millimolar"/>
@@ -529,13 +543,17 @@
     <variable name="Ko_mod_Na_K" units="millimolar"/>
     <variable name="Ksat_mod_i_NaCa" units="dimensionless"/>
     <variable name="L_Glf_mod_protein" units="dimensionless"/>
+    <variable name="L_Glyc_mod_protein" units="dimensionless"/>
     <variable name="L_H_ATPase_mod_protein" units="dimensionless"/>
     <variable name="L_KefC_mod_protein" units="dimensionless"/>
     <variable name="L_LacT_mod_protein" units="dimensionless"/>
     <variable name="L_NCX_mod_protein" units="dimensionless"/>
     <variable name="L_NhaA_mod_protein" units="dimensionless"/>
     <variable name="L_Trk_mod_protein" units="dimensionless"/>
+    <variable name="L_mRNA_mod_bio" units="dimensionless"/>
     <variable name="L_proteome_mod_protein" units="dimensionless"/>
+    <variable name="L_rRNA_mod_bio" units="dimensionless"/>
+    <variable name="N_A_mod_bio" units="per_mol"/>
     <variable name="N_A_mod_protein" units="per_mol"/>
     <variable name="Na_K__E_K" units="milliV"/>
     <variable name="Na_K__E_Na" units="milliV"/>
@@ -544,18 +562,43 @@
     <variable name="Nai_init_mod_Na_K" units="millimolar"/>
     <variable name="Nao_mod_Na_K" units="millimolar"/>
     <variable name="Nao_mod_i_NaCa" units="millimolar"/>
+    <variable name="P_init_mod_bio" units="mole"/>
+    <variable name="Q10_dmg_mod_bio" units="dimensionless"/>
     <variable name="Q10_mod_cytosol" units="dimensionless"/>
     <variable name="R" units="J_per_mol_K"/>
     <variable name="R_cell_mod_membrane" units="um"/>
     <variable name="T" units="kelvin"/>
+    <variable name="T_ref_dmg_mod_bio" units="kelvin"/>
     <variable name="T_ref_mod_cytosol" units="kelvin"/>
     <variable name="V_gly_mod_cytosol" units="millimolar_per_s_1"/>
     <variable name="V_hyd_mod_cytosol" units="millimolar_per_s_1"/>
+    <variable name="V_mob_mod_cytosol" units="millimolar_per_s_1"/>
     <variable name="V_rest_approx_mod_membrane" units="milliV"/>
+    <variable name="V_store_max_mod_cytosol" units="millimolar_per_s_1"/>
     <variable name="alpha_NaCa_mod_i_NaCa" units="dimensionless"/>
+    <variable name="area_per_lipid_mod_bio" units="um2"/>
     <variable name="beta_H_mod_H" units="millimolar"/>
+    <variable name="bio__D" units="dimensionless" initial_value="D_init_mod_bio"/>
+    <variable name="bio__J_ATP_bio" units="mol_per_s"/>
+    <variable name="bio__J_RNA" units="mol_per_s"/>
+    <variable name="bio__J_growth_used" units="mol_per_s"/>
+    <variable name="bio__J_lipid" units="mol_per_s"/>
+    <variable name="bio__J_repair" units="mol_per_s"/>
+    <variable name="bio__J_ribo" units="mol_per_s"/>
+    <variable name="bio__M_build_bio" units="mole"/>
+    <variable name="bio__P_growth" units="mole" initial_value="P_init_mod_bio"/>
+    <variable name="bio__R_repair" units="per_s"/>
+    <variable name="bio__f_ATP_bio" units="dimensionless"/>
+    <variable name="bio__f_T_dmg" units="dimensionless"/>
+    <variable name="bio__j_ADP_bio" units="mol_per_s"/>
+    <variable name="bio__j_ATP_bio" units="mol_per_s"/>
+    <variable name="bio__j_Pi_bio" units="mol_per_s"/>
+    <variable name="bio__n_lipid" units="dimensionless"/>
     <variable name="c_deg_mod_protein" units="dimensionless"/>
+    <variable name="c_lipid_mod_bio" units="dimensionless"/>
     <variable name="c_m_mod_membrane" units="uF_per_cm2"/>
+    <variable name="c_nt_denovo_mod_bio" units="dimensionless"/>
+    <variable name="c_nt_recycle_mod_bio" units="dimensionless"/>
     <variable name="c_poly_mod_protein" units="dimensionless"/>
     <variable name="c_recycle_mod_protein" units="dimensionless"/>
     <variable name="c_std_mod_H" units="millimolar"/>
@@ -564,25 +607,36 @@
     <variable name="c_syn_mod_protein" units="dimensionless"/>
     <variable name="cytosol__A_gly" units="J_per_mol"/>
     <variable name="cytosol__A_hyd" units="J_per_mol"/>
+    <variable name="cytosol__A_mob" units="J_per_mol"/>
+    <variable name="cytosol__A_store" units="J_per_mol"/>
     <variable name="cytosol__C_ADP" units="millimolar" initial_value="C_ADP_init_mod_cytosol"/>
     <variable name="cytosol__C_ATP" units="millimolar" initial_value="C_ATP_init_mod_cytosol"/>
     <variable name="cytosol__C_Pi" units="millimolar" initial_value="C_Pi_init_mod_cytosol"/>
     <variable name="cytosol__C_glc" units="millimolar" initial_value="C_glc_init_mod_cytosol"/>
+    <variable name="cytosol__C_glyc" units="millimolar" initial_value="C_glyc_init_mod_cytosol"/>
     <variable name="cytosol__C_lac" units="millimolar" initial_value="C_lac_init_mod_cytosol"/>
     <variable name="cytosol__Gamma_gly" units="dimensionless"/>
     <variable name="cytosol__Gamma_hyd" units="dimensionless"/>
+    <variable name="cytosol__Gamma_mob" units="dimensionless"/>
+    <variable name="cytosol__Gamma_store" units="dimensionless"/>
     <variable name="cytosol__J_ATP_turnover" units="mol_per_s"/>
     <variable name="cytosol__K_eq_gly" units="dimensionless"/>
     <variable name="cytosol__K_eq_hyd" units="dimensionless"/>
+    <variable name="cytosol__K_eq_mob" units="dimensionless"/>
+    <variable name="cytosol__K_eq_store" units="dimensionless"/>
     <variable name="cytosol__P_diss" units="watt"/>
     <variable name="cytosol__Q_met" units="watt"/>
     <variable name="cytosol__f_T" units="dimensionless"/>
     <variable name="cytosol__j_H_met" units="mol_per_s"/>
     <variable name="cytosol__v_gly" units="millimolar_per_s_2"/>
     <variable name="cytosol__v_hyd" units="millimolar_per_s_2"/>
+    <variable name="cytosol__v_mob" units="millimolar_per_s_2"/>
+    <variable name="cytosol__v_store" units="millimolar_per_s_2"/>
     <variable name="dG0_ferm_mod_cytosol" units="J_per_mol"/>
     <variable name="dG0_hyd_mod_cytosol" units="J_per_mol"/>
     <variable name="dG0_hyd_mod_i_H_ATPase" units="J_per_mol"/>
+    <variable name="dG0_store_mod_cytosol" units="J_per_mol"/>
+    <variable name="dT_Q10_mod_bio" units="kelvin"/>
     <variable name="dT_Q10_mod_cytosol" units="kelvin"/>
     <variable name="g_spec_leak_H_mod_i_leak_H" units="microS_per_um2"/>
     <variable name="g_spec_mod_i_KH" units="microS_per_um2"/>
@@ -591,8 +645,10 @@
     <variable name="gamma_leak_Ca_mod_i_leak_Ca" units="picoS"/>
     <variable name="gamma_leak_K_mod_i_K_Trk" units="picoS"/>
     <variable name="gamma_leak_Na_mod_i_leak_Na" units="picoS"/>
+    <variable name="genome_nt_mod_bio" units="dimensionless"/>
     <variable name="h_ATP_mod_cytosol" units="J_per_mol"/>
     <variable name="h_cell_mod_membrane" units="um"/>
+    <variable name="h_glyc_poly_mod_cytosol" units="J_per_mol"/>
     <variable name="h_lac_gly_mod_cytosol" units="J_per_mol"/>
     <variable name="i_H_ATPase__A_ATP" units="J_per_mol"/>
     <variable name="i_H_ATPase__W_H" units="J_per_mol"/>
@@ -635,6 +691,8 @@
     <variable name="jmax_lac_mod_membrane_face" units="mol_per_s_per_um2"/>
     <variable name="k_bind_Ca_mod_Ca" units="per_millimolar_s_1"/>
     <variable name="k_deg_mod_protein" units="per_s"/>
+    <variable name="k_lipid_mod_bio" units="per_s"/>
+    <variable name="k_ribo_mod_bio" units="per_s"/>
     <variable name="k_unbind_Ca_mod_Ca" units="per_s"/>
     <variable name="membrane__A_mem" units="um2"/>
     <variable name="membrane__Cm" units="picoF"/>
@@ -672,6 +730,7 @@
     <variable name="multiport_sum_mod_cytosol_j_Pi_ext__j_Pi_ext" units="mol_per_s"/>
     <variable name="multiport_sum_mod_membrane_i_ion__i_ion" units="nanoA"/>
     <variable name="n_Glf_mod_protein" units="dimensionless"/>
+    <variable name="n_Glyc_mod_protein" units="dimensionless"/>
     <variable name="n_H_ATPase_mod_protein" units="dimensionless"/>
     <variable name="n_H_mod_i_H_ATPase" units="dimensionless"/>
     <variable name="n_KefC_mod_protein" units="dimensionless"/>
@@ -679,8 +738,11 @@
     <variable name="n_NCX_mod_protein" units="dimensionless"/>
     <variable name="n_NhaA_mod_protein" units="dimensionless"/>
     <variable name="n_Trk_mod_protein" units="dimensionless"/>
+    <variable name="n_mRNA_mod_bio" units="dimensionless"/>
     <variable name="n_proteome_mod_protein" units="dimensionless"/>
+    <variable name="n_ribo_mod_bio" units="dimensionless"/>
     <variable name="protein__J_ATP_Glf" units="mol_per_s"/>
+    <variable name="protein__J_ATP_Glyc" units="mol_per_s"/>
     <variable name="protein__J_ATP_H_ATPase" units="mol_per_s"/>
     <variable name="protein__J_ATP_KefC" units="mol_per_s"/>
     <variable name="protein__J_ATP_LacT" units="mol_per_s"/>
@@ -691,6 +753,7 @@
     <variable name="protein__J_ATP_proteome" units="mol_per_s"/>
     <variable name="protein__J_ATP_used" units="mol_per_s"/>
     <variable name="protein__M_build_Glf" units="mole"/>
+    <variable name="protein__M_build_Glyc" units="mole"/>
     <variable name="protein__M_build_H_ATPase" units="mole"/>
     <variable name="protein__M_build_KefC" units="mole"/>
     <variable name="protein__M_build_LacT" units="mole"/>
@@ -705,12 +768,18 @@
     <variable name="protein__j_Pi_prot" units="mol_per_s"/>
     <variable name="r_H_ATPase_mod_i_H_ATPase" units="per_s"/>
     <variable name="r_NaCa_mod_i_NaCa" units="per_s"/>
+    <variable name="r_dmg_mod_bio" units="per_s"/>
+    <variable name="r_rep_max_mod_bio" units="per_s"/>
+    <variable name="repair_level_mod_bio" units="dimensionless"/>
     <variable name="rho_H_ATPase_mod_i_H_ATPase" units="per_um2"/>
     <variable name="rho_NaCa_mod_i_NaCa" units="per_um2"/>
     <variable name="rho_leak_Ca_mod_i_leak_Ca" units="per_um2"/>
     <variable name="rho_leak_K_mod_i_K_Trk" units="per_um2"/>
     <variable name="rho_leak_Na_mod_i_leak_Na" units="per_um2"/>
+    <variable name="store_alloc_mod_cytosol" units="dimensionless"/>
+    <variable name="surface_factor_mod_bio" units="dimensionless"/>
     <variable name="t" units="second"/>
+    <variable name="t_half_mRNA_mod_bio" units="second"/>
 <math xmlns="http://www.w3.org/1998/Math/MathML" xmlns:cellml="http://www.cellml.org/cellml/2.0#">
       <apply>
         <eq />
@@ -1433,6 +1502,325 @@
       </apply>
       <apply>
         <eq />
+        <ci>cytosol__K_eq_store</ci>
+        <apply>
+          <exp />
+          <apply>
+            <divide />
+            <apply>
+              <minus />
+              <ci>dG0_store_mod_cytosol</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>R</ci>
+              <ci>T</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>cytosol__K_eq_mob</ci>
+        <apply>
+          <exp />
+          <apply>
+            <divide />
+            <apply>
+              <minus />
+              <apply>
+                <minus />
+                <apply>
+                  <minus />
+                  <ci>dG0_ferm_mod_cytosol</ci>
+                  <ci>dG0_store_mod_cytosol</ci>
+                </apply>
+                <ci>dG0_hyd_mod_cytosol</ci>
+              </apply>
+            </apply>
+            <apply>
+              <times />
+              <ci>R</ci>
+              <ci>T</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>cytosol__Gamma_store</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <apply>
+              <power />
+              <apply>
+                <divide />
+                <ci>cytosol__C_ADP</ci>
+                <ci>c_std_mod_cytosol</ci>
+              </apply>
+              <cn cellml:units="dimensionless">2.0</cn>
+            </apply>
+            <apply>
+              <power />
+              <apply>
+                <divide />
+                <ci>cytosol__C_Pi</ci>
+                <ci>c_std_mod_cytosol</ci>
+              </apply>
+              <cn cellml:units="dimensionless">2.0</cn>
+            </apply>
+          </apply>
+          <apply>
+            <times />
+            <apply>
+              <divide />
+              <ci>cytosol__C_glc</ci>
+              <ci>c_std_mod_cytosol</ci>
+            </apply>
+            <apply>
+              <power />
+              <apply>
+                <divide />
+                <ci>cytosol__C_ATP</ci>
+                <ci>c_std_mod_cytosol</ci>
+              </apply>
+              <cn cellml:units="dimensionless">2.0</cn>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>cytosol__Gamma_mob</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <apply>
+              <power />
+              <apply>
+                <divide />
+                <ci>cytosol__C_lac</ci>
+                <ci>c_std_mod_cytosol</ci>
+              </apply>
+              <cn cellml:units="dimensionless">2.0</cn>
+            </apply>
+            <apply>
+              <power />
+              <apply>
+                <divide />
+                <ci>cytosol__C_ATP</ci>
+                <ci>c_std_mod_cytosol</ci>
+              </apply>
+              <cn cellml:units="dimensionless">3.0</cn>
+            </apply>
+          </apply>
+          <apply>
+            <times />
+            <apply>
+              <power />
+              <apply>
+                <divide />
+                <ci>cytosol__C_ADP</ci>
+                <ci>c_std_mod_cytosol</ci>
+              </apply>
+              <cn cellml:units="dimensionless">3.0</cn>
+            </apply>
+            <apply>
+              <power />
+              <apply>
+                <divide />
+                <ci>cytosol__C_Pi</ci>
+                <ci>c_std_mod_cytosol</ci>
+              </apply>
+              <cn cellml:units="dimensionless">3.0</cn>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>cytosol__v_store</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <divide />
+              <apply>
+                <times />
+                <apply>
+                  <divide />
+                  <apply>
+                    <times />
+                    <ci>V_store_max_mod_cytosol</ci>
+                    <ci>store_alloc_mod_cytosol</ci>
+                    <ci>cytosol__f_T</ci>
+                    <ci>cytosol__C_glc</ci>
+                  </apply>
+                  <apply>
+                    <plus />
+                    <ci>K_glc_store_mod_cytosol</ci>
+                    <ci>cytosol__C_glc</ci>
+                  </apply>
+                </apply>
+                <ci>cytosol__C_ATP</ci>
+              </apply>
+              <apply>
+                <plus />
+                <ci>K_ATP_store_mod_cytosol</ci>
+                <ci>cytosol__C_ATP</ci>
+              </apply>
+            </apply>
+            <apply>
+              <plus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <apply>
+                <power />
+                <apply>
+                  <divide />
+                  <ci>cytosol__C_glyc</ci>
+                  <ci>C_glyc_max_mod_cytosol</ci>
+                </apply>
+                <cn cellml:units="dimensionless">8.0</cn>
+              </apply>
+            </apply>
+          </apply>
+          <apply>
+            <minus />
+            <cn cellml:units="dimensionless">1.0</cn>
+            <apply>
+              <divide />
+              <ci>cytosol__Gamma_store</ci>
+              <ci>cytosol__K_eq_store</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>cytosol__v_mob</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <apply>
+                <divide />
+                <apply>
+                  <times />
+                  <apply>
+                    <divide />
+                    <apply>
+                      <times />
+                      <apply>
+                        <divide />
+                        <apply>
+                          <times />
+                          <ci>V_mob_mod_cytosol</ci>
+                          <ci>cytosol__f_T</ci>
+                          <ci>cytosol__C_glyc</ci>
+                        </apply>
+                        <apply>
+                          <plus />
+                          <ci>K_glyc_mob_mod_cytosol</ci>
+                          <ci>cytosol__C_glyc</ci>
+                        </apply>
+                      </apply>
+                      <ci>cytosol__C_ADP</ci>
+                    </apply>
+                    <apply>
+                      <plus />
+                      <ci>K_ADP_mob_mod_cytosol</ci>
+                      <ci>cytosol__C_ADP</ci>
+                    </apply>
+                  </apply>
+                  <ci>cytosol__C_Pi</ci>
+                </apply>
+                <apply>
+                  <plus />
+                  <ci>K_Pi_mob_mod_cytosol</ci>
+                  <ci>cytosol__C_Pi</ci>
+                </apply>
+              </apply>
+              <ci>K_i_ATP_mob_mod_cytosol</ci>
+            </apply>
+            <apply>
+              <plus />
+              <ci>K_i_ATP_mob_mod_cytosol</ci>
+              <ci>cytosol__C_ATP</ci>
+            </apply>
+          </apply>
+          <apply>
+            <minus />
+            <cn cellml:units="dimensionless">1.0</cn>
+            <apply>
+              <divide />
+              <ci>cytosol__Gamma_mob</ci>
+              <ci>cytosol__K_eq_mob</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>cytosol__A_store</ci>
+        <apply>
+          <times />
+          <ci>R</ci>
+          <ci>T</ci>
+          <apply>
+            <minus />
+            <apply>
+              <ln />
+              <ci>cytosol__K_eq_store</ci>
+            </apply>
+            <apply>
+              <ln />
+              <apply>
+                <plus />
+                <apply>
+                  <abs />
+                  <ci>cytosol__Gamma_store</ci>
+                </apply>
+                <cn type="e-notation" cellml:units="dimensionless">1<sep />-300</cn>
+              </apply>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>cytosol__A_mob</ci>
+        <apply>
+          <times />
+          <ci>R</ci>
+          <ci>T</ci>
+          <apply>
+            <minus />
+            <apply>
+              <ln />
+              <ci>cytosol__K_eq_mob</ci>
+            </apply>
+            <apply>
+              <ln />
+              <apply>
+                <plus />
+                <apply>
+                  <abs />
+                  <ci>cytosol__Gamma_mob</ci>
+                </apply>
+                <cn type="e-notation" cellml:units="dimensionless">1<sep />-300</cn>
+              </apply>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
         <ci>cytosol__P_diss</ci>
         <apply>
           <times />
@@ -1448,6 +1836,16 @@
               <times />
               <ci>cytosol__v_hyd</ci>
               <ci>cytosol__A_hyd</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>cytosol__v_store</ci>
+              <ci>cytosol__A_store</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>cytosol__v_mob</ci>
+              <ci>cytosol__A_mob</ci>
             </apply>
           </apply>
         </apply>
@@ -1473,7 +1871,19 @@
           <apply>
             <times />
             <ci>membrane__Vol</ci>
-            <ci>cytosol__v_hyd</ci>
+            <apply>
+              <minus />
+              <apply>
+                <plus />
+                <ci>cytosol__v_hyd</ci>
+                <apply>
+                  <times />
+                  <cn cellml:units="dimensionless">2.0</cn>
+                  <ci>cytosol__v_store</ci>
+                </apply>
+              </apply>
+              <ci>cytosol__v_mob</ci>
+            </apply>
           </apply>
           <ci>multiport_sum_mod_cytosol_j_ATP_ext__j_ATP_ext</ci>
         </apply>
@@ -1510,6 +1920,40 @@
                 <ci>cytosol__v_hyd</ci>
                 <ci>h_ATP_mod_cytosol</ci>
               </apply>
+              <apply>
+                <times />
+                <ci>cytosol__v_store</ci>
+                <apply>
+                  <plus />
+                  <apply>
+                    <times />
+                    <cn cellml:units="dimensionless">2.0</cn>
+                    <ci>h_ATP_mod_cytosol</ci>
+                  </apply>
+                  <ci>h_glyc_poly_mod_cytosol</ci>
+                </apply>
+              </apply>
+              <apply>
+                <times />
+                <ci>cytosol__v_mob</ci>
+                <apply>
+                  <minus />
+                  <apply>
+                    <minus />
+                    <apply>
+                      <times />
+                      <cn cellml:units="dimensionless">2.0</cn>
+                      <ci>h_lac_gly_mod_cytosol</ci>
+                    </apply>
+                    <ci>h_glyc_poly_mod_cytosol</ci>
+                  </apply>
+                  <apply>
+                    <times />
+                    <cn cellml:units="dimensionless">3.0</cn>
+                    <ci>h_ATP_mod_cytosol</ci>
+                  </apply>
+                </apply>
+              </apply>
             </apply>
           </apply>
           <apply>
@@ -1531,15 +1975,19 @@
         <apply>
           <minus />
           <apply>
-            <divide />
+            <minus />
             <apply>
-              <plus />
-              <ci>multiport_sum_mod_cytosol_J_glc_in__J_glc_in</ci>
-              <ci>multiport_sum_mod_cytosol_J_glc_out__J_glc_out</ci>
+              <divide />
+              <apply>
+                <plus />
+                <ci>multiport_sum_mod_cytosol_J_glc_in__J_glc_in</ci>
+                <ci>multiport_sum_mod_cytosol_J_glc_out__J_glc_out</ci>
+              </apply>
+              <ci>membrane__Vol</ci>
             </apply>
-            <ci>membrane__Vol</ci>
+            <ci>cytosol__v_gly</ci>
           </apply>
-          <ci>cytosol__v_gly</ci>
+          <ci>cytosol__v_store</ci>
         </apply>
       </apply>
       <apply>
@@ -1567,6 +2015,11 @@
             <cn cellml:units="dimensionless">2.0</cn>
             <ci>cytosol__v_gly</ci>
           </apply>
+          <apply>
+            <times />
+            <cn cellml:units="dimensionless">2.0</cn>
+            <ci>cytosol__v_mob</ci>
+          </apply>
         </apply>
       </apply>
       <apply>
@@ -1579,26 +2032,42 @@
           <ci>cytosol__C_ATP</ci>
         </apply>
         <apply>
-          <minus />
+          <plus />
           <apply>
-            <plus />
+            <minus />
             <apply>
-              <divide />
+              <minus />
               <apply>
                 <plus />
-                <ci>multiport_sum_mod_cytosol_J_ATP_in__J_ATP_in</ci>
-                <ci>multiport_sum_mod_cytosol_J_ATP_out__J_ATP_out</ci>
-                <ci>multiport_sum_mod_cytosol_j_ATP_ext__j_ATP_ext</ci>
+                <apply>
+                  <divide />
+                  <apply>
+                    <plus />
+                    <ci>multiport_sum_mod_cytosol_J_ATP_in__J_ATP_in</ci>
+                    <ci>multiport_sum_mod_cytosol_J_ATP_out__J_ATP_out</ci>
+                    <ci>multiport_sum_mod_cytosol_j_ATP_ext__j_ATP_ext</ci>
+                  </apply>
+                  <ci>membrane__Vol</ci>
+                </apply>
+                <apply>
+                  <times />
+                  <cn cellml:units="dimensionless">2.0</cn>
+                  <ci>cytosol__v_gly</ci>
+                </apply>
               </apply>
-              <ci>membrane__Vol</ci>
+              <ci>cytosol__v_hyd</ci>
             </apply>
             <apply>
               <times />
               <cn cellml:units="dimensionless">2.0</cn>
-              <ci>cytosol__v_gly</ci>
+              <ci>cytosol__v_store</ci>
             </apply>
           </apply>
-          <ci>cytosol__v_hyd</ci>
+          <apply>
+            <times />
+            <cn cellml:units="dimensionless">3.0</cn>
+            <ci>cytosol__v_mob</ci>
+          </apply>
         </apply>
       </apply>
       <apply>
@@ -1611,26 +2080,39 @@
           <ci>cytosol__C_ADP</ci>
         </apply>
         <apply>
-          <plus />
+          <minus />
           <apply>
-            <minus />
+            <plus />
             <apply>
-              <divide />
+              <minus />
               <apply>
-                <plus />
-                <ci>multiport_sum_mod_cytosol_J_ADP_in__J_ADP_in</ci>
-                <ci>multiport_sum_mod_cytosol_J_ADP_out__J_ADP_out</ci>
-                <ci>multiport_sum_mod_cytosol_j_ADP_ext__j_ADP_ext</ci>
+                <divide />
+                <apply>
+                  <plus />
+                  <ci>multiport_sum_mod_cytosol_J_ADP_in__J_ADP_in</ci>
+                  <ci>multiport_sum_mod_cytosol_J_ADP_out__J_ADP_out</ci>
+                  <ci>multiport_sum_mod_cytosol_j_ADP_ext__j_ADP_ext</ci>
+                </apply>
+                <ci>membrane__Vol</ci>
               </apply>
-              <ci>membrane__Vol</ci>
+              <apply>
+                <times />
+                <cn cellml:units="dimensionless">2.0</cn>
+                <ci>cytosol__v_gly</ci>
+              </apply>
             </apply>
+            <ci>cytosol__v_hyd</ci>
             <apply>
               <times />
               <cn cellml:units="dimensionless">2.0</cn>
-              <ci>cytosol__v_gly</ci>
+              <ci>cytosol__v_store</ci>
             </apply>
           </apply>
-          <ci>cytosol__v_hyd</ci>
+          <apply>
+            <times />
+            <cn cellml:units="dimensionless">3.0</cn>
+            <ci>cytosol__v_mob</ci>
+          </apply>
         </apply>
       </apply>
       <apply>
@@ -1643,27 +2125,311 @@
           <ci>cytosol__C_Pi</ci>
         </apply>
         <apply>
-          <plus />
+          <minus />
           <apply>
-            <minus />
+            <plus />
             <apply>
-              <divide />
+              <minus />
               <apply>
-                <plus />
-                <ci>multiport_sum_mod_cytosol_J_Pi_in__J_Pi_in</ci>
-                <ci>multiport_sum_mod_cytosol_J_Pi_out__J_Pi_out</ci>
-                <ci>multiport_sum_mod_cytosol_j_Pi_ext__j_Pi_ext</ci>
+                <divide />
+                <apply>
+                  <plus />
+                  <ci>multiport_sum_mod_cytosol_J_Pi_in__J_Pi_in</ci>
+                  <ci>multiport_sum_mod_cytosol_J_Pi_out__J_Pi_out</ci>
+                  <ci>multiport_sum_mod_cytosol_j_Pi_ext__j_Pi_ext</ci>
+                </apply>
+                <ci>membrane__Vol</ci>
               </apply>
-              <ci>membrane__Vol</ci>
+              <apply>
+                <times />
+                <cn cellml:units="dimensionless">2.0</cn>
+                <ci>cytosol__v_gly</ci>
+              </apply>
             </apply>
+            <ci>cytosol__v_hyd</ci>
             <apply>
               <times />
               <cn cellml:units="dimensionless">2.0</cn>
-              <ci>cytosol__v_gly</ci>
+              <ci>cytosol__v_store</ci>
             </apply>
           </apply>
-          <ci>cytosol__v_hyd</ci>
+          <apply>
+            <times />
+            <cn cellml:units="dimensionless">3.0</cn>
+            <ci>cytosol__v_mob</ci>
+          </apply>
         </apply>
+      </apply>
+      <apply>
+        <eq />
+        <apply>
+          <diff />
+          <bvar>
+            <ci>t</ci>
+          </bvar>
+          <ci>cytosol__C_glyc</ci>
+        </apply>
+        <apply>
+          <minus />
+          <ci>cytosol__v_store</ci>
+          <ci>cytosol__v_mob</ci>
+        </apply>
+      </apply>
+    </math>
+  
+<math xmlns="http://www.w3.org/1998/Math/MathML" xmlns:cellml="http://www.cellml.org/cellml/2.0#">
+      <apply>
+        <eq />
+        <ci>bio__n_lipid</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <cn cellml:units="dimensionless">2.0</cn>
+            <ci>membrane__A_mem</ci>
+            <ci>surface_factor_mod_bio</ci>
+          </apply>
+          <ci>area_per_lipid_mod_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__f_ATP_bio</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <apply>
+              <divide />
+              <ci>cytosol__C_ATP</ci>
+              <apply>
+                <plus />
+                <ci>K_m_ATP_bio_mod_bio</ci>
+                <ci>cytosol__C_ATP</ci>
+              </apply>
+            </apply>
+            <apply>
+              <plus />
+              <ci>K_m_ATP_bio_mod_bio</ci>
+              <ci>ATP_ref_mod_bio</ci>
+            </apply>
+          </apply>
+          <ci>ATP_ref_mod_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__f_T_dmg</ci>
+        <apply>
+          <power />
+          <ci>Q10_dmg_mod_bio</ci>
+          <apply>
+            <divide />
+            <apply>
+              <minus />
+              <ci>T</ci>
+              <ci>T_ref_dmg_mod_bio</ci>
+            </apply>
+            <ci>dT_Q10_mod_bio</ci>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__J_RNA</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <divide />
+              <apply>
+                <times />
+                <ci>n_mRNA_mod_bio</ci>
+                <ci>L_mRNA_mod_bio</ci>
+                <ci>c_nt_recycle_mod_bio</ci>
+                <apply>
+                  <ln />
+                  <cn cellml:units="dimensionless">2.0</cn>
+                </apply>
+              </apply>
+              <ci>t_half_mRNA_mod_bio</ci>
+            </apply>
+            <ci>N_A_mod_bio</ci>
+          </apply>
+          <ci>bio__f_ATP_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__J_ribo</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <ci>n_ribo_mod_bio</ci>
+              <ci>L_rRNA_mod_bio</ci>
+              <ci>c_nt_recycle_mod_bio</ci>
+              <ci>k_ribo_mod_bio</ci>
+            </apply>
+            <ci>N_A_mod_bio</ci>
+          </apply>
+          <ci>bio__f_ATP_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__J_lipid</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <ci>bio__n_lipid</ci>
+              <ci>c_lipid_mod_bio</ci>
+              <ci>k_lipid_mod_bio</ci>
+            </apply>
+            <ci>N_A_mod_bio</ci>
+          </apply>
+          <ci>bio__f_ATP_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_repair</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <ci>repair_level_mod_bio</ci>
+              <ci>r_rep_max_mod_bio</ci>
+              <ci>bio__D</ci>
+            </apply>
+            <apply>
+              <plus />
+              <ci>K_D_mod_bio</ci>
+              <ci>bio__D</ci>
+            </apply>
+          </apply>
+          <ci>bio__f_ATP_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__J_repair</ci>
+        <apply>
+          <times />
+          <ci>bio__R_repair</ci>
+          <ci>C_repair_mod_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__J_growth_used</ci>
+        <apply>
+          <times />
+          <ci>J_growth_mod_bio</ci>
+          <ci>bio__f_ATP_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__J_ATP_bio</ci>
+        <apply>
+          <plus />
+          <ci>bio__J_RNA</ci>
+          <ci>bio__J_ribo</ci>
+          <ci>bio__J_lipid</ci>
+          <ci>bio__J_repair</ci>
+          <ci>bio__J_growth_used</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__M_build_bio</ci>
+        <apply>
+          <divide />
+          <apply>
+            <plus />
+            <apply>
+              <times />
+              <apply>
+                <plus />
+                <apply>
+                  <times />
+                  <ci>n_mRNA_mod_bio</ci>
+                  <ci>L_mRNA_mod_bio</ci>
+                </apply>
+                <apply>
+                  <times />
+                  <ci>n_ribo_mod_bio</ci>
+                  <ci>L_rRNA_mod_bio</ci>
+                </apply>
+                <ci>genome_nt_mod_bio</ci>
+              </apply>
+              <ci>c_nt_denovo_mod_bio</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>bio__n_lipid</ci>
+              <ci>c_lipid_mod_bio</ci>
+            </apply>
+          </apply>
+          <ci>N_A_mod_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__j_ATP_bio</ci>
+        <apply>
+          <minus />
+          <ci>bio__J_ATP_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__j_ADP_bio</ci>
+        <ci>bio__J_ATP_bio</ci>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__j_Pi_bio</ci>
+        <ci>bio__J_ATP_bio</ci>
+      </apply>
+      <apply>
+        <eq />
+        <apply>
+          <diff />
+          <bvar>
+            <ci>t</ci>
+          </bvar>
+          <ci>bio__D</ci>
+        </apply>
+        <apply>
+          <minus />
+          <apply>
+            <times />
+            <ci>r_dmg_mod_bio</ci>
+            <ci>bio__f_T_dmg</ci>
+          </apply>
+          <ci>bio__R_repair</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <apply>
+          <diff />
+          <bvar>
+            <ci>t</ci>
+          </bvar>
+          <ci>bio__P_growth</ci>
+        </apply>
+        <ci>bio__J_growth_used</ci>
       </apply>
     </math>
   
@@ -1936,6 +2702,44 @@
       </apply>
       <apply>
         <eq />
+        <ci>protein__J_ATP_Glyc</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_Glyc_mod_protein</ci>
+            <ci>L_Glyc_mod_protein</ci>
+            <apply>
+              <plus />
+              <ci>c_poly_mod_protein</ci>
+              <ci>c_deg_mod_protein</ci>
+              <ci>c_recycle_mod_protein</ci>
+            </apply>
+            <ci>k_deg_mod_protein</ci>
+          </apply>
+          <ci>N_A_mod_protein</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>protein__M_build_Glyc</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_Glyc_mod_protein</ci>
+            <ci>L_Glyc_mod_protein</ci>
+            <apply>
+              <plus />
+              <ci>c_syn_mod_protein</ci>
+              <ci>c_poly_mod_protein</ci>
+            </apply>
+          </apply>
+          <ci>N_A_mod_protein</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
         <ci>protein__J_ATP_proteome</ci>
         <apply>
           <divide />
@@ -1984,6 +2788,7 @@
           <ci>protein__J_ATP_NCX</ci>
           <ci>protein__J_ATP_Glf</ci>
           <ci>protein__J_ATP_LacT</ci>
+          <ci>protein__J_ATP_Glyc</ci>
           <ci>protein__J_ATP_proteome</ci>
         </apply>
       </apply>
@@ -1999,6 +2804,7 @@
           <ci>protein__M_build_NCX</ci>
           <ci>protein__M_build_Glf</ci>
           <ci>protein__M_build_LacT</ci>
+          <ci>protein__M_build_Glyc</ci>
           <ci>protein__M_build_proteome</ci>
         </apply>
       </apply>
@@ -2958,6 +3764,7 @@
           <plus />
           <ci>i_H_ATPase__j_ATP_H</ci>
           <ci>protein__j_ATP_prot</ci>
+          <ci>bio__j_ATP_bio</ci>
         </apply>
       </apply>
     </math>
@@ -2970,6 +3777,7 @@
           <plus />
           <ci>i_H_ATPase__j_ADP_H</ci>
           <ci>protein__j_ADP_prot</ci>
+          <ci>bio__j_ADP_bio</ci>
         </apply>
       </apply>
     </math>
@@ -2982,6 +3790,7 @@
           <plus />
           <ci>i_H_ATPase__j_Pi_H</ci>
           <ci>protein__j_Pi_prot</ci>
+          <ci>bio__j_Pi_bio</ci>
         </apply>
       </apply>
     </math>

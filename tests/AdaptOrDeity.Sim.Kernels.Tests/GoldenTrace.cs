@@ -48,7 +48,9 @@ namespace AdaptOrDeity.Sim.Kernels.Tests
         }
 
         /// <summary>Root-mean-square error normalised by the golden's range (or max |value| if flat).</summary>
-        public static double Nrmse(IReadOnlyList<double> expected, IReadOnlyList<double> actual)
+        /// <param name="floor">Smallest scale: the golden's absolute tolerance, so a quantity that stays at zero compares
+        /// round-off with round-off instead of dividing by nothing.</param>
+        public static double Nrmse(IReadOnlyList<double> expected, IReadOnlyList<double> actual, double floor = 1e-300)
         {
             double sum = 0.0, min = double.MaxValue, max = double.MinValue, maxAbs = 0.0;
             for (int i = 0; i < expected.Count; i++)
@@ -59,7 +61,7 @@ namespace AdaptOrDeity.Sim.Kernels.Tests
                 max = Math.Max(max, expected[i]);
                 maxAbs = Math.Max(maxAbs, Math.Abs(expected[i]));
             }
-            double scale = max - min > 1e-12 * maxAbs ? max - min : Math.Max(maxAbs, 1e-300);
+            double scale = Math.Max(max - min > 1e-12 * maxAbs ? max - min : maxAbs, floor);
             return Math.Sqrt(sum / expected.Count) / scale;
         }
     }

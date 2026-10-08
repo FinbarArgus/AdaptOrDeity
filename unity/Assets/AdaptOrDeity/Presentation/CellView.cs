@@ -12,16 +12,19 @@ namespace AdaptOrDeity.Presentation
         public const float UnitsPerMetre = 1e5f;
 
         private static readonly Color PlainColour = new Color(0.55f, 0.85f, 0.55f);
+        private static readonly Color DeadColour = new Color(0.45f, 0.45f, 0.45f);
+        private static readonly Color ReadyColour = new Color(0.75f, 0.95f, 0.55f);
         private static Sprite _circle;
 
         private SessionBridge _bridge;
         private SpriteRenderer _renderer;
         private int _cellIndex;
+        private float _diameter;
 
         public int CellIndex => _cellIndex;
 
         /// <summary>Radius in world units.</summary>
-        public float Radius => 0.5f * transform.localScale.x;
+        public float Radius => 0.5f * _diameter;
 
         public void Initialise(SessionBridge bridge, int cellIndex, float diameterMetres)
         {
@@ -29,8 +32,8 @@ namespace AdaptOrDeity.Presentation
             _cellIndex = cellIndex;
             _renderer = gameObject.AddComponent<SpriteRenderer>();
             _renderer.sprite = CircleSprite();
-            float diameter = diameterMetres * UnitsPerMetre;
-            transform.localScale = new Vector3(diameter, diameter, 1f);
+            _diameter = diameterMetres * UnitsPerMetre;
+            transform.localScale = new Vector3(_diameter, _diameter, 1f);
         }
 
         public bool Contains(Vector2 world) => ((Vector2)transform.position - world).sqrMagnitude <= Radius * Radius;
@@ -39,9 +42,19 @@ namespace AdaptOrDeity.Presentation
         {
             var frame = _bridge.Frame;
             int overlay = _bridge.ActiveOverlay;
-            if (frame == null || overlay < 0 || overlay >= frame.Channels.Length)
+            if (frame == null || _cellIndex >= frame.CellCount)
+                return;
+            // The selected cell is drawn slightly larger.
+            float scale = _diameter * (_bridge.SelectedCell == _cellIndex ? 1.12f : 1f);
+            transform.localScale = new Vector3(scale, scale, 1f);
+            if (!frame.CellAlive[_cellIndex])
             {
-                _renderer.color = PlainColour;
+                _renderer.color = DeadColour;
+                return;
+            }
+            if (overlay < 0 || overlay >= frame.Channels.Length)
+            {
+                _renderer.color = frame.CellCanDivide[_cellIndex] ? ReadyColour : PlainColour;
                 return;
             }
             var info = _bridge.Schema.Overlays[overlay];

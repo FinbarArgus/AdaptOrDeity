@@ -13,6 +13,12 @@
   "general_ports": [],
   "variables_and_units": [
    [
+    "ATP_ref_mod_bio",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
     "ATP_ref_mod_protein",
     "millimolar",
     "access",
@@ -61,6 +67,18 @@
     "constant"
    ],
    [
+    "C_glyc_init_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "C_glyc_max_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
     "C_lac_e_mod_membrane_face",
     "millimolar",
     "access",
@@ -69,6 +87,12 @@
    [
     "C_lac_init_mod_cytosol",
     "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "C_repair_mod_bio",
+    "mole",
     "access",
     "constant"
    ],
@@ -111,6 +135,12 @@
    [
     "Cao_mod_i_leak_Ca",
     "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "D_init_mod_bio",
+    "dimensionless",
     "access",
     "constant"
    ],
@@ -187,6 +217,12 @@
     "constant"
    ],
    [
+    "J_growth_mod_bio",
+    "mol_per_s",
+    "access",
+    "constant"
+   ],
+   [
     "K_ADP_gly_mod_cytosol",
     "millimolar",
     "access",
@@ -194,6 +230,12 @@
    ],
    [
     "K_ADP_hyd_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_ADP_mob_mod_cytosol",
     "millimolar",
     "access",
     "constant"
@@ -211,6 +253,18 @@
     "constant"
    ],
    [
+    "K_ATP_store_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_D_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "K_Pi_gly_mod_cytosol",
     "millimolar",
     "access",
@@ -218,6 +272,12 @@
    ],
    [
     "K_Pi_hyd_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_Pi_mob_mod_cytosol",
     "millimolar",
     "access",
     "constant"
@@ -235,7 +295,25 @@
     "constant"
    ],
    [
+    "K_glc_store_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
     "K_glc_t_mod_membrane_face",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_glyc_mob_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_i_ATP_mob_mod_cytosol",
     "millimolar",
     "access",
     "constant"
@@ -254,6 +332,12 @@
    ],
    [
     "K_m_ATP_H_mod_i_H_ATPase",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_m_ATP_bio_mod_bio",
     "millimolar",
     "access",
     "constant"
@@ -301,6 +385,12 @@
     "constant"
    ],
    [
+    "L_Glyc_mod_protein",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "L_H_ATPase_mod_protein",
     "dimensionless",
     "access",
@@ -337,8 +427,26 @@
     "constant"
    ],
    [
+    "L_mRNA_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "L_proteome_mod_protein",
     "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "L_rRNA_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "N_A_mod_bio",
+    "per_mol",
     "access",
     "constant"
    ],
@@ -391,6 +499,18 @@
     "constant"
    ],
    [
+    "P_init_mod_bio",
+    "mole",
+    "access",
+    "constant"
+   ],
+   [
+    "Q10_dmg_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "Q10_mod_cytosol",
     "dimensionless",
     "access",
@@ -415,6 +535,12 @@
     "constant"
    ],
    [
+    "T_ref_dmg_mod_bio",
+    "kelvin",
+    "access",
+    "constant"
+   ],
+   [
     "T_ref_mod_cytosol",
     "kelvin",
     "access",
@@ -433,8 +559,20 @@
     "constant"
    ],
    [
+    "V_mob_mod_cytosol",
+    "millimolar_per_s_1",
+    "access",
+    "constant"
+   ],
+   [
     "V_rest_approx_mod_membrane",
     "milliV",
+    "access",
+    "constant"
+   ],
+   [
+    "V_store_max_mod_cytosol",
+    "millimolar_per_s_1",
     "access",
     "constant"
    ],
@@ -445,10 +583,112 @@
     "constant"
    ],
    [
+    "area_per_lipid_mod_bio",
+    "um2",
+    "access",
+    "constant"
+   ],
+   [
     "beta_H_mod_H",
     "millimolar",
     "access",
     "constant"
+   ],
+   [
+    "bio__D",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__J_ATP_bio",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__J_RNA",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__J_growth_used",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__J_lipid",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__J_repair",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__J_ribo",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__M_build_bio",
+    "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__P_growth",
+    "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_repair",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__f_ATP_bio",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__f_T_dmg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__j_ADP_bio",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__j_ATP_bio",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__j_Pi_bio",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__n_lipid",
+    "dimensionless",
+    "access",
+    "variable"
    ],
    [
     "c_deg_mod_protein",
@@ -457,8 +697,26 @@
     "constant"
    ],
    [
+    "c_lipid_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "c_m_mod_membrane",
     "uF_per_cm2",
+    "access",
+    "constant"
+   ],
+   [
+    "c_nt_denovo_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "c_nt_recycle_mod_bio",
+    "dimensionless",
     "access",
     "constant"
    ],
@@ -511,6 +769,18 @@
     "variable"
    ],
    [
+    "cytosol__A_mob",
+    "J_per_mol",
+    "access",
+    "variable"
+   ],
+   [
+    "cytosol__A_store",
+    "J_per_mol",
+    "access",
+    "variable"
+   ],
+   [
     "cytosol__C_ADP",
     "millimolar",
     "access",
@@ -535,6 +805,12 @@
     "variable"
    ],
    [
+    "cytosol__C_glyc",
+    "millimolar",
+    "access",
+    "variable"
+   ],
+   [
     "cytosol__C_lac",
     "millimolar",
     "access",
@@ -553,6 +829,18 @@
     "variable"
    ],
    [
+    "cytosol__Gamma_mob",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "cytosol__Gamma_store",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "cytosol__J_ATP_turnover",
     "mol_per_s",
     "access",
@@ -566,6 +854,18 @@
    ],
    [
     "cytosol__K_eq_hyd",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "cytosol__K_eq_mob",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "cytosol__K_eq_store",
     "dimensionless",
     "access",
     "variable"
@@ -607,6 +907,18 @@
     "variable"
    ],
    [
+    "cytosol__v_mob",
+    "millimolar_per_s_2",
+    "access",
+    "variable"
+   ],
+   [
+    "cytosol__v_store",
+    "millimolar_per_s_2",
+    "access",
+    "variable"
+   ],
+   [
     "dG0_ferm_mod_cytosol",
     "J_per_mol",
     "access",
@@ -621,6 +933,18 @@
    [
     "dG0_hyd_mod_i_H_ATPase",
     "J_per_mol",
+    "access",
+    "constant"
+   ],
+   [
+    "dG0_store_mod_cytosol",
+    "J_per_mol",
+    "access",
+    "constant"
+   ],
+   [
+    "dT_Q10_mod_bio",
+    "kelvin",
     "access",
     "constant"
    ],
@@ -673,6 +997,12 @@
     "constant"
    ],
    [
+    "genome_nt_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "h_ATP_mod_cytosol",
     "J_per_mol",
     "access",
@@ -681,6 +1011,12 @@
    [
     "h_cell_mod_membrane",
     "um",
+    "access",
+    "constant"
+   ],
+   [
+    "h_glyc_poly_mod_cytosol",
+    "J_per_mol",
     "access",
     "constant"
    ],
@@ -937,6 +1273,18 @@
     "constant"
    ],
    [
+    "k_lipid_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "k_ribo_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
     "k_unbind_Ca_mod_Ca",
     "per_s",
     "access",
@@ -1159,6 +1507,12 @@
     "constant"
    ],
    [
+    "n_Glyc_mod_protein",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "n_H_ATPase_mod_protein",
     "dimensionless",
     "access",
@@ -1201,13 +1555,31 @@
     "constant"
    ],
    [
+    "n_mRNA_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "n_proteome_mod_protein",
     "dimensionless",
     "access",
     "constant"
    ],
    [
+    "n_ribo_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "protein__J_ATP_Glf",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__J_ATP_Glyc",
     "mol_per_s",
     "access",
     "variable"
@@ -1268,6 +1640,12 @@
    ],
    [
     "protein__M_build_Glf",
+    "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__M_build_Glyc",
     "mole",
     "access",
     "variable"
@@ -1357,6 +1735,24 @@
     "constant"
    ],
    [
+    "r_dmg_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "r_rep_max_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "repair_level_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "rho_H_ATPase_mod_i_H_ATPase",
     "per_um2",
     "access",
@@ -1383,6 +1779,24 @@
    [
     "rho_leak_Na_mod_i_leak_Na",
     "per_um2",
+    "access",
+    "constant"
+   ],
+   [
+    "store_alloc_mod_cytosol",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "surface_factor_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "t_half_mRNA_mod_bio",
+    "second",
     "access",
     "constant"
    ]

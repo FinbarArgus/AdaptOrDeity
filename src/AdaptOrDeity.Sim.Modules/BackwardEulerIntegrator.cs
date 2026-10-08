@@ -34,6 +34,53 @@ namespace AdaptOrDeity.Sim.Modules
         /// <summary>True if every instance of the last step converged.</summary>
         public bool LastConverged { get; private set; }
 
+        /// <summary>
+        /// Steps by <paramref name="dt"/>, retrying with halved substeps (down to dt/2^maxHalvings) for any instance whose
+        /// Newton iteration did not converge or produced a non-finite state. Returns the number of halvings used.
+        /// </summary>
+        public int StepRobust(IKernel kernel, KernelBatch batch, double t, double dt, int start, int end, int maxHalvings = 12)
+        {
+            int n = batch.States.Length;
+            if (_save.Length < n)
+                _save = new double[n];
+            int worst = 0;
+            for (int k = start; k < end; k++)
+            {
+                for (int i = 0; i < n; i++)
+                    _save[i] = batch.States[i][k];
+                int halvings = 0;
+                while (true)
+                {
+                    int sub = 1 << halvings;
+                    double h = dt / sub;
+                    bool ok = true;
+                    for (int j = 0; j < sub && ok; j++)
+                    {
+                        Step(kernel, batch, t + j * h, h, k, k + 1);
+                        ok = LastConverged && Finite(batch, k, n);
+                    }
+                    if (ok || halvings >= maxHalvings)
+                        break;
+                    for (int i = 0; i < n; i++)
+                        batch.States[i][k] = _save[i];
+                    halvings++;
+                }
+                worst = Math.Max(worst, halvings);
+            }
+            kernel.ComputeVariables(t + dt, batch, start, end);
+            return worst;
+        }
+
+        private static bool Finite(KernelBatch batch, int k, int n)
+        {
+            for (int i = 0; i < n; i++)
+                if (double.IsNaN(batch.States[i][k]) || double.IsInfinity(batch.States[i][k]))
+                    return false;
+            return true;
+        }
+
+        private double[] _save = Array.Empty<double>();
+
         public void Step(IKernel kernel, KernelBatch batch, double t, double dt, int start, int end)
         {
             int n = batch.States.Length;

@@ -58,6 +58,11 @@ without mitochondria:
 3c. ~~Protein expression costs, traits and the cell panel~~ Done (2026-10-08): upstream `protein_expression`; the
    whole cell assembled into one kernel (`content/assembled/`, ADR 0007), backward Euler, goldens (rest, famine);
    `FermenterCell`/`FermenterWorld` with 13 traits; Unity `CellPanel`. Upstream sweeps cover the trait space.
+3d. ~~Energy budget, growth, division, repair, glycogen, groups, levels~~ Done (2026-10-08): upstream `biosynthesis`
+   (RNA, ribosomes, lipids, damage/repair, growth) and glycogen in `energy_metabolism`; midpoints fixed; expression
+   τ 10 s; membrane ceiling; build and growth throttled by ATP; multi-cell `FermenterWorld` with groups, division,
+   death, fixed size and level-gated features (`content/timeline.json`); Unity panel with energy controls, Divide and
+   features; camera viewport stops at the panel.
 4. Then: finite-volume reference (rings) and the homogenisation test, cell-size sweep, η(Φ).
 5. Then: commit upstream, bump the submodule, regenerate `content/assembled/` from the pinned modules.
 

@@ -11,8 +11,8 @@ namespace AdaptOrDeity.Headless
         /// Runs a session without a front end.
         /// <c>AdaptOrDeity.Headless [simSeconds] [bathO2_mM]</c>: the M2 one-cell world.
         /// <c>AdaptOrDeity.Headless fermenter [simSeconds] [trait=multiplier ...]</c>: the fermenter cell and its panel.
-        /// <c>AdaptOrDeity.Headless fermenter-trace simSeconds intervalSeconds [trait=multiplier ...]</c>: CSV of the panel
-        /// over time, with the traits applied after one interval.
+        /// <c>AdaptOrDeity.Headless fermenter-trace simSeconds intervalSeconds [trait=multiplier|level=n|growth=x|storage=x|repair=x ...]</c>:
+        /// CSV of the panel over time, with the settings applied after one interval.
         /// </summary>
         private static int Main(string[] args)
         {
@@ -86,9 +86,16 @@ namespace AdaptOrDeity.Headless
                 if (i == 1)
                     foreach (var arg in args.Skip(2))
                     {
+                        // trait=multiplier, level=n, or a control: growth=, storage=, repair= (group 0)
                         var parts = arg.Split('=');
-                        loop.Enqueue(SimCommands.SetTrait(0, traits.FindIndex(x => x.Id == parts[0]),
-                            double.Parse(parts[1], CultureInfo.InvariantCulture)));
+                        double v = double.Parse(parts[1], CultureInfo.InvariantCulture);
+                        int control = schema.Controls.ToList().FindIndex(c => c.Id == parts[0]);
+                        if (parts[0] == "level")
+                            loop.Enqueue(SimCommands.SetLevel((int)v));
+                        else if (control >= 0)
+                            loop.Enqueue(SimCommands.SetControl(0, control, v));
+                        else
+                            loop.Enqueue(SimCommands.SetTrait(0, traits.FindIndex(x => x.Id == parts[0]), v));
                     }
                 loop.ApplyCommands();
                 if (i > 0)

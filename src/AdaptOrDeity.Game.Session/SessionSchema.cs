@@ -73,6 +73,69 @@ namespace AdaptOrDeity.Game.Session
         public string Description { get; }
     }
 
+    /// <summary>
+    /// A game mechanic unlocked at a level of the evolutionary time bar (content/timeline.json). Once unlocked, an optional
+    /// feature is always the player's choice to use.
+    /// </summary>
+    public sealed class FeatureInfo
+    {
+        public FeatureInfo(string id, string name, int unlockLevel, bool optional, bool defaultEnabled, string effect)
+        {
+            Id = id;
+            Name = name;
+            UnlockLevel = unlockLevel;
+            Optional = optional;
+            DefaultEnabled = defaultEnabled;
+            Effect = effect;
+        }
+
+        public string Id { get; }
+
+        public string Name { get; }
+
+        public int UnlockLevel { get; }
+
+        public bool Optional { get; }
+
+        public bool DefaultEnabled { get; }
+
+        public string Effect { get; }
+    }
+
+    /// <summary>A per-group energy control the panel offers as a slider (growth, storage, repair).</summary>
+    public sealed class ControlInfo
+    {
+        public ControlInfo(string id, string label, double min, double max, double defaultValue, string feature, string unit,
+            string description)
+        {
+            Id = id;
+            Label = label;
+            Min = min;
+            Max = max;
+            DefaultValue = defaultValue;
+            Feature = feature;
+            Unit = unit;
+            Description = description;
+        }
+
+        public string Id { get; }
+
+        public string Label { get; }
+
+        public double Min { get; }
+
+        public double Max { get; }
+
+        public double DefaultValue { get; }
+
+        /// <summary>Feature id that must be unlocked and enabled for the control to apply.</summary>
+        public string Feature { get; }
+
+        public string Unit { get; }
+
+        public string Description { get; }
+    }
+
     /// <summary>An adaptable trait the panel offers as a slider: a multiplier on the cell's baseline.</summary>
     public sealed class TraitInfo
     {
@@ -91,7 +154,7 @@ namespace AdaptOrDeity.Game.Session
 
         public string Label { get; }
 
-        /// <summary>Protein id in content/protein_timeline.json.</summary>
+        /// <summary>Protein id in content/timeline.json.</summary>
         public string Protein { get; }
 
         /// <summary>True for protein expression; false for a kinetic midpoint.</summary>
@@ -108,13 +171,30 @@ namespace AdaptOrDeity.Game.Session
     public sealed class SessionSchema
     {
         public SessionSchema(IReadOnlyList<OverlayInfo> overlays, IReadOnlyList<double> speedPresets,
-            IReadOnlyList<DetailInfo>? details = null, IReadOnlyList<TraitInfo>? traits = null)
+            IReadOnlyList<DetailInfo>? details = null, IReadOnlyList<TraitInfo>? traits = null,
+            IReadOnlyList<ControlInfo>? controls = null, IReadOnlyList<FeatureInfo>? features = null, int maxCells = 0,
+            int maxGroups = 0)
         {
             Overlays = overlays;
             SpeedPresets = speedPresets;
             Details = details ?? new DetailInfo[0];
             Traits = traits ?? new TraitInfo[0];
+            Controls = controls ?? new ControlInfo[0];
+            Features = features ?? new FeatureInfo[0];
+            MaxCells = maxCells;
+            MaxGroups = maxGroups;
         }
+
+        /// <summary>Per-group energy controls; an entry's index is its index in <see cref="SnapshotFrame.Controls"/>.</summary>
+        public IReadOnlyList<ControlInfo> Controls { get; }
+
+        /// <summary>Game features by level; an entry's index is its index in <see cref="SnapshotFrame.FeatureEnabled"/>.</summary>
+        public IReadOnlyList<FeatureInfo> Features { get; }
+
+        /// <summary>Most cells (and so snapshot slots) the world holds.</summary>
+        public int MaxCells { get; }
+
+        public int MaxGroups { get; }
 
         /// <summary>Cell-panel quantities; an entry's index is its index in <see cref="SnapshotFrame.Details"/>.</summary>
         public IReadOnlyList<DetailInfo> Details { get; }

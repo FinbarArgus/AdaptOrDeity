@@ -39,6 +39,11 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   stiff/implicit kinetics or quasi-steady-state for fast species, and steady-state initialisation.
 - Two clocks: `EvolutionClock` (geological time, discrete per level) and `SimClock` (physiological time
   inside a level's evaluation window; the single source of truth for simulation time).
+- **Levels and features** are listed in [`content/timeline.json`](content/timeline.json) (draft): level 1 (2.0 Ga)
+  the fermenter with expression and repair; level 2 (1.9 Ga) growth, division and glycogen; level 3 respiration;
+  level 4 the eukaryotic cell; level 5 several cell groups; level 6 animals with an optional fixed body size. Every
+  feature, once unlocked, is the player's choice to use; some (fixed size) make the organism easier to maintain.
+  The same file lists when each protein existed.
 - Geology for the first levels (to be detailed in content): O₂ appeared with cyanobacteria and the Great
   Oxidation Event ~2.33 Ga, but at −2.0 Ga much of the ocean was still anoxic, so early regions differ
   (oxygenated surface oases vs anoxic deep water).
@@ -90,25 +95,42 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   phosphate are conserved by construction). Each process uses the most widely accepted rate law, or an
   existing module from the repo: common modular rate law (Liebermeister et al. 2010) for lumped enzymes,
   symmetric carrier for facilitated transport, Fick for diffusion.
-- **Energy budget and protein costs.** Glycolysis makes the ATP; it is spent by the H⁺-ATPase, by protein
-  turnover (`cell/protein_expression`: copies × length × (4 + 1 + 0.5) ~P per amino acid × 1%/h), by building new
-  protein when expression rises (copies × length × (24 + 4) ~P from glucose, charged over the adaptation time) and by
-  the remaining maintenance ATPase (DNA, RNA, lipids and the not-yet-modelled; Lynch & Marinov total). Protein synthesis slows as ATP runs out (saturating in ATP, exactly 1 at rest), so famine runs ATP down to zero, never below. Every ATP
-  hydrolysed releases one H⁺, which the cytosol accounts for. At rest: pumps 25%, protein turnover 16%, the rest
-  59%. Keeping a transporter costs little (all 2,850 H⁺-ATPases: ~200 ATP/s); building it costs a lot (~4×10⁸ ATP,
-  ~12 min of the cell's output), and a daughter pays it again, so expression is a growth and reproduction cost.
-- **Energy uses still to add** (in rough order of size for a growing cell): growth and division (building a
-  daughter: Lynch & Marinov growth cost ~2.7×10¹⁰ V^0.97 ATP; ties to reproductive output), RNA turnover (mRNA
-  half-life minutes; ribosome upkeep), lipid and membrane synthesis (scales with membrane area as cells grow),
-  DNA replication and repair (damage heuristic), motility (flagellar motors run on the proton motive force,
-  ~1,000 H⁺ per turn), glycogen storage and mobilisation (famine resistance), osmoregulation (compatible solutes
-  when salinity changes), stress proteins (chaperones, ~ATP per folding cycle; heat damage), sensing and signalling
-  (small), and membrane crowding (transporters take membrane area, a ceiling on expression rather than an ATP cost).
-- **Traits:** the player adapts transport-protein expression (×0.25–4, placeholder range) and kinetic midpoints
-  (±10%) from a cell panel ([`content/traits/fermenter.json`](content/traits/fermenter.json)); expression moves
-  with a 30-min time constant (placeholder), paced by the ATP actually available for building; midpoints change at
-  once. The whole-cell upstream sweep covers every trait over its range, temperature 0–40 °C and glucose 0–2 mM
-  (`bc_sweep.extra_parameters`: a supermodule otherwise sweeps only its globals and boundary conditions).
+- **Energy budget (ATP is the currency).** Costs and the budget are in mol ATP/s (shown as ATP/s): biochemistry is
+  stoichiometric in ATP and the cost literature is in ATP equivalents. An ATP is not a fixed energy (its free energy,
+  48.6 kJ/mol at rest, moves with ATP/ADP/Pi), so the panel also shows the free-energy use (ATP flux × ATP free
+  energy, W) and the heat (enthalpy, W). Glycolysis makes the ATP (and glycogen, 3 per glucose unit); it is spent on:
+  | Use | Model | At rest |
+  |---|---|---|
+  | H⁺-ATPase pumping | `i_H_ATPase` | 25% |
+  | Protein turnover, all proteins incl. ribosomal/nucleoid ones | `protein_expression`: copies × length × 5.5 ~P/aa × 1%/h | 16% |
+  | mRNA turnover (half-life ~5 min) and ribosome upkeep | `biosynthesis` | 7% |
+  | Membrane lipids, scaling with membrane area | `biosynthesis`: 2 × surface / 0.5 nm² lipids × 100 ~P × 1%/h | 4% |
+  | Repair, at the group's repair level | `biosynthesis`: damage 1 = lethal, 10 days unrepaired | 4% |
+  | Other maintenance (not yet itemised; Lynch & Marinov total less the above) | `energy_metabolism` ATPase | 44% |
+  | Building new protein when expression rises | `protein_expression` J_build (game-paced) | 0 |
+  | Growth: building a daughter (1.8×10¹¹ ATP; Lynch & Marinov 1.6×10¹¹) | `biosynthesis` J_growth, P_growth | 0 |
+  | Storing glycogen (2 ATP per glucose, 3 back) | `energy_metabolism` | 0 |
+
+  Every ATP hydrolysed releases one H⁺ (accounted in the cytosol). Synthesis slows as ATP runs out, so famine runs
+  ATP to zero, never below. Keeping a transporter is cheap, building it is not (all 2,850 H⁺-ATPases: ~200 ATP/s to
+  keep, ~4×10⁸ ATP to build); a daughter's proteins are 90% of its cost. Glycogen at its ceiling (10% of dry weight)
+  holds ~1% of a daughter: growth is the real store towards division, glycogen tops it up and buffers famine.
+- **Energy uses still to add:** motility (flagella on the proton motive force), osmoregulation (compatible solutes),
+  stress proteins (chaperones; heat damage), sensing and signalling, DNA replication timing within growth, and damage
+  effects short of death (damage currently only kills at a lethal load).
+- **Traits and controls (from the cell panel, per cell group):** protein expression ×0.25–4 for the 7 transporters
+  and the glycolytic enzymes ([`content/traits/fermenter.json`](content/traits/fermenter.json)), approaching its
+  target with a 10 s time constant; building is limited to 1× the resting ATP use and, like growth, throttled as ATP
+  falls below rest (stopping at 4 mM: a stringent-response rule in C#), so large changes take minutes. Transporters may take at
+  most 8% of the membrane (baseline 2.3%), a ceiling that scales with membrane area. Kinetic midpoints are fixed
+  (±10% changed almost nothing). Energy controls: growth (0–2× resting ATP use), glycogen storage (0–1), repair
+  (0–1; below ~0.1 damage outruns repair). The whole-cell upstream sweep covers every trait and control over its
+  range, temperature 0–40 °C and glucose 0–2 mM.
+- **Division, groups and fixed size.** A cell divides when its daughter is built (or glycogen can finish it), by
+  clicking Divide or automatically; both halves keep the state, traits and controls. Cells belong to groups; sliders
+  change every cell in a group (organs later use several groups). With a fixed body size a group keeps its cell count:
+  growth energy replaces dead cells, and goes to repair while the group is full. Cells share the medium but do not yet
+  exchange through the transport graph.
 - **Diffusion (reference) vs lumped (game) version:** the same bond-graph modules build both: N rings of
   `cytosol_volume` joined by `cytosol_face` (the upstream reference) and one `cytosol_volume` (the lumped
   bond graph the game runs). Their comparison is the level 0 ↔ 1 homogenisation check, with a cell-size
@@ -220,7 +242,7 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 - **2026-10-07** Every module must be verified and ideally validated against data; unvalidated modules
   are flagged "verified, not validated" in the game and tracked in this plan.
 - **2026-10-08** Proteins are unlocked by evolutionary time from
-  [`content/protein_timeline.json`](content/protein_timeline.json) (unlock = the conservative, latest
+  [`content/timeline.json`](content/timeline.json) (unlock = the conservative, latest
   published date; family-level presence counts). The 2.0 Ga fermenter's Na⁺/K⁺-ATPase is a eukaryotic
   protein and an anachronism; its MCT1-based lactate carrier is an animal stand-in.
 - **2026-10-08** The fermenter uses a prokaryotic ion set with protons and pH: an F1Fo H⁺-ATPase as its only
@@ -235,14 +257,22 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.
-3. Level sequence: which epochs (dates) are the levels, and what each changes in the environment.
+3. Level sequence: the draft in `content/timeline.json` (levels 1–6) needs confirming, and what each level changes in
+   the environment.
 4. Length of each level's window (days or weeks), and whether it includes day/night cycles from the start.
 5. Homogenisation rules when an element = N cells.
 6. Modding interpreter/JIT and sandboxing; distribution platform.
 7. Placeholder parameters still needing sources (listed on the review page and in module CSVs).
 8. Unfilled copyright line in `circulatory-autogen-modules/LICENSE`, and the NOTICE text.
 9. Undated and placeholder entries in the protein timeline still need sources.
-10. Expression range (×0.25–4 placeholder) and its time constant (30 min placeholder): what limits how fast and
-    how far a cell can change a protein? Transporter copy numbers rest on placeholder turnover numbers (100–1,000/s).
+10. Expression range (×0.25–4), the build capacity (1× resting ATP use), the build ATP floor (4 mM) and the membrane
+    ceiling (8%, transporter footprints) are placeholders; transporter copy numbers rest on placeholder turnover
+    numbers (100–1,000/s).
+12. Growth is slow: glycolysis lets total ATP use rise only ~1.3–1.5× above rest, and growth is throttled as ATP falls
+    (the same rule as protein building), so a daughter takes ~6–10 days at 20 °C (0.4–0.7% per hour for growth 0.5–2);
+    about 10 min of real time at 1000×. Raising glycolytic enzymes and Glf helps. Is that the pace you want, or should
+    level 2 be warmer or richer in glucose?
+13. Damage model placeholders: 10-day unrepaired lifetime, repair capacity 10× accrual, repair costing 10% of a
+    daughter per lethal load, Q10 2; damage does nothing until lethal. Daughters inherit the parent's damage.
 11. libcuflynx relabels some conversion-factor literals with the inverse or a dimensionless unit when flattening
     (`m3_per_um3` → `um3_per_m3`, `milliV_per_kiloV` → `dim`); values are right, units are not. Fix upstream?

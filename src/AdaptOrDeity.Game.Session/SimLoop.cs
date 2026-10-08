@@ -50,7 +50,8 @@ namespace AdaptOrDeity.Game.Session
             World = world;
             Clock = new SimClock(_options.CheckpointInterval);
             var inspect = world as IInspectableWorld;
-            Schema = new SessionSchema(world.Overlays, _options.SpeedPresets, inspect?.Details, inspect?.Traits);
+            Schema = new SessionSchema(world.Overlays, _options.SpeedPresets, inspect?.Details, inspect?.Traits,
+                inspect?.Controls, inspect?.Features, inspect?.MaxCells ?? world.CellCount, inspect?.MaxGroups ?? 0);
             // Sample on step counts, not accumulated float times, so sampling is exact and deterministic.
             _stepsPerProbeSample = Math.Max(1L, (long)Math.Round(_options.ProbeInterval / world.MacroDt));
         }
@@ -148,8 +149,9 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Creates a frame sized for this loop's world and options.</summary>
         public SnapshotFrame CreateFrame() =>
-            new SnapshotFrame(World.Overlays.Count, World.CellCount, _options.MaxProbes, _options.ProbeSamples,
-                Schema.Details.Count, Schema.Traits.Count);
+            new SnapshotFrame(World.Overlays.Count, Math.Max(World.CellCount, Schema.MaxCells), _options.MaxProbes,
+                _options.ProbeSamples, Schema.Details.Count, Schema.Traits.Count, Schema.Controls.Count, Schema.MaxGroups,
+                Schema.Features.Count);
 
         /// <summary>Writes the current state into <paramref name="frame"/> (no allocation).</summary>
         public void WriteSnapshot(SnapshotFrame frame)
@@ -177,6 +179,22 @@ namespace AdaptOrDeity.Game.Session
                         frame.TraitValues[t][k] = (float)inspect.ReadTrait(k, t);
                         frame.TraitTargets[t][k] = (float)inspect.ReadTraitTarget(k, t);
                     }
+                for (int k = 0; k < World.CellCount; k++)
+                {
+                    frame.CellGroup[k] = inspect.CellGroup(k);
+                    frame.CellAlive[k] = inspect.CellAlive(k);
+                    frame.CellCanDivide[k] = inspect.CellCanDivide(k);
+                }
+                frame.GroupCount = inspect.GroupCount;
+                for (int c = 0; c < frame.Controls.Length; c++)
+                    for (int g = 0; g < inspect.GroupCount; g++)
+                        frame.Controls[c][g] = (float)inspect.ReadControl(g, c);
+                frame.Level = inspect.Level;
+                for (int f = 0; f < frame.FeatureEnabled.Length; f++)
+                {
+                    frame.FeatureUnlocked[f] = inspect.FeatureUnlocked(f);
+                    frame.FeatureEnabled[f] = inspect.FeatureEnabled(f);
+                }
             }
             frame.ProbeCount = _probes.Count;
             for (int p = 0; p < frame.Probes.Length; p++)

@@ -30,23 +30,56 @@ namespace AdaptOrDeity.Game.Session
         double BathConcentration { get; set; }
     }
 
-    /// <summary>A world whose cells can be inspected in the cell panel and adapted through traits.</summary>
+    /// <summary>
+    /// A world of cells that can be inspected in the cell panel and adapted: traits and energy controls are set per cell
+    /// group, cells can divide and die, and features unlock by level.
+    /// </summary>
     public interface IInspectableWorld
     {
         IReadOnlyList<DetailInfo> Details { get; }
 
         IReadOnlyList<TraitInfo> Traits { get; }
 
+        IReadOnlyList<ControlInfo> Controls { get; }
+
+        IReadOnlyList<FeatureInfo> Features { get; }
+
+        int MaxCells { get; }
+
+        int MaxGroups { get; }
+
+        int GroupCount { get; }
+
+        /// <summary>Level of the evolutionary time bar being played (features unlock by level).</summary>
+        int Level { get; set; }
+
         /// <summary>Detail <paramref name="detail"/> of <paramref name="cell"/> (SI).</summary>
         double ReadDetail(int cell, int detail);
 
-        /// <summary>Current multiplier of a trait on the cell's baseline.</summary>
         double ReadTrait(int cell, int trait);
 
-        /// <summary>The multiplier the cell is adapting towards.</summary>
         double ReadTraitTarget(int cell, int trait);
 
-        /// <summary>Sets the trait's target multiplier (clamped to its range).</summary>
-        void SetTrait(int cell, int trait, double multiplier);
+        int CellGroup(int cell);
+
+        bool CellAlive(int cell);
+
+        bool CellCanDivide(int cell);
+
+        double ReadControl(int group, int control);
+
+        bool FeatureUnlocked(int feature);
+
+        bool FeatureEnabled(int feature);
+
+        /// <summary>Sets the trait's target multiplier for every cell of the group (clamped).</summary>
+        void SetTrait(int group, int trait, double multiplier);
+
+        void SetControl(int group, int control, double value);
+
+        void SetFeature(int feature, bool enabled);
+
+        /// <summary>Divides the cell (spending glycogen to finish the daughter if needed).</summary>
+        void Divide(int cell);
     }
 }
