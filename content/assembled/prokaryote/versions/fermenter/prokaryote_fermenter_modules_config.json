@@ -13,6 +13,12 @@
   "general_ports": [],
   "variables_and_units": [
    [
+    "ATP_ref_mod_protein",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
     "B_Ca_init_mod_Ca",
     "millimolar",
     "access",
@@ -248,6 +254,12 @@
    ],
    [
     "K_m_ATP_H_mod_i_H_ATPase",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_m_ATP_prot_mod_protein",
     "millimolar",
     "access",
     "constant"
@@ -1249,6 +1261,12 @@
     "variable"
    ],
    [
+    "protein__J_ATP_used",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "protein__M_build_Glf",
     "mole",
     "access",
@@ -1299,6 +1317,12 @@
    [
     "protein__M_build_proteome",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__f_ATP_prot",
+    "dimensionless",
     "access",
     "variable"
    ],

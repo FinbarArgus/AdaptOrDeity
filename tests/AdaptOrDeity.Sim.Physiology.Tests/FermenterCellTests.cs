@@ -120,6 +120,8 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
                 for (int j = 0; j < names.Length; j++)
                     sim[r][j] = cell.State(names[j]);
             }
+            Assert.That(rows.Min(x => x[Array.IndexOf(header, "cytosol__C_ATP")]), Is.GreaterThanOrEqualTo(0.0),
+                "ATP runs down to zero in famine, never below");
             for (int j = 0; j < names.Length; j++)
             {
                 int c = Array.IndexOf(header, names[j]);

@@ -45,9 +45,10 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly double[][] _traitBase;
         private readonly double[] _value;
         private readonly double[] _target;
+        private readonly double[] _planned;
         private readonly double[] _buildPerUnit;   // mol ATP to build the baseline copies of each expression trait
         private readonly int _jBuild;
-        private readonly int _aVgly, _aVhyd, _aVol, _aPump, _aProtein, _aHeat;
+        private readonly int _aVgly, _aVhyd, _aVol, _aPump, _aProtein, _aProteinFactor, _aHeat;
 
         public FermenterCell(IKernel kernel, string instance = "default", IReadOnlyList<TraitDefinition>? traits = null)
         {
@@ -61,6 +62,7 @@ namespace AdaptOrDeity.Sim.Physiology
             _traitBase = new double[Traits.Count][];
             _value = new double[Traits.Count];
             _target = new double[Traits.Count];
+            _planned = new double[Traits.Count];
             _buildPerUnit = new double[Traits.Count];
             double cBuild = External("c_syn_mod_protein") + External("c_poly_mod_protein");
             for (int i = 0; i < Traits.Count; i++)
@@ -85,6 +87,7 @@ namespace AdaptOrDeity.Sim.Physiology
             _aVol = Algebraic("membrane__Vol");
             _aPump = Algebraic("i_H_ATPase__v_ATP_H");
             _aProtein = Algebraic("protein__J_ATP_protein");
+            _aProteinFactor = Algebraic("protein__f_ATP_prot");
             _aHeat = Algebraic("cytosol__Q_met");
 
             kernel.Initialise(Batch, 0, 1);
@@ -140,24 +143,36 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public void Step(double dt)
         {
-            // Expression moves towards its target; building the extra copies costs ATP over this step.
+            // Expression moves towards its target. Building the extra copies costs ATP over this step; synthesis slows as
+            // ATP runs out (protein_expression's f_ATP), so the copies gained scale with the ATP actually spent.
             double build = 0.0;
             double relax = 1.0 - Math.Exp(-dt / ExpressionTimeConstant);
             for (int i = 0; i < Traits.Count; i++)
             {
+                _planned[i] = 0.0;
                 if (Traits[i].Kind != TraitKind.Expression || _value[i] == _target[i])
                     continue;
                 double next = _value[i] + (_target[i] - _value[i]) * relax;
                 if (Math.Abs(next - _target[i]) < 1e-9 * _target[i])
                     next = _target[i];
-                if (next > _value[i])
-                    build += (next - _value[i]) * _buildPerUnit[i];   // degraded copies are recycled: no refund
-                _value[i] = next;
-                Apply(i);
+                _planned[i] = next - _value[i];
+                if (_planned[i] > 0.0)
+                    build += _planned[i] * _buildPerUnit[i];
             }
             Batch.Externals[_jBuild][0] = build / dt;
             _integrator.Step(_kernel, Batch, Time, dt, 0, 1);
             Time += dt;
+            double f = Batch.Algebraic[_aProteinFactor][0];
+            for (int i = 0; i < Traits.Count; i++)
+            {
+                if (_planned[i] == 0.0)
+                    continue;
+                // Rising: as far as the ATP allowed. Falling: degradation needs no ATP and is not refunded.
+                _value[i] += _planned[i] > 0.0 ? _planned[i] * Math.Min(1.0, f) : _planned[i];
+                if (Math.Abs(_value[i] - _target[i]) < 1e-9 * _target[i])
+                    _value[i] = _target[i];
+                Apply(i);
+            }
         }
 
         /// <summary>The energy budget now [mol ATP/s, W].</summary>
@@ -169,8 +184,9 @@ namespace AdaptOrDeity.Sim.Physiology
             {
                 AtpProduced = 2.0 * a[_aVgly][0] * vol,
                 AtpPumps = a[_aPump][0],
-                AtpProteinTurnover = a[_aProtein][0],
-                AtpProteinBuild = Batch.Externals[_jBuild][0],
+                // Protein synthesis slows as ATP runs out (f = 1 at the resting ATP).
+                AtpProteinTurnover = a[_aProtein][0] * a[_aProteinFactor][0],
+                AtpProteinBuild = Batch.Externals[_jBuild][0] * Math.Min(1.0, a[_aProteinFactor][0]),
                 AtpOtherMaintenance = a[_aVhyd][0] * vol,
                 Heat = a[_aHeat][0],
             };

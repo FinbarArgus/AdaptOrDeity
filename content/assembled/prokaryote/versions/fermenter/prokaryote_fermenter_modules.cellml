@@ -481,6 +481,7 @@
     <unit exponent="-1" units="milliV"/>
   </units>
   <component name="cell">
+    <variable name="ATP_ref_mod_protein" units="millimolar"/>
     <variable name="B_Ca_init_mod_Ca" units="millimolar"/>
     <variable name="B_Ca_total_mod_Ca" units="millimolar"/>
     <variable name="C_ADP_init_mod_cytosol" units="millimolar"/>
@@ -521,6 +522,7 @@
     <variable name="K_lac_mod_cytosol" units="millimolar"/>
     <variable name="K_lac_t_mod_membrane_face" units="millimolar"/>
     <variable name="K_m_ATP_H_mod_i_H_ATPase" units="millimolar"/>
+    <variable name="K_m_ATP_prot_mod_protein" units="millimolar"/>
     <variable name="Ki_init_mod_Na_K" units="millimolar"/>
     <variable name="KmCa_mod_i_NaCa" units="millimolar"/>
     <variable name="KmNai_mod_i_NaCa" units="millimolar"/>
@@ -687,6 +689,7 @@
     <variable name="protein__J_ATP_Trk" units="mol_per_s"/>
     <variable name="protein__J_ATP_protein" units="mol_per_s"/>
     <variable name="protein__J_ATP_proteome" units="mol_per_s"/>
+    <variable name="protein__J_ATP_used" units="mol_per_s"/>
     <variable name="protein__M_build_Glf" units="mole"/>
     <variable name="protein__M_build_H_ATPase" units="mole"/>
     <variable name="protein__M_build_KefC" units="mole"/>
@@ -696,6 +699,7 @@
     <variable name="protein__M_build_Trk" units="mole"/>
     <variable name="protein__M_build_protein" units="mole"/>
     <variable name="protein__M_build_proteome" units="mole"/>
+    <variable name="protein__f_ATP_prot" units="dimensionless"/>
     <variable name="protein__j_ADP_prot" units="mol_per_s"/>
     <variable name="protein__j_ATP_prot" units="mol_per_s"/>
     <variable name="protein__j_Pi_prot" units="mol_per_s"/>
@@ -2000,33 +2004,59 @@
       </apply>
       <apply>
         <eq />
-        <ci>protein__j_ATP_prot</ci>
+        <ci>protein__f_ATP_prot</ci>
         <apply>
-          <minus />
+          <divide />
+          <apply>
+            <times />
+            <apply>
+              <divide />
+              <ci>cytosol__C_ATP</ci>
+              <apply>
+                <plus />
+                <ci>K_m_ATP_prot_mod_protein</ci>
+                <ci>cytosol__C_ATP</ci>
+              </apply>
+            </apply>
+            <apply>
+              <plus />
+              <ci>K_m_ATP_prot_mod_protein</ci>
+              <ci>ATP_ref_mod_protein</ci>
+            </apply>
+          </apply>
+          <ci>ATP_ref_mod_protein</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>protein__J_ATP_used</ci>
+        <apply>
+          <times />
           <apply>
             <plus />
             <ci>protein__J_ATP_protein</ci>
             <ci>J_build_mod_protein</ci>
           </apply>
+          <ci>protein__f_ATP_prot</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>protein__j_ATP_prot</ci>
+        <apply>
+          <minus />
+          <ci>protein__J_ATP_used</ci>
         </apply>
       </apply>
       <apply>
         <eq />
         <ci>protein__j_ADP_prot</ci>
-        <apply>
-          <plus />
-          <ci>protein__J_ATP_protein</ci>
-          <ci>J_build_mod_protein</ci>
-        </apply>
+        <ci>protein__J_ATP_used</ci>
       </apply>
       <apply>
         <eq />
         <ci>protein__j_Pi_prot</ci>
-        <apply>
-          <plus />
-          <ci>protein__J_ATP_protein</ci>
-          <ci>J_build_mod_protein</ci>
-        </apply>
+        <ci>protein__J_ATP_used</ci>
       </apply>
     </math>
   

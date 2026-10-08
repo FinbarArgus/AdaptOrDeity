@@ -11,11 +11,15 @@ namespace AdaptOrDeity.Headless
         /// Runs a session without a front end.
         /// <c>AdaptOrDeity.Headless [simSeconds] [bathO2_mM]</c>: the M2 one-cell world.
         /// <c>AdaptOrDeity.Headless fermenter [simSeconds] [trait=multiplier ...]</c>: the fermenter cell and its panel.
+        /// <c>AdaptOrDeity.Headless fermenter-trace simSeconds intervalSeconds [trait=multiplier ...]</c>: CSV of the panel
+        /// over time, with the traits applied after one interval.
         /// </summary>
         private static int Main(string[] args)
         {
             if (args.Length > 0 && args[0] == "fermenter")
                 return Fermenter(args.Skip(1).ToArray());
+            if (args.Length > 0 && args[0] == "fermenter-trace")
+                return FermenterTrace(args.Skip(1).ToArray());
 
             double duration = args.Length > 0 ? double.Parse(args[0], CultureInfo.InvariantCulture) : 1.0;
             using var session = SimSession.CreateOneCell();
@@ -62,6 +66,40 @@ namespace AdaptOrDeity.Headless
                 Console.WriteLine(FormattableString.Invariant(
                     $"  {traits[t].Label,-45} x{frame.TraitValues[t][0]:F3} (target x{frame.TraitTargets[t][0]:F3})"));
             PrintRejections(session);
+            return 0;
+        }
+
+        private static int FermenterTrace(string[] args)
+        {
+            double duration = double.Parse(args[0], CultureInfo.InvariantCulture);
+            double interval = double.Parse(args[1], CultureInfo.InvariantCulture);
+            var world = new FermenterWorld();
+            var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
+            var frame = loop.CreateFrame();
+            var schema = loop.Schema;
+            var traits = schema.Traits.ToList();
+            long stepsPerInterval = (long)Math.Round(interval / world.MacroDt);
+            Console.WriteLine("time_s," + string.Join(",", schema.Details.Select(d => d.Id)) + "," +
+                              string.Join(",", traits.Select(t => "trait_" + t.Id)));
+            for (long i = 0; i * interval <= duration + 1e-9; i++)
+            {
+                if (i == 1)
+                    foreach (var arg in args.Skip(2))
+                    {
+                        var parts = arg.Split('=');
+                        loop.Enqueue(SimCommands.SetTrait(0, traits.FindIndex(x => x.Id == parts[0]),
+                            double.Parse(parts[1], CultureInfo.InvariantCulture)));
+                    }
+                loop.ApplyCommands();
+                if (i > 0)
+                    loop.StepExactly(stepsPerInterval);
+                loop.WriteSnapshot(frame);
+                Console.WriteLine(FormattableString.Invariant($"{frame.SimTime:R},") +
+                                  string.Join(",", Enumerable.Range(0, schema.Details.Count).Select(d =>
+                                      frame.Details[d][0].ToString("R", CultureInfo.InvariantCulture))) + "," +
+                                  string.Join(",", Enumerable.Range(0, traits.Count).Select(t =>
+                                      frame.TraitValues[t][0].ToString("R", CultureInfo.InvariantCulture))));
+            }
             return 0;
         }
 

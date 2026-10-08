@@ -1,4 +1,5 @@
 variable_name,units,value,data_reference,sourced
+ATP_ref_mod_protein,millimolar,9.6,from the supermodule default instance,no
 B_Ca_init_mod_Ca,millimolar,7.991010113622174,from the supermodule default instance,no
 B_Ca_total_mod_Ca,millimolar,8.0,from the supermodule default instance,no
 C_ADP_init_mod_cytosol,millimolar,0.56,from the supermodule default instance,no
@@ -30,6 +31,7 @@ K_glc_t_mod_membrane_face,millimolar,4.1,from the supermodule default instance,n
 K_lac_mod_cytosol,millimolar,10.0,from the supermodule default instance,no
 K_lac_t_mod_membrane_face,millimolar,4.0,from the supermodule default instance,no
 K_m_ATP_H_mod_i_H_ATPase,millimolar,0.2,from the supermodule default instance,no
+K_m_ATP_prot_mod_protein,millimolar,0.1,from the supermodule default instance,no
 Ki_init_mod_Na_K,millimolar,200.0,from the supermodule default instance,no
 KmCa_mod_i_NaCa,millimolar,1.38,from the supermodule default instance,no
 KmNai_mod_i_NaCa,millimolar,87.5,from the supermodule default instance,no

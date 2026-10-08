@@ -1,7 +1,7 @@
 {
   "module": "/prokaryote/versions/fermenter",
   "instance": "famine",
-  "source_sha256": "96d9814bf741ccc49fc87496c38d8a455205cd8e1fd8e6343dc341f4b017e9f8",
+  "source_sha256": "fac76622a692ff2506b4862fb06c01932926650b02fb039e46a95de1245a8573",
   "modules_commit": "948630794801cc388c317dda0b16ae74181d27d5",
   "solver": "myokit 1.39.2 CVODE",
   "rtol": 1e-10,

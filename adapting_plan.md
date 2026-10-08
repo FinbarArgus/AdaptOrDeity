@@ -93,7 +93,7 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
 - **Energy budget and protein costs.** Glycolysis makes the ATP; it is spent by the H⁺-ATPase, by protein
   turnover (`cell/protein_expression`: copies × length × (4 + 1 + 0.5) ~P per amino acid × 1%/h), by building new
   protein when expression rises (copies × length × (24 + 4) ~P from glucose, charged over the adaptation time) and by
-  the remaining maintenance ATPase (DNA, RNA, lipids and the not-yet-modelled; Lynch & Marinov total). Every ATP
+  the remaining maintenance ATPase (DNA, RNA, lipids and the not-yet-modelled; Lynch & Marinov total). Protein synthesis slows as ATP runs out (saturating in ATP, exactly 1 at rest), so famine runs ATP down to zero, never below. Every ATP
   hydrolysed releases one H⁺, which the cytosol accounts for. At rest: pumps 25%, protein turnover 16%, the rest
   59%. Keeping a transporter costs little (all 2,850 H⁺-ATPases: ~200 ATP/s); building it costs a lot (~4×10⁸ ATP,
   ~12 min of the cell's output), and a daughter pays it again, so expression is a growth and reproduction cost.
@@ -106,7 +106,9 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   (small), and membrane crowding (transporters take membrane area, a ceiling on expression rather than an ATP cost).
 - **Traits:** the player adapts transport-protein expression (×0.25–4, placeholder range) and kinetic midpoints
   (±10%) from a cell panel ([`content/traits/fermenter.json`](content/traits/fermenter.json)); expression moves
-  with a 30-min time constant (placeholder), midpoints at once. Upstream sweeps verify the cell over this space.
+  with a 30-min time constant (placeholder), paced by the ATP actually available for building; midpoints change at
+  once. The whole-cell upstream sweep covers every trait over its range, temperature 0–40 °C and glucose 0–2 mM
+  (`bc_sweep.extra_parameters`: a supermodule otherwise sweeps only its globals and boundary conditions).
 - **Diffusion (reference) vs lumped (game) version:** the same bond-graph modules build both: N rings of
   `cytosol_volume` joined by `cytosol_face` (the upstream reference) and one `cytosol_volume` (the lumped
   bond graph the game runs). Their comparison is the level 0 ↔ 1 homogenisation check, with a cell-size

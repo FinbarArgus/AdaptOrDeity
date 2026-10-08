@@ -53,7 +53,7 @@ without mitochondria:
    submodules compile to game kernels. The whole cell conserves charge across modules (including H⁺) and
    obeys the second law in every transporter; at sea pH 8.1 it loads Na⁺ (20 → 116 mM in 6 h) and
    depolarises to −80 mV, as the NhaA thermodynamics predict.
-3. ~~Review page~~ Done: https://claude.ai/artifact/9hj7fSRpauDueTco2w4ZwC (shows the earlier Na/K-pump cell).
+3. ~~Review page~~ Done: https://claude.ai/artifact/9hj7fSRpauDueTco2w4ZwC (rebuilt 2026-10-08: prokaryotic ion set, protein costs, traits, panel replica).
 3b. ~~Prokaryotic ion set with protons and pH~~ Done (2026-10-08).
 3c. ~~Protein expression costs, traits and the cell panel~~ Done (2026-10-08): upstream `protein_expression`; the
    whole cell assembled into one kernel (`content/assembled/`, ADR 0007), backward Euler, goldens (rest, famine);
