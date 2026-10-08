@@ -82,4 +82,16 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Divides the cell (spending glycogen to finish the daughter if needed).</summary>
         void Divide(int cell);
     }
+
+    /// <summary>A world with food packets drifting through the medium.</summary>
+    public interface IFoodWorld
+    {
+        AdaptOrDeity.Sim.World.FoodField Food { get; }
+
+        /// <summary>Position of cell <paramref name="cell"/> [m].</summary>
+        void CellPosition(int cell, out double x, out double y);
+
+        /// <summary>Cell radius [m].</summary>
+        double CellRadius { get; }
+    }
 }

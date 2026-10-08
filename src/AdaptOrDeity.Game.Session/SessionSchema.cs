@@ -173,8 +173,11 @@ namespace AdaptOrDeity.Game.Session
         public SessionSchema(IReadOnlyList<OverlayInfo> overlays, IReadOnlyList<double> speedPresets,
             IReadOnlyList<DetailInfo>? details = null, IReadOnlyList<TraitInfo>? traits = null,
             IReadOnlyList<ControlInfo>? controls = null, IReadOnlyList<FeatureInfo>? features = null, int maxCells = 0,
-            int maxGroups = 0)
+            int maxGroups = 0, IReadOnlyList<string>? traceSpecies = null, double fieldHalfSize = 0.0, int maxPackets = 0)
         {
+            TraceSpecies = traceSpecies ?? new string[0];
+            FieldHalfSize = fieldHalfSize;
+            MaxPackets = maxPackets;
             Overlays = overlays;
             SpeedPresets = speedPresets;
             Details = details ?? new DetailInfo[0];
@@ -195,6 +198,14 @@ namespace AdaptOrDeity.Game.Session
         public int MaxCells { get; }
 
         public int MaxGroups { get; }
+
+        /// <summary>Names of the trace species food packets carry.</summary>
+        public IReadOnlyList<string> TraceSpecies { get; }
+
+        /// <summary>Half the side of the square food field [m] (0: no food field).</summary>
+        public double FieldHalfSize { get; }
+
+        public int MaxPackets { get; }
 
         /// <summary>Cell-panel quantities; an entry's index is its index in <see cref="SnapshotFrame.Details"/>.</summary>
         public IReadOnlyList<DetailInfo> Details { get; }

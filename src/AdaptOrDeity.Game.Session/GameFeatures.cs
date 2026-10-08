@@ -13,6 +13,8 @@ namespace AdaptOrDeity.Game.Session
         public const string GrowthAndDivision = "growth_and_division";
         public const string GlycogenStorage = "glycogen_storage";
         public const string AutoDivide = "auto_divide";
+        public const string Chemosensing = "chemosensing";
+        public const string Swimming = "swimming";
         public const string MembraneRespiration = "membrane_respiration";
         public const string Mitochondria = "mitochondria";
         public const string MultipleGroups = "multiple_groups";
@@ -29,11 +31,15 @@ namespace AdaptOrDeity.Game.Session
             new FeatureInfo(GlycogenStorage, "Glycogen storage", 2, true, true,
                 "Store glucose as glycogen; spent when ATP falls, or to finish a nearly built daughter when you click Divide."),
             new FeatureInfo(AutoDivide, "Automatic division", 2, true, false, "Cells divide by themselves once a daughter is built."),
-            new FeatureInfo(MembraneRespiration, "Membrane respiration", 3, true, false, "Planned."),
-            new FeatureInfo(Mitochondria, "Mitochondria", 4, true, false, "Planned."),
-            new FeatureInfo(MultipleGroups, "Several cell groups", 5, true, false,
+            new FeatureInfo(Chemosensing, "Smell (chemoreceptors)", 3, true, true,
+                "Sense the trace species food packets carry. Planned."),
+            new FeatureInfo(Swimming, "Swimming (flagellum)", 3, true, false,
+                "Swim towards smells on the proton gradient. Planned."),
+            new FeatureInfo(MembraneRespiration, "Membrane respiration", 4, true, false, "Planned."),
+            new FeatureInfo(Mitochondria, "Mitochondria", 5, true, false, "Planned."),
+            new FeatureInfo(MultipleGroups, "Several cell groups", 6, true, false,
                 "Split cells into groups adapted separately (organs later); sliders change every cell in a group."),
-            new FeatureInfo(FixedBodySize, "Fixed body size", 6, true, false,
+            new FeatureInfo(FixedBodySize, "Fixed body size", 7, true, false,
                 "A group holds its number of cells: growth energy replaces dead cells, and goes to repair while the group is full."),
         };
 

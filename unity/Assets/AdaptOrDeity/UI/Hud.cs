@@ -183,7 +183,10 @@ namespace AdaptOrDeity.UI
             var mouse = Event.current.mousePosition;
             var cell = CellUnderMouse(mouse);
             if (cell == null)
+            {
+                DrawPacketTooltip(bridge, frame, mouse);
                 return;
+            }
             var overlays = bridge.Schema.Overlays;
             var text = $"Cell {cell.CellIndex}";
             for (int c = 0; c < overlays.Count; c++)
@@ -255,6 +258,25 @@ namespace AdaptOrDeity.UI
             }
             GL.End();
             GL.PopMatrix();
+        }
+
+        private void DrawPacketTooltip(SessionBridge bridge, SnapshotFrame frame, Vector2 mouse)
+        {
+            var cam = Camera.main;
+            if (cam == null || mouse.x > Screen.width - RightInset())
+                return;
+            var world = (Vector2)cam.ScreenToWorldPoint(new Vector3(mouse.x, Screen.height - mouse.y, 0f));
+            var packet = bridge.PacketAt(world);
+            if (packet == null || packet.Slot >= frame.PacketCount)
+                return;
+            var traces = bridge.Schema.TraceSpecies;
+            int t = frame.PacketTrace[packet.Slot];
+            string text = $"Food packet\nGlucose: {frame.PacketGlucose[packet.Slot]:F2} mM\n" +
+                          $"Smells of {(t < traces.Count ? traces[t] : "?")} (needs a receptor to sense)";
+            _tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, richText = true, padding = new RectOffset(8, 8, 6, 6) };
+            var content = new GUIContent(text);
+            var size = _tooltipStyle.CalcSize(content);
+            GUI.Box(new Rect(mouse.x + 16, mouse.y + 16, size.x, size.y), content, _tooltipStyle);
         }
 
         /// <summary>Width taken by the cell panel on the right, if open.</summary>

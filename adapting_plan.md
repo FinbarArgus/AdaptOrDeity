@@ -40,8 +40,10 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
 - Two clocks: `EvolutionClock` (geological time, discrete per level) and `SimClock` (physiological time
   inside a level's evaluation window; the single source of truth for simulation time).
 - **Levels and features** are listed in [`content/timeline.json`](content/timeline.json) (draft): level 1 (2.0 Ga)
-  the fermenter with expression and repair; level 2 (1.9 Ga) growth, division and glycogen; level 3 respiration;
-  level 4 the eukaryotic cell; level 5 several cell groups; level 6 animals with an optional fixed body size. Every
+  the fermenter with expression and repair; level 2 (1.9 Ga) growth, division and glycogen; level 3 (1.85 Ga) smell
+  (chemoreceptors) and swimming (flagellum), historically available from the start (bacterial chemotaxis predates
+  2 Ga) but placed here for pacing; level 4 respiration; level 5 the eukaryotic cell; level 6 several cell groups;
+  level 7 animals with an optional fixed body size. Every
   feature, once unlocked, is the player's choice to use; some (fixed size) make the organism easier to maintain.
   The same file lists when each protein existed.
 - Geology for the first levels (to be detailed in content): O₂ appeared with cyanobacteria and the Great
@@ -126,6 +128,11 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   (±10% changed almost nothing). Energy controls: growth (0–2× resting ATP use), glycogen storage (0–1), repair
   (0–1; below ~0.1 damage outruns repair). The whole-cell upstream sweep covers every trait and control over its
   range, temperature 0–40 °C and glucose 0–2 mM.
+- **Food packets.** Packets of glucose (10 mM, placeholder) with traces of other species (aspartate, serine, ribose,
+  dimethyl sulfide) enter from any boundary of a 30 µm field, drift across (0.05 µm/s) and leave. A cell touching a
+  packet sees background + packet glucose at its membrane and takes it up through its own carriers (Glf); what it
+  takes beyond the background comes out of the packet. Traces are recorded at the membrane for smell (level 3); nothing
+  takes them up yet. `Sim.World.FoodField` stands in for the environment field of the transport graph.
 - **Division, groups and fixed size.** A cell divides when its daughter is built (or glycogen can finish it), by
   clicking Divide or automatically; both halves keep the state, traits and controls. Cells belong to groups; sliders
   change every cell in a group (organs later use several groups). With a fixed body size a group keeps its cell count:

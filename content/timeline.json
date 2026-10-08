@@ -26,6 +26,17 @@
   },
   {
    "level": 3,
+   "ga": 1.85,
+   "name": "Smell and swim",
+   "summary": "Chemoreceptors let a cell sense the trace species food packets carry, and a flagellum lets it swim towards them (run and tumble).",
+   "unlocks": [
+    "chemosensing",
+    "swimming"
+   ],
+   "note": "Historically these exist from the game's start: bacterial chemotaxis evolved from two-component systems after the three domains split, well before 2 Ga (Wuichet & Zhulin 2010). Level 3 is a pacing choice."
+  },
+  {
+   "level": 4,
    "ga": 1.8,
    "name": "Breathing oxygen",
    "summary": "Membrane respiration with heme-copper oxidases where O2 is available (planned).",
@@ -34,7 +45,7 @@
    ]
   },
   {
-   "level": 4,
+   "level": 5,
    "ga": 1.5,
    "name": "The eukaryotic cell",
    "summary": "Mitochondria lift the membrane-area energy limit; Na+/K+-ATPase and the cytoskeleton arrive (planned).",
@@ -43,7 +54,7 @@
    ]
   },
   {
-   "level": 5,
+   "level": 6,
    "ga": 1.0,
    "name": "Sticking together",
    "summary": "Adhesion lets cells form groups that are adapted separately: the start of organs (planned).",
@@ -52,7 +63,7 @@
    ]
   },
   {
-   "level": 6,
+   "level": 7,
    "ga": 0.75,
    "name": "Animals",
    "summary": "Tissues with collagen and cadherins; a body can hold a fixed size, turning growth energy into replacing damaged and dead cells (planned).",
@@ -104,9 +115,25 @@
    "effect": "Cells divide by themselves as soon as a daughter is built."
   },
   {
+   "id": "chemosensing",
+   "name": "Smell (chemoreceptors)",
+   "unlock_level": 3,
+   "optional": true,
+   "default_enabled": true,
+   "effect": "Express chemoreceptors to sense the trace species in food packets (aspartate, serine, ribose...); receptors cost protein like any other. Planned."
+  },
+  {
+   "id": "swimming",
+   "name": "Swimming (flagellum)",
+   "unlock_level": 3,
+   "optional": true,
+   "default_enabled": false,
+   "effect": "A flagellar motor driven by the proton gradient (~1,000 H+ per turn) moves the cell; with smell it swims up gradients towards food. Planned."
+  },
+  {
    "id": "membrane_respiration",
    "name": "Membrane respiration",
-   "unlock_level": 3,
+   "unlock_level": 4,
    "optional": true,
    "default_enabled": false,
    "effect": "Planned."
@@ -114,7 +141,7 @@
   {
    "id": "mitochondria",
    "name": "Mitochondria",
-   "unlock_level": 4,
+   "unlock_level": 5,
    "optional": true,
    "default_enabled": false,
    "effect": "Planned."
@@ -122,7 +149,7 @@
   {
    "id": "multiple_groups",
    "name": "Several cell groups",
-   "unlock_level": 5,
+   "unlock_level": 6,
    "optional": true,
    "default_enabled": false,
    "effect": "Split cells into groups adapted separately (organs later). Sliders always change every cell in the selected cell's group."
@@ -130,7 +157,7 @@
   {
    "id": "fixed_body_size",
    "name": "Fixed body size",
-   "unlock_level": 6,
+   "unlock_level": 7,
    "optional": true,
    "default_enabled": false,
    "effect": "The group holds its present number of cells: growth energy replaces dead cells instead of adding cells, and goes to repair while the group is full. Easier to maintain; no further growth."
@@ -510,6 +537,53 @@
     "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7618691/"
    ],
    "notes": "Husain et al. 2026: Mesoarchean origin (before the GOE). Trost et al. 2025: arose in the wake of the GOE (~2.4 Ga). Either way present by the game's start."
+  },
+  {
+   "id": "chemoreceptors_mcp",
+   "name": "Chemoreceptors (methyl-accepting chemotaxis proteins) with CheA/CheW/CheY",
+   "category": "sensing",
+   "function": "Sense attractants such as aspartate and serine and steer the flagellar motor",
+   "clade": "Bacteria (later transferred to Archaea)",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "likely",
+   "game_role": "Smell: sensing the trace species of food packets (level 3, feature chemosensing).",
+   "models": [],
+   "sources": [
+    "https://busqueda.bvsalud.org/portal/resource/es/mdl-20587806"
+   ],
+   "notes": "Wuichet & Zhulin 2010: the chemotaxis system evolved from simpler two-component systems in Bacteria after the domains separated, and was later transferred to Archaea. Not dated in years; assumed present by 2.0 Ga."
+  },
+  {
+   "id": "two_component_systems",
+   "name": "Two-component systems (sensor histidine kinase + response regulator)",
+   "category": "sensing",
+   "function": "Sense the environment and switch genes",
+   "clade": "Bacteria, Archaea, some eukaryotes",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "assumed",
+   "game_role": "The ancestor of chemotaxis; later, regulated responses (e.g. switch expression with conditions).",
+   "models": [],
+   "sources": [],
+   "notes": "Widespread and modular; whether they were in LUCA is unsettled. Not dated."
+  },
+  {
+   "id": "flagellum_bacterial",
+   "name": "Bacterial flagellum (proton-driven rotary motor)",
+   "category": "motility",
+   "function": "Swimming, powered by the proton motive force",
+   "clade": "Bacteria",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "unverified",
+   "game_role": "Swimming towards food (level 3, feature swimming); costs proton motive force.",
+   "models": [],
+   "sources": [],
+   "notes": "Age not checked; to verify."
   },
   {
    "id": "globins_bacterial",

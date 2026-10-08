@@ -11,10 +11,10 @@ namespace AdaptOrDeity.Presentation
     public sealed class SessionBridge : MonoBehaviour
     {
         private const float CellDiameterMetres = 2e-6f;
-        private const float SpacingUnits = 0.23f;   // world units between cell centres (1 unit = 10 µm)
 
         private SimSession _session;
         private readonly List<CellView> _views = new List<CellView>();
+        private readonly List<PacketView> _packets = new List<PacketView>();
         private Camera _camera;
         private float _zoom = 1f;   // multiplies the size that frames the colony
 
@@ -62,28 +62,6 @@ namespace AdaptOrDeity.Presentation
             SyncViews();
         }
 
-        /// <summary>World position of cell slot <paramref name="index"/>: a hexagonal spiral around the origin.</summary>
-        public static Vector3 SlotPosition(int index)
-        {
-            if (index == 0)
-                return Vector3.zero;
-            int ring = 1, start = 1;
-            while (index >= start + 6 * ring)
-            {
-                start += 6 * ring;
-                ring++;
-            }
-            int k = index - start, side = k / ring, step = k % ring;
-            Vector2[] corner =
-            {
-                new Vector2(1f, 0f), new Vector2(0.5f, 0.866f), new Vector2(-0.5f, 0.866f),
-                new Vector2(-1f, 0f), new Vector2(-0.5f, -0.866f), new Vector2(0.5f, -0.866f),
-            };
-            Vector2 a = corner[side] * ring, b = corner[(side + 1) % 6] * ring;
-            Vector2 p = Vector2.Lerp(a, b, (float)step / ring) * SpacingUnits;
-            return new Vector3(p.x, p.y, 0f);
-        }
-
         /// <summary>Creates views for cells born since the last frame and frames the colony.</summary>
         private void SyncViews()
         {
@@ -93,12 +71,31 @@ namespace AdaptOrDeity.Presentation
             {
                 var go = new GameObject($"Cell {_views.Count}");
                 go.transform.SetParent(transform, false);
-                go.transform.localPosition = SlotPosition(_views.Count);
+                // Positions come from the simulation (metres), so food contact and drawing agree.
+                go.transform.localPosition = new Vector3(Frame.CellX[_views.Count] * CellView.UnitsPerMetre,
+                    Frame.CellY[_views.Count] * CellView.UnitsPerMetre, 0f);
                 var view = go.AddComponent<CellView>();
                 view.Initialise(this, _views.Count, CellDiameterMetres);
                 _views.Add(view);
             }
+            while (_packets.Count < Frame.PacketX.Length)
+            {
+                var go = new GameObject($"Food packet {_packets.Count}");
+                go.transform.SetParent(transform, false);
+                var view = go.AddComponent<PacketView>();
+                view.Initialise(this, _packets.Count, CellView.CircleSprite());
+                _packets.Add(view);
+            }
             FrameCamera();
+        }
+
+        /// <summary>The food packet under a world point, or null.</summary>
+        public PacketView PacketAt(Vector2 world)
+        {
+            foreach (var p in _packets)
+                if (p.Contains(world))
+                    return p;
+            return null;
         }
 
         /// <summary>
@@ -115,7 +112,9 @@ namespace AdaptOrDeity.Presentation
             float radius = 0f;
             foreach (var v in _views)
                 radius = Mathf.Max(radius, v.transform.localPosition.magnitude);
-            float fit = Mathf.Max(0.6f, radius + 0.35f);
+            // Frame the colony and the food field around it.
+            float field = Schema != null ? (float)Schema.FieldHalfSize * CellView.UnitsPerMetre : 0f;
+            float fit = Mathf.Max(0.6f, radius + 0.35f, field * 1.05f);
             _zoom = Mathf.Clamp(_zoom, 0.15f / fit, 1.5f);
             _camera.orthographicSize = fit * _zoom;
             _camera.transform.position = new Vector3(0f, 0f, -10f);

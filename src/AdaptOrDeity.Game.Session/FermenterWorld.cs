@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using AdaptOrDeity.Sim.Kernels.Generated;
 using AdaptOrDeity.Sim.Modules;
 using AdaptOrDeity.Sim.Physiology;
+using AdaptOrDeity.Sim.World;
 
 namespace AdaptOrDeity.Game.Session
 {
@@ -13,7 +14,7 @@ namespace AdaptOrDeity.Game.Session
     /// keeps its number of cells: growth energy replaces dead cells, and goes to repair while the group is full. Cells
     /// share the medium but do not yet exchange anything (the transport graph comes later). Values exchanged here are SI.
     /// </summary>
-    public sealed class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld
+    public sealed class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld, IFoodWorld
     {
         /// <summary>Sim-seconds per real second: pause, 1x, 10x, 100x, 1000x.</summary>
         public static readonly double[] SpeedPresets = { 0.0, 1.0, 10.0, 100.0, 1000.0 };
@@ -54,6 +55,8 @@ namespace AdaptOrDeity.Game.Session
         private readonly Func<FermenterCell, double>[] _read;
         private readonly TraitInfo[] _traits;
         private int _level = 1;
+        private readonly FoodField _food = new FoodField();
+        private double[] _traceAtCell = new double[0];   // per cell, per trace species [mol/m³], for sensing later
 
         private sealed class Group
         {
@@ -89,6 +92,15 @@ namespace AdaptOrDeity.Game.Session
             {
                 details.Add(info);
                 read.Add(f);
+            }
+            Add(new DetailInfo("medium_glucose", "Food", "Glucose at the membrane", "mol/m³", "mM", 1.0,
+                "background plus any food packet the cell touches"), c => c.External("C_glc_e_mod_membrane_face"));
+            for (int tr = 0; tr < _food.TraceSpecies.Count; tr++)
+            {
+                int t = tr;
+                Add(new DetailInfo("trace_" + _food.TraceSpecies[t].Id, "Food", _food.TraceSpecies[t].Name + " (smell, needs a receptor)",
+                    "mol/m³", "µM", 1e3, "a trace from " + _food.TraceSpecies[t].Source),
+                    c => _traceAtCell.Length > 0 ? _traceAtCell[_cells.IndexOf(c) * _food.TraceSpecies.Count + t] : 0.0);
             }
             const string rate = "Metabolic rate", made = "ATP made", used = "ATP used", upkeep = "Protein turnover",
                 state = "Cell state", growth = "Growth and storage";
@@ -195,23 +207,51 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>The cell in slot <paramref name="cell"/> (for tests and the headless runner).</summary>
         public FermenterCell Cell(int cell) => _cells[Check(cell)];
 
-        /// <summary>Medium glucose [mol/m³], shared by every cell.</summary>
+        /// <summary>Background glucose between food packets [mol/m³].</summary>
         public double BathConcentration
         {
-            get => _cells[0].External("C_glc_e_mod_membrane_face");
+            get => _food.BackgroundGlucose;
             set
             {
                 if (!(value >= 0.0))
                     throw new ArgumentOutOfRangeException(nameof(value), "must be >= 0 mol/m³");
-                foreach (var c in _cells)
-                    c.SetExternal("C_glc_e_mod_membrane_face", value);
+                _food.BackgroundGlucose = value;
             }
         }
 
+        public FoodField Food => _food;
+
+        public double CellRadius => 1e-6;
+
+        public void CellPosition(int cell, out double x, out double y) => ColonyLayout.Slot(Check(cell), out x, out y);
+
         public void Step(double t, double dt)
         {
+            // Food: each cell sees the background plus the packets it touches; what it takes beyond the background comes
+            // out of those packets. Glucose crosses the membrane through the cell's own carriers (Glf) in the kernel.
+            _food.Step(dt);
+            int nt = _food.TraceSpecies.Count;
+            if (_traceAtCell.Length < _cells.Count * nt)
+                _traceAtCell = new double[CellLimit * nt];
             for (int i = 0; i < _cells.Count; i++)
+            {
+                ColonyLayout.Slot(i, out double x, out double y);
+                double c = _food.GlucoseAt(x, y, CellRadius);
+                _cells[i].SetExternal("C_glc_e_mod_membrane_face", c);
+                for (int tr = 0; tr < nt; tr++)
+                    _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
+            }
+            for (int i = 0; i < _cells.Count; i++)
+            {
                 _cells[i].Step(dt);
+                double c = _cells[i].External("C_glc_e_mod_membrane_face");
+                double uptake = _cells[i].AlgebraicValue("membrane_face__J_glc") * dt;   // mol into the cell
+                if (c > _food.BackgroundGlucose && uptake > 0.0)
+                {
+                    ColonyLayout.Slot(i, out double x, out double y);
+                    _food.Withdraw(x, y, CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
+                }
+            }
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))

@@ -1,0 +1,410 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hardcoded Math Review</title>
+<style>
+:root { --bg:#f6f7f9; --sheet:#fff; --ink:#151a21; --ink2:#4a5361; --rule:#dde1e7; --tint:#eef2f7; --accent:#1c5cab;
+  --keep:#1d6b3a; --keepbg:#e3f2e8; --move:#9b1c1c; --movebg:#fbe4e4; --decide:#8a4a00; --decidebg:#fbeedb; --derive:#3d3290; --derivebg:#ebe9f8; }
+@media (prefers-color-scheme: dark) { :root { --bg:#111317; --sheet:#181b20; --ink:#eceef2; --ink2:#b4bac5; --rule:#2c3139; --tint:#1f242b; --accent:#6da7ec;
+  --keep:#8fd6a8; --keepbg:#173323; --move:#f3a3a3; --movebg:#3c1b1b; --decide:#f2bf73; --decidebg:#3a2a12; --derive:#b7aef5; --derivebg:#2a2650; } }
+body { background:var(--bg); color:var(--ink); font:15px/1.6 "Helvetica Neue",Arial,sans-serif; margin:0; }
+main { max-width:1000px; margin:0 auto; padding:32px 16px 64px; display:grid; gap:20px; }
+h1 { margin:0; font-size:32px; } h2 { margin:24px 0 0; font-size:22px; } h3 { margin:0; font-size:16px; } h4 { margin:0 0 4px; font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink2); }
+p { margin:0; max-width:75ch; } .lede { color:var(--ink2); font-size:16px; }
+.item { background:var(--sheet); border:1px solid var(--rule); border-radius:6px; padding:16px; display:grid; gap:10px; }
+.item header { display:flex; justify-content:space-between; gap:12px; align-items:baseline; flex-wrap:wrap; }
+.loc code { font:12.5px ui-monospace,Menlo,Consolas,monospace; color:var(--ink2); }
+pre { margin:0; background:var(--tint); border-radius:4px; padding:12px; overflow-x:auto; font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace; }
+.two { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; }
+.chip { font:600 11.5px ui-monospace,Menlo,monospace; padding:2px 8px; border-radius:3px; white-space:nowrap; }
+.keep { color:var(--keep); background:var(--keepbg); } .move { color:var(--move); background:var(--movebg); }
+.decide { color:var(--decide); background:var(--decidebg); } .derive { color:var(--derive); background:var(--derivebg); }
+.summary { display:flex; flex-wrap:wrap; gap:10px; }
+.rule { border-left:3px solid var(--accent); padding-left:12px; color:var(--ink2); }
+</style></head><body><main>
+<h1>Hardcoded math review</h1>
+<p class="lede">Everything in the game that computes physiology or energy outside the CellML modules, as of AdaptOrDeity commit bd86cc9 and the upstream worktree (uncommitted). The project rule: physiology equations live upstream in CellML; C# should hold numerics, events, game rules and display. Each item says what the code does and whether it should stay where it is.</p>
+<div class="summary"><span class="chip move">3 move to CellML</span><span class="chip derive">2 read from the model</span><span class="chip decide">6 your call</span><span class="chip keep">6 keep in C#</span></div>
+<p class="rule">Not listed because it is not math: the kernels themselves (generated from CellML, never edited), the trait and feature tables (data mirrored from content files and checked by tests), Unity layout and drawing.</p>
+<h2>Physiology in C# (candidates to move upstream)</h2><article class="item">
+  <header><h3>Protein building and growth back off as ATP falls (stringent response)</h3><span class="chip move">Move to CellML</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Sim.Physiology/FermenterCell.cs:306</code></p>
+  <pre><code>            // Build no faster than the build capacity, and back off as ATP falls below rest (the stringent response):
+            // full speed at the resting ATP, none at BuildAtpFloor, so building never starves the cell.
+            double atp = Batch.States[_sAtp][0];
+            double throttle = Math.Min(1.0, Math.Max(0.0, (atp - FermenterTraits.BuildAtpFloor) / (_atpRest - FermenterTraits.BuildAtpFloor)));
+            double cap = FermenterTraits.BuildCapacity * RestingTurnover * dt * throttle;
+            Batch.Externals[_jGrowth][0] = Math.Max(0.0, GrowthFraction) * RestingTurnover * throttle;</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>A regulation law: building new protein and growth run at full speed at the resting ATP (9.6 mM) and stop at 4 mM, linearly between. Capacity 1x the resting ATP turnover. Added because without it building or growth crashed ATP to 0.1-0.7 mM and starved the pumps.</p></div><div><h4>Should it be hardcoded?</h4><p>This is physiology (how a cell allocates ATP), so by the project rule it belongs in CellML: e.g. an ATP-dependent factor in protein_expression (J_build) and biosynthesis (J_growth), replacing the current ATP/(0.1 mM + ATP) factor, with its parameters sourced or flagged. It is in C# now only because J_build and J_growth are game inputs. The linear ramp and the 4 mM floor are placeholders.</p></div></div>
+</article><article class="item">
+  <header><h3>Expression approaches its target (first-order, 10 s) and pays the build cost</h3><span class="chip move">Move to CellML</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Sim.Physiology/FermenterCell.cs:290</code></p>
+  <pre><code>            // Expression moves towards its target; building the extra copies is limited by the build capacity and slows
+            // as ATP runs out (f_ATP), so the copies gained scale with the ATP actually spent.
+            double build = 0.0;
+            double relax = 1.0 - Math.Exp(-dt / ExpressionTimeConstant);
+            for (int i = 0; i &lt; Traits.Count; i++)
+            {
+                _planned[i] = 0.0;
+                if (_value[i] == _target[i])
+                    continue;
+                double next = _value[i] + (_target[i] - _value[i]) * relax;
+                if (Math.Abs(next - _target[i]) &lt; 1e-9 * _target[i])
+                    next = _target[i];
+                _planned[i] = next - _value[i];
+                if (_planned[i] &gt; 0.0)
+                    build += _planned[i] * _buildPerUnit[i];
+            }
+            // Build no faster than the build capacity, and back off as ATP falls below rest (the stringent response):
+            // full speed at the resting ATP, none at BuildAtpFloor, so building never starves the cell.
+            double atp = Batch.States[_sAtp][0];
+            double throttle = Math.Min(1.0, Math.Max(0.0, (atp - FermenterTraits.BuildAtpFloor) / (_atpRest - FermenterTraits.BuildAtpFloor)));
+            double cap = FermenterTraits.BuildCapacity * RestingTurnover * dt * throttle;
+            Batch.Externals[_jGrowth][0] = Math.Max(0.0, GrowthFraction) * RestingTurnover * throttle;
+            double scale = build &gt; cap ? (build &gt; 0.0 ? cap / build : 0.0) : 1.0;
+            Batch.Externals[_jBuild][0] = build * scale / dt;</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>Each step the multiplier moves (target - value)(1 - exp(-dt/tau)) towards its target; the ATP for the copies gained is (delta m) x n L (c_syn + c_poly) / N_A, capped by the throttled build capacity, and copies gained afterwards are scaled by the ATP factor f actually achieved.</p></div><div><h4>Should it be hardcoded?</h4><p>The cost per copy duplicates protein_expression&#x27;s M_build = n L (c_syn + c_poly) / N_A (same parameters, read from the kernel, so it cannot drift numerically, but it is the same formula written twice). Cleaner: give protein_expression a state for the expression level per protein (d m/dt = (target - m)/tau, limited) and let it compute J_build itself; the game would then set only the targets. The no-refund rule for decreasing expression (degraded protein is recycled) is a modelling choice to confirm.</p></div></div>
+</article><article class="item">
+  <header><h3>Copies gained = planned x capacity scale x ATP factor</h3><span class="chip move">Move to CellML</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Sim.Physiology/FermenterCell.cs:316</code></p>
+  <pre><code>            double f = Math.Min(1.0, Batch.Algebraic[_aProteinFactor][0]);
+            for (int i = 0; i &lt; Traits.Count; i++)
+            {
+                if (_planned[i] == 0.0)
+                    continue;
+                // Rising: as far as capacity and ATP allowed. Falling: degradation needs no ATP and is not refunded.
+                _value[i] += _planned[i] &gt; 0.0 ? _planned[i] * scale * f : _planned[i];
+                if (Math.Abs(_value[i] - _target[i]) &lt; 1e-9 * _target[i])
+                    _value[i] = _target[i];
+                Apply(i);
+            }</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>After the step, rising expression advances only as far as the capacity and the ATP allowed (f = protein_expression&#x27;s ATP factor, capped at 1); falling expression advances in full.</p></div><div><h4>Should it be hardcoded?</h4><p>Part of the same controller; moves with it. Capping f at 1 hides that the kernel&#x27;s f exceeds 1 slightly when ATP is above rest (max 1.01), so above rest the kernel spends up to 1% more ATP than the copies credited.</p></div></div>
+</article><article class="item">
+  <header><h3>Membrane ceiling on transporter expression</h3><span class="chip decide">Your call</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Sim.Physiology/FermenterCell.cs:240</code></p>
+  <pre><code>        public void SetTrait(int trait, double multiplier)
+        {
+            var t = Traits[trait];
+            if (double.IsNaN(multiplier))
+                throw new ArgumentException(&quot;multiplier is NaN&quot;, nameof(multiplier));
+            double m = Math.Min(t.Max, Math.Max(t.Min, multiplier));
+            if (_areaPerUnit[trait] &gt; 0.0)
+            {
+                double others = 0.0;
+                for (int i = 0; i &lt; Traits.Count; i++)
+                    if (i != trait)
+                        others += _areaPerUnit[i] * Math.Max(_target[i], _value[i]);
+                double room = (TransporterAreaMax - others) / _areaPerUnit[trait];
+                m = Math.Max(t.Min, Math.Min(m, room));
+            }
+            _target[trait] = m;
+        }</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>Transporter copies x footprint (nm2: F1Fo 100, Trk 60, KefC 20, NhaA/LacT 15, NCX/Glf 12) may total at most 8% of the cell surface (baseline 2.3%). A new target is clamped to the room the other traits leave.</p></div><div><h4>Should it be hardcoded?</h4><p>A constraint on the player&#x27;s choices rather than a rate, so it can reasonably live in the game rules; but footprints and the 8% are physiology data (placeholders) that sit in C# and content/traits/fermenter.json, not in a module. Option: protein_expression outputs the membrane area of each protein so the ceiling reads it from the model.</p></div></div>
+</article><h2>Stoichiometry written again in C# (read it from the model instead)</h2><article class="item">
+  <header><h3>Energy budget assembly: 2, 3 and 2 ATP per reaction</h3><span class="chip derive">Read from the model</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Sim.Physiology/FermenterCell.cs:353</code></p>
+  <pre><code>            return new EnergyBudget
+            {
+                AtpGlycolysis = 2.0 * a[_aVgly][0] * vol,
+                AtpFromGlycogen = AtpPerGlycogenUnit * a[_aVmob][0] * vol,
+                AtpPumps = a[_aPump][0],
+                AtpProteinTurnover = a[_aProtein][0] * a[_aProteinFactor][0],
+                AtpProteinBuild = Batch.Externals[_jBuild][0] * f,
+                AtpRna = a[_aRna][0] + a[_aRibo][0],
+                AtpLipids = a[_aLipid][0],
+                AtpRepair = a[_aRepair][0],
+                AtpGrowth = a[_aGrowthUsed][0],
+                AtpStorage = 2.0 * a[_aVstore][0] * vol,
+                AtpOtherMaintenance = a[_aVhyd][0] * vol,
+                Heat = a[_aHeat][0],
+            };</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>ATP made = 2 v_gly V (glycolysis) + 3 v_mob V (glycogen); storage = 2 v_store V; maintenance = v_hyd V; protein terms multiplied by the ATP factor.</p></div><div><h4>Should it be hardcoded?</h4><p>These factors are the bond graph&#x27;s stoichiometry, already in energy_metabolism. If the CellML changes (e.g. a different storage pathway), the panel would silently disagree. Better: energy_metabolism outputs J_ATP_glycolysis, J_ATP_glycogen, J_ATP_storage, J_ATP_maintenance (mol/s) and the panel reads them. The C# test that ATP made = ATP used at rest would catch a mismatch at rest, but not during storage or mobilisation.</p></div></div>
+</article><article class="item">
+  <header><h3>Glycogen spent to finish a daughter: 3 ATP per glucose unit</h3><span class="chip derive">Read from the model</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Sim.Physiology/FermenterCell.cs:335</code></p>
+  <pre><code>        public FermenterCell? Divide()
+        {
+            if (!CanDivide)
+                return null;
+            double shortfall = Math.Max(0.0, DaughterCost - GrowthInvested);
+            if (shortfall &gt; 0.0)
+                Batch.States[_sGlycogen][0] = Math.Max(0.0, Glycogen - shortfall / (AtpPerGlycogenUnit * Volume));
+            Batch.States[_sGrowth][0] = 0.0;
+            _kernel.ComputeVariables(Time, Batch, 0, 1);
+            return new FermenterCell(_kernel, this);
+        }</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>When Divide is clicked with the daughter not quite built, the shortfall (mol ATP) is removed from glycogen at 3 ATP per glucose unit, instantly, and the growth investment restarts at 0 in both cells. The daughter copies every state and external of the parent (symmetric division: same concentrations, same damage, glycogen concentration kept, so each half has half the amount).</p></div><div><h4>Should it be hardcoded?</h4><p>The discrete event must be C# (CellML has no events). The 3 is the mobilisation stoichiometry again; read it from the model. Spending glycogen instantly skips the time and heat of mobilising it; physically the store would be mobilised over minutes. Damage inherited by both halves is a choice (bacteria partition damage asymmetrically).</p></div></div>
+</article><h2>Game rules (belong in C#; check the choices)</h2><article class="item">
+  <header><h3>Death at a lethal damage load</h3><span class="chip keep">Keep in C#</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Sim.Physiology/FermenterCell.cs:327</code></p>
+  <pre><code>            if (Damage &gt;= 1.0)
+                Alive = false;</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>A cell whose damage reaches 1 stops being simulated and is drawn grey.</p></div><div><h4>Should it be hardcoded?</h4><p>An event, so C#. D = 1 is the definition of a lethal load in biosynthesis.</p></div></div>
+</article><article class="item">
+  <header><h3>Fixed body size: growth energy goes to repair when the group is full</h3><span class="chip decide">Your call</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Game.Session/FermenterWorld.cs:392</code></p>
+  <pre><code>
+        /// &lt;summary&gt;
+        /// Pushes each group&#x27;s controls to its cells: features that are locked or off contribute nothing, and a full group
+        /// with a fixed size spends its growth share on repair instead.
+        /// &lt;/summary&gt;
+        private void ApplyControls()
+        {
+            bool growthOn = Active(GameFeatures.GrowthAndDivision), storageOn = Active(GameFeatures.GlycogenStorage);
+            bool repairOn = Active(GameFeatures.RepairLevel), fixedSize = Active(GameFeatures.FixedBodySize);
+            for (int i = 0; i &lt; _cells.Count; i++)
+            {
+                var g = _groups[_cellGroup[i]];
+                double growth = growthOn ? g.Controls[GrowthControl] : 0.0;
+                double repair = repairOn ? g.Controls[RepairControl] : 1.0;
+                if (fixedSize &amp;&amp; AliveIn(_cellGroup[i]) &gt;= g.FixedSize)
+                {
+                    repair = Math.Min(1.0, repair + growth);
+                    growth = 0.0;
+                }
+                var c = _cells[i];
+                c.GrowthFraction = growth;
+                c.StorageAllocation = storageOn ? g.Controls[StorageControl] : 0.0;
+                c.RepairLevel = repair;</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>With the fixed-size feature on and the group at its size, the growth share is added to the repair level (capped at 1) and growth is set to 0; daughters replace dead cells in their slot.</p></div><div><h4>Should it be hardcoded?</h4><p>A game rule, so C#; but repair + growth adds a multiple of ATP turnover (0-2) to a 0-1 level, units that do not match. A cleaner rule would turn the growth ATP into extra repair ATP. Your call on the intended behaviour.</p></div></div>
+</article><article class="item">
+  <header><h3>Controls and features by level</h3><span class="chip keep">Keep in C#</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Game.Session/FermenterWorld.cs:399</code></p>
+  <pre><code>            bool growthOn = Active(GameFeatures.GrowthAndDivision), storageOn = Active(GameFeatures.GlycogenStorage);
+            bool repairOn = Active(GameFeatures.RepairLevel), fixedSize = Active(GameFeatures.FixedBodySize);
+            for (int i = 0; i &lt; _cells.Count; i++)
+            {
+                var g = _groups[_cellGroup[i]];
+                double growth = growthOn ? g.Controls[GrowthControl] : 0.0;
+                double repair = repairOn ? g.Controls[RepairControl] : 1.0;
+                if (fixedSize &amp;&amp; AliveIn(_cellGroup[i]) &gt;= g.FixedSize)
+                {
+                    repair = Math.Min(1.0, repair + growth);
+                    growth = 0.0;
+                }
+                var c = _cells[i];
+                c.GrowthFraction = growth;
+                c.StorageAllocation = storageOn ? g.Controls[StorageControl] : 0.0;</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>Locked or switched-off features contribute nothing (growth 0, storage 0, repair 1 = full repair if repair control is off).</p></div><div><h4>Should it be hardcoded?</h4><p>Game logic. Note: switching repair control off means full repair, not none.</p></div></div>
+</article><h2>Environment and transport (native code by design; check the approximations)</h2><article class="item">
+  <header><h3>Food packets: glucose a cell sees and what its uptake takes from the packet</h3><span class="chip decide">Your call</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Game.Session/FermenterWorld.cs:230</code></p>
+  <pre><code>            // Food: each cell sees the background plus the packets it touches; what it takes beyond the background comes
+            // out of those packets. Glucose crosses the membrane through the cell&#x27;s own carriers (Glf) in the kernel.
+            _food.Step(dt);
+            int nt = _food.TraceSpecies.Count;
+            if (_traceAtCell.Length &lt; _cells.Count * nt)
+                _traceAtCell = new double[CellLimit * nt];
+            for (int i = 0; i &lt; _cells.Count; i++)
+            {
+                ColonyLayout.Slot(i, out double x, out double y);
+                double c = _food.GlucoseAt(x, y, CellRadius);
+                _cells[i].SetExternal(&quot;C_glc_e_mod_membrane_face&quot;, c);
+                for (int tr = 0; tr &lt; nt; tr++)
+                    _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
+            }
+            for (int i = 0; i &lt; _cells.Count; i++)
+            {
+                _cells[i].Step(dt);
+                double c = _cells[i].External(&quot;C_glc_e_mod_membrane_face&quot;);
+                double uptake = _cells[i].AlgebraicValue(&quot;membrane_face__J_glc&quot;) * dt;   // mol into the cell
+                if (c &gt; _food.BackgroundGlucose &amp;&amp; uptake &gt; 0.0)
+                {
+                    ColonyLayout.Slot(i, out double x, out double y);
+                    _food.Withdraw(x, y, CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
+                }
+            }</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>Each step a cell&#x27;s outside glucose is set to background + the summed concentration of the packets it overlaps (no gradient inside a packet, contact = discs overlapping). After the step, the share (c - background)/c of its uptake is taken out of those packets, split by what each holds; the rest is assumed to come from the background, which is never depleted.</p></div><div><h4>Should it be hardcoded?</h4><p>Exchange between the environment and cells is native transport by design (ADR 0002), so C# is the right place; this is a stand-in for the environment field of the transport graph. Approximations to accept or replace: uniform packets, instant contact (no diffusion across a gap), the background as an infinite reservoir, lactate exported into nowhere, and the (c - b)/c attribution (exact only for uptake linear in concentration; the Glf carrier saturates at 4.1 mM, so packets are charged slightly too little). Glucose is conserved between cell and packet to within that attribution.</p></div></div>
+</article><article class="item">
+  <header><h3>Food packet movement and release</h3><span class="chip keep">Keep in C#</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Sim.World/FoodField.cs:200</code></p>
+  <pre><code>        private void Spawn()
+        {
+            FoodPacket? slot = null;
+            foreach (var p in _packets)
+                if (!p.Active)
+                {
+                    slot = p;
+                    break;
+                }
+            if (slot == null)
+                return;
+            // Enter from a random point on a random side, heading inwards within ±45° of the normal.
+            int side = _random.Next(4);
+            double along = (2.0 * _random.NextDouble() - 1.0) * HalfSize;
+            double edge = HalfSize + PacketRadius;
+            double angle = (_random.NextDouble() - 0.5) * Math.PI / 2;
+            double nx = 0, ny = 0;
+            switch (side)
+            {
+                case 0: slot.X = -edge; slot.Y = along; nx = 1; break;
+                case 1: slot.X = edge; slot.Y = along; nx = -1; break;
+                case 2: slot.X = along; slot.Y = -edge; ny = 1; break;
+                default: slot.X = along; slot.Y = edge; ny = -1; break;
+            }
+            double c = Math.Cos(angle), s = Math.Sin(angle);
+            slot.Vx = DriftSpeed * (nx * c - ny * s);
+            slot.Vy = DriftSpeed * (nx * s + ny * c);
+            slot.Radius = PacketRadius;
+            slot.Glucose = PacketGlucose * PacketVolume;
+            slot.MainTrace = _random.Next(TraceSpecies.Count);
+            for (int i = 0; i &lt; slot.Traces.Length; i++)
+                slot.Traces[i] = PacketTrace * PacketVolume * (i == slot.MainTrace ? 1.0 : 0.1);
+            slot.Active = true;
+        }</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>Packets enter from a random point on a random side, heading inward within ±45°, at 0.05 um/s, at exponentially distributed intervals (mean 300 s); 10 mM glucose, one main trace at 10 uM and the others at 1 uM. Seeded random, so runs are deterministic.</p></div><div><h4>Should it be hardcoded?</h4><p>Environment generation, a game rule; every number is a placeholder in one place (FoodField properties).</p></div></div>
+</article><h2>Display and numerics (fine in C#)</h2><article class="item">
+  <header><h3>Free-energy use and specific metabolic rate</h3><span class="chip keep">Keep in C#</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Game.Session/FermenterWorld.cs:109</code></p>
+  <pre><code>            Add(new DetailInfo(&quot;free_energy_power&quot;, rate, &quot;Free-energy use&quot;, &quot;W&quot;, &quot;fW&quot;, 1e15,
+                &quot;ATP turnover x the free energy of each ATP now (it changes with ATP, ADP and Pi): the work the cell does&quot;),
+                c =&gt; c.Budget().AtpConsumed * c.AlgebraicValue(&quot;cytosol__A_hyd&quot;));
+            Add(new DetailInfo(&quot;heat&quot;, rate, &quot;Heat&quot;, &quot;W&quot;, &quot;fW&quot;, 1e15, &quot;reaction enthalpy released&quot;), c =&gt; c.Budget().Heat);
+            Add(new DetailInfo(&quot;specific_heat&quot;, rate, &quot;Specific metabolic rate&quot;, &quot;W/kg&quot;, &quot;W/kg&quot;, 1.0,
+                &quot;heat per kg of cell (density 1100 kg/m³)&quot;), c =&gt; c.Budget().Heat / (c.Volume * CellDensity));</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>Free-energy use = ATP turnover x the ATP free energy now (W); W/kg uses a cell density of 1100 kg/m3.</p></div><div><h4>Should it be hardcoded?</h4><p>Display only. The density is a placeholder constant (could come from the membrane module if mass matters later).</p></div></div>
+</article><article class="item">
+  <header><h3>Backward Euler: finite-difference Jacobian, Newton tolerance, step halving</h3><span class="chip keep">Keep in C#</span></header>
+  <p class="loc"><code>src/AdaptOrDeity.Sim.Modules/BackwardEulerIntegrator.cs:41</code></p>
+  <pre><code>        public int StepRobust(IKernel kernel, KernelBatch batch, double t, double dt, int start, int end, int maxHalvings = 12)
+        {
+            int n = batch.States.Length;
+            if (_save.Length &lt; n)
+                _save = new double[n];
+            int worst = 0;
+            for (int k = start; k &lt; end; k++)
+            {
+                for (int i = 0; i &lt; n; i++)
+                    _save[i] = batch.States[i][k];
+                int halvings = 0;
+                while (true)
+                {
+                    int sub = 1 &lt;&lt; halvings;
+                    double h = dt / sub;
+                    bool ok = true;
+                    for (int j = 0; j &lt; sub &amp;&amp; ok; j++)
+                    {
+                        Step(kernel, batch, t + j * h, h, k, k + 1);
+                        ok = LastConverged &amp;&amp; Finite(batch, k, n);
+                    }
+                    if (ok || halvings &gt;= maxHalvings)
+                        break;
+                    for (int i = 0; i &lt; n; i++)
+                        batch.States[i][k] = _save[i];
+                    halvings++;
+                }
+                worst = Math.Max(worst, halvings);
+            }
+            kernel.ComputeVariables(t + dt, batch, start, end);
+            return worst;
+        }</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>Implicit Euler with Newton (tolerance 1e-10 on the scaled update, FD step 1e-7 relative), retried with halved substeps up to 2^12 when Newton fails or a state is not finite.</p></div><div><h4>Should it be hardcoded?</h4><p>Numerics, independent of the model. Verified against Myokit/CVODE goldens (rest exact, famine NRMSE &lt;= 4e-4).</p></div></div>
+</article><article class="item">
+  <header><h3>Flattening: restore literal units from the source modules</h3><span class="chip keep">Keep in C#</span></header>
+  <p class="loc"><code>tools/kernelgen/aod_kernelgen/flatten.py:171</code></p>
+  <pre><code>def _restore_literal_units(components, units, modules_root: Path, supermodule_config: Path) -&gt; None:
+    &quot;&quot;&quot;Give each literal in a submodule&#x27;s equations the units it has in the source module.
+
+    libcuflynx renames units while flattening and, for some conversion factors, attaches the inverse or a dimensionless
+    unit to the number (e.g. 1e-18 tagged um3_per_m3 for m3_per_um3), which leaves the flat model unit-inconsistent.
+    The literals of each submodule appear in the same order as in its source file, so units are restored by position;
+    the values must agree, or flattening stops.
+    &quot;&quot;&quot;
+    known = {u.get(&quot;name&quot;) for u in units}
+    cfg = json.loads(supermodule_config.read_text())[0]
+    for sub in cfg[&quot;submodules&quot;]:
+        comp = components.get(f&quot;mod_{sub[&#x27;name&#x27;]}_module&quot;)
+        if comp is None:
+            continue
+        matches = [d for d in modules_root.rglob(f&quot;{sub[&#x27;module_type&#x27;]}_{sub[&#x27;module_subtype&#x27;]}_modules.cellml&quot;)
+                   if d.parent.name == sub[&quot;module_subtype&quot;]]
+        if len(matches) != 1:
+            raise ValueError(f&quot;source of {sub[&#x27;name&#x27;]}: found {matches}&quot;)
+        src = ET.parse(matches[0]).getroot()
+        src_cn = [c for c in src.iter() if c.tag.endswith(&quot;}cn&quot;)]
+        flat_cn = [c for m in comp.findall(f&quot;{{{MATHML}}}math&quot;) for c in m.iter(f&quot;{{{MATHML}}}cn&quot;)]
+        if len(src_cn) != len(flat_cn):
+            raise ValueError(f&quot;{sub[&#x27;name&#x27;]}: {len(src_cn)} literals in the source, {len(flat_cn)} in the flat model&quot;)
+        def value(c):
+            parts = [t.strip() for t in c.itertext() if t.strip()]
+            return float(parts[0]) * 10 ** float(parts[1]) if len(parts) == 2 else float(parts[0])
+        unit_attr = [k for k in (&quot;units&quot;, f&quot;{{{CELLML}}}units&quot;)]
+        src_units_file = matches[0].with_name(matches[0].name.replace(&quot;_modules.cellml&quot;, &quot;_units.cellml&quot;))
+        src_units = {u.get(&quot;name&quot;): u for u in ET.parse(src_units_file).getroot() if u.tag.endswith(&quot;}units&quot;)}
+        for a, b in zip(src_cn, flat_cn):
+            va, vb = value(a), value(b)
+            if abs(va - vb) &gt; 1e-12 * max(abs(va), abs(vb), 1e-300):
+                raise ValueError(f&quot;{sub[&#x27;name&#x27;]}: literal {va} in the source but {vb} in the flat model&quot;)
+            ua = next(a.get(k) for k in a.attrib if k.endswith(&quot;units&quot;))
+            kb = next(k for k in b.attrib if k.endswith(&quot;units&quot;))
+            b.set(kb, ua)</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>libcuflynx relabels some conversion-factor literals with wrong units; kernelgen takes each literal&#x27;s units from the source module by position, checking the values match.</p></div><div><h4>Should it be hardcoded?</h4><p>Tooling workaround for an upstream bug (open question 11). No math is changed, only unit labels.</p></div></div>
+</article><h2>Calibration in the upstream builder (Python, produces CellML parameters)</h2><article class="item">
+  <header><h3>Budget shares and transporter copy numbers</h3><span class="chip decide">Your call</span></header>
+  <p class="loc"><code>tools/build_fermenter_cell.py:66</code> (upstream worktree)</p>
+  <pre><code>H_ATPASE_SHARE = 0.25                          # of total ATP turnover spent by the F1Fo H+-ATPase (placeholder)
+NHA_SHARE, KEF_SHARE = 0.3, 0.2                # of the pumped H+ re-entering by NhaA and KefC (rest: the H+ leak)
+NCX_SHARE = 0.01                               # NCX cycles per NhaA cycle
+K_H_ACT = H_I                                  # mM: the H+-ATPase is half-activated at the cytosolic set point
+V_NAK = -70.0                                  # mV: operating point of the (eukaryotic) Na/K pump module&#x27;s own instance</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>The H+-ATPase gets 25% of the ATP; of its protons 30% return by NhaA, 20% by KefC, the rest by the leak; NCX 1% of NhaA cycles. Conductances and densities are solved from these so the default point is an exact steady state.</p></div><div><h4>Should it be hardcoded?</h4><p>These numbers end up as CellML parameters marked &quot;calibrated&quot; with the reasoning in their data_reference, so they are visible and reviewable there; the shares themselves are placeholders.</p></div></div>
+</article><article class="item">
+  <header><h3>Protein, RNA, lipid and damage cost constants</h3><span class="chip decide">Your call</span></header>
+  <p class="loc"><code>tools/build_fermenter_cell.py:168</code> (upstream worktree)</p>
+  <pre><code>C_SYN, C_POLY, C_DEG, C_RECYCLE = 24.0, 4.0, 1.0, 0.5   # ~P per amino acid: biosynthesis, peptide bond, proteolysis, reuse
+K_DEG = 0.01 / 3600                                      # 1/s: bulk protein degradation about 1%/h (E. coli)
+KCAT_EFF = 100.0                                         # transport cycles per copy per second at rest (placeholder)
+PROTEOME_PER_UM3, L_PROTEOME = 3.0e6, 300.0              # proteins per um3 (Milo 2013 via BioNumbers); mean length
+GLYCOLYTIC_SHARE = 0.10                                  # of the proteome (placeholder)
+# key: (label, amino acids per functional unit, copies at rest, how the copies were estimated)
+PROTEINS = {
+    &#x27;H_ATPase&#x27;: (&#x27;F1Fo H+-ATPase&#x27;, 3 * 513 + 3 * 460 + 287 + 177 + 139 + 271 + 2 * 156 + 10 * 79, RHO_HATP * A_MEM,
+                 &#x27;rho_H_ATPase x A_mem (calibrated density)&#x27;),
+    &#x27;NhaA&#x27;: (&#x27;NhaA&#x27;, 388.0, R_NHA * NA / KCAT_EFF, &#x27;cycles at rest / 100 per copy per s (placeholder)&#x27;),
+    &#x27;KefC&#x27;: (&#x27;KefC&#x27;, 620.0, R_KEF * NA / KCAT_EFF, &#x27;cycles at rest / 100 per copy per s (placeholder)&#x27;),
+    &#x27;Trk&#x27;: (&#x27;TrkH2-TrkA4&#x27;, 2 * 483 + 4 * 458, R_KEF * NA / (10 * KCAT_EFF),
+            &#x27;K+ entry at rest / 1000 per complex per s (placeholder; the channel law lumps conductance)&#x27;),
+    &#x27;NCX&#x27;: (&#x27;NCX_Mj-type exchanger&#x27;, 302.0, RHO_NCX * A_MEM, &#x27;rho_NaCa x A_mem (calibrated density)&#x27;),
+    &#x27;Glf&#x27;: (&#x27;Glf glucose facilitator&#x27;, 473.0, VMAX_GLC * NA / (10 * KCAT_EFF), &#x27;capacity / 1000 per copy per s (placeholder)&#x27;),
+    &#x27;LacT&#x27;: (&#x27;lactate-/H+ symporter (LldP-sized)&#x27;, 551.0, VMAX_LAC * NA / (10 * KCAT_EFF),
+             &#x27;capacity / 1000 per copy per s (placeholder)&#x27;),
+    &#x27;Glyc&#x27;: (&#x27;glycolytic enzymes&#x27;, 350.0, GLYCOLYTIC_SHARE * PROTEOME_PER_UM3 * VOL * 1e18,
+             &#x27;10% of the proteome (placeholder; glycolysis is among the most abundant pathways)&#x27;),
+    &#x27;proteome&#x27;: (&#x27;rest of the proteome (ribosomal, nucleoid and other proteins)&#x27;, L_PROTEOME,
+                 (1 - GLYCOLYTIC_SHARE) * PROTEOME_PER_UM3 * VOL * 1e18, &#x27;3e6 proteins per um3 x cell volume, less the &#x27;
+                 &#x27;glycolytic enzymes&#x27;),
+}
+C_MAINT, C_BUILD = C_POLY + C_DEG + C_RECYCLE, C_SYN + C_POLY
+R_PROT = sum(n * L for _, L, n, _ in PROTEINS.values()) * C_MAINT * K_DEG / NA     # mol ATP/s at rest</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>~P per amino acid (24 biosynthesis, 4 bond, 1 proteolysis, 0.5 reuse), 1%/h turnover, copy numbers from flux / placeholder turnover numbers (100-1,000 per second per copy), proteome 3e6 per um3.</p></div><div><h4>Should it be hardcoded?</h4><p>All become CellML parameters with sources or placeholder flags. The copy numbers derived from turnover numbers are the weakest link.</p></div></div>
+</article><article class="item">
+  <header><h3>Biosynthesis constants and the maintenance remainder</h3><span class="chip decide">Your call</span></header>
+  <p class="loc"><code>tools/build_fermenter_cell.py:196</code> (upstream worktree)</p>
+  <pre><code>BIO = dict(
+    n_mRNA=1380.0 * VOL_UM3, L_mRNA=1000.0, t_half_mRNA=300.0,      # BioNumbers 1380 per ~1 um3 cell; 5 min half-life
+    n_ribo=7000.0 * VOL_UM3, L_rRNA=1542.0 + 2904.0 + 120.0, k_ribo=0.01 / 3600,   # slow growth; 16S + 23S + 5S
+    c_nt_recycle=2.0, c_nt_denovo=50.0,                              # ~P per nucleotide: NMP -&gt; NTP; made from glucose
+    area_per_lipid=0.5e-6, c_lipid=100.0, k_lipid=0.01 / 3600,        # um2 per lipid (0.5 nm2), ~P per phospholipid
+    genome_nt=2 * 4.6e6,                                            # E. coli-sized genome, both strands
+    r_dmg=1.0 / (10 * 86400), r_rep_ratio=10.0, K_D=0.1, repair_cost_fraction=0.1, Q10_dmg=2.0,
+)
+BIO[&#x27;n_lipid&#x27;] = 2 * A_SURFACE / BIO[&#x27;area_per_lipid&#x27;]
+J_RNA = BIO[&#x27;n_mRNA&#x27;] * BIO[&#x27;L_mRNA&#x27;] * BIO[&#x27;c_nt_recycle&#x27;] * math.log(2) / BIO[&#x27;t_half_mRNA&#x27;] / NA
+J_RIBO = BIO[&#x27;n_ribo&#x27;] * BIO[&#x27;L_rRNA&#x27;] * BIO[&#x27;c_nt_recycle&#x27;] * BIO[&#x27;k_ribo&#x27;] / NA
+J_LIPID = BIO[&#x27;n_lipid&#x27;] * BIO[&#x27;c_lipid&#x27;] * BIO[&#x27;k_lipid&#x27;] / NA
+M_BUILD_PROT = sum(n * L for _, L, n, _ in PROTEINS.values()) * C_BUILD / NA
+M_BUILD_RNA = (BIO[&#x27;n_mRNA&#x27;] * BIO[&#x27;L_mRNA&#x27;] + BIO[&#x27;n_ribo&#x27;] * BIO[&#x27;L_rRNA&#x27;]) * BIO[&#x27;c_nt_denovo&#x27;] / NA
+M_BUILD_LIPID = BIO[&#x27;n_lipid&#x27;] * BIO[&#x27;c_lipid&#x27;] / NA
+M_BUILD_DNA = BIO[&#x27;genome_nt&#x27;] * BIO[&#x27;c_nt_denovo&#x27;] / NA
+M_DAUGHTER = M_BUILD_PROT + M_BUILD_RNA + M_BUILD_LIPID + M_BUILD_DNA
+C_REPAIR = BIO[&#x27;repair_cost_fraction&#x27;] * M_DAUGHTER                   # mol ATP to repair a whole unit of damage
+R_REP_MAX = BIO[&#x27;r_rep_ratio&#x27;] * BIO[&#x27;r_dmg&#x27;]
+# steady damage at full repair: R_rep_max D/(K_D + D) = r_dmg
+D_REST = BIO[&#x27;K_D&#x27;] * BIO[&#x27;r_dmg&#x27;] / (R_REP_MAX - BIO[&#x27;r_dmg&#x27;])
+J_REPAIR = BIO[&#x27;r_dmg&#x27;] * C_REPAIR
+R_BIO = J_RNA + J_RIBO + J_LIPID + J_REPAIR
+V_HYD_SS = (R_TOT - R_F - R_PROT - R_BIO) / VOL   # the maintenance ATPase: what the H+-ATPase, proteins and biosynthesis don&#x27;t use
+assert V_HYD_SS &gt; 0, &#x27;the itemised costs exceed the Lynch &amp; Marinov total&#x27;</code></pre>
+  <div class="two"><div><h4>What it does</h4><p>mRNA count, length and 5-min half-life; ribosomes; lipids (0.5 nm2, 100 ~P, 1%/h); genome; damage (10 days unrepaired, repair 10x, K_D 0.1, repair costing 10% of a daughter per lethal load). The maintenance ATPase is calibrated to whatever the itemised costs leave of the Lynch &amp; Marinov total (44%).</p></div><div><h4>Should it be hardcoded?</h4><p>Parameters in CellML with references or placeholder flags; the remainder construction means any error in an itemised cost silently moves into &quot;other maintenance&quot;.</p></div></div>
+</article>
+<h2>Suggested order</h2>
+<p>1. Have energy_metabolism output its ATP fluxes per reaction, so the panel reads the budget rather than re-deriving it (removes the 2/3/2 factors). 2. Move the ATP throttle and the expression controller into protein_expression and biosynthesis (targets and growth share stay game inputs). 3. Decide the fixed-size growth-to-repair rule and the membrane ceiling's home.</p>
+</main></body></html>

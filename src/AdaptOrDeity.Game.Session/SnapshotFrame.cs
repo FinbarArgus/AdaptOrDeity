@@ -9,8 +9,15 @@ namespace AdaptOrDeity.Game.Session
     public sealed class SnapshotFrame
     {
         public SnapshotFrame(int channelCount, int cellCapacity, int probeCapacity, int probeSamples, int detailCount = 0,
-            int traitCount = 0, int controlCount = 0, int groupCapacity = 0, int featureCount = 0)
+            int traitCount = 0, int controlCount = 0, int groupCapacity = 0, int featureCount = 0, int packetCapacity = 0)
         {
+            CellX = new float[cellCapacity];
+            CellY = new float[cellCapacity];
+            PacketX = new float[packetCapacity];
+            PacketY = new float[packetCapacity];
+            PacketRadius = new float[packetCapacity];
+            PacketGlucose = new float[packetCapacity];
+            PacketTrace = new int[packetCapacity];
             CellGroup = new int[cellCapacity];
             CellAlive = new bool[cellCapacity];
             CellCanDivide = new bool[cellCapacity];
@@ -80,6 +87,26 @@ namespace AdaptOrDeity.Game.Session
         public bool[] FeatureUnlocked { get; }
 
         public bool[] FeatureEnabled { get; }
+
+        /// <summary>Per cell: position in the sheet [m].</summary>
+        public float[] CellX { get; }
+
+        public float[] CellY { get; }
+
+        /// <summary>Food packets in the field; only the first <see cref="PacketCount"/> are valid. Positions and radii [m].</summary>
+        public int PacketCount { get; internal set; }
+
+        public float[] PacketX { get; }
+
+        public float[] PacketY { get; }
+
+        public float[] PacketRadius { get; }
+
+        /// <summary>Glucose concentration in each packet [mol/m³].</summary>
+        public float[] PacketGlucose { get; }
+
+        /// <summary>The trace species each packet is richest in (index into the schema's trace species).</summary>
+        public int[] PacketTrace { get; }
 
         private static T[][] Allocate<T>(int rows, int cells)
         {

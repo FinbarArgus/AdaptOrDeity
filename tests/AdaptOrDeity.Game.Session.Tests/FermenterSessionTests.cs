@@ -29,7 +29,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             var loop = NewLoop(out _);
             var schema = loop.Schema;
             Assert.That(schema.Details.Select(d => d.Group).Distinct(), Is.EquivalentTo(new[]
-                { "Metabolic rate", "ATP made", "ATP used", "Protein turnover", "Growth and storage", "Cell state" }));
+                { "Food", "Metabolic rate", "ATP made", "ATP used", "Protein turnover", "Growth and storage", "Cell state" }));
             Assert.That(schema.Traits.Count, Is.EqualTo(8));
             Assert.That(schema.Controls.Select(c => c.Id), Is.EqualTo(new[] { "growth", "storage", "repair" }));
             Assert.That(schema.MaxCells, Is.EqualTo(FermenterWorld.CellLimit));
@@ -111,7 +111,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         public void FixedBodySizeReplacesTheDeadInsteadOfGrowing()
         {
             var loop = NewLoop(out var world);
-            loop.Enqueue(SimCommands.SetLevel(6));
+            loop.Enqueue(SimCommands.SetLevel(7));
             loop.ApplyCommands();
             FinishDaughter(world, 0);
             loop.Enqueue(SimCommands.Divide(0));

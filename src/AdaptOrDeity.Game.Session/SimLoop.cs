@@ -50,8 +50,14 @@ namespace AdaptOrDeity.Game.Session
             World = world;
             Clock = new SimClock(_options.CheckpointInterval);
             var inspect = world as IInspectableWorld;
+            var food = world as IFoodWorld;
+            var traces = new List<string>();
+            if (food != null)
+                foreach (var t in food.Food.TraceSpecies)
+                    traces.Add(t.Name);
             Schema = new SessionSchema(world.Overlays, _options.SpeedPresets, inspect?.Details, inspect?.Traits,
-                inspect?.Controls, inspect?.Features, inspect?.MaxCells ?? world.CellCount, inspect?.MaxGroups ?? 0);
+                inspect?.Controls, inspect?.Features, inspect?.MaxCells ?? world.CellCount, inspect?.MaxGroups ?? 0,
+                traces, food?.Food.HalfSize ?? 0.0, food?.Food.Packets.Count ?? 0);
             // Sample on step counts, not accumulated float times, so sampling is exact and deterministic.
             _stepsPerProbeSample = Math.Max(1L, (long)Math.Round(_options.ProbeInterval / world.MacroDt));
         }
@@ -151,7 +157,7 @@ namespace AdaptOrDeity.Game.Session
         public SnapshotFrame CreateFrame() =>
             new SnapshotFrame(World.Overlays.Count, Math.Max(World.CellCount, Schema.MaxCells), _options.MaxProbes,
                 _options.ProbeSamples, Schema.Details.Count, Schema.Traits.Count, Schema.Controls.Count, Schema.MaxGroups,
-                Schema.Features.Count);
+                Schema.Features.Count, Schema.MaxPackets);
 
         /// <summary>Writes the current state into <paramref name="frame"/> (no allocation).</summary>
         public void WriteSnapshot(SnapshotFrame frame)
@@ -195,6 +201,28 @@ namespace AdaptOrDeity.Game.Session
                     frame.FeatureUnlocked[f] = inspect.FeatureUnlocked(f);
                     frame.FeatureEnabled[f] = inspect.FeatureEnabled(f);
                 }
+            }
+            if (World is IFoodWorld foodWorld)
+            {
+                for (int k = 0; k < World.CellCount; k++)
+                {
+                    foodWorld.CellPosition(k, out double x, out double y);
+                    frame.CellX[k] = (float)x;
+                    frame.CellY[k] = (float)y;
+                }
+                int n = 0;
+                foreach (var p in foodWorld.Food.Packets)
+                {
+                    if (!p.Active || n >= frame.PacketX.Length)
+                        continue;
+                    frame.PacketX[n] = (float)p.X;
+                    frame.PacketY[n] = (float)p.Y;
+                    frame.PacketRadius[n] = (float)p.Radius;
+                    frame.PacketGlucose[n] = (float)(p.Glucose / foodWorld.Food.PacketVolume);
+                    frame.PacketTrace[n] = p.MainTrace;
+                    n++;
+                }
+                frame.PacketCount = n;
             }
             frame.ProbeCount = _probes.Count;
             for (int p = 0; p < frame.Probes.Length; p++)

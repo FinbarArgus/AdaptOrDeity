@@ -63,7 +63,7 @@ namespace AdaptOrDeity.Presentation
             _renderer.color = Colormap.Evaluate(t);
         }
 
-        private static Sprite CircleSprite()
+        public static Sprite CircleSprite()
         {
             if (_circle != null)
                 return _circle;
