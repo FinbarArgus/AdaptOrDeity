@@ -363,6 +363,11 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   `protein_expression`), growth throttling and the daughter's cost (`biosynthesis`), the ATP budget by reaction
   (`energy_metabolism`). Cells are a hierarchy of supermodules, `cell/generic_adaptive_cell`: `empty_membrane` as the
   base, a supermodule per cell type, and later bases with the proteins a class shares (an animal cell).
+- **2026-10-11** The player's creature is a module array (`<prefix>_module_array.json` + `_parameters.csv`, the format
+  libcuflynx, PhLynx and cam_testing share): each living cell an instance of the assembled cell in `content/assembled`
+  (`cell_<i>`), with the parameters the player set. `content/assembled` is a module library in the upstream layout
+  (CellML 1.1, units in their own file), so those tools build models from it. `tools/interop` tests that libcuflynx,
+  libcellml and PhLynx accept what the game writes. Saves will store the creature this way.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?

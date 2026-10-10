@@ -118,6 +118,12 @@ namespace AdaptOrDeity.UI
             if (_showFeatures)
                 DrawFeatures(bridge, schema, frame);
 
+            GUILayout.Space(6);
+            if (GUILayout.Button("Export creature model (module array)"))
+                bridge.ExportModel();
+            if (bridge.LastExport != null)
+                GUILayout.Label($"Written to {bridge.LastExport}", _small);
+
             GUILayout.EndScrollView();
             GUILayout.EndArea();
         }

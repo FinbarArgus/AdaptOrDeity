@@ -1,4 +1,5 @@
 using System;
+using AdaptOrDeity.Game.Content;
 
 namespace AdaptOrDeity.Game.Session
 {
@@ -29,6 +30,13 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Sets an energy control (growth, storage, repair) for every cell of <paramref name="group"/>.</summary>
         public static ISimCommand SetControl(int group, int control, double value) =>
             new WorldCommand(w => w.SetControl(group, control, value));
+
+        /// <summary>
+        /// Writes the creature as a module array (&lt;prefix&gt;_module_array.json and &lt;prefix&gt;_parameters.csv in
+        /// <paramref name="directory"/>; see <see cref="FermenterWorld.ToModuleArray"/>), then reports
+        /// <see cref="ModelExported"/>.
+        /// </summary>
+        public static ISimCommand ExportModel(string directory, string prefix) => new ExportModelCommand(directory, prefix);
 
         /// <summary>Divides <paramref name="cell"/>, spending glycogen to finish the daughter if needed.</summary>
         public static ISimCommand Divide(int cell) => new WorldCommand(w => w.Divide(cell));
@@ -103,6 +111,32 @@ namespace AdaptOrDeity.Game.Session
             f.SetFlagellumAngle(cell, k, angle);
         });
 
+        private sealed class ExportModelCommand : ISimCommand
+        {
+            private readonly string _directory, _prefix;
+
+            public ExportModelCommand(string directory, string prefix)
+            {
+                _directory = directory;
+                _prefix = prefix;
+            }
+
+            public void Apply(SimLoop loop)
+            {
+                if (!(loop.World is FermenterWorld world))
+                    throw new InvalidOperationException("this world has no creature model");
+                try
+                {
+                    world.ToModuleArray().Write(_directory, _prefix);
+                }
+                catch (Exception e) when (e is System.IO.IOException || e is UnauthorizedAccessException)
+                {
+                    throw new InvalidOperationException($"could not write the model to {_directory}: {e.Message}", e);
+                }
+                loop.Post(new ModelExported(loop.Clock.SimTime, System.IO.Path.Combine(_directory, ModuleArray.ArrayFile(_prefix))));
+            }
+        }
+
         private sealed class WorldCommand : ISimCommand
         {
             private readonly Action<IInspectableWorld> _action;
@@ -132,6 +166,15 @@ namespace AdaptOrDeity.Game.Session
         public CheckpointReached(double simTime, long index) : base(simTime) => Index = index;
 
         public long Index { get; }
+    }
+
+    /// <summary>The creature's model was written as a module array (<see cref="SimCommands.ExportModel"/>).</summary>
+    public sealed class ModelExported : SimEvent
+    {
+        public ModelExported(double simTime, string path) : base(simTime) => Path = path;
+
+        /// <summary>The module array file; its parameters file is next to it.</summary>
+        public string Path { get; }
     }
 
     /// <summary>A command was rejected (invalid arguments); the simulation carried on.</summary>

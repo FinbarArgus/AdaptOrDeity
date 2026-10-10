@@ -73,6 +73,7 @@ namespace AdaptOrDeity.Sim.Physiology
         {
             _kernel = kernel;
             Traits = traits;
+            Instance = instance;
             Batch = new KernelBatch(kernel.Descriptor, 1) { Count = 1 };
             Batch.ApplyInstance(instance, 0, 1);
             _target = new int[traits.Count];
@@ -84,9 +85,16 @@ namespace AdaptOrDeity.Sim.Physiology
                 _expression[i] = St(traits[i].ExpressionState);
                 _areaPerUnit[i] = Alg(traits[i].AreaPerUnit);
             }
-            _growthLevel = Ext("growth_level_mod_bio");
-            _storeAlloc = Ext("store_alloc_mod_cytosol");
-            _repairLevel = Ext("repair_level_mod_bio");
+            _growthLevel = Ext(GrowthParameter);
+            _storeAlloc = Ext(StorageParameter);
+            _repairLevel = Ext(RepairParameter);
+            var player = new List<string>();
+            foreach (var t in traits)
+                player.Add(t.TargetParameter);
+            player.Add(GrowthParameter);
+            player.Add(StorageParameter);
+            player.Add(RepairParameter);
+            PlayerParameters = player;
             _jRef = Ext("J_ref_mod_protein");
             _aGly = Alg("cytosol__J_ATP_gly");
             _aMob = Alg("cytosol__J_ATP_mob");
@@ -116,7 +124,7 @@ namespace AdaptOrDeity.Sim.Physiology
         }
 
         // A daughter: same kernel, a copy of the parent's state and parameters (targets and controls included).
-        private FermenterCell(IKernel kernel, FermenterCell parent) : this(kernel, parent.Traits)
+        private FermenterCell(IKernel kernel, FermenterCell parent) : this(kernel, parent.Traits, parent.Instance)
         {
             for (int i = 0; i < Batch.States.Length; i++)
                 Batch.States[i][0] = parent.Batch.States[i][0];
@@ -126,7 +134,16 @@ namespace AdaptOrDeity.Sim.Physiology
             _kernel.ComputeVariables(Time, Batch, 0, 1);
         }
 
+        private const string GrowthParameter = "growth_level_mod_bio", StorageParameter = "store_alloc_mod_cytosol",
+            RepairParameter = "repair_level_mod_bio";
+
         public KernelBatch Batch { get; }
+
+        /// <summary>The kernel's parameter instance the cell started from.</summary>
+        public string Instance { get; }
+
+        /// <summary>Kernel parameters the player sets: each trait's target, then the growth, storage and repair controls.</summary>
+        public IReadOnlyList<string> PlayerParameters { get; }
 
         public IReadOnlyList<TraitDefinition> Traits { get; }
 

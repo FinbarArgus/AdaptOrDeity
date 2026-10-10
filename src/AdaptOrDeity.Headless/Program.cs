@@ -13,6 +13,8 @@ namespace AdaptOrDeity.Headless
         /// <c>AdaptOrDeity.Headless fermenter [simSeconds] [trait=multiplier ...]</c>: the fermenter cell and its panel.
         /// <c>AdaptOrDeity.Headless fermenter-trace simSeconds intervalSeconds [trait=multiplier|level=n|growth=x|storage=x|repair=x ...]</c>:
         /// CSV of the panel over time, with the settings applied after one interval.
+        /// <c>AdaptOrDeity.Headless model directory [simSeconds] [level=n|trait=multiplier|growth=x|storage=x|repair=x ...]</c>:
+        /// the creature's module array (creature_module_array.json, creature_parameters.csv) after the settings and the run.
         /// </summary>
         private static int Main(string[] args)
         {
@@ -20,6 +22,8 @@ namespace AdaptOrDeity.Headless
                 return Fermenter(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "fermenter-trace")
                 return FermenterTrace(args.Skip(1).ToArray());
+            if (args.Length > 0 && args[0] == "model")
+                return Model(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "bench")
                 return Bench.Run(args.Skip(1).ToArray());
 
@@ -112,6 +116,49 @@ namespace AdaptOrDeity.Headless
                                       frame.TraitValues[t][0].ToString("R", CultureInfo.InvariantCulture))));
             }
             return 0;
+        }
+
+        private static int Model(string[] args)
+        {
+            string directory = args[0];
+            double duration = args.Length > 1 ? double.Parse(args[1], CultureInfo.InvariantCulture) : 0.0;
+            var world = new FermenterWorld();
+            var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
+            var traits = loop.Schema.Traits.ToList();
+            var controls = loop.Schema.Controls.ToList();
+            foreach (var arg in args.Skip(2))
+            {
+                var parts = arg.Split('=');
+                double v = double.Parse(parts[1], CultureInfo.InvariantCulture);
+                int control = controls.FindIndex(c => c.Id == parts[0]);
+                int trait = traits.FindIndex(t => t.Id == parts[0]);
+                if (parts[0] == "level")
+                    loop.Enqueue(SimCommands.SetLevel((int)v));
+                else if (control >= 0)
+                    loop.Enqueue(SimCommands.SetControl(0, control, v));
+                else if (trait >= 0)
+                    loop.Enqueue(SimCommands.SetTrait(0, trait, v));
+                else
+                {
+                    Console.Error.WriteLine($"unknown setting {parts[0]}; traits: {string.Join(", ", traits.Select(t => t.Id))}; " +
+                                            $"controls: {string.Join(", ", controls.Select(c => c.Id))}");
+                    return 2;
+                }
+            }
+            loop.ApplyCommands();
+            loop.StepExactly((long)Math.Round(duration / world.MacroDt));
+            loop.Enqueue(SimCommands.ExportModel(directory, "creature"));
+            loop.ApplyCommands();
+            int status = 1;
+            while (loop.TryDequeueEvent(out var e))
+                if (e is ModelExported exported)
+                {
+                    Console.WriteLine(exported.Path);
+                    status = 0;
+                }
+                else if (e is CommandRejected rejected)
+                    Console.Error.WriteLine($"rejected: {rejected.Reason}");
+            return status;
         }
 
         private static void PrintRejections(SimSession session)

@@ -192,7 +192,26 @@ namespace AdaptOrDeity.Presentation
             {
                 if (e is CommandRejected rejected)
                     Debug.LogWarning($"Simulation rejected a command: {rejected.Reason}");
+                else if (e is ModelExported exported)
+                {
+                    LastExport = exported.Path;
+                    Debug.Log($"Creature model written: {exported.Path}");
+                }
             }
+        }
+
+        /// <summary>The module array file of the last export, if any.</summary>
+        public string LastExport { get; private set; }
+
+        /// <summary>
+        /// Writes the creature as a module array (libcuflynx and PhLynx's format) under the persistent data folder, one
+        /// folder per export.
+        /// </summary>
+        public void ExportModel()
+        {
+            string dir = System.IO.Path.Combine(Application.persistentDataPath, "models",
+                System.DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", System.Globalization.CultureInfo.InvariantCulture));
+            Send(SimCommands.ExportModel(dir, "creature"));
         }
 
         private void OnDestroy()

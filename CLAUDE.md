@@ -19,6 +19,8 @@ tools/kernelgen/.venv/bin/aod-kernelgen-flatten <flat.cellml> content/assembled 
 dotnet run --project src/AdaptOrDeity.Headless -- fermenter 600 H_ATPase_expression=2   # cell panel, headless
 dotnet run -c Release --project src/AdaptOrDeity.Headless -- bench 600   # integrator speed and accuracy
 tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
+dotnet run --project src/AdaptOrDeity.Headless -- model <dir> 10 H_ATPase_expression=2   # creature as a module array
+<circulatory-autogen-modules venv>/bin/python -m pytest tools/interop   # libcuflynx, libcellml, PhLynx read it
 ```
 
 ## Rules

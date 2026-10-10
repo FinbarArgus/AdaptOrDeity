@@ -6,7 +6,8 @@ kernelgen compiles single-component modules, so this merges the model into one c
 becomes one variable: a parameter keeps its parameter name (``rho_H_ATPase_mod_i_H_ATPase``), anything else is named
 ``<submodule>__<variable>`` after the component that defines it (``membrane__V``). The result is written in the module
 library's layout (``<type>_<version>_modules.cellml``, ``_units.cellml``, ``_modules_config.json``, and the default
-instance), so ``module.load`` and the emitter treat it like any other version.
+instance), in CellML 1.1 like the library's modules, so ``module.load`` and the emitter treat it like any other version and
+libcuflynx and PhLynx can build models from it.
 
     aod-kernelgen-flatten <flat.cellml> <out_root> <module_type> <version> [--source <text>]
 """
@@ -20,6 +21,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 CELLML = "http://www.cellml.org/cellml/2.0#"
+CELLML_1_1 = "http://www.cellml.org/cellml/1.1#"
 MATHML = "http://www.w3.org/1998/Math/MathML"
 PARAM_COMPONENTS = ("parameters", "parameters_global")
 TIME = ("environment", "time")
@@ -125,7 +127,7 @@ def flatten(flat_path: Path, out_root: Path, module_type: str, version: str, sou
     comp_out = ET.Element(q("component"), {"name": "cell"})
     instance: dict[str, tuple[str, float]] = {}
     for name, unit, init in sorted(out_vars):
-        attrs = {"name": name, "units": unit}
+        attrs = {"name": name, "units": unit, "public_interface": "in" if name == "t" or name in params else "out"}
         if init is not None:
             if name in params:
                 instance[name] = (unit, float(init))     # parameters become instance values, not literals
@@ -148,9 +150,9 @@ def flatten(flat_path: Path, out_root: Path, module_type: str, version: str, sou
     d = out_root / module_type / "versions" / version
     (d / "instances" / "default").mkdir(parents=True, exist_ok=True)
     stem = f"{module_type}_{version}"
-    (d / f"{stem}_modules.cellml").write_text(_serialise(f"{module_type}_{version}", units, comp_out, maths))
-    (d / f"{stem}_units.cellml").write_text(
-        f'<?xml version="1.0" encoding="UTF-8"?>\n<model xmlns="{CELLML}" name="{stem}_units"/>\n')
+    # the library's layout, which libcuflynx and PhLynx read: units in their own file, the component first in the other
+    (d / f"{stem}_modules.cellml").write_text(_serialise(f"{module_type}_{version}", [], comp_out, maths))
+    (d / f"{stem}_units.cellml").write_text(_serialise(f"{stem}_units", units, None, []))
     config = [{
         "module_type": module_type, "module_subtype": version, "module_format": "cellml",
         "component_file": f"{stem}_modules.cellml", "component_type": "cell", "default_instance": "default",
@@ -213,7 +215,8 @@ def _restore_literal_units(components, units, modules_root: Path, supermodule_co
 
 
 def _serialise(name: str, units, component, maths) -> str:
-    """CellML 2.0 text, written out directly: libcellml needs MathML as the default namespace inside each <math>."""
+    """CellML 1.1 text like the library's modules (libcuflynx copies the component into a 1.1 model), written out
+    directly: libcellml needs MathML as the default namespace inside each <math>."""
     from xml.sax.saxutils import quoteattr
     attrs = lambda el: "".join(f" {k.rsplit('}', 1)[-1]}={quoteattr(v)}" for k, v in el.attrib.items())
     out = ['<?xml version="1.0" encoding="UTF-8"?>',
@@ -222,6 +225,8 @@ def _serialise(name: str, units, component, maths) -> str:
         out.append(f"  <units{attrs(u)}>")
         out += [f"    <unit{attrs(x)}/>" for x in u]
         out.append("  </units>")
+    if component is None:
+        return "\n".join(out + ["</model>"]).replace(CELLML, CELLML_1_1) + "\n"
     out.append(f'  <component name="{component.get("name")}">')
     out += [f"    <variable{attrs(v)}/>" for v in component.findall(f"{{{CELLML}}}variable")]
     ET.register_namespace("", MATHML)
@@ -232,7 +237,7 @@ def _serialise(name: str, units, component, maths) -> str:
             text = text.replace("<math", f'<math xmlns:cellml="{CELLML}"', 1)
         out.append(text)
     out += ["  </component>", "</model>"]
-    return "\n".join(out) + "\n"
+    return "\n".join(out).replace(CELLML, CELLML_1_1) + "\n"
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using AdaptOrDeity.Game.Content;
 using AdaptOrDeity.Sim.Kernels.Generated;
 using AdaptOrDeity.Sim.Modules;
@@ -273,6 +274,29 @@ namespace AdaptOrDeity.Game.Session
                         p += c.AlgebraicValue("i_flagellum__P_flag");
                 return p;
             }
+        }
+
+        /// <summary>
+        /// The creature as a module array: each living cell an instance of the assembled cell module (content/assembled)
+        /// named cell_&lt;index&gt;, with the parameters the player set. libcuflynx builds its CellML from it and PhLynx
+        /// imports it. Flagellum angles and the body layout are game state, not CellML, so they are not in it.
+        /// </summary>
+        public ModuleArray ToModuleArray()
+        {
+            var d = _kernel.Descriptor;
+            var array = new ModuleArray();
+            for (int i = 0; i < _cells.Count; i++)
+            {
+                var cell = _cells[i];
+                if (!cell.Alive)
+                    continue;
+                string name = "cell_" + i.ToString(CultureInfo.InvariantCulture);
+                array.Records.Add(new ModuleRecord(name, d.ModuleType, d.Version, cell.Instance));
+                var units = ModuleLibrary.InstanceUnits(d.ModuleType, d.Version, cell.Instance);
+                foreach (var p in cell.PlayerParameters)
+                    array.Parameters.Add(new ParameterRow(p + "_" + name, units[p], cell.External(p), "set by the player"));
+            }
+            return array;
         }
 
         /// <summary>Moves flagellum <paramref name="k"/> of a cell to a base angle on its membrane (body frame) [rad].</summary>

@@ -92,6 +92,9 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Thread-safe: queue a command for the next tick.</summary>
         public void Enqueue(ISimCommand command) => _commands.Enqueue(command);
 
+        /// <summary>Reports an event to the front end (from the simulation thread).</summary>
+        internal void Post(SimEvent simEvent) => _events.Enqueue(simEvent);
+
         /// <summary>Thread-safe: take the next simulation event, if any.</summary>
         public bool TryDequeueEvent(out SimEvent? simEvent) => _events.TryDequeue(out simEvent);
 

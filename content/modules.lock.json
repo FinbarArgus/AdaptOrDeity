@@ -35,7 +35,7 @@
         "nrmse_tolerance": 0.01,
         "compare": "states"
       },
-      "sha256": "4a84c303f934e9bd70c45cf09b570de246326661b80fa988645807c10e4e822f"
+      "sha256": "cb212335cacd378be95ff486d2a83a31b711414190c86836cbbfc1f950f64f8d"
     }
   ]
 }

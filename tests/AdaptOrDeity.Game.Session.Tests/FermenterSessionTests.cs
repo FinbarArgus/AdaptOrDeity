@@ -7,7 +7,7 @@ namespace AdaptOrDeity.Game.Session.Tests
 {
     public class FermenterSessionTests
     {
-        private static SimLoop NewLoop(out FermenterWorld world)
+        internal static SimLoop NewLoop(out FermenterWorld world)
         {
             world = new FermenterWorld();
             return new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
@@ -17,7 +17,7 @@ namespace AdaptOrDeity.Game.Session.Tests
 
         private static int Feature(string id) => GameFeatures.IndexOf(id);
 
-        private static void FinishDaughter(FermenterWorld world, int cell)
+        internal static void FinishDaughter(FermenterWorld world, int cell)
         {
             var c = world.Cell(cell);
             c.SetState("bio__P_growth", c.DaughterCost);
