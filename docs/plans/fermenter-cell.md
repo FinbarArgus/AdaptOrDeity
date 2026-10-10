@@ -25,28 +25,31 @@ without mitochondria:
 ## Modules
 | Module | Version | New or reused |
 |---|---|---|
-| `cell/energy_metabolism` | `fermenter_ArgusUNPUBLISHED_v01` | new (bond-graph cytosol) |
+| `cell/energy_metabolism` | `adaptive_ArgusUNPUBLISHED_v01` | new (bond-graph cytosol) |
 | `cell/energy_metabolism` | `mitochondrial_ArgusUNPUBLISHED_v01` | renamed from `ArgusUNPUBLISHED_v01` (later stage) |
-| `cell/membrane_potential` | `fermenter_ArgusUNPUBLISHED_v01` | new (capacitor only) |
+| `cell/membrane_potential` | `adaptive_ArgusUNPUBLISHED_v01` | new (capacitor only) |
 | `cell/ion_concentrations` | `SN_soma_Argus2026_v01` | reused, new instance `fermenter` |
-| `cell/Ca_handling` | `fermenter_ArgusUNPUBLISHED_v01` | new (cytosol + buffer) |
-| `cell/H_handling` | `fermenter_ArgusUNPUBLISHED_v01` | new (buffered H⁺, pH, E_H) |
+| `cell/Ca_handling` | `adaptive_ArgusUNPUBLISHED_v01` | new (cytosol + buffer) |
+| `cell/H_handling` | `adaptive_ArgusUNPUBLISHED_v01` | new (buffered H⁺, pH, E_H) |
 | `cell/ion_channels/i_H_ATPase` | `FoF1_ArgusUNPUBLISHED_v01` | new (F1Fo in hydrolysis mode, thermodynamic brake) |
 | `cell/ion_channels/i_NaH` | `NhaA_ArgusUNPUBLISHED_v01` | new (Na⁺/H⁺ antiporter) |
 | `cell/ion_channels/i_KH` | `KefC_ArgusUNPUBLISHED_v01` | new (K⁺/H⁺ exchanger) |
 | `cell/ion_channels/i_leak_H` | `ArgusUNPUBLISHED_v01` | new |
-| `cell/ion_channels/i_leak_Na`, `i_leak_K` | `Argus2026_v01` | reused (i_leak_K as the Trk channel) |
-| `cell/ion_channels/i_NaCa` | `Argus2026_v01` | reused, new instance |
-| `cell/ion_channels/i_NaK` | `ATP_ArgusUNPUBLISHED_v01` | renamed from `fermenter_…`; eukaryotic, not in this cell |
+| `cell/ion_channels/i_leak_Na` | `Argus2026_v01` | reused |
+| `cell/ion_channels/i_leak_K` | `adaptive_ArgusUNPUBLISHED_v01` | copy of Argus2026_v01 with density × expression (the Trk channel) |
+| `cell/ion_channels/i_NaCa` | `adaptive_ArgusUNPUBLISHED_v01` | copy of Argus2026_v01 with density × expression |
+| `cell/ion_channels/i_NaK` | `ATP_ArgusUNPUBLISHED_v01` | eukaryotic, not in this cell |
 | `cell/ion_channels/i_leak_Ca` | `ArgusUNPUBLISHED_v01` | new |
-| `transport/cell_membrane_face` | `fermenter_ArgusUNPUBLISHED_v01` | new (glucose facilitator + lactate⁻/H⁺ symporter) |
-| `cell/protein_expression` | `fermenter_ArgusUNPUBLISHED_v01` | new (ATP cost of protein turnover and construction) |
-| `cell/prokaryote` | `fermenter` (supermodule) | new: the whole lumped cell |
+| `cell/ion_channels/i_H_flagellum` | `MotAB_ArgusUNPUBLISHED_v01` | new (proton-driven flagellar motor and swimming speed; 2026-10-09) |
+| `transport/cell_membrane_face` | `adaptive_ArgusUNPUBLISHED_v01` | new (glucose facilitator + lactate⁻/H⁺ symporter) |
+| `cell/protein_expression` | `adaptive_ArgusUNPUBLISHED_v01` | new (protein synthesis serving the pools: capacity, ATP throttle) |
+| `cell/generic_adaptive_cell` | `empty_membrane`, `fermenter` (supermodules) | the base and the whole lumped cell (replaced `cell/prokaryote/fermenter`, 2026-10-08) |
+| `cell/protein_pool` | `ArgusUNPUBLISHED_v01` | new: one protein's expression, costs and footprint (an instance per protein) |
 | `transport/cytosol_face`, `transport/medium_volume` | `ArgusUNPUBLISHED_v01` | new (finite-volume reference only) |
 
 ## Steps
 1. ~~Write the modules and the supermodule; calibrate so the default point is an exact steady state.~~ Done
-   (`tools/build_fermenter_cell.py`, `tools/module_writer.py`, `tools/cellml_writer.py` upstream; the earlier
+   (`tools/build_adaptive_cell.py`, `tools/module_writer.py`, `tools/cellml_writer.py` upstream; the earlier
    cell modules moved to `tools/build_cell_modules.py`). Rest: −105 mV, pH 7.6; turnover 5.5e5 ATP/s;
    heat 9.1 kW/m³; 2,850 H⁺-ATPases per cell.
 2. ~~Verification~~ Done: every new version and the whole cell pass cam_testing's full set; all fourteen

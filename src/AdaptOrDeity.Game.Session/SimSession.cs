@@ -29,6 +29,9 @@ namespace AdaptOrDeity.Game.Session
 
         public bool IsRunning => _host.IsRunning;
 
+        /// <summary>The exception that stopped the simulation thread, or null while it runs.</summary>
+        public Exception? Fault => _host.Fault;
+
         public void Start() => _host.Start();
 
         public void Enqueue(ISimCommand command) => _loop.Enqueue(command);

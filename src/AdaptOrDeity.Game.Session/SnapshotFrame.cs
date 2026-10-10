@@ -16,8 +16,12 @@ namespace AdaptOrDeity.Game.Session
             PacketX = new float[packetCapacity];
             PacketY = new float[packetCapacity];
             PacketRadius = new float[packetCapacity];
-            PacketGlucose = new float[packetCapacity];
+            PacketFill = new float[packetCapacity];
             PacketTrace = new int[packetCapacity];
+            PacketCarried = new bool[packetCapacity];
+            FlagellumAngles = Allocate<float>(cellCapacity, AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella);
+            TraitArea = Allocate(traitCount, cellCapacity);
+            CellSurface = new float[cellCapacity];
             CellGroup = new int[cellCapacity];
             CellAlive = new bool[cellCapacity];
             CellCanDivide = new bool[cellCapacity];
@@ -88,12 +92,49 @@ namespace AdaptOrDeity.Game.Session
 
         public bool[] FeatureEnabled { get; }
 
-        /// <summary>Per cell: position in the sheet [m].</summary>
+        /// <summary>The creature's position over the ground [m] (the camera follows it).</summary>
+        public double CreatureX { get; internal set; }
+
+        public double CreatureY { get; internal set; }
+
+        /// <summary>True while the flagella run.</summary>
+        public bool MotorOn { get; internal set; }
+
+        /// <summary>Orientation of the body [rad] and its spin [rad/s]: cells and flagella turn with it.</summary>
+        public float Orientation { get; internal set; }
+
+        public float Spin { get; internal set; }
+
+        /// <summary>Proton-motive power of all the flagellar motors [W].</summary>
+        public float MotorPower { get; internal set; }
+
+        /// <summary>Mechanical power of the thrust on the body [W] (all of it ends as heat in the water).</summary>
+        public float MechanicalPower { get; internal set; }
+
+        /// <summary>Heat the body's motion has dissipated into the water since the start [J].</summary>
+        public double HeatToWater { get; internal set; }
+
+        /// <summary>Per cell, per flagellum: its base angle on the cell's membrane, in the body frame [rad].</summary>
+        public float[][] FlagellumAngles { get; }
+
+        /// <summary>Per trait, per cell: membrane area the protein takes [m²] (0 for cytosolic proteins).</summary>
+        public float[][] TraitArea { get; }
+
+        /// <summary>Per cell: its whole surface [m²].</summary>
+        public float[] CellSurface { get; }
+
+        /// <summary>The creature's velocity over the ground [m/s].</summary>
+        public float CreatureVx { get; internal set; }
+
+        public float CreatureVy { get; internal set; }
+
+        /// <summary>Per cell: position relative to the creature [m] (add <see cref="CreatureX"/> for the ground).</summary>
         public float[] CellX { get; }
 
         public float[] CellY { get; }
 
-        /// <summary>Food packets in the field; only the first <see cref="PacketCount"/> are valid. Positions and radii [m].</summary>
+        /// <summary>Food packets around the creature; only the first <see cref="PacketCount"/> are valid. Positions relative
+        /// to the creature and radii [m].</summary>
         public int PacketCount { get; internal set; }
 
         public float[] PacketX { get; }
@@ -102,11 +143,14 @@ namespace AdaptOrDeity.Game.Session
 
         public float[] PacketRadius { get; }
 
-        /// <summary>Glucose concentration in each packet [mol/m³].</summary>
-        public float[] PacketGlucose { get; }
+        /// <summary>Share of each packet's glucose left (0-1).</summary>
+        public float[] PacketFill { get; }
 
         /// <summary>The trace species each packet is richest in (index into the schema's trace species).</summary>
         public int[] PacketTrace { get; }
+
+        /// <summary>True if the packet is carried by another creature; false if it lies on the ground.</summary>
+        public bool[] PacketCarried { get; }
 
         private static T[][] Allocate<T>(int rows, int cells)
         {

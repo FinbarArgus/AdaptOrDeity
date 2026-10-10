@@ -79,6 +79,16 @@ namespace AdaptOrDeity.UI
                 bridge.Zoom(e.delta.y > 0 ? 1f : -1f);   // wheel down zooms out
                 e.Use();
             }
+            else if (_dragCell >= 0 && (e.type == EventType.MouseDrag || e.type == EventType.MouseUp))
+            {
+                DragFlagellum(bridge, e);
+                e.Use();
+            }
+            else if (e.type == EventType.MouseDown && e.button == 0 && e.mousePosition.y > BarHeight
+                     && e.mousePosition.x < Screen.width - RightInset() && StartFlagellumDrag(bridge, e.mousePosition))
+            {
+                e.Use();
+            }
             else if (e.type == EventType.MouseDown && e.mousePosition.y > BarHeight
                      && e.mousePosition.x < Screen.width - RightInset())
             {
@@ -134,6 +144,9 @@ namespace AdaptOrDeity.UI
                 GUILayout.Label("Simulation lagging", GUILayout.Width(140));
                 GUI.color = old;
             }
+            float groundSpeed = Mathf.Sqrt(frame.CreatureVx * frame.CreatureVx + frame.CreatureVy * frame.CreatureVy) * 1e6f;
+            GUILayout.Label(new GUIContent($"Moving {groundSpeed:F1} µm/s", "speed over the ground (drifting with the current)"),
+                GUILayout.Width(120));
             GUILayout.Label($"t = {FormatTime(frame.SimTime)}", GUILayout.Width(130));
             if (bridge.Schema.Features.Count > 0)
             {
@@ -271,7 +284,7 @@ namespace AdaptOrDeity.UI
                 return;
             var traces = bridge.Schema.TraceSpecies;
             int t = frame.PacketTrace[packet.Slot];
-            string text = $"Food packet\nGlucose: {frame.PacketGlucose[packet.Slot]:F2} mM\n" +
+            string text = $"Food packet\nGlucose left: {100f * frame.PacketFill[packet.Slot]:F0}%\n" +
                           $"Smells of {(t < traces.Count ? traces[t] : "?")} (needs a receptor to sense)";
             _tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, richText = true, padding = new RectOffset(8, 8, 6, 6) };
             var content = new GUIContent(text);
@@ -281,6 +294,60 @@ namespace AdaptOrDeity.UI
 
         /// <summary>Width taken by the cell panel on the right, if open.</summary>
         private static float RightInset() => CellPanel.Visible ? CellPanel.Width : 0f;
+
+        private int _dragCell = -1, _dragFlagellum = -1;
+        private float _dragSent = float.NaN;
+
+        private static Vector2 MouseWorld(Vector2 guiMouse) =>
+            Camera.main != null ? (Vector2)Camera.main.ScreenToWorldPoint(new Vector3(guiMouse.x, Screen.height - guiMouse.y, 0f)) : Vector2.zero;
+
+        /// <summary>
+        /// On the selected cell, grabbing a flagellum's base (the dot where it meets the membrane) starts moving it around
+        /// the membrane; the simulation keeps it there (in the body frame) until it is moved again.
+        /// </summary>
+        private bool StartFlagellumDrag(SessionBridge bridge, Vector2 guiMouse)
+        {
+            if (bridge.SelectedCell < 0)
+                return false;
+            CellView view = null;
+            foreach (var c in FindObjectsByType<CellView>(FindObjectsSortMode.None))
+                if (c.CellIndex == bridge.SelectedCell)
+                    view = c;
+            if (view == null)
+                return false;
+            var world = MouseWorld(guiMouse);
+            int n = Mathf.CeilToInt(view.FlagellaCount);
+            for (int k = 0; k < n && k < AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella; k++)
+                if ((view.FlagellumBase(k) - world).sqrMagnitude <= 0.035f * 0.035f)
+                {
+                    _dragCell = bridge.SelectedCell;
+                    _dragFlagellum = k;
+                    _dragSent = float.NaN;
+                    return true;
+                }
+            return false;
+        }
+
+        private void DragFlagellum(SessionBridge bridge, Event e)
+        {
+            CellView view = null;
+            foreach (var c in FindObjectsByType<CellView>(FindObjectsSortMode.None))
+                if (c.CellIndex == _dragCell)
+                    view = c;
+            if (view != null && bridge.Frame != null)
+            {
+                var d = MouseWorld(e.mousePosition) - (Vector2)view.transform.position;
+                // the angle on the membrane in the body frame: the body may be turning under the mouse
+                float angle = Mathf.Atan2(d.y, d.x) - bridge.DisplayOrientation;
+                if (float.IsNaN(_dragSent) || Mathf.Abs(Mathf.DeltaAngle(angle * Mathf.Rad2Deg, _dragSent * Mathf.Rad2Deg)) > 1f)
+                {
+                    bridge.Send(SimCommands.SetFlagellumAngle(_dragCell, _dragFlagellum, angle));
+                    _dragSent = angle;
+                }
+            }
+            if (e.type == EventType.MouseUp)
+                _dragCell = _dragFlagellum = -1;
+        }
 
         private static CellView CellUnderMouse(Vector2 guiMouse)
         {

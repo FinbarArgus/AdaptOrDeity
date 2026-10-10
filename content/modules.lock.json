@@ -19,10 +19,10 @@
     },
     {
       "category": "",
-      "module_type": "prokaryote",
+      "module_type": "generic_adaptive_cell",
       "version": "fermenter",
       "root": "content/assembled",
-      "note": "whole cell assembled at build time: libcuflynx flat model of cell/prokaryote/versions/fermenter merged into one component by aod_kernelgen.flatten (literal units restored from the sources)",
+      "note": "whole cell assembled at build time: libcuflynx flat model of cell/generic_adaptive_cell/versions/fermenter merged into one component by aod_kernelgen.flatten (literal units restored from the sources)",
       "instances": [
         "default",
         "famine"
@@ -35,7 +35,7 @@
         "nrmse_tolerance": 0.01,
         "compare": "states"
       },
-      "sha256": "b0d8cdc689cb1530fe6a18cdad0e4c84fb85557ad5c7df9083ace465a05369b4"
+      "sha256": "4a84c303f934e9bd70c45cf09b570de246326661b80fa988645807c10e4e822f"
     }
   ]
 }

@@ -1,0 +1,223 @@
+{
+ "description": "Game-side values of AdaptOrDeity: the environment (food packets), the colony and the ranges of the player's controls, each with its source. Physiological parameters of the cells are not here: they live upstream in circulatory-autogen-modules modules/cell/generic_adaptive_cell/parameters.json and reach the game inside the assembled kernel (its parameters), so the game reads them from the kernel. Values are canonical SI. status: sourced, placeholder (needs a source), design (a game choice), definitional.",
+ "schema_version": 1,
+ "parameters": {
+  "food.packet_trace_minor_share": {
+   "value": 0.1,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "other trace species relative to the main one"
+  },
+  "food.packet_amount": {
+   "value": 4e-14,
+   "units": "mol",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "glucose in a fresh food packet: about a quarter of what a 2 um fermenter needs per daughter (1.5e-13 mol)"
+  },
+  "food.contact_glucose": {
+   "value": 50.0,
+   "units": "mol/m3",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "glucose a cell touching a food packet sees at its membrane (the particle dissolving into the boundary layer), while the packet lasts"
+  },
+  "food.contact_trace": {
+   "value": 0.01,
+   "units": "mol/m3",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "concentration of a packet's main trace species at a touching membrane"
+  },
+  "food.packet_radius": {
+   "value": 8e-07,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "radius of a fresh packet: smaller than the 1 um cell (user decision 2026-10-09); it shrinks as it is eaten (area in proportion to what is left)"
+  },
+  "food.carrier_speed": {
+   "value": 1e-06,
+   "units": "m/s",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "speed of a creature carrying food (prey, or an ally bringing it) over the ground: 1 um/s, slower than a swimming bacterium (~20 um/s) so it can be met"
+  },
+  "food.lying_density": {
+   "value": 4400000000.0,
+   "units": "1/m2",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "food lying on the ground per area: about four packets in the 30 um view (4 / (30 um)^2); a moving creature meets it at density x speed x view width"
+  },
+  "food.used_up_fraction": {
+   "value": 0.01,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "a packet with less than this share of its glucose left is used up and removed"
+  },
+  "food.mean_interval": {
+   "value": 120.0,
+   "units": "s",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "mean time between creatures arriving with food (carried packets; exponential intervals)"
+  },
+  "food.entry_angle_spread": {
+   "value": 1.5707963267948966,
+   "units": "rad",
+   "source": "definitional",
+   "status": "design",
+   "note": "carried packets enter heading inwards within half this angle either side of the normal"
+  },
+  "food.field_half_size": {
+   "value": 1.5e-05,
+   "units": "m",
+   "source": "definitional",
+   "status": "design",
+   "note": "half the side of the square field around the colony"
+  },
+  "food.max_packets": {
+   "value": 24,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "most packets in the field at once"
+  },
+  "food.seed": {
+   "value": 1,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "random seed of the food field (determinism)"
+  },
+  "colony.cell_gap": {
+   "value": 3e-07,
+   "units": "m",
+   "source": "definitional",
+   "status": "design",
+   "note": "gap between neighbouring cells of a colony (centres 2 R_cell + gap apart)"
+  },
+  "colony.cell_limit": {
+   "value": 64,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "most cells the session simulates"
+  },
+  "controls.growth_max": {
+   "value": 50.0,
+   "units": "1",
+   "source": "lynch2015bioenergetic",
+   "status": "placeholder",
+   "note": "most ATP a cell may put into growth, in multiples of its resting turnover: growing fermenters run glycolysis 10-40x their maintenance flux; the cell can reach ~40x on food"
+  },
+  "controls.expression_min": {
+   "value": 0.25,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "lowest expression a player can choose (two octaves below the calibrated cell; user decision 2026-10-08)"
+  },
+  "controls.expression_max": {
+   "value": 4.0,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "highest expression a player can choose (two octaves above)"
+  },
+  "environment.current_speed": {
+   "value": 2e-06,
+   "units": "m/s",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "drift of the water over the ground, which carries the creature: a slow near-bed current, 2 um/s (a cell moves with its water; over the sea floor the flow in the viscous sublayer is slow)"
+  },
+  "environment.current_heading": {
+   "value": 0.0,
+   "units": "rad",
+   "source": "definitional",
+   "status": "design",
+   "note": "direction of the current (0 = +x)"
+  },
+  "motility.mean_run": {
+   "value": 2.0,
+   "units": "s",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "mean length of a run with the motor on (random, exponential; E. coli runs ~1 s between tumbles)"
+  },
+  "motility.mean_pause": {
+   "value": 4.0,
+   "units": "s",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "mean pause with the motor off between runs (random, exponential); each run sets off in a random direction"
+  },
+  "motility.seed": {
+   "value": 3,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "random seed of the runs and pauses (determinism)"
+  },
+  "body.cell_density": {
+   "value": 1100.0,
+   "units": "kg/m3",
+   "source": "milo2010bionumbers",
+   "status": "sourced",
+   "note": "cell density about 1.1 g/mL (BioNumbers): the mass of the body for its momentum, and W/kg for display"
+  },
+  "motility.thrust_angle_sd": {
+   "value": 0.17453292519943295,
+   "units": "rad",
+   "source": "definitional",
+   "status": "design",
+   "note": "standard deviation of each flagellum's thrust direction about straight away from its base: 10 degrees, normal, drawn per run (user decision 2026-10-09); it turns the body, so runs curve"
+  },
+  "motility.flagellum_spacing": {
+   "value": 0.5,
+   "units": "rad",
+   "source": "definitional",
+   "status": "design",
+   "note": "where new flagella are placed by default: around the back of the cell, this far apart"
+  }
+ },
+ "trace_species": [
+  {
+   "id": "aspartate",
+   "name": "Aspartate",
+   "source": "lysed cells and protein-rich debris",
+   "ref": "adler1975chemotaxis",
+   "note": "an E. coli Tar attractant (adapting_plan.md: smell at level 3)"
+  },
+  {
+   "id": "serine",
+   "name": "Serine",
+   "source": "lysed cells",
+   "ref": "adler1975chemotaxis",
+   "note": "the E. coli Tsr attractant"
+  },
+  {
+   "id": "ribose",
+   "name": "Ribose",
+   "source": "nucleic acid from dead cells",
+   "ref": "adler1975chemotaxis",
+   "note": "sensed through Trg and the ribose-binding protein"
+  },
+  {
+   "id": "dimethylsulfide",
+   "name": "Dimethyl sulfide",
+   "source": "algal blooms (later epochs)",
+   "ref": "unreferenced_placeholder",
+   "note": "a marine infochemical of algal origin"
+  }
+ ],
+ "references": {
+  "adler1975chemotaxis": "Adler, J. (1975) Chemotaxis in bacteria. Annual Review of Biochemistry 44, 341-356",
+  "lynch2015bioenergetic": "Lynch, M. and Marinov, G. K. (2015) The bioenergetic costs of a gene. PNAS 112, 15690-15695",
+  "milo2010bionumbers": "Milo, R. et al. (2010) BioNumbers - the database of key numbers in molecular and cell biology. Nucleic Acids Research 38, D750-D753"
+ }
+}

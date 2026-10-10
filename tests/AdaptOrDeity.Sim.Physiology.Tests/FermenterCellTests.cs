@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
+using AdaptOrDeity.Game.Content;
 using AdaptOrDeity.Sim.Kernels.Generated;
 using AdaptOrDeity.Sim.Modules;
 using AdaptOrDeity.Sim.Physiology;
@@ -11,9 +11,11 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
     public class FermenterCellTests
     {
         private const double GameDt = 0.1;   // FermenterWorld's macro step
-        private const double Na = FermenterCell.AvogadroConstant;
 
-        private static FermenterCell NewCell() => new FermenterCell(new Prokaryote_fermenter());
+        private static FermenterCell NewCell(string instance = "default") =>
+            new FermenterCell(new GenericAdaptiveCell_fermenter(), TraitCatalog.Fermenter, instance);
+
+        private static double Na(FermenterCell cell) => cell.External("N_A_mod_pool_proteome");
 
         private static void Run(FermenterCell cell, double seconds)
         {
@@ -42,7 +44,8 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             var cell = NewCell();
             cell.Step(GameDt);
             var b = cell.Budget();
-            double lynch = 0.39 * Math.Pow(Math.PI * 1.0 * 1.0 * 2.0, 0.88) * 1e9 / 3600.0 / Na;
+            double na = Na(cell);
+            double lynch = 0.39 * Math.Pow(Math.PI * 1.0 * 1.0 * 2.0, 0.88) * 1e9 / 3600.0 / na;
             Assert.That(b.AtpProduced, Is.EqualTo(b.AtpConsumed).Within(1e-9 * b.AtpConsumed));
             Assert.That(b.AtpConsumed, Is.EqualTo(lynch).Within(1e-6 * lynch));
             Assert.That(b.AtpPumps / b.AtpConsumed, Is.EqualTo(0.25).Within(1e-3));
@@ -52,21 +55,23 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             Assert.That(b.AtpRepair / b.AtpConsumed, Is.InRange(0.01, 0.10));
             Assert.That(b.AtpProteinBuild + b.AtpGrowth + b.AtpStorage + b.AtpFromGlycogen, Is.EqualTo(0.0));
             // A daughter costs about Lynch & Marinov's growth cost, 2.66e10 V^0.97 ATP (V in um3)
-            double growthCost = 26.6e9 * Math.Pow(2 * Math.PI, 0.97) / Na;
+            double growthCost = 26.6e9 * Math.Pow(2 * Math.PI, 0.97) / na;
             Assert.That(cell.DaughterCost / growthCost, Is.InRange(0.9, 1.3));
         }
 
         [Test]
         public void RaisingExpressionPaysTheBuildCostOnceWithinTheBuildCapacity()
         {
-            // Doubling the H+-ATPase spends exactly the ATP to build the extra copies, never faster than the build
-            // capacity (1x the resting turnover), so with a 10 s time constant it still takes minutes.
+            // Doubling the H+-ATPase (its protein_pool, in the kernel) spends exactly the ATP to build the extra copies,
+            // never faster than the cell's protein synthesis allows.
             var cell = NewCell();
             int trait = cell.Traits.ToList().FindIndex(t => t.Id == "H_ATPase_expression");
-            double n = cell.External("n_H_ATPase_mod_protein"), l = cell.External("L_H_ATPase_mod_protein");
-            double cBuild = cell.External("c_syn_mod_protein") + cell.External("c_poly_mod_protein");
+            double n = cell.External("n_0_mod_pool_H_ATPase"), l = cell.External("L_mod_pool_H_ATPase");
+            double cBuild = cell.External("c_syn_mod_pool_H_ATPase") + cell.External("c_poly_mod_pool_H_ATPase");
+            double cap = cell.External("build_capacity_mod_protein") * cell.RestingTurnover;
             cell.Step(GameDt);
-            double upkeep0 = cell.AlgebraicValue("protein__J_ATP_H_ATPase");
+            // upkeep per unit of the ATP factor (synthesis slows a little as ATP moves)
+            double upkeep0 = cell.AlgebraicValue("pool_H_ATPase__J_keep") / cell.AlgebraicValue("pool_H_ATPase__f_ATP");
             cell.SetTrait(trait, 2.0);
             double built = 0.0, peak = 0.0;
             for (int i = 0; i < (int)(3600 / GameDt); i++)
@@ -77,25 +82,26 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             }
             double m = cell.TraitValue(trait);
             Assert.That(m, Is.EqualTo(2.0).Within(1e-3));
-            Assert.That(built, Is.EqualTo((m - 1.0) * n * l * cBuild / Na).Within(1e-9 * built));
-            Assert.That(peak, Is.LessThanOrEqualTo(FermenterTraits.BuildCapacity * cell.RestingTurnover * (1 + 1e-12)));
-            Assert.That(cell.AlgebraicValue("protein__J_ATP_H_ATPase"), Is.EqualTo(m * upkeep0).Within(1e-9 * upkeep0));
+            // exact in the model (upstream, under CVODE); at the game step to backward Euler's Newton tolerance
+            Assert.That(built, Is.EqualTo((m - 1.0) * n * l * cBuild / Na(cell)).Within(1e-3 * built));
+            Assert.That(peak, Is.LessThanOrEqualTo(cap * (1 + 1e-9)));
+            Assert.That(cell.AlgebraicValue("pool_H_ATPase__J_keep") / cell.AlgebraicValue("pool_H_ATPase__f_ATP"),
+                Is.EqualTo(m * upkeep0).Within(1e-9 * m * upkeep0));
             Assert.That(cell.State("membrane__V"), Is.LessThan(-105.0), "more pumps hyperpolarise the cell");
         }
 
         [Test]
         public void TransportersCannotOutgrowTheMembrane()
         {
-            // Asking for x4 of every transporter hits the membrane ceiling (8% of the surface): later traits are clamped.
+            // Asking for x4 of every transporter hits the membrane ceiling (a share of the surface): later traits are clamped.
             var cell = NewCell();
-            Assert.That(cell.TransporterArea() / cell.SurfaceArea, Is.InRange(0.01, 0.04), "baseline share");
+            Assert.That(cell.TransporterArea() / cell.SurfaceArea, Is.InRange(0.02, 0.08), "baseline share");
             for (int t = 0; t < cell.Traits.Count; t++)
                 cell.SetTrait(t, 4.0);
             Assert.That(cell.TraitTarget(0), Is.EqualTo(4.0), "the first request fits");
             double requested = 0.0;
             for (int t = 0; t < cell.Traits.Count; t++)
-                requested += cell.Traits[t].FootprintNm2 * cell.External($"n_{cell.Traits[t].CopyKey}_mod_protein") * 1e-6
-                             * cell.TraitTarget(t);
+                requested += cell.AlgebraicValue(cell.Traits[t].AreaPerUnit) * cell.TraitTarget(t);
             Assert.That(requested, Is.LessThanOrEqualTo(cell.TransporterAreaMax * (1 + 1e-12)));
             Assert.That(cell.Traits.Select((_, t) => cell.TraitTarget(t)).Min(), Is.LessThan(4.0), "something was clamped");
             Assert.That(cell.TraitTarget(cell.Traits.ToList().FindIndex(t => t.Id == "glycolysis_expression")), Is.EqualTo(4.0),
@@ -114,8 +120,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             Assert.That(cell.Divide(), Is.Null);
 
             // Finish the daughter (as if after days of growth): division copies the state and restarts growth.
-            int p = cell.Batch.Descriptor.StateIndex("bio__P_growth");
-            cell.Batch.States[p][0] = cell.DaughterCost;
+            cell.SetState("bio__P_growth", cell.DaughterCost);
             double v = cell.State("membrane__V");
             var daughter = cell.Divide();
             Assert.That(daughter, Is.Not.Null);
@@ -138,9 +143,8 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             Assert.That(cell.Glycogen, Is.GreaterThan(0.1));
             Assert.That(cell.Budget().AtpStorage, Is.GreaterThan(0.0));
             // A daughter 99.9% built: glycogen covers the rest, and exactly the shortfall is spent.
-            int p = cell.Batch.Descriptor.StateIndex("bio__P_growth");
             double shortfall = Math.Min(0.5 * cell.GlycogenAtp, 0.001 * cell.DaughterCost);
-            cell.Batch.States[p][0] = cell.DaughterCost - shortfall;
+            cell.SetState("bio__P_growth", cell.DaughterCost - shortfall);
             double before = cell.GlycogenAtp;
             Assert.That(cell.CanDivide, Is.True);
             Assert.That(cell.Divide(), Is.Not.Null);
@@ -153,8 +157,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             var cell = NewCell();
             Assert.That(cell.Damage, Is.InRange(0.005, 0.02), "steady damage at full repair");
             cell.RepairLevel = 0.0;
-            int d = cell.Batch.Descriptor.StateIndex("bio__D");
-            cell.Batch.States[d][0] = 0.999;   // 0.001 of a lethal load left: ~14 min at 20 C
+            cell.SetState("bio__D", 0.999);   // 0.001 of a lethal load left: ~14 min at 20 C
             for (int i = 0; i < 12000 && cell.Alive; i++)
                 cell.Step(GameDt);
             Assert.That(cell.Alive, Is.False);
@@ -165,11 +168,11 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         public void FamineAtTheGameStepFollowsTheMyokitGolden()
         {
             // The game's 0.1 s backward Euler against CVODE (rtol 1e-10) through 10 min of famine: NRMSE below 2%.
-            string dir = Path.Combine(GoldenDir(), "prokaryote", "fermenter");
+            string dir = Path.Combine(GoldenDir(), "generic_adaptive_cell", "fermenter");
             var lines = File.ReadAllLines(Path.Combine(dir, "famine.csv"));
             var header = lines[0].Split(',');
             var rows = lines.Skip(1).Select(l => l.Split(',').Select(double.Parse).ToArray()).ToArray();
-            var cell = new FermenterCell(new Prokaryote_fermenter(), "famine");
+            var cell = NewCell("famine");
             foreach (var name in new[] { "membrane__V", "cytosol__C_ATP", "cytosol__C_glc", "H__H_i" })
             {
                 int c = Array.IndexOf(header, name);
@@ -204,28 +207,73 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         }
 
         [Test]
-        public void TraitTableMatchesContentFile()
+        public void EveryTraitIsAPoolOfTheKernel()
         {
-            // content/traits/fermenter.json is the design record; FermenterTraits must say the same.
-            using var doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(RepoRoot(), "content", "traits", "fermenter.json")));
-            var root = doc.RootElement;
-            var ranges = root.GetProperty("ranges").GetProperty("expression");
-            Assert.That(ranges.GetProperty("min").GetDouble(), Is.EqualTo(FermenterTraits.ExpressionMin));
-            Assert.That(ranges.GetProperty("max").GetDouble(), Is.EqualTo(FermenterTraits.ExpressionMax));
-            Assert.That(root.GetProperty("expression_time_constant_s").GetDouble(), Is.EqualTo(FermenterTraits.ExpressionTimeConstant));
-            Assert.That(root.GetProperty("membrane_share_max").GetDouble(), Is.EqualTo(FermenterTraits.MembraneShareMax));
-            Assert.That(root.GetProperty("build_capacity").GetDouble(), Is.EqualTo(FermenterTraits.BuildCapacity));
-            var json = root.GetProperty("traits").EnumerateArray().ToArray();
-            Assert.That(json.Length, Is.EqualTo(FermenterTraits.All.Count));
-            for (int i = 0; i < json.Length; i++)
+            // content/traits/fermenter.json names each trait's protein_pool; the kernel must have it, and a cell with a new
+            // target moves its expression there with the pool's time constant.
+            var cell = NewCell();
+            foreach (var t in cell.Traits)
             {
-                var t = FermenterTraits.All[i];
-                Assert.That(json[i].GetProperty("id").GetString(), Is.EqualTo(t.Id));
-                Assert.That(json[i].GetProperty("protein").GetString(), Is.EqualTo(t.Protein));
-                Assert.That(json[i].GetProperty("copy_key").GetString(), Is.EqualTo(t.CopyKey));
-                Assert.That(json[i].GetProperty("footprint_nm2").GetDouble(), Is.EqualTo(t.FootprintNm2));
-                Assert.That(json[i].GetProperty("parameters").EnumerateArray().Select(p => p.GetString()), Is.EqualTo(t.Parameters));
+                Assert.That(cell.External(t.TargetParameter), Is.EqualTo(1.0), t.Id);
+                Assert.That(cell.State(t.ExpressionState), Is.EqualTo(1.0), t.Id);
+                Assert.That(t.Min, t.Step > 0 ? Is.LessThanOrEqualTo(1.0) : Is.LessThan(1.0), t.Id);
+                Assert.That(t.Max, Is.GreaterThan(1.0), t.Id);
             }
+            int k = cell.Traits.ToList().FindIndex(t => t.Id == "KefC_expression");
+            cell.SetTrait(k, 0.5);
+            double tau = cell.External("tau_mod_pool_KefC");
+            Run(cell, tau);
+            Assert.That(cell.TraitValue(k), Is.EqualTo(0.5 + 0.5 * Math.Exp(-1.0)).Within(0.01), "falling needs no ATP: e-fold in tau");
+        }
+
+        [Test]
+        public void TheFlagellumRunsOnTheProtonMotiveForceAndCostsATP()
+        {
+            // Motor on: H+ flow in through the motor (~1,200 per turn at ~100 Hz), the H+-ATPase works harder, the cell
+            // swims ~15 um/s with one flagellum; four flagella swim faster but less than four times as fast.
+            var cell = NewCell();
+            cell.Step(GameDt);
+            double pumps0 = cell.Budget().AtpPumps;
+            cell.SetExternal("a_motor_mod_i_flagellum", 1.0);
+            Run(cell, 60.0);
+            double j = cell.AlgebraicValue("i_flagellum__j_H_flag") * Na(cell);
+            Assert.That(j, Is.InRange(0.8e5, 1.6e5), "H+/s through one motor");
+            // the H+-ATPase speeds up as the cytosol acidifies; the H+ leak and exchangers carry less as the PMF drops
+            Assert.That(cell.Budget().AtpPumps, Is.GreaterThan(pumps0 * 1.02), "pumping replaces the protons the motor uses");
+            double v1 = cell.AlgebraicValue("i_flagellum__v_swim");
+            Assert.That(v1, Is.InRange(10e-6, 20e-6));
+            int f = cell.Traits.ToList().FindIndex(t => t.Id == "flagella");
+            cell.SetTrait(f, 4.0);
+            Assert.That(cell.TraitTarget(f), Is.EqualTo(4.0));
+            cell.SetTrait(f, 2.6);
+            Assert.That(cell.TraitTarget(f), Is.EqualTo(2.0), "whole flagella");
+            // building three more flagella (~8e8 ATP) needs spare ATP: on the lean background there is none, on food plenty
+            cell.SetTrait(f, 4.0);
+            Run(cell, 600.0);
+            Assert.That(cell.TraitValue(f), Is.LessThan(3.0), "little spare ATP off food");
+            cell.SetExternal("C_glc_e_mod_membrane_face", 50.0);
+            Run(cell, 1800.0);
+            Assert.That(cell.TraitValue(f), Is.EqualTo(4.0).Within(0.05), "built within half an hour on food");
+            double v4 = cell.AlgebraicValue("i_flagellum__v_swim");
+            Assert.That(v4, Is.GreaterThan(1.5 * v1));
+            Assert.That(v4, Is.LessThan(4.0 * v1));
+            Assert.That(cell.Alive, Is.True);
+        }
+
+        [Test]
+        public void OnRichFoodACellCanBuildADaughterInHours()
+        {
+            // At rest on the lean background the cell only maintains itself; touching food (50 mM at the membrane) its
+            // carriers and glycolysis have the headroom of a growing fermenter (~40x maintenance), so growth asked at the
+            // maximum builds a daughter in a few hours at 20 C.
+            var cell = NewCell();
+            cell.SetExternal("C_glc_e_mod_membrane_face", 50.0);
+            cell.GrowthFraction = 50.0;
+            Run(cell, 3600.0);
+            double perHour = cell.GrowthProgress;
+            TestContext.WriteLine($"daughter built per hour on food: {perHour:P1}, ATP {cell.State("cytosol__C_ATP"):F2} mM, turnover {cell.Budget().AtpConsumed / cell.RestingTurnover:F1}x rest");
+            Assert.That(perHour, Is.GreaterThan(0.25), "a daughter in under 4 h");
+            Assert.That(cell.Converged, Is.True);
         }
 
         [Test]

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using AdaptOrDeity.Game.Content;
 using AdaptOrDeity.Sim.Kernels.Generated;
 using AdaptOrDeity.Sim.Modules;
 using AdaptOrDeity.Sim.Physiology;
@@ -8,7 +9,8 @@ using AdaptOrDeity.Sim.World;
 namespace AdaptOrDeity.Game.Session
 {
     /// <summary>
-    /// The stage-1 world: fermenter cells (circulatory-autogen-modules cell/prokaryote fermenter) in a Proterozoic sea.
+    /// The stage-1 world: fermenter cells (circulatory-autogen-modules cell/generic_adaptive_cell fermenter) in a Proterozoic
+    /// sea. Cell physiology comes from the kernel; game-side values (food, colony, control ranges) from content/parameters.json.
     /// Cells belong to groups; traits and energy controls are set per group and apply to every cell in it. From level 2 a
     /// cell can put energy into a daughter and divide; at a lethal damage load it dies. With a fixed body size a group
     /// keeps its number of cells: growth energy replaces dead cells, and goes to repair while the group is full. Cells
@@ -19,12 +21,11 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Sim-seconds per real second: pause, 1x, 10x, 100x, 1000x.</summary>
         public static readonly double[] SpeedPresets = { 0.0, 1.0, 10.0, 100.0, 1000.0 };
 
-        public const int CellLimit = 64;
         public const int GroupLimit = 8;
         public const int GrowthControl = 0, StorageControl = 1, RepairControl = 2;
 
-        private const double Avogadro = FermenterCell.AvogadroConstant;
-        private const double CellDensity = 1100.0;   // kg/m³, for the specific metabolic rate
+        /// <summary>Most cells the session simulates (content/parameters.json colony.cell_limit).</summary>
+        public static int CellLimit => GameParameters.Default.Integer("colony.cell_limit");
 
         private static readonly OverlayInfo[] OverlayList =
         {
@@ -38,7 +39,8 @@ namespace AdaptOrDeity.Game.Session
 
         private static readonly ControlInfo[] ControlList =
         {
-            new ControlInfo("growth", "Energy to growth", 0.0, 20.0, 0.0, GameFeatures.GrowthAndDivision, "× resting ATP use",
+            new ControlInfo("growth", "Energy to growth", 0.0, GameParameters.Default.Value("controls.growth_max"), 0.0,
+                GameFeatures.GrowthAndDivision, "× resting ATP use",
                 "ATP put into building a daughter, as a multiple of the cell's resting ATP use (growing fermenters run 10-30x " +
                 "their maintenance); limited by the glucose the cell can take up"),
             new ControlInfo("storage", "Glycogen storage", 0.0, 1.0, 0.0, GameFeatures.GlycogenStorage, "of capacity",
@@ -47,7 +49,7 @@ namespace AdaptOrDeity.Game.Session
                 "how much the cell spends repairing damage; below about 0.1 damage outruns repair and the cell dies"),
         };
 
-        private readonly IKernel _kernel = new Prokaryote_fermenter();
+        private readonly IKernel _kernel = new GenericAdaptiveCell_fermenter();
         private readonly List<FermenterCell> _cells = new List<FermenterCell>();
         private readonly List<int> _cellGroup = new List<int>();
         private readonly List<Group> _groups = new List<Group>();
@@ -56,7 +58,16 @@ namespace AdaptOrDeity.Game.Session
         private readonly Func<FermenterCell, double>[] _read;
         private readonly TraitInfo[] _traits;
         private int _level = 1;
-        private readonly FoodField _food = new FoodField();
+        private readonly FoodField _food;
+        private readonly CreatureBody _body;
+        private readonly int _flagellaTrait;
+        private readonly double _thrustAngleSd;
+        private readonly double[] _defaultAngles;
+        private Func<int, double>? _flagellaOf, _thrustOf;   // cached delegates: stepping must not allocate
+        private readonly Random _motilityRandom;
+        private readonly double _meanRun, _meanPause;
+        private double _untilSwitch;
+        private readonly double _avogadro, _cellDensity, _spacing, _cellMass;
         private double[] _traceAtCell = new double[0];   // per cell, per trace species [mol/m³], for sensing later
 
         private sealed class Group
@@ -80,7 +91,30 @@ namespace AdaptOrDeity.Game.Session
 
         public FermenterWorld()
         {
-            _cells.Add(new FermenterCell(_kernel));
+            _cells.Add(new FermenterCell(_kernel, TraitCatalog.Fermenter));
+            var first = _cells[0];
+            // Geometry and the medium from the kernel (upstream parameters.json); the rest of the food field from content.
+            CellRadius = first.External("R_cell_mod_membrane") * 1e-6;   // µm → m
+            _spacing = 2.0 * CellRadius + GameParameters.Default.Value("colony.cell_gap");
+            _food = new FoodField(GameParameters.Default.Food(first.External("C_glc_e_mod_membrane_face")));
+            _motilityRandom = new Random(GameParameters.Default.Integer("motility.seed"));
+            _meanRun = GameParameters.Default.Value("motility.mean_run");
+            _meanPause = GameParameters.Default.Value("motility.mean_pause");
+            _untilSwitch = Exponential() * _meanPause;
+            _thrustAngleSd = GameParameters.Default.Value("motility.thrust_angle_sd");
+            _defaultAngles = CreatureBody.DefaultAngles(GameParameters.Default.Value("motility.flagellum_spacing"));
+            _flagellaTrait = -1;
+            for (int t = 0; t < first.Traits.Count; t++)
+                if (first.Traits[t].Id == "flagella")
+                    _flagellaTrait = t;
+            _avogadro = first.External("N_A_mod_pool_proteome");
+            _cellDensity = GameParameters.Default.Value("body.cell_density");
+            // One rigid body in the water: each cell's mass from its volume, Stokes drag from the kernel's viscosity
+            _cellMass = _cellDensity * first.AlgebraicValue("membrane__Vol");
+            _body = new CreatureBody(CellRadius, first.External("eta_mod_i_flagellum"), GameParameters.Default.Body());
+            AddToBody(0, _defaultAngles);
+            _food.Populate(_body.Body.X, _body.Body.Y);
+            double avogadro = _avogadro;
             _cellGroup.Add(0);
             _groups.Add(new Group(_cells[0].Traits.Count));
             _featureEnabled = new bool[GameFeatures.All.Count];
@@ -105,55 +139,56 @@ namespace AdaptOrDeity.Game.Session
             }
             const string rate = "Metabolic rate", made = "ATP made", used = "ATP used", upkeep = "Protein turnover",
                 state = "Cell state", growth = "Growth and storage";
-            Add(new DetailInfo("atp_turnover", rate, "ATP turnover", "mol/s", "ATP/s", Avogadro,
+            Add(new DetailInfo("atp_turnover", rate, "ATP turnover", "mol/s", "ATP/s", avogadro,
                 "ATP hydrolysed per second by everything in the cell"), c => c.Budget().AtpConsumed);
             Add(new DetailInfo("free_energy_power", rate, "Free-energy use", "W", "fW", 1e15,
                 "ATP turnover x the free energy of each ATP now (it changes with ATP, ADP and Pi): the work the cell does"),
                 c => c.Budget().AtpConsumed * c.AlgebraicValue("cytosol__A_hyd"));
             Add(new DetailInfo("heat", rate, "Heat", "W", "fW", 1e15, "reaction enthalpy released"), c => c.Budget().Heat);
             Add(new DetailInfo("specific_heat", rate, "Specific metabolic rate", "W/kg", "W/kg", 1.0,
-                "heat per kg of cell (density 1100 kg/m³)"), c => c.Budget().Heat / (c.Volume * CellDensity));
-            Add(new DetailInfo("glucose_in", rate, "Glucose taken up", "mol/s", "molecules/s", Avogadro),
+                $"heat per kg of cell (density {_cellDensity:F0} kg/m³)"), c => c.Budget().Heat / (c.Volume * _cellDensity));
+            Add(new DetailInfo("glucose_in", rate, "Glucose taken up", "mol/s", "molecules/s", avogadro),
                 c => c.AlgebraicValue("membrane_face__J_glc"));
-            Add(new DetailInfo("lactate_out", rate, "Lactate exported", "mol/s", "molecules/s", Avogadro),
+            Add(new DetailInfo("lactate_out", rate, "Lactate exported", "mol/s", "molecules/s", avogadro),
                 c => -c.AlgebraicValue("membrane_face__J_lac"));
-            Add(new DetailInfo("atp_glycolysis", made, "Glycolysis (2 per glucose)", "mol/s", "ATP/s", Avogadro),
+            Add(new DetailInfo("atp_glycolysis", made, "Glycolysis (2 per glucose)", "mol/s", "ATP/s", avogadro),
                 c => c.Budget().AtpGlycolysis);
-            Add(new DetailInfo("atp_from_glycogen", made, "From glycogen (3 per glucose)", "mol/s", "ATP/s", Avogadro),
+            Add(new DetailInfo("atp_from_glycogen", made, "From glycogen (3 per glucose)", "mol/s", "ATP/s", avogadro),
                 c => c.Budget().AtpFromGlycogen);
-            Add(new DetailInfo("atp_pumps", used, "H⁺-ATPase pumping", "mol/s", "ATP/s", Avogadro,
+            Add(new DetailInfo("atp_pumps", used, "H⁺-ATPase pumping", "mol/s", "ATP/s", avogadro,
                 "powers the proton gradient that drives NhaA, Trk and KefC"), c => c.Budget().AtpPumps);
-            Add(new DetailInfo("atp_protein_turnover", used, "Protein turnover", "mol/s", "ATP/s", Avogadro,
+            Add(new DetailInfo("atp_protein_turnover", used, "Protein turnover", "mol/s", "ATP/s", avogadro,
                 "remaking degraded protein at the ribosomes (1%/h), all proteins including the unmodelled ones"),
                 c => c.Budget().AtpProteinTurnover);
-            Add(new DetailInfo("atp_protein_build", used, "Building new protein", "mol/s", "ATP/s", Avogadro,
+            Add(new DetailInfo("atp_protein_build", used, "Building new protein", "mol/s", "ATP/s", avogadro,
                 "while expression rises"), c => c.Budget().AtpProteinBuild);
-            Add(new DetailInfo("atp_rna", used, "RNA turnover and ribosomes", "mol/s", "ATP/s", Avogadro,
+            Add(new DetailInfo("atp_rna", used, "RNA turnover and ribosomes", "mol/s", "ATP/s", avogadro,
                 "mRNA lasts about 5 min; ribosome RNA upkeep"), c => c.Budget().AtpRna);
-            Add(new DetailInfo("atp_lipids", used, "Membrane lipids", "mol/s", "ATP/s", Avogadro,
+            Add(new DetailInfo("atp_lipids", used, "Membrane lipids", "mol/s", "ATP/s", avogadro,
                 "lipid turnover; scales with membrane area"), c => c.Budget().AtpLipids);
-            Add(new DetailInfo("atp_repair", used, "Repair", "mol/s", "ATP/s", Avogadro), c => c.Budget().AtpRepair);
-            Add(new DetailInfo("atp_growth", used, "Growth (building a daughter)", "mol/s", "ATP/s", Avogadro),
+            Add(new DetailInfo("atp_repair", used, "Repair", "mol/s", "ATP/s", avogadro), c => c.Budget().AtpRepair);
+            Add(new DetailInfo("atp_growth", used, "Growth (building a daughter)", "mol/s", "ATP/s", avogadro),
                 c => c.Budget().AtpGrowth);
-            Add(new DetailInfo("atp_storage", used, "Storing glycogen", "mol/s", "ATP/s", Avogadro), c => c.Budget().AtpStorage);
-            Add(new DetailInfo("atp_other", used, "Other maintenance", "mol/s", "ATP/s", Avogadro,
+            Add(new DetailInfo("atp_storage", used, "Storing glycogen", "mol/s", "ATP/s", avogadro), c => c.Budget().AtpStorage);
+            Add(new DetailInfo("atp_other", used, "Other maintenance", "mol/s", "ATP/s", avogadro,
                 "everything not yet itemised (Lynch & Marinov total less the items above)"),
                 c => c.Budget().AtpOtherMaintenance);
-            Add(new DetailInfo("atp_net", used, "Net (made - used)", "mol/s", "ATP/s", Avogadro),
+            Add(new DetailInfo("atp_net", used, "Net (made - used)", "mol/s", "ATP/s", avogadro),
                 c => c.Budget().AtpProduced - c.Budget().AtpConsumed);
             foreach (var key in new[] { "H_ATPase", "NhaA", "KefC", "Trk", "NCX", "Glf", "LacT", "Glyc", "proteome" })
             {
                 string k = key;
-                Add(new DetailInfo("turnover_" + k, upkeep, ProteinLabel(k), "mol/s", "ATP/s", Avogadro),
-                    c => c.AlgebraicValue("protein__J_ATP_" + k));
+                Add(new DetailInfo("turnover_" + k, upkeep, ProteinLabel(k), "mol/s", "ATP/s", avogadro),
+                    c => c.AlgebraicValue("pool_" + k + "__J_ATP"));
             }
             Add(new DetailInfo("growth_progress", growth, "Daughter built", "", "%", 100.0), c => c.GrowthProgress);
             Add(new DetailInfo("glycogen_progress", growth, "Glycogen (share of a daughter)", "", "%", 100.0),
                 c => c.GlycogenProgress);
             Add(new DetailInfo("glycogen", growth, "Glycogen", "mol/m³", "mM glucose", 1.0), c => c.Glycogen);
-            Add(new DetailInfo("daughter_cost", growth, "Cost of a daughter", "mol", "ATP", Avogadro), c => c.DaughterCost);
+            Add(new DetailInfo("daughter_cost", growth, "Cost of a daughter", "mol", "ATP", avogadro), c => c.DaughterCost);
             Add(new DetailInfo("membrane_used", growth, "Membrane space used by transporters", "", "% of limit", 100.0,
-                "the adaptable transporters may take 8% of the membrane; the limit grows with the cell's surface"),
+                $"the proteins may take {100 * first.External("area_max_fraction_mod_protein"):F0}% of the membrane; the " +
+                "limit grows with the cell's surface"),
                 c => c.TransporterArea() / c.TransporterAreaMax);
             Add(new DetailInfo("v", state, "Membrane potential", "V", "mV", 1e3), c => 1e-3 * c.State("membrane__V"));
             Add(new DetailInfo("ph", state, "Cytosol pH", "pH", "", 1.0), c => c.AlgebraicValue("H__pH_i"));
@@ -171,7 +206,7 @@ namespace AdaptOrDeity.Game.Session
             _traits = new TraitInfo[traits.Count];
             for (int i = 0; i < _traits.Length; i++)
                 _traits[i] = new TraitInfo(traits[i].Id, traits[i].Label, traits[i].Protein, true, traits[i].Min,
-                    traits[i].Max, true);
+                    traits[i].Max, traits[i].Step <= 0.0, traits[i].Step);
         }
 
         public IReadOnlyList<OverlayInfo> Overlays => OverlayList;
@@ -222,21 +257,53 @@ namespace AdaptOrDeity.Game.Session
 
         public FoodField Food => _food;
 
-        public double CellRadius => 1e-6;
+        public CreatureBody Body => _body;
 
-        public void CellPosition(int cell, out double x, out double y) => ColonyLayout.Slot(Check(cell), out x, out y);
+        /// <summary>True while the flagellar motors run (a run); false in a pause.</summary>
+        public bool MotorOn { get; private set; }
+
+        /// <summary>Total proton-motive power of the flagellar motors now [W].</summary>
+        public double MotorPower
+        {
+            get
+            {
+                double p = 0.0;
+                foreach (var c in _cells)
+                    if (c.Alive)
+                        p += c.AlgebraicValue("i_flagellum__P_flag");
+                return p;
+            }
+        }
+
+        /// <summary>Moves flagellum <paramref name="k"/> of a cell to a base angle on its membrane (body frame) [rad].</summary>
+        public void SetFlagellumAngle(int cell, int k, double angle) => _body.SetFlagellumAngle(Check(cell), k, angle);
+
+        private void AddToBody(int cell, IReadOnlyList<double> angles)
+        {
+            ColonyLayout.Slot(cell, _spacing, out double x, out double y);
+            _body.AddCell(x, y, _cellMass, angles);
+        }
+
+        /// <summary>Cell radius [m] (the kernel's R_cell).</summary>
+        public double CellRadius { get; }
+
+        /// <summary>Position of the cell over the ground [m]: where it sits on the body, as the body moves and turns.</summary>
+        public void CellPosition(int cell, out double x, out double y) => _body.WorldPosition(Check(cell), out x, out y);
 
         public void Step(double t, double dt)
         {
-            // Food: each cell sees the background plus the packets it touches; what it takes beyond the background comes
-            // out of those packets. Glucose crosses the membrane through the cell's own carriers (Glf) in the kernel.
-            _food.Step(dt);
+            // The creature moves over the ground and the food window follows it. Each cell sees the background plus the
+            // packets it touches; what it takes beyond the background comes out of those packets. Glucose crosses the
+            // membrane through the cell's own carriers (Glf) in the kernel.
+            StepMotility(dt);
+            var b = _body.Body;
+            _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
             int nt = _food.TraceSpecies.Count;
             if (_traceAtCell.Length < _cells.Count * nt)
                 _traceAtCell = new double[CellLimit * nt];
             for (int i = 0; i < _cells.Count; i++)
             {
-                ColonyLayout.Slot(i, out double x, out double y);
+                CellPosition(i, out double x, out double y);
                 if (_cells[i].Alive)
                     _food.StickTo(x, y, CellRadius);
                 double c = _food.GlucoseAt(x, y, CellRadius);
@@ -251,7 +318,7 @@ namespace AdaptOrDeity.Game.Session
                 double uptake = _cells[i].AlgebraicValue("membrane_face__J_glc") * dt;   // mol into the cell
                 if (c > _food.BackgroundGlucose && uptake > 0.0)
                 {
-                    ColonyLayout.Slot(i, out double x, out double y);
+                    CellPosition(i, out double x, out double y);
                     _food.Withdraw(x, y, CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
                 }
             }
@@ -363,7 +430,7 @@ namespace AdaptOrDeity.Game.Session
         public void DevCompleteDaughter(int cell)
         {
             var c = _cells[Check(cell)];
-            c.Batch.States[c.Batch.Descriptor.StateIndex("bio__P_growth")][0] = c.DaughterCost;
+            c.SetState("bio__P_growth", c.DaughterCost);
         }
 
         private void DivideCell(int cell)
@@ -374,12 +441,17 @@ namespace AdaptOrDeity.Game.Session
             int group = _cellGroup[cell];
             // With a fixed body size the daughter takes a dead cell's place; otherwise it joins the colony.
             int slot = Active(GameFeatures.FixedBodySize) ? DeadSlot(group) : -1;
+            var angles = _body.FlagellumAngles(cell);   // the daughter inherits where the flagella sit
             if (slot >= 0)
+            {
                 _cells[slot] = daughter;
+                _body.SetFlagellumAngles(slot, angles);
+            }
             else
             {
                 _cells.Add(daughter);
                 _cellGroup.Add(group);
+                AddToBody(_cells.Count - 1, angles);
             }
         }
 
@@ -392,6 +464,33 @@ namespace AdaptOrDeity.Game.Session
         }
 
         private void ApplyFixedSize() => ApplyControls();
+
+        private double Exponential() => -Math.Log(1.0 - _motilityRandom.NextDouble());
+
+        /// <summary>
+        /// Runs and pauses at random (no sensing yet: level 2 adds deciding when to swim). In a run every living cell's
+        /// motors turn; each flagellum pushes its cell away from its base with the kernel's thrust (proton motive force,
+        /// number of flagella), off by a normal error drawn for the run, and the body moves and turns as one rigid body
+        /// against the water's drag. With swimming turned off the motors stay off.
+        /// </summary>
+        private void StepMotility(double dt)
+        {
+            bool on = Active(GameFeatures.Swimming);
+            _untilSwitch -= dt;
+            while (_untilSwitch <= 0.0)
+            {
+                MotorOn = !MotorOn;
+                if (MotorOn)
+                    _body.NewRun(_motilityRandom, _thrustAngleSd);
+                _untilSwitch += Exponential() * (MotorOn ? _meanRun : _meanPause);
+            }
+            foreach (var c in _cells)
+                c.SetExternal("a_motor_mod_i_flagellum", on && MotorOn && c.Alive ? 1.0 : 0.0);
+            // thrust from the last step's state (the motors' response to the PMF is not lagged by more than a step)
+            _flagellaOf ??= i => _flagellaTrait >= 0 ? _cells[i].TraitValue(_flagellaTrait) : 0.0;
+            _thrustOf ??= i => _cells[i].Alive ? Math.Max(0.0, _cells[i].AlgebraicValue("i_flagellum__F_one")) : 0.0;
+            _body.Step(dt, _flagellaOf, _thrustOf);
+        }
 
         /// <summary>
         /// Pushes each group's controls to its cells: features that are locked or off contribute nothing, and a full group

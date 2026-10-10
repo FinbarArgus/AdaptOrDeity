@@ -17,6 +17,14 @@ namespace AdaptOrDeity.Game.Session
         private Thread? _thread;
         private volatile bool _stop;
         private double _lastReal = double.NaN;
+        private readonly Stopwatch _tickClock = new Stopwatch();
+        private readonly Func<bool> _outOfTime;   // cached: a tick must not allocate
+
+        /// <summary>Wall-clock time a tick may spend stepping before it publishes [s]: ~30 frames a second at any speed.</summary>
+        public double TickBudget { get; set; } = 0.03;
+
+        /// <summary>The exception that stopped the simulation thread, or null while it runs.</summary>
+        public Exception? Fault { get; private set; }
 
         /// <param name="loop">The loop to run. Only this host may touch it once started.</param>
         /// <param name="realClock">Real time in seconds; defaults to a monotonic stopwatch. Injectable for tests.</param>
@@ -27,6 +35,7 @@ namespace AdaptOrDeity.Game.Session
             var stopwatch = Stopwatch.StartNew();
             _realClock = realClock ?? (() => stopwatch.Elapsed.TotalSeconds);
             _maxStepsPerTick = maxStepsPerTick;
+            _outOfTime = () => _tickClock.Elapsed.TotalSeconds > TickBudget;
             _frames = new TripleBuffer<SnapshotFrame>(loop.CreateFrame(), loop.CreateFrame(), loop.CreateFrame());
             _loop.WriteSnapshot(_frames.Back);
             _frames.Publish();
@@ -51,7 +60,8 @@ namespace AdaptOrDeity.Game.Session
             _lastReal = now;
 
             _loop.ApplyCommands();
-            _loop.Advance(realDt * _loop.SpeedMultiplier, _maxStepsPerTick);
+            _tickClock.Restart();
+            _loop.Advance(realDt * _loop.SpeedMultiplier, _maxStepsPerTick, _outOfTime);
             _loop.WriteSnapshot(_frames.Back);
             _frames.Publish();
         }
@@ -68,10 +78,18 @@ namespace AdaptOrDeity.Game.Session
 
         private void Run()
         {
-            while (!_stop)
+            try
             {
-                Tick();
-                Thread.Sleep(1);
+                while (!_stop)
+                {
+                    Tick();
+                    Thread.Sleep(1);
+                }
+            }
+            catch (Exception e)
+            {
+                // a background thread dies silently: keep the reason so the front end can report it
+                Fault = e;
             }
         }
     }

@@ -95,12 +95,15 @@ namespace AdaptOrDeity.UI
             if (Unlocked(schema, frame, GameFeatures.GrowthAndDivision))
                 DrawGrowth(bridge, schema, frame, cell);
             DrawGroup(schema, frame, cell, "Cell state");
+            DrawSwimming(frame);
 
             GUILayout.Space(10);
             GUILayout.Label("Protein expression", _header);
             GUILayout.Label("Copies relative to the baseline cell, for every cell in this group. New copies cost ATP to " +
                             "build (shown under ATP used) and a little each second to keep. The membrane holds only so " +
-                            "many transporters.", _small);
+                            "many transporters. Each membrane protein shows as an arc of the cell's rim in its colour, as " +
+                            "long as the share of the surface it takes. Drag a flagellum's base (on the selected cell) to " +
+                            "move it around the membrane.", _small);
             for (int t = 0; t < schema.Traits.Count; t++)
                 DrawTraitSlider(bridge, schema.Traits[t], frame, cell, group, t);
 
@@ -117,6 +120,34 @@ namespace AdaptOrDeity.UI
 
             GUILayout.EndScrollView();
             GUILayout.EndArea();
+        }
+
+        /// <summary>
+        /// The creature's swimming and where its energy goes: the motors' proton-motive power, the mechanical power of the
+        /// thrust (only a fraction: flagella are inefficient) and the heat the body's motion has put into the water.
+        /// </summary>
+        private void DrawSwimming(SnapshotFrame frame)
+        {
+            GUILayout.Space(6);
+            GUILayout.Label("Swimming (the whole creature)", _header);
+            float v = Mathf.Sqrt(frame.CreatureVx * frame.CreatureVx + frame.CreatureVy * frame.CreatureVy) * 1e6f;
+            Row("Speed over the ground", $"{v:F1} µm/s");
+            Row("Turning", $"{frame.Spin * Mathf.Rad2Deg:F1} °/s");
+            Row("Motors", frame.MotorOn ? "running" : "paused");
+            Row("Motor power (proton motive)", $"{frame.MotorPower * 1e15f:F3} fW");
+            Row("Mechanical power of the thrust", $"{frame.MechanicalPower * 1e18f:F2} aW");
+            float eff = frame.MotorPower > 0f ? frame.MechanicalPower / frame.MotorPower : 0f;
+            Row("Propulsive efficiency", frame.MotorPower > 0f ? $"{100f * eff:F2} %" : "–");
+            Row("Heat put into the water by moving", $"{frame.HeatToWater * 1e15:F3} fJ");
+        }
+
+        private void Row(string label, string value)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(label, _small);
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(value, _right);
+            GUILayout.EndHorizontal();
         }
 
         private void DrawMetabolicRate(SessionSchema schema, SnapshotFrame frame, int cell)
@@ -219,9 +250,18 @@ namespace AdaptOrDeity.UI
 
         private void DrawTraitSlider(SessionBridge bridge, TraitInfo trait, SnapshotFrame frame, int cell, int group, int t)
         {
+            if (trait.Step > 0.0)
+            {
+                DrawCountSlider(bridge, trait, frame, cell, group, t);
+                return;
+            }
             float current = frame.TraitValues[t][cell], target = frame.TraitTargets[t][cell];
             GUILayout.BeginHorizontal();
-            GUILayout.Label(trait.Label, GUILayout.Width(240));
+            var swatch = GUI.color;
+            GUI.color = AdaptOrDeity.Presentation.ProteinColours.For(t);
+            GUILayout.Label("■", GUILayout.Width(14));   // its colour on the membrane
+            GUI.color = swatch;
+            GUILayout.Label(trait.Label, GUILayout.Width(226));
             GUILayout.FlexibleSpace();
             string status = Mathf.Abs(current - target) > 1e-3f ? $"×{current:F2} → ×{target:F2}" : $"×{current:F2}";
             GUILayout.Label(status, _right);
@@ -241,6 +281,32 @@ namespace AdaptOrDeity.UI
             }
             else if (Mathf.Abs(_sliders[t] - target) > 1e-3f && GUIUtility.hotControl == 0)
                 _sliders[t] = target;   // the membrane ceiling clamped the request: show what was accepted
+        }
+
+        /// <summary>A whole-number trait (e.g. flagella): the count built so far and the number asked for.</summary>
+        private void DrawCountSlider(SessionBridge bridge, TraitInfo trait, SnapshotFrame frame, int cell, int group, int t)
+        {
+            float current = frame.TraitValues[t][cell], target = frame.TraitTargets[t][cell];
+            GUILayout.BeginHorizontal();
+            var swatch = GUI.color;
+            GUI.color = AdaptOrDeity.Presentation.ProteinColours.For(t);
+            GUILayout.Label("■", GUILayout.Width(14));   // its colour on the membrane
+            GUI.color = swatch;
+            GUILayout.Label(new GUIContent(trait.Label, "each one costs ATP to build and protons while it runs"), GUILayout.Width(226));
+            GUILayout.FlexibleSpace();
+            string status = Mathf.Abs(current - target) > 1e-3f ? $"{current:F1} → {target:F0} (building)" : $"{target:F0}";
+            GUILayout.Label(status, _right);
+            GUILayout.EndHorizontal();
+            float step = (float)trait.Step;
+            float moved = GUILayout.HorizontalSlider(_sliders[t], (float)trait.Min, (float)trait.Max, GUILayout.Width(Width - 50));
+            float value = Mathf.Round(moved / step) * step;
+            if (Mathf.Abs(value - _sliders[t]) > 1e-4f)
+            {
+                _sliders[t] = value;
+                bridge.Send(SimCommands.SetTrait(group, t, value));
+            }
+            else if (Mathf.Abs(_sliders[t] - target) > 1e-3f && GUIUtility.hotControl == 0)
+                _sliders[t] = target;   // the membrane room clamped the request: show what was accepted
         }
 
         private void DrawControl(SessionBridge bridge, ControlInfo control, int group, int c)

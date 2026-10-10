@@ -40,9 +40,9 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
 - Two clocks: `EvolutionClock` (geological time, discrete per level) and `SimClock` (physiological time
   inside a level's evaluation window; the single source of truth for simulation time).
 - **Levels and features** are listed in [`content/timeline.json`](content/timeline.json) (draft): level 1 (2.0 Ga)
-  the fermenter with expression and repair; level 2 (1.9 Ga) growth, division and glycogen; level 3 (1.85 Ga) smell
-  (chemoreceptors) and swimming (flagellum), historically available from the start (bacterial chemotaxis predates
-  2 Ga) but placed here for pacing; level 4 respiration; level 5 the eukaryotic cell; level 6 several cell groups;
+  the fermenter with expression, repair and one flagellum that runs at random; level 2 (1.9 Ga) growth, division,
+  glycogen and processing to decide when to swim (planned); level 3 (1.85 Ga) smell (chemoreceptors), to swim towards
+  food (bacterial chemotaxis predates 2 Ga; placed here for pacing); level 4 respiration; level 5 the eukaryotic cell; level 6 several cell groups;
   level 7 animals with an optional fixed body size. Every
   feature, once unlocked, is the player's choice to use; some (fixed size) make the organism easier to maintain.
   The same file lists when each protein existed.
@@ -66,6 +66,74 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
 | Failure | Starving cells accumulate damage → necrosis on a Damage overlay; damage lowers fitness. |
 | New cells | Start at their CellType's baseline steady state. |
 | UX | Oxygen Not Included style: hotkeyed overlay tabs, legends, hover tooltips, category build menu, speed controls, warnings, level report; live plots on click; flux arrows; educational parameter inspector; stylised 2D art; the evolutionary time bar on top. |
+
+### Environment, threats and behaviour (user notes, 2026-10-09; not started)
+- **Visible motion** (done 2026-10-09). The creature drifts with a slow near-bed current
+  (`environment.current_*`, 2 µm/s placeholder) and swims on its flagella (`Sim.World.CreatureMotion`). The view follows it
+  (a floating origin: every position in a frame is relative to the creature), so the creature stays put on screen and
+  the world slides past:
+  - world-fixed sediment specks, plus a fainter deeper layer at lower parallax (`BackgroundView`);
+  - a fading wake through the path it has travelled and a velocity arrow (`MotionView`); speed in the top bar;
+  - food lying on the ground streams past; food carried by another creature moves on its own path and shows its
+    carrier as a dark body.
+  Cells grow visibly as they build a daughter (drawn up to double area; the kernel keeps the starting geometry) and draw
+  their flagella, beating while the motors run. Still to add: landmarks (dark patches and occluders, which hiding
+  needs) and a minimap (with memory, later).
+- **Swimming (level 1, 2026-10-09).** Propulsion comes only from flagella. The cell starts with one; a whole-number
+  trait (1–8, `pool_Flagellum`) adds more, each costing its ~1×10⁷ amino acids to build (~3×10⁸ ATP, needs food).
+  The motor is CellML (`cell/ion_channels/i_H_flagellum` MotAB): rotation proportional to the proton motive force
+  (~100 Hz at rest), ~1,200 H⁺ per turn (Meister et al. 1987), swimming ~15 µm/s with one flagellum, saturating with
+  more. At level 1 the motors run at random (runs ~2 s, pauses ~4 s; game rule, `motility.*`); level 2 adds
+  processing to decide when to run (`motility_control`, planned). Running one flagellum costs ~1.2×10⁵ H⁺/s, which the
+  H⁺-ATPase must pump back out.
+- **The creature is one rigid body in 2D** (2026-10-09, ADR 0008). Each flagellum sits at a fixed angle on its cell's
+  membrane (the player drags it to move it; daughters inherit the places) and pushes straight away from its base with
+  the kernel's thrust (`i_flagellum` F_one), applied at its base, off by a normal random angle per run (σ = 10°,
+  `motility.thrust_angle_sd`), so the body turns and runs curve. Thrust rises and falls with the motors and bundle
+  (`tau_bundle`, 0.3 s placeholder, in CellML), since a cell this small has almost no inertia (it stops within ~0.3 µs
+  of the thrust ending); Unity draws the body's pose carried forward between the simulation's 0.1 s snapshots, so
+  motion is smooth. A test checks one cell slows to a stop after one push (exactly, and through the real kernel). Newton's laws for translation and rotation against Stokes drag (6πηR per cell, 8πηR³ plus
+  6πηR r² for rotation; no hydrodynamic interaction between cells), integrated exactly per step: momentum and energy
+  balance to round-off. The motors' proton-motive power far exceeds the thrust's mechanical power (~0.2%, as flagella
+  are ~0.1–2% efficient); the rest, and all the drag's work, is heat in the water. Food a cell finds moves rigidly with
+  the body.
+- **Membrane proteins are drawn** as arcs of each cell's rim in their legend colour, each as long as the share of the
+  surface its copies take, so expressing more of a protein visibly takes more membrane (capped by the area limit).
+- **Enemies and allies** share the environment with the creature.
+  - **Enemies** attack and cause damage *where they hit* (local damage on the struck cells, not a whole-cell average).
+  - **Allies** give food packets.
+  - **Telling them apart gets harder over time.** Early on allies and enemies are easy to detect; in later levels
+    they look and smell alike, and telling them apart needs neural development (sensing cells, then integrating
+    cells/a nervous system). Friends and enemies will sometimes look like the player's own creature.
+  - **Dead enemies and dead prey turn into food** (a food packet, or a richer carcass, where they died).
+- **Responses to an enemy**, each a capability the creature must have:
+  - **Run**: needs muscle (contractile) cells whose usage can be raised, costing ATP.
+  - **Hide**: in dark areas, or out of the enemy's line of sight or smell (so enemies sense by sight and/or smell, and
+    the environment has light/dark regions and occluders).
+  - **Protect**: develop a protective shell.
+  - **Fight back**: produce something sharp that damages the enemy, either on the outside (a claw, spine) or released
+    (a deterrent, like a skunk's smell, then poison). Contact damage is multiplied by the relative velocity of the hit.
+- **Proteins unlocked by experience**, not only by evolutionary time: an activity repeated and survived unlocks the
+  protein for the matching defence, e.g.
+  - hit by enemies a few times and survived → shell proteins (secrete a shell, or turn cells into shell-like material);
+  - hidden successfully a few times → pigment proteins to choose the creature's colour, and later to change colour
+    quickly (camouflage).
+  - hit by another creature → a protein for producing something sharp (outer, e.g. a claw; or released, e.g. a
+    deterrent smell);
+  - scared off enough enemies with a released substance → poison proteins;
+  - killed more enemies with sharpness → successively sharper proteins that do more damage;
+  - e.g. hit by 10 enemies → a protein for protective connective tissue.
+  Activity counters per creature go in the save.
+- **`content/timeline.json` carries both** when each protein is *potentially available* (its existing
+  `available_from_ga`, the historical date) and an **unlock criterion** saying how it is actually unlocked, e.g.
+  `"unlock": {"activity": "hit_by_enemy", "count": 10}` for protective connective tissue; proteins with no criterion
+  unlock with their date as now. Activity counts always accumulate, whatever the date (user, 2026-10-09). Dates and
+  the levels for features such as memory and communication are decided level by level as each is fleshed out; until
+  then the file only needs an approximate order of availability. The game checks the criteria against the activity counters, and a test keeps every
+  criterion's activity in the list the game records.
+- **Communication and memory (later levels).** The creature evolves communication with creatures like itself, signals
+  that help with the environment: "danger", "food", "store food". It also eventually evolves a memory (e.g. of where
+  food and danger were, and of which look-alikes were friends).
 
 ## Physiology modelling
 - **Lumped cells in the game, shaders for within-cell detail.** The game runs two levels on one
@@ -104,12 +172,12 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   | Use | Model | At rest |
   |---|---|---|
   | H⁺-ATPase pumping | `i_H_ATPase` | 25% |
-  | Protein turnover, all proteins incl. ribosomal/nucleoid ones | `protein_expression`: copies × length × 5.5 ~P/aa × 1%/h | 16% |
+  | Protein turnover, all proteins incl. ribosomal/nucleoid ones | a `protein_pool` per protein: copies × length × 5.5 ~P/aa × 1%/h | 16% |
   | mRNA turnover (half-life ~5 min) and ribosome upkeep | `biosynthesis` | 7% |
   | Membrane lipids, scaling with membrane area | `biosynthesis`: 2 × surface / 0.5 nm² lipids × 100 ~P × 1%/h | 4% |
   | Repair, at the group's repair level | `biosynthesis`: damage 1 = lethal, 10 days unrepaired | 4% |
   | Other maintenance (not yet itemised; Lynch & Marinov total less the above) | `energy_metabolism` ATPase | 44% |
-  | Building new protein when expression rises | `protein_expression` J_build (game-paced) | 0 |
+  | Building new protein when expression rises | `protein_pool` J_build, served by `protein_expression` | 0 |
   | Growth: building a daughter (1.8×10¹¹ ATP; Lynch & Marinov 1.6×10¹¹) | `biosynthesis` J_growth, P_growth | 0 |
   | Storing glycogen (2 ATP per glucose, 3 back) | `energy_metabolism` | 0 |
 
@@ -121,24 +189,43 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   stress proteins (chaperones; heat damage), sensing and signalling, DNA replication timing within growth, and damage
   effects short of death (damage currently only kills at a lethal load).
 - **Traits and controls (from the cell panel, per cell group):** protein expression ×0.25–4 for the 7 transporters
-  and the glycolytic enzymes ([`content/traits/fermenter.json`](content/traits/fermenter.json)), approaching its
-  target with a 10 s time constant; building is limited to 1× the resting ATP use and, like growth, throttled as ATP
-  falls below rest (stopping at 4 mM: a stringent-response rule in C#), so large changes take minutes. Transporters may take at
-  most 8% of the membrane (baseline 2.3%), a ceiling that scales with membrane area. Kinetic midpoints are fixed
-  (±10% changed almost nothing). Energy controls: growth (0–2× resting ATP use), glycogen storage (0–1), repair
-  (0–1; below ~0.1 damage outruns repair); growth goes to 20× the resting ATP use. The whole-cell upstream sweep covers every trait and control over its
+  and the glycolytic enzymes ([`content/traits/fermenter.json`](content/traits/fermenter.json)): each trait is the
+  target of a `protein_pool` in the kernel, whose expression approaches it with a 10 s time constant; building is
+  limited to 5× the resting ATP use and, like growth, throttled as ATP falls below rest (stopping at 4 mM, the
+  stringent response), all in CellML, so large changes take minutes. Proteins may take at most 8% of the membrane
+  (baseline 2.3%), a ceiling that scales with membrane area; the game keeps targets within it. Kinetic midpoints are
+  fixed (±10% changed almost nothing). Energy controls: growth (0–20× resting ATP use), glycogen storage (0–1), repair
+  (0–1; below ~0.1 damage outruns repair). The whole-cell upstream sweep covers every trait and control over its
   range, temperature 0–40 °C and glucose 0–2 mM.
-- **Food packets.** Packets of glucose (50 mM, 5 µm radius, one every ~2 min, placeholders) with traces of other species
-  (aspartate, serine, ribose, dimethyl sulfide) enter from any boundary of a 30 µm field and drift across (0.1 µm/s); a
-  packet that touches a cell stops there until it is eaten (removed below 0.05 mM). A cell touching a
-  packet sees background + packet glucose at its membrane and takes it up through its own carriers (Glf); what it
-  takes beyond the background comes out of the packet. Traces are recorded at the membrane for smell (level 3); nothing
+- **Where values live.** Every physiological parameter is in upstream
+  `modules/cell/generic_adaptive_cell/parameters.json` with its source and status, read by `tools/build_adaptive_cell.py`
+  (which reports any CSV value that is neither from the file nor derived from it by a stated rule); the game reads
+  them from the kernel. Game-side values (food, colony, control ranges, display) are in
+  [`content/parameters.json`](content/parameters.json), also sourced, embedded in `Game.Content`. Cells are versions
+  of `cell/generic_adaptive_cell`: `empty_membrane` (every general mechanism) and `fermenter` (extends it with its
+  proteins); later bases (an animal cell) extend `empty_membrane` the same way. See
+  [`docs/plans/generic-adaptive-cell.md`](docs/plans/generic-adaptive-cell.md).
+- **Food packets.** Small particles of glucose, smaller than a cell (0.8 µm radius fresh, 4×10⁻¹⁴ mol, about a quarter
+  of a daughter's glucose; placeholders), with traces of other species (aspartate, serine, ribose, dimethyl sulfide);
+  a packet shrinks as it is eaten (area in proportion to what is left) and is removed below 1%. A cell touching one
+  sees the contact concentration (50 mM) at its membrane while it lasts and takes glucose up through its own carriers
+  (Glf); what it takes beyond the background comes out of the packet, which then travels with the creature. Traces are recorded at the membrane for smell (level 3); nothing
   takes them up yet. `Sim.World.FoodField` stands in for the environment field of the transport graph.
+  Since 2026-10-09 a packet either **lies on the ground** (still; a dead creature will be one too) or is **carried by
+  another creature** (prey, or an ally bringing food); nothing drifts freely. Lying food has a density per area
+  (`food.lying_density`) and comes into view ahead of the moving creature; carriers arrive at random times. The food
+  window (30 µm) follows the creature, and food a cell touches travels with the creature until it is eaten.
 - **Division, groups and fixed size.** A cell divides when its daughter is built (or glycogen can finish it), by
   clicking Divide or automatically; both halves keep the state, traits and controls. Cells belong to groups; sliders
-  change every cell in a group (organs later use several groups). With a fixed body size a group keeps its cell count:
-  growth energy replaces dead cells, and goes to repair while the group is full. Cells share the medium but do not yet
-  exchange through the transport graph.
+  change every cell in a group (organs later use several groups); a group has no maximum size. Cells share the medium
+  but do not yet exchange through the transport graph.
+- **Fixed body size (a later level; to rework, user 2026-10-09).** The cell-type proportions within a volume of
+  tissue become fixed and replication towards more cells is turned off; growth energy then goes to replacing damaged
+  and dead cells (turnover). Growth and repair are both set as **ATP usage** (mol ATP/s, in multiples of the resting
+  turnover), so energy moves from one to the other directly. Today growth is ATP (growth_level × J_ref) but repair is a
+  0–1 level scaling a capacity; `biosynthesis` should take repair as an ATP rate too (repair rate = ATP / cost per
+  unit of damage, limited by the damage present), and the C# rule that adds the growth share onto the repair level
+  (with a per-group cell count) goes.
 - **Diffusion (reference) vs lumped (game) version:** the same bond-graph modules build both: N rings of
   `cytosol_volume` joined by `cytosol_face` (the upstream reference) and one `cytosol_volume` (the lumped
   bond graph the game runs). Their comparison is the level 0 ↔ 1 homogenisation check, with a cell-size
@@ -169,7 +256,7 @@ shader reconstruction).
 | Module | Candidate validation data |
 |---|---|
 | `energy_metabolism` (mitochondrial, later stage) | Simultaneous calorimetric heat flux and O₂ flux in cultured cells (Gnaiger & Kemp 1990); ATP turnover rates |
-| fermenter cell (`cell/prokaryote/fermenter` and its new submodules) | Maintenance ATP vs cell volume (Lynch & Marinov 2015); lactate production of homolactic bacteria; bacterial membrane potential and K⁺/Na⁺ contents vs medium |
+| fermenter cell (`cell/generic_adaptive_cell/fermenter` and its new submodules) | Maintenance ATP vs cell volume (Lynch & Marinov 2015); lactate production of homolactic bacteria; bacterial membrane potential and K⁺/Na⁺ contents vs medium |
 | `membrane_carrier_face` (GLUT1, MCT1; Glf for the fermenter) | Uptake-vs-concentration data (Mueckler & Thorens 2013; Weisser et al. 1995; Halestrap & Price 1999) |
 | `thermal_volume`, `heat_conduction_face` | Tissue thermal property measurements (IT'IS database) |
 
@@ -261,6 +348,21 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   upstream in `cell/protein_expression`; the player adapts expression (×0.25–4) and kinetic midpoints (±10%) in a
   right-hand cell panel that shows the metabolic rate and ATP budget. Whole cells are assembled at build time into one
   kernel stepped by backward Euler (ADR 0007).
+- **2026-10-09** `content/timeline.json` gives each protein both its potential availability (historical date) and
+  an unlock criterion (an activity count, e.g. hit by 10 enemies → protective connective tissue). Defences grow from
+  use: sharp outer or released weapons after being hit, poison after deterring enough enemies with a release, sharper
+  weapons with more kills; damage scales with velocity; the dead become food. Look-alike friends and foes;
+  communication ("danger", "food", "store food") and memory come at later levels.
+- **2026-10-09** The environment has moving food, enemies (local damage where they strike) and allies (give food);
+  telling them apart becomes harder by level and needs neural development. Defences are running (muscle cells),
+  hiding (darkness, out of sight or smell) and shells. Some proteins unlock through experience (surviving hits →
+  shell; hiding → colour choice, then fast colour change), not only by evolutionary time.
+- **2026-10-08** No physiological value is hardcoded: upstream `parameters.json` for the cell modules (the builder
+  reads it and generates the CSVs) and game `content/parameters.json` for game-side values, each entry with its source.
+  Math that can be CellML is CellML: protein expression, build capacity and the ATP throttle (`protein_pool`,
+  `protein_expression`), growth throttling and the daughter's cost (`biosynthesis`), the ATP budget by reaction
+  (`energy_metabolism`). Cells are a hierarchy of supermodules, `cell/generic_adaptive_cell`: `empty_membrane` as the
+  base, a supermodule per cell type, and later bases with the proteins a class shares (an animal cell).
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
@@ -273,14 +375,25 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 7. Placeholder parameters still needing sources (listed on the review page and in module CSVs).
 8. Unfilled copyright line in `circulatory-autogen-modules/LICENSE`, and the NOTICE text.
 9. Undated and placeholder entries in the protein timeline still need sources.
-10. Expression range (×0.25–4), the build capacity (1× resting ATP use), the build ATP floor (4 mM) and the membrane
+10. Expression range (×0.25–4), the build capacity (5× resting ATP use), the build ATP floor (4 mM) and the membrane
     ceiling (8%, transporter footprints) are placeholders; transporter copy numbers rest on placeholder turnover
     numbers (100–1,000/s).
-12. Growth pace (recalibrated 2026-10-08): the cell is uptake-limited (5 µM glucose inside, glycolysis with 21×
-    headroom, as growing fermenters run 10–30× their maintenance flux). From 1 mM background it builds ~1% of a
-    daughter per hour; on 10 mM with growth 20× and Glf ×4, ~15% per hour (~7 h per division, ~25 s at 1000×). A
-    division needs ~1.5×10⁻¹³ mol of glucose, so food packets are rich (50 mM, 5 µm, placeholders). Confirm the feel.
+12. Growth pace (recalibrated 2026-10-09): the cell rests on a lean background (0.1 mM glucose, placeholder) where
+    its uptake just meets maintenance; touching food (50 mM at the membrane) its carriers give ~40× and glycolysis
+    ~52× the resting flux, as growing fermenters do (10–40×). At growth 50× it builds ~41% of a daughter per simulated
+    hour (~2.5 h per division, E. coli-like at 20 °C). The simulation runs one cell at ~600–900× real time, so "1000×"
+    lags (~15 s of real time per division while fed); more cells are slower still. Speed-ups to consider: an analytic
+    Jacobian, reusing it across steps, or larger steps. Confirm the feel.
 13. Damage model placeholders: 10-day unrepaired lifetime, repair capacity 10× accrual, repair costing 10% of a
     daughter per lethal load, Q10 2; damage does nothing until lethal. Daughters inherit the parent's damage.
 11. libcuflynx relabels some conversion-factor literals with the inverse or a dimensionless unit when flattening
     (`m3_per_um3` → `um3_per_m3`, `milliV_per_kiloV` → `dim`); values are right, units are not. Fix upstream?
+14. Thresholds for each unlock criterion ("a few times"), and whether meeting a criterion before the protein's
+    date unlocks it at once or when the date arrives (counts accumulate either way). Decided per level.
+15. Enemies and allies: what they are per level (other cells, then animals), how they sense the creature (smell
+    range, line of sight, light), how damage is localised on a lumped cell vs a multicellular body, and what an ally's
+    food gift costs or requires.
+16. Motion: the creature drifts with the current before it can swim and the view follows it (2026-10-09). Should the
+    current's speed and direction vary (tides, eddies), and should the player be able to free the camera?
+17. Communication and memory: what a signal costs, what memory stores (places, individuals, threats) and how it
+    is modelled (neural cells, a game abstraction, or both). Levels and dates decided when we get there.

@@ -114,9 +114,10 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>
         /// Advances by <paramref name="simSeconds"/> of simulated time, in whole macro steps (the remainder carries
         /// over). If more than <paramref name="maxSteps"/> steps are due, takes <paramref name="maxSteps"/>, drops
-        /// the rest and sets <see cref="Lagging"/>. Returns the number of steps taken.
+        /// the rest and sets <see cref="Lagging"/>; so does running out of <paramref name="outOfTime"/> (a wall-clock budget, so
+        /// frames keep coming at speeds the simulation cannot reach). Returns the number of steps taken.
         /// </summary>
-        public int Advance(double simSeconds, int maxSteps)
+        public int Advance(double simSeconds, int maxSteps, Func<bool>? outOfTime = null)
         {
             if (simSeconds < 0.0)
                 throw new ArgumentOutOfRangeException(nameof(simSeconds));
@@ -125,10 +126,20 @@ namespace AdaptOrDeity.Game.Session
             long due = (long)Math.Floor(_pending / dt + 1e-9);
             Lagging = due > maxSteps;
             int steps = Lagging ? maxSteps : (int)due;
-            _pending = Lagging ? 0.0 : Math.Max(0.0, _pending - steps * dt);
-            for (int i = 0; i < steps; i++)
+            int taken = 0;
+            while (taken < steps)
+            {
                 StepOnce(dt);
-            return steps;
+                taken++;
+                // a real-time budget: stop and publish rather than fall seconds behind the screen
+                if (taken < steps && outOfTime != null && outOfTime())
+                {
+                    Lagging = true;
+                    break;
+                }
+            }
+            _pending = Lagging ? 0.0 : Math.Max(0.0, _pending - taken * dt);
+            return taken;
         }
 
         /// <summary>Takes exactly <paramref name="steps"/> macro steps, ignoring speed (headless runs).</summary>
@@ -204,22 +215,48 @@ namespace AdaptOrDeity.Game.Session
             }
             if (World is IFoodWorld foodWorld)
             {
+                var body = foodWorld.Body.Body;
+                frame.CreatureX = body.X;
+                frame.CreatureY = body.Y;
+                frame.CreatureVx = (float)body.GroundVx;
+                frame.CreatureVy = (float)body.GroundVy;
+                frame.Orientation = (float)body.Angle;
+                frame.Spin = (float)body.Omega;
+                frame.MechanicalPower = (float)body.Power;
+                frame.HeatToWater = body.Dissipated;
+                for (int k = 0; k < World.CellCount; k++)
+                    for (int f = 0; f < AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella; f++)
+                        frame.FlagellumAngles[k][f] = (float)foodWorld.Body.FlagellumAngle(k, f);
+                if (World is FermenterWorld fw)
+                {
+                    frame.MotorOn = fw.MotorOn && fw.FeatureEnabled(GameFeatures.IndexOf(GameFeatures.Swimming));
+                    frame.MotorPower = (float)fw.MotorPower;
+                    for (int k = 0; k < World.CellCount; k++)
+                    {
+                        var cell = fw.Cell(k);
+                        frame.CellSurface[k] = (float)(cell.SurfaceArea * 1e-12);   // µm² -> m²
+                        for (int t = 0; t < frame.TraitArea.Length && t < cell.Traits.Count; t++)
+                            frame.TraitArea[t][k] = (float)(cell.AlgebraicValue(cell.Traits[t].AreaPerUnit)
+                                                            * cell.TraitValue(t) * 1e-12);
+                    }
+                }
                 for (int k = 0; k < World.CellCount; k++)
                 {
                     foodWorld.CellPosition(k, out double x, out double y);
-                    frame.CellX[k] = (float)x;
-                    frame.CellY[k] = (float)y;
+                    frame.CellX[k] = (float)(x - frame.CreatureX);   // relative to the creature (a floating origin)
+                    frame.CellY[k] = (float)(y - frame.CreatureY);
                 }
                 int n = 0;
                 foreach (var p in foodWorld.Food.Packets)
                 {
                     if (!p.Active || n >= frame.PacketX.Length)
                         continue;
-                    frame.PacketX[n] = (float)p.X;
-                    frame.PacketY[n] = (float)p.Y;
+                    frame.PacketX[n] = (float)(p.X - frame.CreatureX);
+                    frame.PacketY[n] = (float)(p.Y - frame.CreatureY);
                     frame.PacketRadius[n] = (float)p.Radius;
-                    frame.PacketGlucose[n] = (float)(p.Glucose / foodWorld.Food.PacketVolume);
+                    frame.PacketFill[n] = (float)foodWorld.Food.Fill(p);
                     frame.PacketTrace[n] = p.MainTrace;
+                    frame.PacketCarried[n] = p.Kind == AdaptOrDeity.Sim.World.PacketKind.Carried && !p.Stuck;
                     n++;
                 }
                 frame.PacketCount = n;

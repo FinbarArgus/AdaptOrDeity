@@ -13,6 +13,7 @@ namespace AdaptOrDeity.Game.Session
         public const string GrowthAndDivision = "growth_and_division";
         public const string GlycogenStorage = "glycogen_storage";
         public const string AutoDivide = "auto_divide";
+        public const string MotilityControl = "motility_control";
         public const string Chemosensing = "chemosensing";
         public const string Swimming = "swimming";
         public const string MembraneRespiration = "membrane_respiration";
@@ -26,15 +27,18 @@ namespace AdaptOrDeity.Game.Session
                 "Expression sliders for a cell group's transport proteins and glycolytic enzymes; copies cost ATP to build and to keep, and the membrane holds only so many."),
             new FeatureInfo(RepairLevel, "Repair", 1, true, true,
                 "How much a group spends repairing damage. Low repair saves energy, but cells die at a lethal load and the colony relies on division."),
+            new FeatureInfo(Swimming, "Swimming (flagellum)", 1, true, true,
+                "The cell starts with one flagellum; its motor runs at random (runs and pauses) on the proton motive force. " +
+                "The flagella slider adds more (each costs ATP to build and protons to run). Turn it off to save the energy."),
             new FeatureInfo(GrowthAndDivision, "Growth and division", 2, true, true,
                 "Put energy into building a daughter cell; click a cell to divide once it is built."),
             new FeatureInfo(GlycogenStorage, "Glycogen storage", 2, true, true,
                 "Store glucose as glycogen; spent when ATP falls, or to finish a nearly built daughter when you click Divide."),
             new FeatureInfo(AutoDivide, "Automatic division", 2, true, false, "Cells divide by themselves once a daughter is built."),
+            new FeatureInfo(MotilityControl, "Swimming control", 2, true, false,
+                "Processing to decide when to run the flagella (e.g. keep still on food, swim when it runs out). Planned."),
             new FeatureInfo(Chemosensing, "Smell (chemoreceptors)", 3, true, true,
-                "Sense the trace species food packets carry. Planned."),
-            new FeatureInfo(Swimming, "Swimming (flagellum)", 3, true, false,
-                "Swim towards smells on the proton gradient. Planned."),
+                "Sense the trace species food packets carry, to swim towards them. Planned."),
             new FeatureInfo(MembraneRespiration, "Membrane respiration", 4, true, false, "Planned."),
             new FeatureInfo(Mitochondria, "Mitochondria", 5, true, false, "Planned."),
             new FeatureInfo(MultipleGroups, "Several cell groups", 6, true, false,

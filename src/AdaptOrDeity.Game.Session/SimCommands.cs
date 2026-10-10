@@ -95,6 +95,14 @@ namespace AdaptOrDeity.Game.Session
             f.DevCompleteDaughter(cell);
         });
 
+        /// <summary>Moves flagellum <paramref name="k"/> of a cell to a base angle on its membrane (body frame) [rad].</summary>
+        public static ISimCommand SetFlagellumAngle(int cell, int k, double angle) => new WorldCommand(w =>
+        {
+            if (!(w is FermenterWorld f))
+                throw new InvalidOperationException("this world has no flagella");
+            f.SetFlagellumAngle(cell, k, angle);
+        });
+
         private sealed class WorldCommand : ISimCommand
         {
             private readonly Action<IInspectableWorld> _action;

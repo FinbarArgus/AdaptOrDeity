@@ -7,31 +7,32 @@
    "level": 1,
    "ga": 2.0,
    "name": "The fermenter",
-   "summary": "One prokaryote in a pH 7.3 sea: adapt its transport proteins and how much it repairs itself.",
+   "summary": "One prokaryote in a pH 7.3 sea: adapt its transport proteins and how much it repairs itself. It has one flagellum, which runs at random and drives it over the ground; more flagella cost ATP to build and run.",
    "unlocks": [
     "protein_expression",
-    "repair_level"
+    "repair_level",
+    "swimming"
    ]
   },
   {
    "level": 2,
    "ga": 1.9,
    "name": "Division",
-   "summary": "Put energy into growth and storage; divide when a daughter is built, or spend glycogen to finish one. Cells form a colony in one group.",
+   "summary": "Put energy into growth and storage; divide when a daughter is built, or spend glycogen to finish one. Cells form a colony in one group. Processing to decide when to swim (planned).",
    "unlocks": [
     "growth_and_division",
     "glycogen_storage",
-    "auto_divide"
+    "auto_divide",
+    "motility_control"
    ]
   },
   {
    "level": 3,
    "ga": 1.85,
-   "name": "Smell and swim",
-   "summary": "Chemoreceptors let a cell sense the trace species food packets carry, and a flagellum lets it swim towards them (run and tumble).",
+   "name": "Smell",
+   "summary": "Chemoreceptors let a cell sense the trace species food packets carry, so it can swim towards them (planned).",
    "unlocks": [
-    "chemosensing",
-    "swimming"
+    "chemosensing"
    ],
    "note": "Historically these exist from the game's start: bacterial chemotaxis evolved from two-component systems after the three domains split, well before 2 Ga (Wuichet & Zhulin 2010). Level 3 is a pacing choice."
   },
@@ -91,6 +92,14 @@
    "effect": "How much a group spends repairing damage (0-1). Low repair saves energy but cells die when damage reaches a lethal load; the colony then relies on division."
   },
   {
+   "id": "swimming",
+   "name": "Swimming (flagellum)",
+   "unlock_level": 1,
+   "optional": true,
+   "default_enabled": true,
+   "effect": "The cell starts with one flagellum; its motor runs at random (runs and pauses), driving the cell over the ground on the proton motive force. The flagella slider adds more (each costs ATP to build and protons to run). Turn it off to save the energy."
+  },
+  {
    "id": "growth_and_division",
    "name": "Growth and division",
    "unlock_level": 2,
@@ -115,20 +124,20 @@
    "effect": "Cells divide by themselves as soon as a daughter is built."
   },
   {
+   "id": "motility_control",
+   "name": "Swimming control",
+   "unlock_level": 2,
+   "optional": true,
+   "default_enabled": false,
+   "effect": "Processing to decide when to run the flagella (e.g. keep still on food, swim when it runs out). Planned."
+  },
+  {
    "id": "chemosensing",
    "name": "Smell (chemoreceptors)",
    "unlock_level": 3,
    "optional": true,
    "default_enabled": true,
    "effect": "Express chemoreceptors to sense the trace species in food packets (aspartate, serine, ribose...); receptors cost protein like any other. Planned."
-  },
-  {
-   "id": "swimming",
-   "name": "Swimming (flagellum)",
-   "unlock_level": 3,
-   "optional": true,
-   "default_enabled": false,
-   "effect": "A flagellar motor driven by the proton gradient (~1,000 H+ per turn) moves the cell; with smell it swims up gradients towards food. Planned."
   },
   {
    "id": "membrane_respiration",

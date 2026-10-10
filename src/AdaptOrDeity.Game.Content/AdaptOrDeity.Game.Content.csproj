@@ -6,4 +6,9 @@
     <ProjectReference Include="../AdaptOrDeity.Sim.World/AdaptOrDeity.Sim.World.csproj" />
     <ProjectReference Include="../AdaptOrDeity.Game.Rules/AdaptOrDeity.Game.Rules.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- Content the simulation reads, embedded so the headless build and Unity load the same files. -->
+    <EmbeddedResource Include="../../content/parameters.json" LogicalName="content/parameters.json" />
+    <EmbeddedResource Include="../../content/traits/fermenter.json" LogicalName="content/traits/fermenter.json" />
+  </ItemGroup>
 </Project>

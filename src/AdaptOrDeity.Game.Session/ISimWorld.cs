@@ -83,12 +83,15 @@ namespace AdaptOrDeity.Game.Session
         void Divide(int cell);
     }
 
-    /// <summary>A world with food packets drifting through the medium.</summary>
+    /// <summary>A world where the creature moves over the ground among food packets.</summary>
     public interface IFoodWorld
     {
         AdaptOrDeity.Sim.World.FoodField Food { get; }
 
-        /// <summary>Position of cell <paramref name="cell"/> [m].</summary>
+        /// <summary>The creature's body: one rigid body (position, orientation, velocity, spin), its cells and flagella.</summary>
+        AdaptOrDeity.Sim.World.CreatureBody Body { get; }
+
+        /// <summary>Position of cell <paramref name="cell"/> over the ground [m].</summary>
         void CellPosition(int cell, out double x, out double y);
 
         /// <summary>Cell radius [m].</summary>

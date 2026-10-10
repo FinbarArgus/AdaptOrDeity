@@ -208,6 +208,7 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
             raise ModuleError(f"{module_type}/{version}: state {s.name} is initialised from {ref}, which is not an input")
 
     equations: list[Equation] = []
+    depends: dict[str, list[str]] = {}   # algebraic target -> the algebraic targets it reads
     for eq in am.equations():
         kind = lc.AnalyserEquation.typeAsString(eq.type())
         if kind == "external":
@@ -220,7 +221,11 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
             target = eq.ast().leftChild().rightChild().variable().name()
         else:
             target = eq.variable(0).variable().name()
+            depends[target] = [d.variable(0).variable().name() for d in eq.dependencies()
+                               if lc.AnalyserEquation.typeAsString(d.type()) not in ("ode", "external")
+                               and d.variableCount() > 0]
         equations.append(Equation(kind, target, eq.ast()))
+    equations = _dependency_order(equations, depends)
 
     ports: list[Port] = []
     for key, direction in (("entrance_ports", "Entrance"), ("exit_ports", "Exit"), ("general_ports", "General")):
@@ -241,6 +246,34 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
         model=model, cellml_text=cellml_text, units_text=units_text)
     module.instances = _load_instances(d, module)
     return module
+
+
+def _dependency_order(equations: list[Equation], depends: dict[str, list[str]]) -> list[Equation]:
+    """Algebraic equations in an order where each comes after those it reads (libcellml's analyser lists them in model
+    order, which for a flattened supermodule puts e.g. a sum after its users). Stable: model order where free. ODEs
+    keep their order after them (the emitter places algebraics that read a derivative itself)."""
+    alg = [q for q in equations if q.kind != "ode"]
+    by_target = {q.target: q for q in alg}
+    done: set[str] = set()
+    out: list[Equation] = []
+    visiting: set[str] = set()
+
+    def visit(q: Equation):
+        if q.target in done:
+            return
+        if q.target in visiting:
+            raise ModuleError(f"algebraic loop through {q.target}")
+        visiting.add(q.target)
+        for d in depends.get(q.target, []):
+            if d in by_target:
+                visit(by_target[d])
+        visiting.discard(q.target)
+        done.add(q.target)
+        out.append(q)
+
+    for q in alg:
+        visit(q)
+    return out + [q for q in equations if q.kind == "ode"]
 
 
 def _load_instances(d: Path, module: AnalysedModule) -> dict[str, dict[str, float]]:

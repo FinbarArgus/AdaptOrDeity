@@ -59,3 +59,23 @@ def test_flat_model_becomes_one_module(tmp_path: Path):
     assert m.state_init == [("x_init_mod_pool", 0.0)]
     text = emit_csharp.emit(m)
     assert "class Toy_v1" in text and "new PortInfo[0]" in text
+
+
+ORDER = FLAT.replace(
+    """    <math xmlns="http://www.w3.org/1998/Math/MathML">
+      <apply><eq/><apply><diff/><bvar><ci>t</ci></bvar><ci>x</ci></apply>""",
+    """    <variable name="y" units="per_s" interface="public"/>
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+      <apply><eq/><ci>y</ci><apply><times/><cn cellml:units="dimensionless">2.0</cn><ci>j_in</ci></apply></apply>
+      <apply><eq/><apply><diff/><bvar><ci>t</ci></bvar><ci>x</ci></apply>""")
+
+
+def test_algebraic_equations_follow_what_they_read(tmp_path: Path):
+    # y = 2 j_in is written in the submodule, before the sum component that defines j_in: the emitted kernel must still
+    # compute j_in first (libcellml's analyser keeps model order).
+    flat = tmp_path / "flat.cellml"
+    flat.write_text(ORDER)
+    flatten(flat, tmp_path / "out", "toy", "v1")
+    m = load(tmp_path / "out", "", "toy", "v1", ["CC0-1.0"])
+    order = [q.target for q in m.equations if q.kind != "ode"]
+    assert order.index("multiport_sum_mod_pool_j_in__j_in") < order.index("pool__y"), order

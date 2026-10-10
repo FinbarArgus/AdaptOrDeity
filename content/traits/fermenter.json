@@ -1,27 +1,27 @@
 {
- "schema_version": 1,
- "organism": "cell/prokaryote/fermenter",
- "description": "Traits the player can adapt on the fermenter cell. Each trait scales supermodule parameters (<variable>_<submodule>) of the default instance by a multiplier within [min, max]. Each trait scales how many copies of a protein the cell group makes (density, capacity or flux-force coefficient). Sliders change every cell of the selected cell's group. A cell with new traits starts at the steady state of its new parameters (its baseline). Proteins are offered only once they exist (content/timeline.json). Leaks are membrane properties, not proteins, so they are not traits. An expression trait scales the transporter's own density or capacity and its copy number in protein_expression together, so more copies cost more ATP to keep; raising expression also spends the ATP to build the new copies (n L (c_syn + c_poly) / N_A), paced over expression_time_constant_s.",
- "ranges": {
-  "expression": {
-   "min": 0.25,
-   "max": 4.0,
-   "scale": "log",
-   "note": "placeholder range (2026-10-08): two octaves either way"
-  }
- },
+ "schema_version": 2,
+ "organism": "cell/generic_adaptive_cell/fermenter",
+ "description": "Traits the player can adapt on the fermenter cell. Each trait is the expression target of one protein_pool of the assembled cell (kernel parameter m_target_mod_<pool>); the pool moves its expression to the target, pays to build and keep the copies, and scales the protein it belongs to (a transporter's density or capacity, or the glycolytic enzymes' V_gly). All of that is CellML (circulatory-autogen-modules cell/protein_pool, protein_expression adaptive). The game only sets targets, within controls.expression_min/max of content/parameters.json and the membrane room the pools leave (protein__A_protein_max). Sliders change every cell of the selected cell's group. Proteins are offered only once they exist (content/timeline.json). Leaks are membrane properties, not proteins, so they are not traits.",
  "traits": [
+  {
+   "id": "flagella",
+   "protein": "flagellum_bacterial",
+   "kind": "count",
+   "label": "Flagella",
+   "pool": "pool_Flagellum",
+   "range": {
+    "min": 1,
+    "max": 8,
+    "step": 1,
+    "note": "whole flagella; the cell starts with one (user decision 2026-10-09). Each costs ~3e8 ATP to build and ~1.2e5 H+/s while it runs"
+   }
+  },
   {
    "id": "H_ATPase_expression",
    "protein": "rotary_atpase",
    "kind": "expression",
    "label": "F1Fo H+-ATPase copies",
-   "parameters": [
-    "rho_H_ATPase_i_H_ATPase",
-    "n_H_ATPase_protein"
-   ],
-   "copy_key": "H_ATPase",
-   "footprint_nm2": 100
+   "pool": "pool_H_ATPase"
   },
   {
    "id": "NhaA_expression",
@@ -29,12 +29,7 @@
    "kind": "expression",
    "label": "NhaA Na+/H+ antiporter copies",
    "note": "linear flux-force kinetics: no midpoint yet",
-   "parameters": [
-    "g_spec_i_NaH",
-    "n_NhaA_protein"
-   ],
-   "copy_key": "NhaA",
-   "footprint_nm2": 15
+   "pool": "pool_NhaA"
   },
   {
    "id": "KefC_expression",
@@ -42,12 +37,7 @@
    "kind": "expression",
    "label": "KefC K+/H+ exchanger copies",
    "note": "linear flux-force kinetics: no midpoint yet",
-   "parameters": [
-    "g_spec_i_KH",
-    "n_KefC_protein"
-   ],
-   "copy_key": "KefC",
-   "footprint_nm2": 20
+   "pool": "pool_KefC"
   },
   {
    "id": "Trk_expression",
@@ -55,67 +45,42 @@
    "kind": "expression",
    "label": "Trk K+ channel copies",
    "note": "ungated channel: no midpoint",
-   "parameters": [
-    "rho_leak_K_i_K_Trk",
-    "n_Trk_protein"
-   ],
-   "copy_key": "Trk",
-   "footprint_nm2": 60
+   "pool": "pool_Trk"
   },
   {
    "id": "NCX_expression",
    "protein": "ncx_prokaryotic",
    "kind": "expression",
    "label": "Na+/Ca2+ exchanger copies",
-   "parameters": [
-    "rho_NaCa_i_NaCa",
-    "n_NCX_protein"
-   ],
-   "copy_key": "NCX",
-   "footprint_nm2": 12
+   "pool": "pool_NCX"
   },
   {
    "id": "Glf_expression",
    "protein": "mfs_sugar_porter",
    "kind": "expression",
    "label": "Glf glucose facilitator copies",
-   "parameters": [
-    "jmax_glc_membrane_face",
-    "n_Glf_protein"
-   ],
-   "copy_key": "Glf",
-   "footprint_nm2": 12
+   "pool": "pool_Glf"
   },
   {
    "id": "lactate_exporter_expression",
    "protein": "lactate_carrier_bacterial",
    "kind": "expression",
    "label": "Lactate-/H+ symporter copies",
-   "parameters": [
-    "jmax_lac_membrane_face",
-    "n_LacT_protein"
-   ],
-   "copy_key": "LacT",
-   "footprint_nm2": 15
+   "pool": "pool_LacT"
   },
   {
    "id": "glycolysis_expression",
    "protein": "glycolysis_sugar",
    "kind": "expression",
    "label": "Glycolytic enzymes copies",
-   "parameters": [
-    "V_gly_cytosol",
-    "n_Glyc_protein"
-   ],
-   "copy_key": "Glyc",
-   "footprint_nm2": 0
+   "pool": "pool_Glyc"
   }
  ],
  "expression_time_constant_s": 10.0,
  "expression_time_constant_note": "user decision 2026-10-08: changes show within seconds; building is limited by build_capacity and by ATP, so large increases take minutes",
- "midpoints": "Kinetic midpoints are fixed (user decision 2026-10-08): ±10% changed almost nothing.",
+ "midpoints": "Kinetic midpoints are fixed (user decision 2026-10-08): \u00b110% changed almost nothing.",
  "membrane_share_max": 0.08,
- "membrane_share_note": "placeholder: the adaptable transporters may take 8% of the cell surface (baseline 2.3%); footprints are placeholders (F1Fo ~100 nm², 12-TM transporters ~12-15 nm²). The ceiling scales with membrane area.",
+ "membrane_share_note": "placeholder: the adaptable transporters may take 8% of the cell surface (baseline 2.3%); footprints are placeholders (F1Fo ~100 nm\u00b2, 12-TM transporters ~12-15 nm\u00b2). The ceiling scales with membrane area.",
  "build_capacity": 5.0,
  "build_capacity_note": "placeholder: at most 5x the resting ATP turnover goes into building new protein (growing cells build protein at many times their maintenance rate)",
  "build_atp_floor_mM": 4.0,

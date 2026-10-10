@@ -34,6 +34,50 @@ namespace AdaptOrDeity.Presentation
 
         public static SessionBridge Instance { get; private set; }
 
+        /// <summary>
+        /// The body's pose as drawn this render frame: the newest snapshot's pose carried forward along its velocity and
+        /// spin for the simulated time since it arrived (capped), so motion is smooth between the simulation's 0.1 s
+        /// steps instead of jumping. In world units (DisplayX/Y) and radians.
+        /// </summary>
+        public double DisplayX { get; private set; }
+
+        public double DisplayY { get; private set; }
+
+        public float DisplayOrientation { get; private set; }
+
+        /// <summary>Turn of the drawn body relative to the snapshot [rad]: rotate snapshot positions by it.</summary>
+        public float DeltaAngle { get; private set; }
+
+        /// <summary>Snapshot-relative positions plus this offset are relative to the drawn body [world units].</summary>
+        public Vector2 Shift { get; private set; }
+
+        private float _frameArrived;
+        private bool _faultReported;
+        private float _frameSpan = 0.1f;      // simulated seconds between the last two frames: carry the pose no further
+        private double _lastFrameTime;
+
+        /// <summary>A snapshot position relative to the body (metres), as drawn now (world units).</summary>
+        public Vector2 BodyRelative(float x, float y)
+        {
+            float c = Mathf.Cos(DeltaAngle), s = Mathf.Sin(DeltaAngle), u = CellView.UnitsPerMetre;
+            return new Vector2((c * x - s * y) * u, (s * x + c * y) * u);
+        }
+
+        private void UpdateDisplayPose()
+        {
+            var f = Frame;
+            if (f == null)
+                return;
+            double speed = f.SpeedIndex < Schema.SpeedPresets.Count ? Schema.SpeedPresets[f.SpeedIndex] : 0.0;
+            float lead = Mathf.Min(_frameSpan, (float)((Time.unscaledTime - _frameArrived) * speed));
+            float u = CellView.UnitsPerMetre;
+            DisplayX = f.CreatureX * u + f.CreatureVx * u * lead;
+            DisplayY = f.CreatureY * u + f.CreatureVy * u * lead;
+            DeltaAngle = f.Spin * lead;
+            DisplayOrientation = f.Orientation + DeltaAngle;
+            Shift = new Vector2((float)(f.CreatureX * u - DisplayX), (float)(f.CreatureY * u - DisplayY));
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
@@ -59,6 +103,8 @@ namespace AdaptOrDeity.Presentation
             _session.Start();
 
             _camera = EnsureCamera();
+            gameObject.AddComponent<BackgroundView>().Initialise(this, _camera);
+            gameObject.AddComponent<MotionView>().Initialise(this);
             SyncViews();
         }
 
@@ -71,9 +117,6 @@ namespace AdaptOrDeity.Presentation
             {
                 var go = new GameObject($"Cell {_views.Count}");
                 go.transform.SetParent(transform, false);
-                // Positions come from the simulation (metres), so food contact and drawing agree.
-                go.transform.localPosition = new Vector3(Frame.CellX[_views.Count] * CellView.UnitsPerMetre,
-                    Frame.CellY[_views.Count] * CellView.UnitsPerMetre, 0f);
                 var view = go.AddComponent<CellView>();
                 view.Initialise(this, _views.Count, CellDiameterMetres);
                 _views.Add(view);
@@ -99,7 +142,9 @@ namespace AdaptOrDeity.Presentation
         }
 
         /// <summary>
-        /// The camera draws only the screen left of the cell panel (its viewport stops at the panel's edge), so framing
+        /// The view follows the creature: every position in a frame is relative to it, so the creature sits at the origin
+        /// and the background, food and wake move past (a floating origin, which keeps float precision however far it
+        /// travels). The camera draws only the screen left of the cell panel (its viewport stops at the panel's edge), so framing
         /// and zoom never reach under the panel. Zoom (mouse wheel) is clamped between a close-up of one cell and the
         /// whole colony with a margin.
         /// </summary>
@@ -125,8 +170,12 @@ namespace AdaptOrDeity.Presentation
             if (_session.TryGetFrame(out var frame))
             {
                 Frame = frame;
+                _frameArrived = Time.unscaledTime;
+                _frameSpan = Mathf.Clamp((float)(frame.SimTime - _lastFrameTime), 0f, 60f);
+                _lastFrameTime = frame.SimTime;
                 SyncViews();
             }
+            UpdateDisplayPose();
             // Mouse-wheel zoom, read through IMGUI-independent legacy-or-new input: the scroll delta from the event queue.
             if (Mathf.Abs(_pendingScroll) > 0f)
             {
@@ -134,6 +183,11 @@ namespace AdaptOrDeity.Presentation
                 _pendingScroll = 0f;
             }
             FrameCamera();
+            if (_session.Fault != null && !_faultReported)
+            {
+                _faultReported = true;
+                Debug.LogError($"The simulation stopped: {_session.Fault}");
+            }
             while (_session.TryDequeueEvent(out var e))
             {
                 if (e is CommandRejected rejected)

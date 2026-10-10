@@ -20,7 +20,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         private static void FinishDaughter(FermenterWorld world, int cell)
         {
             var c = world.Cell(cell);
-            c.Batch.States[c.Batch.Descriptor.StateIndex("bio__P_growth")][0] = c.DaughterCost;
+            c.SetState("bio__P_growth", c.DaughterCost);
         }
 
         [Test]
@@ -30,7 +30,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             var schema = loop.Schema;
             Assert.That(schema.Details.Select(d => d.Group).Distinct(), Is.EquivalentTo(new[]
                 { "Food", "Metabolic rate", "ATP made", "ATP used", "Protein turnover", "Growth and storage", "Cell state" }));
-            Assert.That(schema.Traits.Count, Is.EqualTo(8));
+            Assert.That(schema.Traits.Count, Is.EqualTo(9), "8 expression traits and the number of flagella");
             Assert.That(schema.Controls.Select(c => c.Id), Is.EqualTo(new[] { "growth", "storage", "repair" }));
             Assert.That(schema.MaxCells, Is.EqualTo(FermenterWorld.CellLimit));
             Assert.That(schema.Details.Single(d => d.Id == "atp_turnover").SiUnit, Is.EqualTo("mol/s"));
@@ -124,7 +124,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             // Kill cell 1; growth resumes and a finished daughter takes its place, not a new slot.
             var dying = world.Cell(1);
             dying.RepairLevel = 0.0;
-            dying.Batch.States[dying.Batch.Descriptor.StateIndex("bio__D")][0] = 1.0;
+            dying.SetState("bio__D", 1.0);
             loop.StepExactly(2);
             Assert.That(world.CellAlive(1), Is.False);
             Assert.That(world.Cell(0).GrowthFraction, Is.EqualTo(0.5).Within(1e-12));
@@ -158,6 +158,34 @@ namespace AdaptOrDeity.Game.Session.Tests
                 foreach (var id in level.GetProperty("unlocks").EnumerateArray())
                     Assert.That(GameFeatures.All.Single(f => f.Id == id.GetString()).UnlockLevel,
                         Is.EqualTo(level.GetProperty("level").GetInt32()), id.GetString());
+        }
+
+        [Test]
+        public void AtTopSpeedFramesKeepComingInSmallSteps()
+        {
+            // At 1000x the simulation cannot keep up (one cell runs ~800x): each tick has a wall-clock budget, so frames
+            // still come many times a second, each a small step of simulated time, instead of a jump every half second.
+            using var session = SimSession.CreateFermenter();
+            session.Start();
+            session.Enqueue(SimCommands.SetSpeed(FermenterWorld.SpeedPresets.Length - 1));
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            int frames = 0;
+            double last = -1.0, biggestJump = 0.0;
+            while (watch.Elapsed.TotalSeconds < 2.0)
+            {
+                if (session.TryGetFrame(out var f))
+                {
+                    if (last >= 0.0)
+                        biggestJump = Math.Max(biggestJump, f.SimTime - last);
+                    last = f.SimTime;
+                    frames++;
+                }
+                System.Threading.Thread.Sleep(5);
+            }
+            Assert.That(session.Fault, Is.Null);
+            Assert.That(frames, Is.GreaterThan(20), "frames per 2 s");
+            Assert.That(biggestJump, Is.LessThan(60.0), "simulated seconds between frames");
+            Assert.That(last, Is.GreaterThan(200.0), "it still runs fast");
         }
 
         [Test]

@@ -7,10 +7,10 @@ namespace AdaptOrDeity.Sim.Physiology
     /// <summary>The cell's energy budget at one instant: where its ATP comes from and goes [mol ATP/s, W].</summary>
     public struct EnergyBudget
     {
-        /// <summary>ATP made by glycolysis from glucose (2 per glucose fermented to lactate).</summary>
+        /// <summary>ATP made by glycolysis from glucose.</summary>
         public double AtpGlycolysis;
 
-        /// <summary>ATP made from glycogen (3 per glucose unit).</summary>
+        /// <summary>ATP made from glycogen.</summary>
         public double AtpFromGlycogen;
 
         /// <summary>F1Fo H+-ATPase pumping protons out.</summary>
@@ -34,7 +34,7 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Building a daughter cell.</summary>
         public double AtpGrowth;
 
-        /// <summary>Storing glucose as glycogen (2 per glucose).</summary>
+        /// <summary>Storing glucose as glycogen.</summary>
         public double AtpStorage;
 
         /// <summary>The remaining maintenance ATPase: everything not yet itemised.</summary>
@@ -50,115 +50,78 @@ namespace AdaptOrDeity.Sim.Physiology
     }
 
     /// <summary>
-    /// The fermenter cell (circulatory-autogen-modules cell/prokaryote fermenter, assembled into one kernel) with its
-    /// adaptable traits and energy controls. Stepped by backward Euler, stable at macro steps far longer than the Ca
-    /// buffer's microsecond time constant.
-    /// <list type="bullet">
-    /// <item>Expression approaches its target with <see cref="FermenterTraits.ExpressionTimeConstant"/>; building the new
-    /// copies costs ATP (protein_expression's J_build), limited to <see cref="FermenterTraits.BuildCapacity"/> × the resting
-    /// turnover and slowed as ATP runs out, so big changes take minutes. The adaptable transporters may take at most
-    /// <see cref="FermenterTraits.MembraneShareMax"/> of the membrane: a ceiling that scales with membrane area.</item>
-    /// <item>Growth puts ATP into a daughter (biosynthesis P_growth); the cell can divide when it reaches the daughter's
-    /// cost, or spend glycogen to finish one.</item>
-    /// <item>Damage accrues and is repaired at the chosen repair level; at a lethal load (1) the cell dies.</item>
-    /// </list>
+    /// The fermenter cell (circulatory-autogen-modules cell/generic_adaptive_cell fermenter, assembled into one kernel),
+    /// stepped by backward Euler, stable at macro steps far longer than the Ca buffer's microsecond time constant.
+    /// Its physiology is all in the kernel: each protein's expression approaches the target the player sets, building
+    /// the new copies costs ATP and is capped and throttled by the cell's protein synthesis, growth is asked in
+    /// multiples of the resting turnover and throttled the same way, and the daughter's cost and the share built are
+    /// kernel outputs. This class sets targets and controls, keeps targets within the membrane room the proteins leave,
+    /// runs the events (division, death) and reads the budget.
     /// </summary>
     public sealed class FermenterCell
     {
-        public const double AvogadroConstant = 6.02214076e23;
-        private const double AtpPerGlycogenUnit = 3.0;
-
         private readonly IKernel _kernel;
         private readonly BackwardEulerIntegrator _integrator = new BackwardEulerIntegrator();
-        private readonly int[][] _traitExternals;
-        private readonly double[][] _traitBase;
-        private readonly double[] _value;
-        private readonly double[] _target;
-        private readonly double[] _planned;
-        private readonly double[] _buildPerUnit;   // mol ATP to build the baseline copies of each trait's protein
-        private readonly double[] _areaPerUnit;    // µm² the baseline copies of each trait's protein take
-        private readonly int _jBuild, _jGrowth, _storeAlloc, _repairLevel;
-        private readonly int _aVgly, _aVhyd, _aVstore, _aVmob, _aVol, _aPump, _aProtein, _aProteinFactor, _aHeat;
-        private readonly int _aRna, _aRibo, _aLipid, _aRepair, _aGrowthUsed, _aBuildProtein, _aBuildBio, _aAmem;
-        private readonly int _sDamage, _sGrowth, _sGlycogen, _sAtp;
-        private readonly double _atpRest;
+        private readonly int[] _target, _expression, _areaPerUnit;
+        private readonly int _growthLevel, _storeAlloc, _repairLevel, _jRef;
+        private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aRna, _aRibo, _aLipid, _aRepair;
+        private readonly int _aGrowthUsed, _aHeat, _aVol, _aSurface, _aAreaMax, _aDaughter, _aProgress, _aGlycProgress;
+        private readonly int _aGlycAtp;
+        private readonly int _sDamage, _sGrowth, _sGlycogen;
 
-        public FermenterCell(IKernel kernel, string instance = "default", IReadOnlyList<TraitDefinition>? traits = null)
+        public FermenterCell(IKernel kernel, IReadOnlyList<TraitDefinition> traits, string instance = "default")
         {
             _kernel = kernel;
-            var d = kernel.Descriptor;
-            Traits = traits ?? FermenterTraits.All;
-            Batch = new KernelBatch(d, 1) { Count = 1 };
+            Traits = traits;
+            Batch = new KernelBatch(kernel.Descriptor, 1) { Count = 1 };
             Batch.ApplyInstance(instance, 0, 1);
-
-            _traitExternals = new int[Traits.Count][];
-            _traitBase = new double[Traits.Count][];
-            _value = new double[Traits.Count];
-            _target = new double[Traits.Count];
-            _planned = new double[Traits.Count];
-            _buildPerUnit = new double[Traits.Count];
-            _areaPerUnit = new double[Traits.Count];
-            double cBuild = External("c_syn_mod_protein") + External("c_poly_mod_protein");
-            for (int i = 0; i < Traits.Count; i++)
+            _target = new int[traits.Count];
+            _expression = new int[traits.Count];
+            _areaPerUnit = new int[traits.Count];
+            for (int i = 0; i < traits.Count; i++)
             {
-                var t = Traits[i];
-                _traitExternals[i] = new int[t.Parameters.Count];
-                _traitBase[i] = new double[t.Parameters.Count];
-                for (int p = 0; p < t.Parameters.Count; p++)
-                {
-                    int e = Require(d.ExternalIndex(FermenterTraits.KernelName(t.Parameters[p])), t.Parameters[p]);
-                    _traitExternals[i][p] = e;
-                    _traitBase[i][p] = Batch.Externals[e][0];
-                }
-                _value[i] = _target[i] = 1.0;
-                double copies = External($"n_{t.CopyKey}_mod_protein");
-                _buildPerUnit[i] = copies * External($"L_{t.CopyKey}_mod_protein") * cBuild / AvogadroConstant;
-                _areaPerUnit[i] = copies * t.FootprintNm2 * 1e-6;   // nm² → µm²
+                _target[i] = Ext(traits[i].TargetParameter);
+                _expression[i] = St(traits[i].ExpressionState);
+                _areaPerUnit[i] = Alg(traits[i].AreaPerUnit);
             }
-            _jBuild = Ext("J_build_mod_protein");
-            _jGrowth = Ext("J_growth_mod_bio");
+            _growthLevel = Ext("growth_level_mod_bio");
             _storeAlloc = Ext("store_alloc_mod_cytosol");
             _repairLevel = Ext("repair_level_mod_bio");
-            _aVgly = Alg("cytosol__v_gly");
-            _aVhyd = Alg("cytosol__v_hyd");
-            _aVstore = Alg("cytosol__v_store");
-            _aVmob = Alg("cytosol__v_mob");
-            _aVol = Alg("membrane__Vol");
-            _aAmem = Alg("membrane__A_mem");
+            _jRef = Ext("J_ref_mod_protein");
+            _aGly = Alg("cytosol__J_ATP_gly");
+            _aMob = Alg("cytosol__J_ATP_mob");
+            _aStore = Alg("cytosol__J_ATP_store");
+            _aMaint = Alg("cytosol__J_ATP_maint");
             _aPump = Alg("i_H_ATPase__v_ATP_H");
-            _aProtein = Alg("protein__J_ATP_protein");
-            _aProteinFactor = Alg("protein__f_ATP_prot");
-            _aHeat = Alg("cytosol__Q_met");
+            _aKeep = Alg("protein__J_keep_total");
+            _aBuild = Alg("protein__J_build_total");
             _aRna = Alg("bio__J_RNA");
             _aRibo = Alg("bio__J_ribo");
             _aLipid = Alg("bio__J_lipid");
             _aRepair = Alg("bio__J_repair");
             _aGrowthUsed = Alg("bio__J_growth_used");
-            _aBuildProtein = Alg("protein__M_build_protein");
-            _aBuildBio = Alg("bio__M_build_bio");
+            _aHeat = Alg("cytosol__Q_met");
+            _aVol = Alg("membrane__Vol");
+            _aSurface = Alg("protein__A_surface");
+            _aAreaMax = Alg("protein__A_protein_max");
+            _aDaughter = Alg("bio__M_daughter");
+            _aProgress = Alg("bio__growth_progress");
+            _aGlycProgress = Alg("bio__glycogen_progress");
+            _aGlycAtp = Alg("cytosol__M_glyc_ATP");
             _sDamage = St("bio__D");
             _sGrowth = St("bio__P_growth");
             _sGlycogen = St("cytosol__C_glyc");
-            _sAtp = St("cytosol__C_ATP");
-
             kernel.Initialise(Batch, 0, 1);
             kernel.ComputeVariables(0.0, Batch, 0, 1);
-            RestingTurnover = Budget().AtpConsumed;
-            _atpRest = Batch.States[_sAtp][0];
-            SurfaceFactor = External("surface_factor_mod_bio");
         }
 
-        // A daughter: same kernel, a copy of the parent's state, externals and traits.
-        private FermenterCell(IKernel kernel, FermenterCell parent) : this(kernel, "default", parent.Traits)
+        // A daughter: same kernel, a copy of the parent's state and parameters (targets and controls included).
+        private FermenterCell(IKernel kernel, FermenterCell parent) : this(kernel, parent.Traits)
         {
             for (int i = 0; i < Batch.States.Length; i++)
                 Batch.States[i][0] = parent.Batch.States[i][0];
             for (int i = 0; i < Batch.Externals.Length; i++)
                 Batch.Externals[i][0] = parent.Batch.Externals[i][0];
-            Array.Copy(parent._value, _value, _value.Length);
-            Array.Copy(parent._target, _target, _target.Length);
-            GrowthFraction = parent.GrowthFraction;
-            Batch.Externals[_jBuild][0] = 0.0;
             Time = parent.Time;
             _kernel.ComputeVariables(Time, Batch, 0, 1);
         }
@@ -169,14 +132,8 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public double Time { get; private set; }
 
-        /// <summary>Time constant with which expression approaches its target [s].</summary>
-        public double ExpressionTimeConstant { get; set; } = FermenterTraits.ExpressionTimeConstant;
-
-        /// <summary>ATP turnover of the default cell at rest [mol/s]: the scale for growth and the build capacity.</summary>
-        public double RestingTurnover { get; }
-
-        /// <summary>Whole cell surface / in-plane membrane area.</summary>
-        public double SurfaceFactor { get; }
+        /// <summary>Resting ATP turnover of the cell [mol/s] (the kernel's J_ref): the scale of growth.</summary>
+        public double RestingTurnover => Batch.Externals[_jRef][0];
 
         /// <summary>False once damage reached a lethal load; a dead cell is no longer stepped.</summary>
         public bool Alive { get; private set; } = true;
@@ -187,9 +144,10 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Step halvings the last step needed (0 normally; more after abrupt changes).</summary>
         public int LastHalvings { get; private set; }
 
-        public double TraitValue(int trait) => _value[trait];
+        /// <summary>Expression now (the pool's state).</summary>
+        public double TraitValue(int trait) => Batch.States[_expression[trait]][0];
 
-        public double TraitTarget(int trait) => _target[trait];
+        public double TraitTarget(int trait) => Batch.Externals[_target[trait]][0];
 
         /// <summary>Damage, 1 = lethal.</summary>
         public double Damage => Batch.States[_sDamage][0];
@@ -198,19 +156,19 @@ namespace AdaptOrDeity.Sim.Physiology
         public double GrowthInvested => Batch.States[_sGrowth][0];
 
         /// <summary>ATP to build a daughter: its proteins, RNA, lipids and DNA [mol].</summary>
-        public double DaughterCost => Batch.Algebraic[_aBuildProtein][0] + Batch.Algebraic[_aBuildBio][0];
+        public double DaughterCost => Batch.Algebraic[_aDaughter][0];
 
         /// <summary>Fraction of a daughter built.</summary>
-        public double GrowthProgress => GrowthInvested / DaughterCost;
+        public double GrowthProgress => Batch.Algebraic[_aProgress][0];
 
         /// <summary>Glycogen [mol/m³ of glucose units].</summary>
         public double Glycogen => Batch.States[_sGlycogen][0];
 
         /// <summary>ATP the glycogen store would give [mol].</summary>
-        public double GlycogenAtp => Glycogen * Volume * AtpPerGlycogenUnit;
+        public double GlycogenAtp => Batch.Algebraic[_aGlycAtp][0];
 
         /// <summary>Fraction of a daughter the glycogen store could finish.</summary>
-        public double GlycogenProgress => GlycogenAtp / DaughterCost;
+        public double GlycogenProgress => Batch.Algebraic[_aGlycProgress][0];
 
         /// <summary>True if the daughter is built, or nearly built and glycogen can finish it.</summary>
         public bool CanDivide => Alive && GrowthProgress + GlycogenProgress >= 1.0;
@@ -219,23 +177,23 @@ namespace AdaptOrDeity.Sim.Physiology
         public double Volume => Batch.Algebraic[_aVol][0];
 
         /// <summary>Whole cell surface [µm²].</summary>
-        public double SurfaceArea => Batch.Algebraic[_aAmem][0] * SurfaceFactor;
+        public double SurfaceArea => Batch.Algebraic[_aSurface][0];
 
-        /// <summary>Membrane area the adaptable transporters may take [µm²]: scales with the cell's surface.</summary>
-        public double TransporterAreaMax => FermenterTraits.MembraneShareMax * SurfaceArea;
+        /// <summary>Membrane area the proteins may take [µm²]: scales with the cell's surface.</summary>
+        public double TransporterAreaMax => Batch.Algebraic[_aAreaMax][0];
 
-        /// <summary>Membrane area the adaptable transporters take now [µm²].</summary>
+        /// <summary>Membrane area the adaptable proteins take now [µm²].</summary>
         public double TransporterArea()
         {
             double a = 0.0;
             for (int i = 0; i < Traits.Count; i++)
-                a += _areaPerUnit[i] * _value[i];
+                a += Batch.Algebraic[_areaPerUnit[i]][0] * TraitValue(i);
             return a;
         }
 
         /// <summary>
-        /// Sets the trait's target multiplier, clamped to its range and to the membrane ceiling (the other traits held).
-        /// Expression approaches the target over <see cref="ExpressionTimeConstant"/>.
+        /// Sets the trait's expression target, clamped to its range and to the membrane room the other proteins leave
+        /// (each counted at the larger of its target and its present expression). The pool approaches it in the kernel.
         /// </summary>
         public void SetTrait(int trait, double multiplier)
         {
@@ -243,23 +201,29 @@ namespace AdaptOrDeity.Sim.Physiology
             if (double.IsNaN(multiplier))
                 throw new ArgumentException("multiplier is NaN", nameof(multiplier));
             double m = Math.Min(t.Max, Math.Max(t.Min, multiplier));
-            if (_areaPerUnit[trait] > 0.0)
+            double unit = Batch.Algebraic[_areaPerUnit[trait]][0];
+            if (unit > 0.0)
             {
                 double others = 0.0;
                 for (int i = 0; i < Traits.Count; i++)
                     if (i != trait)
-                        others += _areaPerUnit[i] * Math.Max(_target[i], _value[i]);
-                double room = (TransporterAreaMax - others) / _areaPerUnit[trait];
-                m = Math.Max(t.Min, Math.Min(m, room));
+                        others += Batch.Algebraic[_areaPerUnit[i]][0] * Math.Max(TraitTarget(i), TraitValue(i));
+                m = Math.Max(t.Min, Math.Min(m, (TransporterAreaMax - others) / unit));
             }
-            _target[trait] = m;
+            if (t.Step > 0.0)
+                m = Math.Max(t.Min, Math.Floor(m / t.Step + 1e-9) * t.Step);   // whole units (e.g. flagella) that fit
+            Batch.Externals[_target[trait]][0] = m;
         }
 
         /// <summary>
-        /// ATP the player asks to put into growth, as a multiple of the resting ATP turnover (0 = none). What reaches the
-        /// daughter is throttled like protein building when ATP falls below rest.
+        /// ATP the player asks to put into growth, as a multiple of the resting ATP turnover (0 = none). The kernel
+        /// throttles it as ATP falls, like protein building.
         /// </summary>
-        public double GrowthFraction { get; set; }
+        public double GrowthFraction
+        {
+            get => Batch.Externals[_growthLevel][0];
+            set => Batch.Externals[_growthLevel][0] = Math.Max(0.0, value);
+        }
 
         /// <summary>Share of the glycogen storage capacity in use, 0-1.</summary>
         public double StorageAllocation
@@ -281,49 +245,21 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public double State(string name) => Batch.States[St(name)][0];
 
+        /// <summary>Sets a state (tests, development aids) and recomputes the kernel's outputs from it.</summary>
+        public void SetState(string name, double value)
+        {
+            Batch.States[St(name)][0] = value;
+            _kernel.ComputeVariables(Time, Batch, 0, 1);
+        }
+
         public double AlgebraicValue(string name) => Batch.Algebraic[Alg(name)][0];
 
         public void Step(double dt)
         {
             if (!Alive)
                 return;
-            // Expression moves towards its target; building the extra copies is limited by the build capacity and slows
-            // as ATP runs out (f_ATP), so the copies gained scale with the ATP actually spent.
-            double build = 0.0;
-            double relax = 1.0 - Math.Exp(-dt / ExpressionTimeConstant);
-            for (int i = 0; i < Traits.Count; i++)
-            {
-                _planned[i] = 0.0;
-                if (_value[i] == _target[i])
-                    continue;
-                double next = _value[i] + (_target[i] - _value[i]) * relax;
-                if (Math.Abs(next - _target[i]) < 1e-9 * _target[i])
-                    next = _target[i];
-                _planned[i] = next - _value[i];
-                if (_planned[i] > 0.0)
-                    build += _planned[i] * _buildPerUnit[i];
-            }
-            // Build no faster than the build capacity, and back off as ATP falls below rest (the stringent response):
-            // full speed at the resting ATP, none at BuildAtpFloor, so building never starves the cell.
-            double atp = Batch.States[_sAtp][0];
-            double throttle = Math.Min(1.0, Math.Max(0.0, (atp - FermenterTraits.BuildAtpFloor) / (_atpRest - FermenterTraits.BuildAtpFloor)));
-            double cap = FermenterTraits.BuildCapacity * RestingTurnover * dt * throttle;
-            Batch.Externals[_jGrowth][0] = Math.Max(0.0, GrowthFraction) * RestingTurnover * throttle;
-            double scale = build > cap ? (build > 0.0 ? cap / build : 0.0) : 1.0;
-            Batch.Externals[_jBuild][0] = build * scale / dt;
             LastHalvings = _integrator.StepRobust(_kernel, Batch, Time, dt, 0, 1);
             Time += dt;
-            double f = Math.Min(1.0, Batch.Algebraic[_aProteinFactor][0]);
-            for (int i = 0; i < Traits.Count; i++)
-            {
-                if (_planned[i] == 0.0)
-                    continue;
-                // Rising: as far as capacity and ATP allowed. Falling: degradation needs no ATP and is not refunded.
-                _value[i] += _planned[i] > 0.0 ? _planned[i] * scale * f : _planned[i];
-                if (Math.Abs(_value[i] - _target[i]) < 1e-9 * _target[i])
-                    _value[i] = _target[i];
-                Apply(i);
-            }
             if (Damage >= 1.0)
                 Alive = false;
         }
@@ -338,40 +274,31 @@ namespace AdaptOrDeity.Sim.Physiology
                 return null;
             double shortfall = Math.Max(0.0, DaughterCost - GrowthInvested);
             if (shortfall > 0.0)
-                Batch.States[_sGlycogen][0] = Math.Max(0.0, Glycogen - shortfall / (AtpPerGlycogenUnit * Volume));
+                Batch.States[_sGlycogen][0] = Math.Max(0.0, Glycogen * (1.0 - shortfall / GlycogenAtp));
             Batch.States[_sGrowth][0] = 0.0;
             _kernel.ComputeVariables(Time, Batch, 0, 1);
             return new FermenterCell(_kernel, this);
         }
 
-        /// <summary>The energy budget now [mol ATP/s, W].</summary>
+        /// <summary>The energy budget now [mol ATP/s, W], read from the kernel.</summary>
         public EnergyBudget Budget()
         {
             double[][] a = Batch.Algebraic;
-            double vol = a[_aVol][0];   // m³; rates are mM/s = mol/m³/s
-            double f = Math.Min(1.0, a[_aProteinFactor][0]);
             return new EnergyBudget
             {
-                AtpGlycolysis = 2.0 * a[_aVgly][0] * vol,
-                AtpFromGlycogen = AtpPerGlycogenUnit * a[_aVmob][0] * vol,
+                AtpGlycolysis = a[_aGly][0],
+                AtpFromGlycogen = a[_aMob][0],
                 AtpPumps = a[_aPump][0],
-                AtpProteinTurnover = a[_aProtein][0] * a[_aProteinFactor][0],
-                AtpProteinBuild = Batch.Externals[_jBuild][0] * f,
+                AtpProteinTurnover = a[_aKeep][0],
+                AtpProteinBuild = a[_aBuild][0],
                 AtpRna = a[_aRna][0] + a[_aRibo][0],
                 AtpLipids = a[_aLipid][0],
                 AtpRepair = a[_aRepair][0],
                 AtpGrowth = a[_aGrowthUsed][0],
-                AtpStorage = 2.0 * a[_aVstore][0] * vol,
-                AtpOtherMaintenance = a[_aVhyd][0] * vol,
+                AtpStorage = a[_aStore][0],
+                AtpOtherMaintenance = a[_aMaint][0],
                 Heat = a[_aHeat][0],
             };
-        }
-
-        private void Apply(int trait)
-        {
-            int[] ext = _traitExternals[trait];
-            for (int p = 0; p < ext.Length; p++)
-                Batch.Externals[ext[p]][0] = _traitBase[trait][p] * _value[trait];
         }
 
         private int Ext(string name) => Require(_kernel.Descriptor.ExternalIndex(name), name);

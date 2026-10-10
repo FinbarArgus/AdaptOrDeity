@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Sim.Kernels.Generated
     {
         public static IKernel[] All() => new IKernel[]
         {
-            new Prokaryote_fermenter(),
+            new GenericAdaptiveCell_fermenter(),
             new TissueDiffusionVolume_nn(),
         };
     }
