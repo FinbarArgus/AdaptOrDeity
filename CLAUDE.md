@@ -17,6 +17,7 @@ tools/kernelgen/.venv/bin/aod-kernelgen [--goldens|--check|--update-lock]
 tools/kernelgen/.venv/bin/aod-kernelgen-flatten <flat.cellml> content/assembled <type> <version> \
     --modules-root <modules> --supermodule-config <config.json>   # whole cell -> one kernel (ADR 0007)
 dotnet run --project src/AdaptOrDeity.Headless -- fermenter 600 H_ATPase_expression=2   # cell panel, headless
+dotnet run -c Release --project src/AdaptOrDeity.Headless -- bench 600   # integrator speed and accuracy
 tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
 ```
 

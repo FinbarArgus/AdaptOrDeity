@@ -381,9 +381,13 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 12. Growth pace (recalibrated 2026-10-09): the cell rests on a lean background (0.1 mM glucose, placeholder) where
     its uptake just meets maintenance; touching food (50 mM at the membrane) its carriers give ~40× and glycolysis
     ~52× the resting flux, as growing fermenters do (10–40×). At growth 50× it builds ~41% of a daughter per simulated
-    hour (~2.5 h per division, E. coli-like at 20 °C). The simulation runs one cell at ~600–900× real time, so "1000×"
-    lags (~15 s of real time per division while fed); more cells are slower still. Speed-ups to consider: an analytic
-    Jacobian, reusing it across steps, or larger steps. Confirm the feel.
+    hour (~2.5 h per division, E. coli-like at 20 °C). Confirm the feel.
+    Integration speed (2026-10-11, `AdaptOrDeity.Headless bench`): modified Newton (Jacobian and LU kept across
+    iterations and steps, convergence on the true residual) and adaptive error-controlled steps (tolerance 1%, steps up
+    to 60 s, the world reading states interpolated within a step; a changed input restarts the step). One cell, one
+    core: ~350× → ~3,800× real time with the motors switching every 2–4 s, ~12,000× with steady inputs, and more
+    accurate than the old fixed 0.1 s steps (1–3% vs 10–18% against a 5 ms reference). Two hours of play headless:
+    11.4 s → 3.5 s. Next: an analytic sparse Jacobian (see docs/plans/symbolic-jacobians.md), then parallel cells.
 13. Damage model placeholders: 10-day unrepaired lifetime, repair capacity 10× accrual, repair costing 10% of a
     daughter per lethal load, Q10 2; damage does nothing until lethal. Daughters inherit the parent's damage.
 11. libcuflynx relabels some conversion-factor literals with the inverse or a dimensionless unit when flattening

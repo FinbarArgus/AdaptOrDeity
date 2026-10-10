@@ -82,8 +82,9 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             }
             double m = cell.TraitValue(trait);
             Assert.That(m, Is.EqualTo(2.0).Within(1e-3));
-            // exact in the model (upstream, under CVODE); at the game step to backward Euler's Newton tolerance
-            Assert.That(built, Is.EqualTo((m - 1.0) * n * l * cBuild / Na(cell)).Within(1e-3 * built));
+            // exact in the model (upstream, under CVODE); here the build power is summed at the 0.1 s world steps while
+            // the cell integrates with 1% adaptive steps
+            Assert.That(built, Is.EqualTo((m - 1.0) * n * l * cBuild / Na(cell)).Within(1e-2 * built));
             Assert.That(peak, Is.LessThanOrEqualTo(cap * (1 + 1e-9)));
             Assert.That(cell.AlgebraicValue("pool_H_ATPase__J_keep") / cell.AlgebraicValue("pool_H_ATPase__f_ATP"),
                 Is.EqualTo(m * upkeep0).Within(1e-9 * m * upkeep0));
@@ -219,6 +220,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
                 Assert.That(t.Min, t.Step > 0 ? Is.LessThanOrEqualTo(1.0) : Is.LessThan(1.0), t.Id);
                 Assert.That(t.Max, Is.GreaterThan(1.0), t.Id);
             }
+            cell.RelativeTolerance = 1e-5;   // this checks the model's time constant, not the game's 1% integration
             int k = cell.Traits.ToList().FindIndex(t => t.Id == "KefC_expression");
             cell.SetTrait(k, 0.5);
             double tau = cell.External("tau_mod_pool_KefC");

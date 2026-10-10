@@ -20,6 +20,8 @@ namespace AdaptOrDeity.Headless
                 return Fermenter(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "fermenter-trace")
                 return FermenterTrace(args.Skip(1).ToArray());
+            if (args.Length > 0 && args[0] == "bench")
+                return Bench.Run(args.Skip(1).ToArray());
 
             double duration = args.Length > 0 ? double.Parse(args[0], CultureInfo.InvariantCulture) : 1.0;
             using var session = SimSession.CreateOneCell();

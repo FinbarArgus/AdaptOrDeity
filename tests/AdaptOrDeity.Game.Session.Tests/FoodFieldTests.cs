@@ -180,7 +180,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             loop.Enqueue(SimCommands.SetFeature(GameFeatures.IndexOf(GameFeatures.Swimming), false));
             loop.ApplyCommands();
             loop.StepExactly(100);
-            Assert.That(b.Vx * b.Vx + b.Vy * b.Vy, Is.LessThan(1e-24), "no thrust: it only drifts with the water");
+            Assert.That(b.Vx * b.Vx + b.Vy * b.Vy, Is.LessThan(1e-20), "no thrust: it only drifts with the water (< 1e-4 um/s)");
             Assert.That(world.Cell(0).External("a_motor_mod_i_flagellum"), Is.EqualTo(0.0));
         }
 
@@ -214,7 +214,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             for (int i = 1; i < speeds.Count; i++)
                 Assert.That(Math.Abs(speeds[i] - speeds[i - 1]), Is.LessThan(0.35 * peak), $"smooth at step {i}");
             Assert.That(speeds[10 + (int)(3 * tau / 0.1)], Is.LessThan(0.1 * peak), "slowing after the motor stops");
-            Assert.That(speeds[^1], Is.LessThan(1e-12 * peak), "stopped");
+            Assert.That(speeds[^1], Is.LessThan(1e-6 * peak), "stopped (below 1e-6 of the peak: ~1e-5 um/s)");
             Assert.That(body.Body.Dissipated, Is.EqualTo(body.Body.Work).Within(1e-6 * body.Body.Work), "all ends as heat");
         }
 

@@ -250,18 +250,150 @@ namespace AdaptOrDeity.Sim.Physiology
         {
             Batch.States[St(name)][0] = value;
             _kernel.ComputeVariables(Time, Batch, 0, 1);
+            Restart();
         }
 
         public double AlgebraicValue(string name) => Batch.Algebraic[Alg(name)][0];
+
+        /// <summary>The integrator (diagnostics, benchmarks).</summary>
+        public BackwardEulerIntegrator Integrator => _integrator;
+
+        /// <summary>
+        /// Integrate with error-controlled steps that grow while nothing changes (true), or one backward Euler step per
+        /// call (false: the reference).
+        /// </summary>
+        public bool Adaptive { get; set; } = true;
+
+        /// <summary>Relative local error allowed per adaptive step.</summary>
+        public double RelativeTolerance { get; set; } = 1e-2;
+
+        /// <summary>Longest adaptive step [s].</summary>
+        public double MaxStep { get; set; } = 60.0;
+
+        /// <summary>Adaptive steps accepted and rejected so far (diagnostics).</summary>
+        public long AcceptedSteps { get; private set; }
+
+        public long RejectedSteps { get; private set; }
 
         public void Step(double dt)
         {
             if (!Alive)
                 return;
-            LastHalvings = _integrator.StepRobust(_kernel, Batch, Time, dt, 0, 1);
-            Time += dt;
+            if (Adaptive)
+                StepAdaptive(dt);
+            else
+            {
+                LastHalvings = _integrator.StepRobust(_kernel, Batch, Time, dt, 0, 1);
+                Time += dt;
+            }
             if (Damage >= 1.0)
                 Alive = false;
+        }
+
+        // Adaptive stepping. The cell integrates ahead of the world over [_ta, _tb] with one accepted backward Euler step
+        // and the world reads the state linearly interpolated at its own time, so the 0.1 s world step costs an
+        // interpolation instead of a solve while nothing changes. A changed input (motor switch, food, a slider) or a state
+        // set from outside restarts the interval at the current time, so nothing is integrated with stale inputs.
+        private double[] _ya = Array.Empty<double>(), _yb = Array.Empty<double>(), _f0 = Array.Empty<double>();
+        private double[] _extAt = Array.Empty<double>(), _errScale = Array.Empty<double>();
+        private double _ta, _tb, _h = 0.1;
+        private bool _interval;
+
+        private void StepAdaptive(double dt)
+        {
+            int n = Batch.States.Length;
+            if (_ya.Length != n)
+            {
+                _ya = new double[n];
+                _yb = new double[n];
+                _f0 = new double[n];
+                _errScale = new double[n];
+                for (int i = 0; i < n; i++)
+                    _errScale[i] = Math.Max(Math.Abs(Batch.States[i][0]), 1e-12);   // typical sizes: the starting state
+                _extAt = new double[Batch.Externals.Length];
+            }
+            double t0 = Time;
+            Time += dt;
+            if (!_interval || ExternalsChanged())
+            {
+                // restart from the state now, with a short first step
+                for (int i = 0; i < n; i++)
+                    _ya[i] = _yb[i] = Batch.States[i][0];
+                for (int e = 0; e < _extAt.Length; e++)
+                    _extAt[e] = Batch.Externals[e][0];
+                _ta = _tb = t0;
+                _h = Math.Min(_h, dt);
+                _interval = true;
+            }
+            while (_tb < Time - 1e-9)
+                Advance(n);
+            double theta = (Time - _ta) / (_tb - _ta);
+            for (int i = 0; i < n; i++)
+                Batch.States[i][0] = _ya[i] + theta * (_yb[i] - _ya[i]);
+            _kernel.ComputeVariables(Time, Batch, 0, 1);
+        }
+
+        /// <summary>One accepted step from _tb: error-controlled, halving on rejection or Newton failure.</summary>
+        private void Advance(int n)
+        {
+            double[][] y = Batch.States;
+            for (int i = 0; i < n; i++)
+                y[i][0] = _yb[i];
+            _kernel.ComputeRates(_tb, Batch, 0, 1);
+            for (int i = 0; i < n; i++)
+                _f0[i] = Batch.Rates[i][0];
+            double h = Math.Min(_h, MaxStep);
+            while (true)
+            {
+                _integrator.Step(_kernel, Batch, _tb, h, 0, 1);
+                bool finite = true;
+                for (int i = 0; i < n && finite; i++)
+                    finite = !double.IsNaN(y[i][0]) && !double.IsInfinity(y[i][0]);
+                double err = double.PositiveInfinity;
+                if (_integrator.LastConverged && finite)
+                {
+                    // backward Euler's local error ~ h/2 |f(y1) - f(y0)|, relative to each state's size
+                    _kernel.ComputeRates(_tb + h, Batch, 0, 1);
+                    err = 0.0;
+                    for (int i = 0; i < n; i++)
+                        err = Math.Max(err, 0.5 * h * Math.Abs(Batch.Rates[i][0] - _f0[i]) / (RelativeTolerance * _errScale[i]));
+                }
+                if (err <= 1.0 || h <= 1e-6)
+                {
+                    AcceptedSteps++;
+                    for (int i = 0; i < n; i++)
+                    {
+                        _ya[i] = _yb[i];
+                        _yb[i] = y[i][0];
+                        // each state's size for the error test: the largest it has been (an absolute tolerance that
+                        // follows the state, so one decaying towards zero is not resolved to ever smaller digits)
+                        _errScale[i] = Math.Max(_errScale[i], Math.Abs(y[i][0]));
+                    }
+                    _ta = _tb;
+                    _tb += h;
+                    _h = Math.Min(MaxStep, h * Math.Min(4.0, 0.9 / Math.Sqrt(Math.Max(err, 1e-12))));
+                    return;
+                }
+                RejectedSteps++;
+                for (int i = 0; i < n; i++)
+                    y[i][0] = _yb[i];
+                h *= double.IsInfinity(err) ? 0.25 : Math.Max(0.2, 0.9 / Math.Sqrt(err));
+            }
+        }
+
+        private bool ExternalsChanged()
+        {
+            for (int e = 0; e < _extAt.Length; e++)
+                if (Batch.Externals[e][0] != _extAt[e])
+                    return true;
+            return false;
+        }
+
+        /// <summary>The state was set from outside: integrate afresh from it.</summary>
+        private void Restart()
+        {
+            _interval = false;
+            _integrator.Invalidate();
         }
 
         /// <summary>
@@ -277,6 +409,7 @@ namespace AdaptOrDeity.Sim.Physiology
                 Batch.States[_sGlycogen][0] = Math.Max(0.0, Glycogen * (1.0 - shortfall / GlycogenAtp));
             Batch.States[_sGrowth][0] = 0.0;
             _kernel.ComputeVariables(Time, Batch, 0, 1);
+            Restart();
             return new FermenterCell(_kernel, this);
         }
 
