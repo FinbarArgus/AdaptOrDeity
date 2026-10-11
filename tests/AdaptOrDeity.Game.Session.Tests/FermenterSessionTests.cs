@@ -264,7 +264,11 @@ namespace AdaptOrDeity.Game.Session.Tests
                     last = f.SimTime;
                     frames++;
                 }
-                System.Threading.Thread.Sleep(5);
+                // poll every 5 ms as a front end's frame loop does; Thread.Sleep(5) can take ~45 ms on macOS (timer
+                // coalescing), which would measure this thread's sleep rather than the simulation's frames
+                var poll = watch.Elapsed + TimeSpan.FromMilliseconds(5);
+                while (watch.Elapsed < poll)
+                    System.Threading.Thread.Yield();
             }
             Assert.That(session.Fault, Is.Null);
             Assert.That(frames, Is.GreaterThan(20), "frames per 2 s");
