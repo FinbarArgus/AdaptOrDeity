@@ -43,6 +43,9 @@ namespace AdaptOrDeity.Sim.Modules
             foreach (int i in groupExternals ?? Array.Empty<int>())
                 group[i] = true;
             _groupExternal = group;
+            _externalIndex = IndexByName(externals);
+            _stateIndex = IndexByName(states);
+            _algebraicIndex = IndexByName(algebraic);
         }
 
         private readonly bool[] _groupExternal;
@@ -90,18 +93,21 @@ namespace AdaptOrDeity.Sim.Modules
         /// <summary>Stable key used in saves and probes, e.g. <c>tissue_diffusion_volume@nn</c>.</summary>
         public string Key => ModuleType + "@" + Version;
 
-        public int ExternalIndex(string name) => IndexOf(Externals, name);
+        public int ExternalIndex(string name) => _externalIndex.TryGetValue(name, out int i) ? i : -1;
 
-        public int StateIndex(string name) => IndexOf(States, name);
+        public int StateIndex(string name) => _stateIndex.TryGetValue(name, out int i) ? i : -1;
 
-        public int AlgebraicIndex(string name) => IndexOf(Algebraic, name);
+        public int AlgebraicIndex(string name) => _algebraicIndex.TryGetValue(name, out int i) ? i : -1;
 
-        private static int IndexOf(IReadOnlyList<VariableInfo> list, string name)
+        private readonly Dictionary<string, int> _externalIndex, _stateIndex, _algebraicIndex;
+
+        private static Dictionary<string, int> IndexByName(VariableInfo[] list)
         {
-            for (int i = 0; i < list.Count; i++)
-                if (list[i].Name == name)
-                    return i;
-            return -1;
+            var index = new Dictionary<string, int>(list.Length);
+            for (int i = 0; i < list.Length; i++)
+                if (!index.ContainsKey(list[i].Name))
+                    index[list[i].Name] = i;
+            return index;
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using AdaptOrDeity.Game.Content;
+using AdaptOrDeity.Sim.Core;
 using AdaptOrDeity.Sim.Kernels.Generated;
 using AdaptOrDeity.Sim.Modules;
 using AdaptOrDeity.Sim.Physiology;
@@ -17,7 +18,7 @@ namespace AdaptOrDeity.Game.Session
     /// keeps its number of cells: growth energy replaces dead cells, and goes to repair while the group is full. Cells
     /// share the medium but do not yet exchange anything (the transport graph comes later). Values exchanged here are SI.
     /// </summary>
-    public sealed class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld, IFoodWorld
+    public sealed class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld, IFoodWorld, IDisposable
     {
         /// <summary>Sim-seconds per real second: pause, 1x, 10x, 100x, 1000x.</summary>
         public static readonly double[] SpeedPresets = { 0.0, 1.0, 10.0, 100.0, 1000.0 };
@@ -52,6 +53,12 @@ namespace AdaptOrDeity.Game.Session
 
         private readonly IKernel _kernel = new GenericAdaptiveCell_fermenter();
         private readonly List<FermenterCell> _cells = new List<FermenterCell>();
+        private ParallelWork? _workers;
+        private Action<int, int>? _stepCells;
+        private double _stepDt;
+
+        /// <summary>Cells per work chunk, and the fewest cells worth spreading over threads.</summary>
+        private const int CellChunk = 2, ParallelFrom = 4;
         private readonly List<int> _cellGroup = new List<int>();
         private readonly List<Group> _groups = new List<Group>();
         private readonly bool[] _featureEnabled;
@@ -314,6 +321,31 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Position of the cell over the ground [m]: where it sits on the body, as the body moves and turns.</summary>
         public void CellPosition(int cell, out double x, out double y) => _body.WorldPosition(Check(cell), out x, out y);
 
+        /// <summary>
+        /// Threads that step cells (the simulation thread included). Results are the same for any number: each cell
+        /// steps on its own, and what cells share (the food they take) is settled afterwards in cell order.
+        /// </summary>
+        public int Workers
+        {
+            get => _workers?.Workers ?? _workerCount;
+            set
+            {
+                if (value < 1)
+                    throw new ArgumentOutOfRangeException(nameof(value), "at least one worker");
+                _workerCount = value;
+                _workers?.Dispose();
+                _workers = null;
+            }
+        }
+
+        private int _workerCount = ParallelWork.DefaultWorkers;
+
+        public void Dispose()
+        {
+            _workers?.Dispose();
+            _workers = null;
+        }
+
         public void Step(double t, double dt)
         {
             // The creature moves over the ground and the food window follows it. Each cell sees the background plus the
@@ -335,9 +367,9 @@ namespace AdaptOrDeity.Game.Session
                 for (int tr = 0; tr < nt; tr++)
                     _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
             }
+            StepCells(dt);
             for (int i = 0; i < _cells.Count; i++)
             {
-                _cells[i].Step(dt);
                 double c = _cells[i].External("C_glc_e_mod_membrane_face");
                 double uptake = _cells[i].AlgebraicValue("membrane_face__J_glc") * dt;   // mol into the cell
                 if (c > _food.BackgroundGlucose && uptake > 0.0)
@@ -351,6 +383,25 @@ namespace AdaptOrDeity.Game.Session
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))
                         DivideCell(i);
             ApplyFixedSize();
+        }
+
+        // Every cell's own integration, on the worker threads when there are enough cells.
+        private void StepCells(double dt)
+        {
+            if (_cells.Count < ParallelFrom || _workerCount == 1)
+            {
+                for (int i = 0; i < _cells.Count; i++)
+                    _cells[i].Step(dt);
+                return;
+            }
+            _workers ??= new ParallelWork(_workerCount);
+            _stepCells ??= (start, end) =>
+            {
+                for (int i = start; i < end; i++)
+                    _cells[i].Step(_stepDt);
+            };
+            _stepDt = dt;
+            _workers.Run(_cells.Count, CellChunk, _stepCells);
         }
 
         public double Read(int cell, int channel)

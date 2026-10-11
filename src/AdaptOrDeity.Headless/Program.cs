@@ -24,6 +24,8 @@ namespace AdaptOrDeity.Headless
                 return FermenterTrace(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "model")
                 return Model(args.Skip(1).ToArray());
+            if (args.Length > 0 && args[0] == "colony-bench")
+                return ColonyBench.Run(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "kernel-bench")
                 return KernelBench.Run();
             if (args.Length > 0 && args[0] == "bench")

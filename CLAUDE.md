@@ -19,6 +19,7 @@ tools/kernelgen/.venv/bin/aod-kernelgen-flatten <flat.cellml> content/assembled 
 dotnet run --project src/AdaptOrDeity.Headless -- fermenter 600 H_ATPase_expression=2   # cell panel, headless
 dotnet run -c Release --project src/AdaptOrDeity.Headless -- bench 600   # integrator speed and accuracy
 dotnet run -c Release --project src/AdaptOrDeity.Headless -- kernel-bench  # kernel cost per cell, batches, threads
+dotnet run -c Release --project src/AdaptOrDeity.Headless -- colony-bench 64 60  # a colony on 1..8 worker threads
 tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
 dotnet run --project src/AdaptOrDeity.Headless -- model <dir> 10 H_ATPase_expression=2   # creature as a module array
 <libcuflynx venv>/bin/python -m pytest tools/interop   # libcuflynx, libcellml, PhLynx read it (see the test's docstring)

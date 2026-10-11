@@ -74,6 +74,7 @@ namespace AdaptOrDeity.Game.Session
             _stop = true;
             _thread?.Join();
             _thread = null;
+            (_loop.World as IDisposable)?.Dispose();
         }
 
         private void Run()

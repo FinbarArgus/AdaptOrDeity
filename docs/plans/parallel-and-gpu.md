@@ -177,7 +177,8 @@ physiology near steady state. Worth trying once 1–3 are done, if a level needs
 | 0 | `kernel-bench` in a Unity IL2CPP player; snapshot cost per cell (name lookups, the O(N²) trace index) | numbers recorded here |
 | 1 | **done 2026-10-11**: group inputs read once per call (lock entry `per_cell_inputs`), `ComputeRates` keeps algebraic variables local and computes only those the rates need (218 of 289) | rates and variables bit-identical (4,096 perturbed cells); 5.3× one thread, 8.2× all threads, 3.5× for one-cell batches; one cell end to end 3,845× → 6,808× real time busy, 12,246× → 21,405× calm |
 | 2 | analytic sparse Jacobian (symbolic-jacobians.md) | matches finite differences; goldens unchanged |
-| 3 | batched integrator per group; fixed-chunk `Parallel.For`; ordered reductions | 1 vs N threads bit-identical; no allocation per tick; 5k busy cells ≥10× real time |
+| 3a | **done 2026-10-11**: cells step on worker threads (`ParallelWork`: a fixed pool, chunks claimed as threads free up, allocation-free; the food cells take is settled afterwards in cell order); kernel names resolved by dictionary | 1, 4 and 8 workers bit-identical (16-cell colony, a simulated minute); no allocation per step; 64-cell colony 85× → ~750× real time (lean kernel, lookups, 8 workers 3.9× over 1) |
+| 3b | group batches: a group's cells in one batch, stepped in lockstep chunks by a batched integrator (per-cell LU) | worth it if colony-bench at hundreds of cells shows the per-cell path limited by memory or per-call overhead; same gates as 3a |
 | 4 | clones, sleeping steady cells, levels of detail in play | top speed with 5k cells at 60 fps |
 | 5 | environment field: implicit or spectral steps at the exchange interval, several species per pass, on CPU cores; GPU display | 256² field < 5% of the frame at top speed |
 | 6 | GPU field (compute shader) when grids or species grow; GPU cell kinetics only as a gated experiment | measured gain over step 5 |
