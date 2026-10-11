@@ -31,7 +31,11 @@ assert generate_with_new_architecture(False, {
     'module_library_dirs': [os.path.join(repo, 'content', 'assembled')], 'use_builtin_modules': False, 'DEBUG': False})
 t1 = time.perf_counter()
 cellml = os.path.join(work, 'gen', 'cell', 'cell.cellml')
-desc, path, build_s, cached = batched.load_or_build(cellml, os.path.join(work, 'build'))
+# The values the game reads after every step (modules.lock.json "outputs"); the rest are computed on demand.
+lock = json.load(open(os.path.join(repo, 'content', 'modules.lock.json')))
+entries = lock['modules'] if isinstance(lock, dict) and 'modules' in lock else lock
+outputs = next(e for e in entries if isinstance(e, dict) and e.get('version') == 'fermenter').get('outputs', [])
+desc, path, build_s, cached = batched.load_or_build(cellml, os.path.join(work, 'build'), outputs=outputs)
 print(f'generated in {t1 - t0:.1f} s; library built in {time.perf_counter() - t1:.1f} s')
 target = os.path.join(out, 'libaod_cell' + os.path.splitext(path)[1])
 shutil.copyfile(path, target)

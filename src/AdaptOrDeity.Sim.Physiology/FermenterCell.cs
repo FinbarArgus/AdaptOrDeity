@@ -137,7 +137,13 @@ namespace AdaptOrDeity.Sim.Physiology
             kernel.ComputeVariables(0.0, Batch, 0, 1);
             _variablesCurrent = true;
             if (NativeIntegration && NativeCell.Available(kernel.Descriptor, out _))
+            {
                 _native = NativeCell.Create(kernel.Descriptor, NativeRelativeTolerance);
+                Array.Clear(_isOutput, 0, _isOutput.Length);
+                foreach (var (k, _) in _native.Map.Outputs)
+                    _isOutput[k] = true;
+                Recompute();
+            }
         }
 
         // A daughter: same kernel, a copy of the parent's state and parameters (targets and controls included).
@@ -327,17 +333,34 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Whether every algebraic variable is current (diagnostics: reading a non-output computes them all).</summary>
         public bool AllVariablesCurrent => _variablesCurrent;
 
+        // Every algebraic value, read on demand: the states are those of the last step.
         private void EnsureVariables()
         {
             if (_variablesCurrent)
                 return;
-            _kernel.ComputeVariables(Time, Batch, 0, 1);
+            if (_native != null)
+            {
+                _native.SetInputs(Batch);
+                _native.ComputeVariables(Batch);
+            }
+            else
+                _kernel.ComputeVariables(Time, Batch, 0, 1);
             _variablesCurrent = true;
         }
 
+        // Every algebraic value after the batch's states were set: the native library takes them (and integrates
+        // afresh from them).
         private void Recompute()
         {
-            _kernel.ComputeVariables(Time, Batch, 0, 1);
+            if (_native != null)
+            {
+                _native.SetInputs(Batch);
+                _native.SetStates(Batch);
+                _nativeRestart = false;
+                _native.ComputeVariables(Batch);
+            }
+            else
+                _kernel.ComputeVariables(Time, Batch, 0, 1);
             _variablesCurrent = true;
         }
 
@@ -377,7 +400,12 @@ namespace AdaptOrDeity.Sim.Physiology
                 LastHalvings = _integrator.StepRobust(_kernel, Batch, Time, dt, 0, 1);
                 Time += dt;
             }
-            if (_outputs != null)
+            if (_native != null)
+            {
+                _native.Outputs(Batch);   // the rest on demand (EnsureVariables)
+                _variablesCurrent = false;
+            }
+            else if (_outputs != null)
             {
                 _outputs.ComputeOutputs(Time, Batch, 0, 1);   // the rest on demand (EnsureVariables)
                 _variablesCurrent = false;

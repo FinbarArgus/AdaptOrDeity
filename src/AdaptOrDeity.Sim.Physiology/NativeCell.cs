@@ -107,6 +107,24 @@ namespace AdaptOrDeity.Sim.Physiology
                 batch.States[i][0] = _states[map[i]];
         }
 
+        /// <summary>Computes the library's outputs and writes them into the batch's algebraic values (instance 0).</summary>
+        public void Outputs(KernelBatch batch)
+        {
+            bk_instance_outputs(_handle);
+            var outputs = Map.Outputs;
+            for (int o = 0; o < outputs.Length; o++)
+                batch.Algebraic[outputs[o].Kernel][0] = _variables[outputs[o].Library];
+        }
+
+        /// <summary>Computes every algebraic value and writes them into the batch (instance 0).</summary>
+        public void ComputeVariables(KernelBatch batch)
+        {
+            bk_instance_compute_variables(_handle);
+            int[] map = Map.Algebraic;
+            for (int a = 0; a < map.Length; a++)
+                batch.Algebraic[a][0] = _variables[map[a]];
+        }
+
         public double Time => bk_instance_time(_handle);
 
         public void Dispose()
@@ -133,6 +151,10 @@ namespace AdaptOrDeity.Sim.Physiology
         [DllImport(Library)] private static extern void bk_instance_restart(IntPtr instance);
         [DllImport(Library)] private static extern void bk_instance_parameters_changed(IntPtr instance);
         [DllImport(Library)] private static extern int bk_instance_advance(IntPtr instance, double dt);
+        [DllImport(Library)] private static extern void bk_instance_outputs(IntPtr instance);
+        [DllImport(Library)] private static extern void bk_instance_compute_variables(IntPtr instance);
+        [DllImport(Library)] internal static extern int bk_output_count();
+        [DllImport(Library)] internal static extern int bk_output_index(int i);
         [DllImport(Library)] private static extern void bk_set_options(IntPtr sim, double rtol, double atol, double hMax, double hMin,
             double newtonTol, int maxNewton, int maxJacobianAge, long maxSteps, int finiteDifferenceJacobian, int method);
         [DllImport(Library)] internal static extern int bk_state_count();
@@ -142,8 +164,9 @@ namespace AdaptOrDeity.Sim.Physiology
     }
 
     /// <summary>
-    /// Where a C# kernel's states and externals are in the cell library: states by name; each external is the module
-    /// array parameter <c>&lt;name&gt;_cell_0</c> (libcuflynx names a module's parameters after its instance).
+    /// Where a C# kernel's states, externals and algebraic values are in the cell library: states and algebraic values
+    /// (computed constants included) by name; each external is the module array parameter <c>&lt;name&gt;_cell_0</c>
+    /// (libcuflynx names a module's parameters after its instance). Outputs: the library's, with their kernel indices.
     /// </summary>
     public sealed class NativeCellMap
     {
@@ -153,10 +176,16 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public int[] Externals { get; }
 
-        private NativeCellMap(int[] states, int[] externals)
+        public int[] Algebraic { get; }
+
+        public (int Kernel, int Library)[] Outputs { get; }
+
+        private NativeCellMap(int[] states, int[] externals, int[] algebraic, (int, int)[] outputs)
         {
             States = states;
             Externals = externals;
+            Algebraic = algebraic;
+            Outputs = outputs;
         }
 
         public static NativeCellMap For(KernelDescriptor d)
@@ -187,7 +216,20 @@ namespace AdaptOrDeity.Sim.Physiology
                 for (int i = 0; i < e.Length; i++)
                     e[i] = variables.TryGetValue(d.Externals[i].Name + "_cell_0", out int k) ? k
                         : throw new InvalidOperationException($"the cell library has no parameter {d.Externals[i].Name}_cell_0");
-                var map = new NativeCellMap(s, e);
+                var a = new int[d.Algebraic.Count];
+                for (int i = 0; i < a.Length; i++)
+                    a[i] = variables.TryGetValue(d.Algebraic[i].Name, out int k) ? k
+                        : throw new InvalidOperationException($"the cell library has no variable {d.Algebraic[i].Name}");
+                var kernelIndex = new Dictionary<int, int>();
+                for (int i = 0; i < a.Length; i++)
+                    kernelIndex[a[i]] = i;
+                var o = new (int, int)[NativeCell.bk_output_count()];
+                for (int i = 0; i < o.Length; i++)
+                {
+                    int library = NativeCell.bk_output_index(i);
+                    o[i] = (kernelIndex[library], library);
+                }
+                var map = new NativeCellMap(s, e, a, o);
                 Maps[d] = map;
                 return map;
             }
