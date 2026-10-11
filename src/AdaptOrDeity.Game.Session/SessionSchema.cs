@@ -189,7 +189,7 @@ namespace AdaptOrDeity.Game.Session
             Traits = traits ?? new TraitInfo[0];
             Controls = controls ?? new ControlInfo[0];
             Features = features ?? new FeatureInfo[0];
-            MaxCells = maxCells;
+            InitialCellCapacity = maxCells;
             MaxGroups = maxGroups;
         }
 
@@ -200,7 +200,8 @@ namespace AdaptOrDeity.Game.Session
         public IReadOnlyList<FeatureInfo> Features { get; }
 
         /// <summary>Most cells (and so snapshot slots) the world holds.</summary>
-        public int MaxCells { get; }
+        /// <summary>Cells snapshot frames are first sized for; they grow with the colony.</summary>
+        public int InitialCellCapacity { get; }
 
         public int MaxGroups { get; }
 

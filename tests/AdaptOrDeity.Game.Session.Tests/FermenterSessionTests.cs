@@ -32,7 +32,7 @@ namespace AdaptOrDeity.Game.Session.Tests
                 { "Food", "Metabolic rate", "ATP made", "ATP used", "Protein turnover", "Growth and storage", "Cell state" }));
             Assert.That(schema.Traits.Count, Is.EqualTo(9), "8 expression traits and the number of flagella");
             Assert.That(schema.Controls.Select(c => c.Id), Is.EqualTo(new[] { "growth", "storage", "repair" }));
-            Assert.That(schema.MaxCells, Is.EqualTo(FermenterWorld.CellLimit));
+            Assert.That(schema.InitialCellCapacity, Is.EqualTo(FermenterWorld.InitialCells));
             Assert.That(schema.Details.Single(d => d.Id == "atp_turnover").SiUnit, Is.EqualTo("mol/s"));
             Assert.That(schema.Details.Single(d => d.Id == "free_energy_power").SiUnit, Is.EqualTo("W"));
         }
@@ -51,6 +51,29 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(frame.Details[power][0] / frame.Details[turnover][0], Is.EqualTo(48.65e3).Within(0.1e3));
             Assert.That(frame.Level, Is.EqualTo(1));
             Assert.That(frame.CellAlive[0], Is.True);
+        }
+
+        [Test]
+        public void ThreadedFramesGrowWithTheColony()
+        {
+            using var session = SimSession.CreateFermenter();
+            session.Enqueue(SimCommands.SetLevel(2));
+            for (int i = 1; i < 150; i++)
+            {
+                session.Enqueue(SimCommands.DevCompleteDaughter(i - 1));
+                session.Enqueue(SimCommands.Divide(i - 1));
+            }
+            session.Start();
+            SnapshotFrame? frame = null;
+            for (int tries = 0; tries < 200 && (frame == null || frame.CellCount < 150); tries++)
+            {
+                System.Threading.Thread.Sleep(10);
+                if (session.TryGetFrame(out var f))
+                    frame = f;
+            }
+            Assert.That(session.Fault, Is.Null);
+            Assert.That(frame!.CellCount, Is.EqualTo(150));
+            Assert.That(frame.CellX.Length, Is.GreaterThanOrEqualTo(150));
         }
 
         [Test]

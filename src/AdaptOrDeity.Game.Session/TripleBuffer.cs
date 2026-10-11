@@ -30,6 +30,9 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Consumer: the buffer most recently acquired.</summary>
         public T Front => _buffers[_front];
 
+        /// <summary>Producer: replaces the buffer it writes next (e.g. with a larger one).</summary>
+        public void ReplaceBack(T buffer) => _buffers[_back] = buffer;
+
         /// <summary>Producer: publishes <see cref="Back"/> and takes a free buffer to write next.</summary>
         public void Publish()
         {

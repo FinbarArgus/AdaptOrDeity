@@ -26,8 +26,8 @@ namespace AdaptOrDeity.Game.Session
         public const int GroupLimit = 8;
         public const int GrowthControl = 0, StorageControl = 1, RepairControl = 2;
 
-        /// <summary>Most cells the session simulates (content/parameters.json colony.cell_limit).</summary>
-        public static int CellLimit => GameParameters.Default.Integer("colony.cell_limit");
+        /// <summary>Cells snapshot frames are first sized for; they grow with the colony.</summary>
+        public const int InitialCells = 64;
 
         private static readonly OverlayInfo[] OverlayList =
         {
@@ -97,8 +97,10 @@ namespace AdaptOrDeity.Game.Session
             public int FixedSize { get; set; }
         }
 
-        public FermenterWorld()
+        /// <param name="cellLimit">Most cells, for tests; no limit when null.</param>
+        public FermenterWorld(int? cellLimit = null)
         {
+            _cellLimit = cellLimit ?? int.MaxValue;
             _cells.Add(new FermenterCell(_kernel, TraitCatalog.Fermenter));
             var first = _cells[0];
             // Geometry and the medium from the kernel (upstream parameters.json); the rest of the food field from content.
@@ -232,7 +234,9 @@ namespace AdaptOrDeity.Game.Session
 
         public IReadOnlyList<FeatureInfo> Features => GameFeatures.All;
 
-        public int MaxCells => CellLimit;
+        public int InitialCellCapacity => Math.Min(_cellLimit, InitialCells);
+
+        private readonly int _cellLimit;
 
         public int MaxGroups => GroupLimit;
 
@@ -356,7 +360,7 @@ namespace AdaptOrDeity.Game.Session
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
             int nt = _food.TraceSpecies.Count;
             if (_traceAtCell.Length < _cells.Count * nt)
-                _traceAtCell = new double[CellLimit * nt];
+                _traceAtCell = new double[2 * _cells.Count * nt];
             for (int i = 0; i < _cells.Count; i++)
             {
                 CellPosition(i, out double x, out double y);
@@ -488,8 +492,8 @@ namespace AdaptOrDeity.Game.Session
             if (!Active(GameFeatures.GrowthAndDivision))
                 throw new InvalidOperationException("Growth and division unlocks at level 2");
             if (!Room(_cellGroup[cell]))
-                throw new InvalidOperationException(_cells.Count >= CellLimit
-                    ? $"at most {CellLimit} cells"
+                throw new InvalidOperationException(_cells.Count >= _cellLimit
+                    ? $"at most {_cellLimit} cells"
                     : "the group has a fixed size and no dead cell to replace");
             if (!_cells[cell].CanDivide)
                 throw new InvalidOperationException(
@@ -534,8 +538,8 @@ namespace AdaptOrDeity.Game.Session
         private bool Room(int group)
         {
             if (Active(GameFeatures.FixedBodySize))
-                return AliveIn(group) < _groups[group].FixedSize && (DeadSlot(group) >= 0 || _cells.Count < CellLimit);
-            return _cells.Count < CellLimit;
+                return AliveIn(group) < _groups[group].FixedSize && (DeadSlot(group) >= 0 || _cells.Count < _cellLimit);
+            return _cells.Count < _cellLimit;
         }
 
         private void ApplyFixedSize() => ApplyControls();

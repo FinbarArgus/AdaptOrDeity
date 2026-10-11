@@ -18,6 +18,7 @@ namespace AdaptOrDeity.Native
             public SimSession Session = null!;
             public string? Error;
             public SimEvent? Pending;
+            public SnapshotFrame? PendingFrame;
         }
 
         private static readonly List<Entry?> Sessions = new List<Entry?>();
@@ -55,16 +56,44 @@ namespace AdaptOrDeity.Native
                 return 0;
             });
 
-        /// <summary>The newest frame since the last call into <paramref name="buffer"/>: its bytes, or 0 if there is none.</summary>
+        /// <summary>
+        /// The newest frame since the last call into <paramref name="buffer"/>: its bytes, 0 if there is none, or -2 with
+        /// the bytes it needs in <paramref name="required"/> when the buffer is too small (frames grow with the colony; the
+        /// frame waits for the next call).
+        /// </summary>
         [UnmanagedCallersOnly(EntryPoint = "aod_session_take_frame")]
-        public static int TakeFrame(int handle, byte* buffer, int length) =>
-            Guard(handle, e => e.Session.TryGetFrame(out var frame)
-                ? SnapshotCodec.Write(frame, new Span<byte>(buffer, length)) : 0);
+        public static int TakeFrame(int handle, byte* buffer, int length, int* required) =>
+            Guard(handle, e =>
+            {
+                if (e.PendingFrame == null && !e.Session.TryGetFrame(out e.PendingFrame))
+                    return 0;
+                return WritePending(e, buffer, length, required);
+            });
 
-        /// <summary>Applies queued commands, simulates unpaced on the caller's thread and writes the frame.</summary>
+        /// <summary>Applies queued commands, simulates unpaced on the caller's thread and writes the frame (as take_frame).</summary>
         [UnmanagedCallersOnly(EntryPoint = "aod_session_run_headless")]
-        public static int RunHeadless(int handle, double simSeconds, byte* buffer, int length) =>
-            Guard(handle, e => SnapshotCodec.Write(e.Session.RunHeadless(simSeconds), new Span<byte>(buffer, length)));
+        public static int RunHeadless(int handle, double simSeconds, byte* buffer, int length, int* required) =>
+            Guard(handle, e =>
+            {
+                e.PendingFrame = e.Session.RunHeadless(simSeconds);
+                return WritePending(e, buffer, length, required);
+            });
+
+        private static int WritePending(Entry e, byte* buffer, int length, int* required)
+        {
+            int need = SnapshotCodec.Size(e.PendingFrame!);
+            *required = need;
+            if (need > length)
+                return -2;
+            int n = SnapshotCodec.Write(e.PendingFrame!, new Span<byte>(buffer, length));
+            e.PendingFrame = null;
+            return n;
+        }
+
+        /// <summary>A frame left by run_headless or take_frame for a retry with a larger buffer.</summary>
+        [UnmanagedCallersOnly(EntryPoint = "aod_session_pending_frame")]
+        public static int PendingFrame(int handle, byte* buffer, int length, int* required) =>
+            Guard(handle, e => e.PendingFrame == null ? 0 : WritePending(e, buffer, length, required));
 
         /// <summary>
         /// The next event: 1 and its kind (1 checkpoint, 2 rejected command, 3 model exported), time, index and text; 0

@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 
 namespace AdaptOrDeity.Game.Session
 {
@@ -39,6 +40,34 @@ namespace AdaptOrDeity.Game.Session
                 Visit(frame, ref c);
             }
         }
+
+        /// <summary>A frame shaped as the one in <paramref name="bytes"/> (its header): for a reader whose frames no longer fit.</summary>
+        public static SnapshotFrame NewFrameFor(ReadOnlySpan<byte> bytes)
+        {
+            CheckMagic(bytes);
+            return new SnapshotFrame(H(bytes, 0), H(bytes, 1), H(bytes, 2), H(bytes, 3), H(bytes, 4), H(bytes, 5), H(bytes, 6),
+                H(bytes, 7), H(bytes, 8), H(bytes, 9));
+        }
+
+        /// <summary>Whether <paramref name="frame"/> has the shape of the frame in <paramref name="bytes"/> (no allocation).</summary>
+        public static bool Fits(ReadOnlySpan<byte> bytes, SnapshotFrame frame)
+        {
+            CheckMagic(bytes);
+            return H(bytes, 0) == frame.Channels.Length && H(bytes, 1) == frame.CellX.Length && H(bytes, 2) == frame.Probes.Length
+                && H(bytes, 3) == (frame.Probes.Length > 0 ? frame.Probes[0].Times.Length : 0) && H(bytes, 4) == frame.Details.Length
+                && H(bytes, 5) == frame.TraitValues.Length && H(bytes, 6) == frame.Controls.Length
+                && H(bytes, 7) == (frame.Controls.Length > 0 ? frame.Controls[0].Length : 0)
+                && H(bytes, 8) == frame.FeatureUnlocked.Length && H(bytes, 9) == frame.PacketX.Length;
+        }
+
+        private static void CheckMagic(ReadOnlySpan<byte> bytes)
+        {
+            if (bytes.Length < 44 || BinaryPrimitives.ReadInt32LittleEndian(bytes) != Magic)
+                throw new FormatException("not a snapshot frame");
+        }
+
+        // Header field i: the frame's dimensions after the magic number.
+        private static int H(ReadOnlySpan<byte> bytes, int i) => BinaryPrimitives.ReadInt32LittleEndian(bytes.Slice(4 + 4 * i));
 
         // One description of the layout, walked to measure, write and read.
         private static void Visit(SnapshotFrame f, ref Cursor io)

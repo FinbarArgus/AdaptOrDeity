@@ -100,13 +100,6 @@
    "status": "design",
    "note": "gap between neighbouring cells of a colony (centres 2 R_cell + gap apart)"
   },
-  "colony.cell_limit": {
-   "value": 64,
-   "units": "1",
-   "source": "definitional",
-   "status": "design",
-   "note": "most cells the session simulates"
-  },
   "controls.growth_max": {
    "value": 50.0,
    "units": "1",

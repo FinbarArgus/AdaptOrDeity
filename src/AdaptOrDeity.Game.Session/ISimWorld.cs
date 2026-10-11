@@ -44,7 +44,8 @@ namespace AdaptOrDeity.Game.Session
 
         IReadOnlyList<FeatureInfo> Features { get; }
 
-        int MaxCells { get; }
+        /// <summary>Cells the snapshot frames are first sized for; frames grow with the colony (there is no cap).</summary>
+        int InitialCellCapacity { get; }
 
         int MaxGroups { get; }
 

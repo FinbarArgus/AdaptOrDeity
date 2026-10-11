@@ -56,7 +56,7 @@ namespace AdaptOrDeity.Game.Session
                 foreach (var t in food.Food.TraceSpecies)
                     traces.Add(t.Name);
             Schema = new SessionSchema(world.Overlays, _options.SpeedPresets, inspect?.Details, inspect?.Traits,
-                inspect?.Controls, inspect?.Features, inspect?.MaxCells ?? world.CellCount, inspect?.MaxGroups ?? 0,
+                inspect?.Controls, inspect?.Features, inspect?.InitialCellCapacity ?? world.CellCount, inspect?.MaxGroups ?? 0,
                 traces, food?.Food.HalfSize ?? 0.0, food?.Food.Packets.Count ?? 0);
             // Sample on step counts, not accumulated float times, so sampling is exact and deterministic.
             _stepsPerProbeSample = Math.Max(1L, (long)Math.Round(_options.ProbeInterval / world.MacroDt));
@@ -168,10 +168,22 @@ namespace AdaptOrDeity.Game.Session
         internal void ClearProbes() => _probes.Clear();
 
         /// <summary>Creates a frame sized for this loop's world and options.</summary>
+        /// <summary>A frame for the current colony: room for at least the cells there are, in powers of two.</summary>
         public SnapshotFrame CreateFrame() =>
-            new SnapshotFrame(World.Overlays.Count, Math.Max(World.CellCount, Schema.MaxCells), _options.MaxProbes,
+            new SnapshotFrame(World.Overlays.Count, Capacity(Math.Max(World.CellCount, Schema.InitialCellCapacity)), _options.MaxProbes,
                 _options.ProbeSamples, Schema.Details.Count, Schema.Traits.Count, Schema.Controls.Count, Schema.MaxGroups,
                 Schema.Features.Count, Schema.MaxPackets);
+
+        /// <summary>True when <paramref name="frame"/> has no room for the current colony (frames grow, see SimHost).</summary>
+        public bool Outgrown(SnapshotFrame frame) => frame.CellX.Length < World.CellCount;
+
+        private static int Capacity(int cells)
+        {
+            int c = 1;
+            while (c < cells)
+                c *= 2;
+            return c;
+        }
 
         /// <summary>Writes the current state into <paramref name="frame"/> (no allocation).</summary>
         public void WriteSnapshot(SnapshotFrame frame)

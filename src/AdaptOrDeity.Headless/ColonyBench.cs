@@ -13,7 +13,7 @@ namespace AdaptOrDeity.Headless
     {
         public static int Run(string[] args)
         {
-            int cells = args.Length > 0 ? int.Parse(args[0]) : FermenterWorld.CellLimit;
+            int cells = args.Length > 0 ? int.Parse(args[0]) : 64;
             double seconds = args.Length > 1 ? double.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture) : 60.0;
             Console.WriteLine($"{cells} cells, {seconds} simulated s, {Environment.ProcessorCount} hardware threads");
             Console.WriteLine("workers   wall s   x real time   speed-up");

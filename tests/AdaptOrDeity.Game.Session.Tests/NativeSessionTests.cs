@@ -68,6 +68,32 @@ namespace AdaptOrDeity.Game.Session.Tests
             }
         }
 
+        private static void Grow(ISessionFront session, int cells)
+        {
+            session.Enqueue(SimCommands.SetLevel(2));
+            for (int i = 1; i < cells; i++)
+            {
+                session.Enqueue(SimCommands.DevCompleteDaughter(i - 1));
+                session.Enqueue(SimCommands.Divide(i - 1));
+            }
+        }
+
+        [Test]
+        public void FramesGrowPastTheFirstCapacityInBothSessions()
+        {
+            if (_library == null)
+                Assert.Ignore("the simulation library is not built (tools/scripts/build_native_sim.sh)");
+            using var managed = SimSession.CreateFermenter();
+            using var native = NativeSession.CreateFermenter();
+            Grow(managed, 100);
+            Grow(native, 100);
+            var a = managed.RunHeadless(5.0);
+            var b = native.RunHeadless(5.0);
+            Assert.That(a.CellCount, Is.EqualTo(100));
+            Assert.That(b.CellX.Length, Is.GreaterThanOrEqualTo(100));
+            Assert.That(Bytes(b), Is.EqualTo(Bytes(a)));
+        }
+
         [Test]
         public void ARejectedCommandComesBackAsAnEvent()
         {

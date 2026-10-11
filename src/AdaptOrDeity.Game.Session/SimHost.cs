@@ -37,6 +37,8 @@ namespace AdaptOrDeity.Game.Session
             _maxStepsPerTick = maxStepsPerTick;
             _outOfTime = () => _tickClock.Elapsed.TotalSeconds > TickBudget;
             _frames = new TripleBuffer<SnapshotFrame>(loop.CreateFrame(), loop.CreateFrame(), loop.CreateFrame());
+            if (_loop.Outgrown(_frames.Back))
+                _frames.ReplaceBack(_loop.CreateFrame());   // the colony outgrew the frame: a larger one (rare: sizes double)
             _loop.WriteSnapshot(_frames.Back);
             _frames.Publish();
         }
@@ -62,6 +64,8 @@ namespace AdaptOrDeity.Game.Session
             _loop.ApplyCommands();
             _tickClock.Restart();
             _loop.Advance(realDt * _loop.SpeedMultiplier, _maxStepsPerTick, _outOfTime);
+            if (_loop.Outgrown(_frames.Back))
+                _frames.ReplaceBack(_loop.CreateFrame());   // the colony outgrew the frame: a larger one (rare: sizes double)
             _loop.WriteSnapshot(_frames.Back);
             _frames.Publish();
         }

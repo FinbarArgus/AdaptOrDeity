@@ -26,6 +26,8 @@ namespace AdaptOrDeity.Headless
                 return Model(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "protocol")
                 return ProtocolRun.Run(args.Skip(1).ToArray());
+            if (args.Length > 0 && args[0] == "scale-bench")
+                return ScaleBench.Run(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "colony-bench")
                 return ColonyBench.Run(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "kernel-bench")

@@ -13,7 +13,7 @@ namespace AdaptOrDeity.Game.Session
     {
         private const string Library = "aod_sim";
         private readonly int _handle;
-        private readonly byte[] _buffer;
+        private byte[] _buffer;
         private readonly byte[] _text = new byte[4096];
         private readonly SnapshotFrame[] _frames;
         private int _front;
@@ -57,17 +57,34 @@ namespace AdaptOrDeity.Game.Session
 
         public bool TryGetFrame(out SnapshotFrame frame)
         {
-            int n = aod_session_take_frame(_handle, _buffer, _buffer.Length);
+            int n = aod_session_take_frame(_handle, _buffer, _buffer.Length, out int required);
+            if (n == -2)
+                n = Grow(required);
             Check(n);
             if (n == 0)
             {
                 frame = _frames[_front];
                 return false;
             }
-            _front ^= 1;
-            SnapshotCodec.Read(new ReadOnlySpan<byte>(_buffer, 0, n), _frames[_front]);
-            frame = _frames[_front];
+            frame = Decode(n);
             return true;
+        }
+
+        // The colony outgrew the buffer: a larger one, then the frame the library kept for it.
+        private int Grow(int required)
+        {
+            _buffer = new byte[required];
+            return aod_session_pending_frame(_handle, _buffer, _buffer.Length, out _);
+        }
+
+        private SnapshotFrame Decode(int n)
+        {
+            var bytes = new ReadOnlySpan<byte>(_buffer, 0, n);
+            _front ^= 1;
+            if (!SnapshotCodec.Fits(bytes, _frames[_front]))
+                _frames[_front] = SnapshotCodec.NewFrameFor(bytes);   // frames grow with the colony
+            SnapshotCodec.Read(bytes, _frames[_front]);
+            return _frames[_front];
         }
 
         public bool TryDequeueEvent(out SimEvent? simEvent)
@@ -90,17 +107,11 @@ namespace AdaptOrDeity.Game.Session
 
         public SnapshotFrame RunHeadless(double simSeconds)
         {
-            int n = aod_session_run_headless(_handle, simSeconds, _buffer, _buffer.Length);
+            int n = aod_session_run_headless(_handle, simSeconds, _buffer, _buffer.Length, out int required);
+            if (n == -2)
+                n = Grow(required);
             Check(n);
-            var frame = Fresh();   // one of the session's two frames: valid until the next frame is taken
-            SnapshotCodec.Read(new ReadOnlySpan<byte>(_buffer, 0, n), frame);
-            return frame;
-        }
-
-        private SnapshotFrame Fresh()
-        {
-            _front ^= 1;
-            return _frames[_front];
+            return Decode(n);   // one of the session's two frames: valid until the next frame is taken
         }
 
         public void Dispose()
@@ -123,8 +134,9 @@ namespace AdaptOrDeity.Game.Session
         [DllImport(Library)] private static extern int aod_session_create(int world);
         [DllImport(Library)] private static extern int aod_session_start(int handle);
         [DllImport(Library)] private static extern int aod_session_command(int handle, int kind, int a, int b, int c, double x, byte[]? text1, byte[]? text2);
-        [DllImport(Library)] private static extern int aod_session_take_frame(int handle, byte[] buffer, int length);
-        [DllImport(Library)] private static extern int aod_session_run_headless(int handle, double simSeconds, byte[] buffer, int length);
+        [DllImport(Library)] private static extern int aod_session_take_frame(int handle, byte[] buffer, int length, out int required);
+        [DllImport(Library)] private static extern int aod_session_run_headless(int handle, double simSeconds, byte[] buffer, int length, out int required);
+        [DllImport(Library)] private static extern int aod_session_pending_frame(int handle, byte[] buffer, int length, out int required);
         [DllImport(Library)] private static extern int aod_session_next_event(int handle, out int kind, out double time, out long index, byte[] text, int textLength, out int length);
         [DllImport(Library)] private static extern int aod_session_fault(int handle, byte[] text, int textLength);
         [DllImport(Library)] private static extern void aod_session_dispose(int handle);
