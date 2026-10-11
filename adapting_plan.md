@@ -390,6 +390,8 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   Target: 500x real time, as far as it can be reached. Sleeping steady cells is optional (FermenterCell.SleepTolerance,
   error measured: 0.3% at 1e-3), off by default; growing, swimming cells never qualify. Code generation may move to
   libcuflynx (#573): analysis and differentiation shared, thin C and C# emitters.
+- **2026-10-12** Cells move to libcuflynx's generated C and its `BE_batched_c` runtime (docs/plans/libcuflynx-solver.md),
+  replacing the game's C# kernels and integrator: ~19x faster per thread on the colony protocol and more accurate.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
