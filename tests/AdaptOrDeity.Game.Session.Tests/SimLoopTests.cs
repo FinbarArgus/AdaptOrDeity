@@ -124,6 +124,31 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
+        public void ThePacerYieldsWhileSleepsOversleepAndSleepsWhenPaused()
+        {
+            // A 1 ms sleep that takes 40 ms (macOS timer coalescing): while running, the pacer yields instead, and
+            // tries a sleep again after RecheckSeconds; paused, it sleeps.
+            double now = 0.0, sleepTakes = 0.040;
+            int sleeps = 0, yields = 0;
+            var pacer = new TickPacer(() => now, () => { sleeps++; now += sleepTakes; }, () => { yields++; now += 1e-5; });
+            pacer.Wait(running: true);
+            Assert.That(pacer.Yielding, Is.True);
+            for (int i = 0; i < 1000; i++)
+                pacer.Wait(running: true);
+            Assert.That((sleeps, yields), Is.EqualTo((1, 1000)));
+            now += TickPacer.RecheckSeconds;
+            sleepTakes = 0.001;                       // sleeps are prompt again
+            pacer.Wait(running: true);
+            Assert.That((sleeps, pacer.Yielding), Is.EqualTo((2, false)));
+            pacer.Wait(running: true);
+            Assert.That(sleeps, Is.EqualTo(3));
+            sleepTakes = 0.040;
+            pacer.Wait(running: false);               // paused: an oversleep does not matter
+            pacer.Wait(running: false);
+            Assert.That((sleeps, pacer.Yielding), Is.EqualTo((5, false)));
+        }
+
+        [Test]
         public void FramesWaitingForTheFrontEndAreReplacedOnlyAfterTheFrameInterval()
         {
             var loop = new SimLoop(new OneCellWorld());

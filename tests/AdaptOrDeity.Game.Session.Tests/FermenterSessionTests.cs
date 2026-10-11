@@ -253,14 +253,14 @@ namespace AdaptOrDeity.Game.Session.Tests
             session.Start();
             session.Enqueue(SimCommands.SetSpeed(FermenterWorld.SpeedPresets.Length - 1));
             var watch = System.Diagnostics.Stopwatch.StartNew();
-            int frames = 0, bigJumps = 0;
-            double last = -1.0;
+            int frames = 0;
+            double last = -1.0, biggestJump = 0.0;
             while (watch.Elapsed.TotalSeconds < 2.0)
             {
                 if (session.TryGetFrame(out var f))
                 {
-                    if (last >= 0.0 && f.SimTime - last >= 60.0)
-                        bigJumps++;
+                    if (last >= 0.0)
+                        biggestJump = Math.Max(biggestJump, f.SimTime - last);
                     last = f.SimTime;
                     frames++;
                 }
@@ -268,8 +268,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             }
             Assert.That(session.Fault, Is.Null);
             Assert.That(frames, Is.GreaterThan(20), "frames per 2 s");
-            // a shared CI machine may stall the simulation thread once or twice; frames still come in small steps
-            Assert.That(bigJumps, Is.LessThanOrEqualTo(frames / 20), "frames more than 60 simulated seconds apart");
+            Assert.That(biggestJump, Is.LessThan(60.0), "simulated seconds between frames");
             Assert.That(last, Is.GreaterThan(200.0), "it still runs fast");
         }
 

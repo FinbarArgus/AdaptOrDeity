@@ -96,10 +96,11 @@ namespace AdaptOrDeity.Game.Session
         {
             try
             {
+                var pacer = new TickPacer();
                 while (!_stop)
                 {
                     Tick();
-                    Thread.Sleep(1);
+                    pacer.Wait(_loop.SpeedMultiplier > 0.0);
                 }
             }
             catch (Exception e)
