@@ -51,11 +51,23 @@ namespace AdaptOrDeity.Game.Session.Tests
             session.Enqueue(SimCommands.AddProbe(0, 0));
         }
 
+        // The simulation library integrates cells with the cell library linked in when it was built with one: the
+        // managed session then uses the same library, so both compute the same thing.
+        private static void CellsAsInTheLibrary()
+        {
+            if (AdaptOrDeity.Tests.CellLibrary.Resolve())
+                AdaptOrDeity.Sim.Physiology.FermenterCell.NativeIntegration = true;
+        }
+
+        [TearDown]
+        public void CSharpCellsAgain() => AdaptOrDeity.Sim.Physiology.FermenterCell.NativeIntegration = false;
+
         [Test]
         public void SameCommandsGiveByteIdenticalFrames()
         {
             if (_library == null)
                 Assert.Ignore("the simulation library is not built (tools/scripts/build_native_sim.sh)");
+            CellsAsInTheLibrary();
             using var managed = SimSession.CreateFermenter();
             using var native = NativeSession.CreateFermenter();
             Drive(managed);
@@ -83,6 +95,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             if (_library == null)
                 Assert.Ignore("the simulation library is not built (tools/scripts/build_native_sim.sh)");
+            CellsAsInTheLibrary();
             using var managed = SimSession.CreateFermenter();
             using var native = NativeSession.CreateFermenter();
             Grow(managed, 100);

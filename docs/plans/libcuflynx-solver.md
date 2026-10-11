@@ -20,29 +20,31 @@ The runtime integrates the blocks of a fixed module array, all at once, on OpenM
   few algebraic variables after every step (uptake, thrust, growth progress, pH; `outputs` in modules.lock.json),
   the rest only for the inspected cell.
 
-## Steps
+## Done (2026-10-12)
 
-1. **libcuflynx: an instance API** in the runtime, next to `bk_run`. One instance is one block of one kernel with its
-   own one-array `variables` and `states`:
-   `bk_instance_create(kernel)`, `bk_instance_variables/states` (pointers the caller writes),
-   `bk_instance_advance(inst, t1)` (restarts when an input it reads changed, else continues its step),
-   `bk_instance_computed_constants(inst)` (libCellML's `computeComputedConstants` after a parameter change),
-   `bk_instance_outputs(inst)` (an outputs program from `kernel_ir`: listed algebraic variables and what they need)
-   and `bk_instance_variables_all(inst)` (libCellML's `computeVariables`, on demand), `bk_instance_destroy`.
-   No OpenMP in this path. Tests in libcuflynx: an instance gives the same result as `bk_run` on a one-block model;
-   bit-identical when instances are stepped from several threads.
-2. **libcuflynx: build a one-cell library for the game** from `content/assembled/<type>/<version>` (flat CellML), with
-   a descriptor JSON: states, variables (name, units, kind, one-array index, initial value), the kernel's inputs, the
-   outputs list. A command for AdaptOrDeity's build: `libcuflynx-batched-build <flat.cellml> <out dir> --outputs ...`.
-3. **AdaptOrDeity: a cell on the C library.** `Sim.Physiology` gains a cell backend that P/Invokes the library
-   (works from the NativeAOT library and from Unity's Mono); `FermenterCell` keeps its API (traits, controls,
-   budget, outputs on demand) over either backend. The world keeps stepping cells from `ParallelWork`.
-   Tests: the C backend agrees with the C# one within the integrator tolerance on the single-cell and colony tests;
-   results are bit-identical on 1, 4 and 8 workers; `tools/interop/test_solver_agreement.py` against CVODES.
-4. **Packaging.** `tools/scripts/build_native_sim.sh` and `build_sim_for_unity.sh` copy the cell library next to
-   `aod_sim`; Linux first, then Windows and macOS (the build is CMake already).
-5. **Retire the C# path** once the game runs on the C backend in Unity: `tools/kernelgen`'s C# emitter, `jacobian.py`
-   and `BackwardEulerIntegrator` go; the golden traces stay as the regression reference.
+- **libcuflynx instance API** (feat/batched-implicit-solver, 22e08b59): `bk_instance_create/copy/destroy`,
+  `_advance`, `_parameters_changed`, `_restart`, `_compute_variables`, `bk_state_info/bk_variable_info`; the library
+  carries its block table. Tests: analytic solutions, a changed parameter keeps the states, eight threads bit-identical
+  to one, a copy continues bit for bit.
+- **The cell library**: `tools/scripts/build_cell_library.py` (libcuflynx venv) builds `libaod_cell.so` and
+  `libaod_cell.a` from content/assembled in ~3 s.
+- **Game cells on it**: `NativeCell` (Sim.Physiology) maps the C# kernel's states and externals by name;
+  `FermenterCell.NativeIntegration` (default true) hands it the integration when the library loads, else the C#
+  integrator runs. Algebraic values still come from the C# kernel. Within 0.2% of the C# cell run at rtol 1e-6;
+  native colonies bit-identical on any number of workers; ~2x the C# colony per thread (256 cells: 521x real time on
+  8 workers).
+- **Packaging**: the NativeAOT library links `libaod_cell.a` in (DirectPInvoke); Unity's Mono loads `libaod_cell.so`
+  from the plugin folder. In Unity both run native cells with byte-identical frames (120 s headless: NativeAOT 0.010
+  s, Mono 0.027 s, from 0.028 and 0.084).
+
+## Still to do
+
+1. **Algebraic values from the C library**: an outputs program in `kernel_ir` (the lock's `outputs` and what they
+   read) and `bk_instance_compute_variables` on demand, so the game no longer needs the C# kernel at all.
+2. **Windows and macOS builds** of the cell library (CMake already; the static archive step uses `cc`/`ar`).
+3. **Retire the C# path**: `tools/kernelgen`'s C# emitter, `jacobian.py`, `BackwardEulerIntegrator` and
+   `FermenterCell`'s adaptive stepping; keep the golden traces as the regression reference.
+4. Open a libcuflynx PR for the solver (after #572 and #520), with the instance API.
 
 ## Open
 

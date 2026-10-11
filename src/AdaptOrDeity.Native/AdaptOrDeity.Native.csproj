@@ -11,6 +11,11 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <IlcInstructionSet>x86-x64-v3</IlcInstructionSet>
   </PropertyGroup>
+  <!-- The cell model in libcuflynx's generated C (tools/scripts/build_cell_library.py), linked in when built. -->
+  <ItemGroup Condition="Exists('bin/cells/libaod_cell.a')">
+    <DirectPInvoke Include="aod_cell" />
+    <NativeLibrary Include="bin/cells/libaod_cell.a" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../AdaptOrDeity.Game.Session/AdaptOrDeity.Game.Session.csproj" />
   </ItemGroup>
