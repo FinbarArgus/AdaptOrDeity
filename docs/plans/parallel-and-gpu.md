@@ -106,6 +106,8 @@ of seconds). Hence step 3.
 
 ### 3. Make top speed affordable: fewer cells to integrate, not faster cells
 
+Chosen (2026-10-11): sleeping steady cells and homogenised tissue. Not chosen: clone sharing, quasi-steady field.
+
 Top speed (10⁵–10⁶× real time) with thousands of busy cells is out of reach of any per-cell integration on a
 desktop, CPU or GPU. The levers that remove work:
 - **Levels of detail (ADR 0006).** A tissue of many alike cells is a homogenised element; individual cells run only
@@ -118,6 +120,10 @@ desktop, CPU or GPU. The levers that remove work:
   every cell at once.
 
 ### 4. The environment field: large implicit steps, on the GPU once it is big
+
+Chosen (2026-10-11): 8+ chemicals, so the field runs on the GPU (four species per float4 pass) with implicit
+L-stable steps at the exchange interval (obstacles and variable diffusivity possible); spectral steps later for open
+water only; food packets as diffusing Gaussians, not grid features.
 
 The GPU is used only for well-conditioned work: drawing and diffusion (user decision 2026-10-11). Measured
 (tools/experiments/diffusion, single precision): one explicit 5-point step costs 26 µs on all CPU cores and 6 µs on the

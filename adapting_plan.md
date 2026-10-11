@@ -377,6 +377,13 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   simulation is to become a NativeAOT-compiled .NET library loaded by Unity (modern runtime and SIMD), keeping the
   managed build as a fallback. GPU: drawing and the environment field; cell kinetics on it only behind the gates in
   docs/plans/parallel-and-gpu.md (no doubles on macOS GPUs). Next: lean kernel layout and parallel cells (steps 1-3).
+- **2026-10-11** Parallel cells (docs/plans/parallel-and-gpu.md): batched multi-threaded cells first, then the
+  analytic Jacobian, then the NativeAOT library prototype. A batch is one of the player's cell groups (trait targets
+  and controls stay per cell). Results stay bit-identical at any thread count (ADR 0005). Environment: 8+ chemicals,
+  so the field goes on the GPU, four species per pass, with implicit (L-stable) steps tied to the cell exchange, which
+  also allow obstacles and variable diffusivity; an exact spectral step only as a later optimisation for open water.
+  Top speed: cells at steady state sleep, and tissue is homogenised (ADR 0006); no clone sharing and no quasi-steady
+  field. Food packets become spreading Gaussians (closed form), not grid features.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
