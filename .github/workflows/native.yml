@@ -1,0 +1,47 @@
+name: native
+
+# The cell library (libcuflynx's generated C in src/AdaptOrDeity.Cells) and the NativeAOT simulation library on every
+# desktop platform: built, checked against the C# integrator and the managed session, and kept as artifacts for Unity.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, rid: linux-x64 }
+          - { os: windows-latest, rid: win-x64 }
+          - { os: macos-latest, rid: osx-arm64 }
+    runs-on: ${{ matrix.os }}
+    env:
+      AOD_REQUIRE_NATIVE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: NativeAOT prerequisites (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+      - name: Build the cell library
+        run: |
+          cmake -S src/AdaptOrDeity.Cells -B build/cells -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/cells --config Release
+      - run: dotnet build -c Release
+      - name: Native cells against the C# integrator
+        run: dotnet test -c Release --no-build --filter "FullyQualifiedName~NativeCell"
+      - name: Publish the simulation library (cells linked in)
+        run: dotnet publish src/AdaptOrDeity.Native/AdaptOrDeity.Native.csproj -c Release -r ${{ matrix.rid }} -o src/AdaptOrDeity.Native/bin/publish/${{ matrix.rid }}
+      - name: Native sessions against managed ones
+        run: dotnet test -c Release --no-build --filter "FullyQualifiedName~NativeSessionTests"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.rid }}
+          path: |
+            src/AdaptOrDeity.Native/bin/cells/*aod_cell*
+            src/AdaptOrDeity.Native/bin/publish/${{ matrix.rid }}/aod_sim.*
+          if-no-files-found: error

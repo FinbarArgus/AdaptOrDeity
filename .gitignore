@@ -41,3 +41,5 @@ unity/Packages/com.adaptordeity.sim/Plugins/aod_cell.*
 .DS_Store
 .idea/
 .vscode/
+# CMake builds (tools/scripts/build_cell_library.py)
+/build/

@@ -17,6 +17,16 @@ public class CellsOnTheCSharpIntegratorByDefault
 
 namespace AdaptOrDeity.Tests
 {
+    /// <summary>CI (AOD_REQUIRE_NATIVE=1) fails a test whose native library is missing, rather than skipping it.</summary>
+    public static class NativeRequirement
+    {
+        public static void RequireNative(string what)
+        {
+            if (Environment.GetEnvironmentVariable("AOD_REQUIRE_NATIVE") == "1")
+                Assert.Fail($"{what} is not built, and AOD_REQUIRE_NATIVE=1");
+        }
+    }
+
     /// <summary>Finds the cell library built by tools/scripts/build_cell_library.py, for tests.</summary>
     public static class CellLibrary
     {
@@ -36,9 +46,14 @@ namespace AdaptOrDeity.Tests
                 var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
                 while (dir != null && !File.Exists(System.IO.Path.Combine(dir.FullName, "AdaptOrDeity.sln")))
                     dir = dir.Parent;
-                string candidate = System.IO.Path.Combine(dir!.FullName, "src", "AdaptOrDeity.Native", "bin", "cells", "libaod_cell.so");
+                string file = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "aod_cell.dll"
+                    : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "libaod_cell.dylib" : "libaod_cell.so";
+                string candidate = System.IO.Path.Combine(dir!.FullName, "src", "AdaptOrDeity.Native", "bin", "cells", file);
                 if (!File.Exists(candidate))
+                {
+                    NativeRequirement.RequireNative(candidate);
                     return false;
+                }
                 Path = candidate;
                 NativeLibrary.SetDllImportResolver(typeof(NativeCell).Assembly, (name, assembly, search) =>
                     name == "aod_cell" ? NativeLibrary.Load(candidate) : IntPtr.Zero);

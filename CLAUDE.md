@@ -13,7 +13,8 @@ Feature-level plans go in [`docs/plans/`](docs/plans/), one file per feature, an
 dotnet build -c Release && dotnet test -c Release        # needs ~/.dotnet on PATH
 dotnet run --project src/AdaptOrDeity.Headless -- 1.0   # headless one-cell run
 tools/scripts/build_sim_for_unity.sh                     # copy sim DLLs into unity/
-<libcuflynx venv>/bin/python tools/scripts/build_cell_library.py   # cells as libcuflynx C (aod_cell), before:
+<libcuflynx venv>/bin/python tools/scripts/build_cell_library.py [--build]  # cells as libcuflynx C (aod_cell);
+#   regenerates src/AdaptOrDeity.Cells/generated (never edited), --build only compiles it (CMake); before:
 CLANG=<clang> tools/scripts/build_native_sim.sh         # the NativeAOT simulation library (aod_sim) for Unity
 tools/kernelgen/.venv/bin/aod-kernelgen [--goldens|--check|--update-lock]
 tools/kernelgen/.venv/bin/aod-kernelgen-flatten <flat.cellml> content/assembled <type> <version> \

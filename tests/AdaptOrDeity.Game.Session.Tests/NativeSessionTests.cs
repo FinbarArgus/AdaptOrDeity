@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using NUnit.Framework;
@@ -20,9 +21,17 @@ namespace AdaptOrDeity.Game.Session.Tests
             var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
             while (dir != null && !File.Exists(Path.Combine(dir.FullName, "AdaptOrDeity.sln")))
                 dir = dir.Parent;
-            string candidate = Path.Combine(dir!.FullName, "src", "AdaptOrDeity.Native", "bin", "publish", "linux-x64", "aod_sim.so");
-            if (!File.Exists(candidate))
+            // tools/scripts/build_native_sim.sh publishes to bin/publish/<runtime identifier>
+            string publish = Path.Combine(dir!.FullName, "src", "AdaptOrDeity.Native", "bin", "publish");
+            string file = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "aod_sim.dll"
+                : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? "aod_sim.dylib" : "aod_sim.so";
+            string? candidate = Directory.Exists(publish)
+                ? Directory.EnumerateFiles(publish, file, SearchOption.AllDirectories).FirstOrDefault() : null;
+            if (candidate == null)
+            {
+                AdaptOrDeity.Tests.NativeRequirement.RequireNative($"{file} under {publish}");
                 return;
+            }
             _library = candidate;
             try
             {
