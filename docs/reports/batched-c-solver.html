@@ -218,13 +218,13 @@ static void jacobian_0(double t, const double *y, const double *in, double *J)
 
 <section>
   <h2>What it means for AdaptOrDeity</h2>
-  <p>The game will switch to these generated C kernels and this runtime, called from its NativeAOT simulation library (and through P/Invoke from Unity's Mono fallback), replacing its own C# kernel generator and integrator. The shared layer still needs, for the game:</p>
+  <p>The game's cells now run on it. Each cell is an <em>instance</em> of the cell model in the library (a new runtime API: create, copy for a daughter, advance one world step, change parameters), stepped from the game's own worker threads, so results stay bit-identical on any number of threads. The NativeAOT simulation library links the C in; Unity's Mono fallback loads it as a plugin.</p>
   <ul>
-    <li>constants written into the kernel as literals, and computed constants computed inside it;</li>
-    <li>per-cell inputs set by configuration (<code>per_cell_inputs</code>), not only detected;</li>
-    <li>an output list, like the game's new <code>outputs</code>, so the game reads a few algebraic variables every step and the rest on demand;</li>
-    <li>SI unit multipliers and states initialised from inputs.</li>
+    <li>Within 0.2% of the game's old integrator run at rtol 1e-6, on every state.</li>
+    <li>About twice the colony speed per thread: 256 cells run at 521× real time on 8 workers (was 275×); 64 cells at 1,804×.</li>
+    <li>In Unity, 120 simulated seconds headless: 0.010 s through the NativeAOT library, 0.027 s under Mono (were 0.028 s and 0.084 s).</li>
   </ul>
+  <p>Still to move: the algebraic values the game reads (it computes them with its old C# kernel from the C states), then the old kernel generator and integrator can go.</p>
 </section>
 
 <footer>
