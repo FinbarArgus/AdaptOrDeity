@@ -22,7 +22,8 @@ namespace AdaptOrDeity.Sim.Modules
             int[] stateInitExternal,
             double[] stateInitLiteral,
             PortInfo[] ports,
-            IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>> instances)
+            IReadOnlyDictionary<string, IReadOnlyDictionary<string, double>> instances,
+            int[]? groupExternals = null)
         {
             if (stateInitExternal.Length != states.Length || stateInitLiteral.Length != states.Length)
                 throw new ArgumentException("one initial-value entry per state required");
@@ -38,7 +39,20 @@ namespace AdaptOrDeity.Sim.Modules
             StateInitLiteral = stateInitLiteral;
             Ports = ports;
             Instances = instances;
+            var group = new bool[externals.Length];
+            foreach (int i in groupExternals ?? Array.Empty<int>())
+                group[i] = true;
+            _groupExternal = group;
         }
+
+        private readonly bool[] _groupExternal;
+
+        /// <summary>
+        /// Whether external <paramref name="index"/> is a group input: a kernel reads it once per call, from the first
+        /// instance of the range, so it must hold the same value for every instance passed in one call. The others are
+        /// read per instance.
+        /// </summary>
+        public bool IsGroupExternal(int index) => _groupExternal[index];
 
         public string ModuleType { get; }
 

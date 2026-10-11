@@ -44,6 +44,7 @@ namespace AdaptOrDeity.Sim.Kernels.Generated
                 new PortInfo("capillary_to_flux_port", PortDirection.Entrance, new[] { "C_P", "flux_c" }, MultiPortMode.None),
                 new PortInfo("diffusion_face_port", PortDirection.Exit, new[] { "C_P", "J_out" }, MultiPortMode.Sum),
             },
+            groupExternals: new int[] {  },
             instances: new Dictionary<string, IReadOnlyDictionary<string, double>>
             {
                 ["default"] = new Dictionary<string, double> { ["C_P_init"] = 0.0597, ["flux_c"] = 4.46e-16, ["V_P"] = 8e-15, ["M"] = -0.0558, ["C50"] = 0.0133 },
@@ -58,7 +59,8 @@ namespace AdaptOrDeity.Sim.Kernels.Generated
 
         public void ComputeRates(double t, KernelBatch batch, int start, int end)
         {
-            double[] a0 = batch.Algebraic[0];
+            if (start >= end)
+                return;
             double[] e0 = batch.Externals[0];
             double[] e1 = batch.Externals[1];
             double[] e2 = batch.Externals[2];
@@ -69,13 +71,15 @@ namespace AdaptOrDeity.Sim.Kernels.Generated
             double[] s0 = batch.States[0];
             for (int k = start; k < end; k++)
             {
-                a0[k] = ((e1[k] * s0[k]) / (s0[k] + e0[k])); // M_reduced
-                r0[k] = (((e5[k] + (e4[k] + e3[k])) / e2[k]) + a0[k]); // dC_P/dt
+                double a0 = ((e1[k] * s0[k]) / (s0[k] + e0[k])); // M_reduced
+                r0[k] = (((e5[k] + (e4[k] + e3[k])) / e2[k]) + a0); // dC_P/dt
             }
         }
 
         public void ComputeVariables(double t, KernelBatch batch, int start, int end)
         {
+            if (start >= end)
+                return;
             double[] a0 = batch.Algebraic[0];
             double[] e0 = batch.Externals[0];
             double[] e1 = batch.Externals[1];

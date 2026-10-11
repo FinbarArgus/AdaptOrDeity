@@ -31,15 +31,20 @@ def class_name(module_type: str, version: str) -> str:
 
 
 class _Emitter:
-    def __init__(self, module: AnalysedModule):
+    """Expressions in one of two layouts. Both read a group input (``group``: the same value for every instance in a
+    call's range) once per call as the scalar ``g{i}``. ``local_algebraic`` keeps algebraic variables as locals of the
+    loop body (for ComputeRates) instead of writing them to the batch."""
+
+    def __init__(self, module: AnalysedModule, group: set[str], local_algebraic: bool):
         self.m = module
+        self.local_algebraic = local_algebraic
         self.refs: dict[str, str] = {}
         for i, v in enumerate(module.states):
             self.refs[v.name] = f"s{i}[k]"
         for i, v in enumerate(module.externals):
-            self.refs[v.name] = f"e{i}[k]"
+            self.refs[v.name] = f"g{i}" if v.name in group else f"e{i}[k]"
         for i, v in enumerate(module.algebraic):
-            self.refs[v.name] = f"a{i}[k]"
+            self.refs[v.name] = f"a{i}" if local_algebraic else f"a{i}[k]"
         self.state_index = {v.name: i for i, v in enumerate(module.states)}
 
     def var(self, ast) -> str:
@@ -143,7 +148,8 @@ class _Emitter:
             return f"r{self.state_index[eq.target]}[k] = {rhs}; // d{eq.target}/d{self.m.voi}"
         if lhs.type() != T.CI or lhs.variable().name() != eq.target:
             raise ModuleError(f"{self.m.module_type}/{self.m.version}: equation for {eq.target} is not in explicit form")
-        return f"{self.refs[eq.target]} = {rhs}; // {eq.target}"
+        declare = "double " if self.local_algebraic else ""
+        return f"{declare}{self.refs[eq.target]} = {rhs}; // {eq.target}"
 
 
 def _uses_rate(ast) -> bool:
@@ -171,10 +177,17 @@ def _var_info(v) -> str:
     return f"new VariableInfo({_cs_string(v.name)}, {_cs_string(v.units)}, {_literal(v.si_multiplier)}, VariableRole.{role})"
 
 
-def emit(module: AnalysedModule) -> str:
-    e = _Emitter(module)
-    cls = class_name(module.module_type, module.version)
+def emit(module: AnalysedModule, group_inputs: list[str] | None = None) -> str:
+    """The kernel class. ``group_inputs``: externals shared by every instance of a group (read once per call);
+    the others are per instance. None makes every external per instance."""
     m = module
+    group = set(group_inputs or [])
+    unknown = group - {v.name for v in m.externals}
+    if unknown:
+        raise ModuleError(f"{m.module_type}/{m.version}: group inputs that are not externals: {sorted(unknown)}")
+    e = _Emitter(module, group, local_algebraic=False)
+    lean = _Emitter(module, group, local_algebraic=True)
+    cls = class_name(module.module_type, module.version)
 
     # Algebraic equations run before the ODEs that use them; the rare ones that read a derivative run after.
     algebraic_eqs = [q for q in m.equations if q.kind in ("algebraic", "computed_constant")]
@@ -183,26 +196,42 @@ def emit(module: AnalysedModule) -> str:
     rates_eqs += [q for q in algebraic_eqs if _uses_rate(q.ast.rightChild())]
     variable_eqs = [q for q in m.equations if q.kind in ("algebraic", "computed_constant")]
 
-    def locals_for(eqs) -> list[str]:
-        used = set()
-        for q in eqs:
-            line = e.assignment(q)
+    # ComputeRates computes only what the rates need: the algebraic equations the ODEs read, directly or not.
+    algebraic_index = {v.name: i for i, v in enumerate(m.algebraic)}
+    by_index = {algebraic_index[q.target]: q for q in algebraic_eqs}
+    needed: set[int] = set()
+    pending = [q for q in m.equations if q.kind == "ode"]
+    while pending:
+        line = lean.assignment(pending.pop()).split(" = ", 1)[1]
+        for i in map(int, re.findall(r"\ba(\d+)\b", line)):
+            if i not in needed and i in by_index:
+                needed.add(i)
+                pending.append(by_index[i])
+    rates_eqs = [q for q in rates_eqs if q.kind == "ode" or algebraic_index[q.target] in needed]
+
+    def locals_for(stmts) -> list[str]:
+        used, group_used = set(), set()
+        for line in stmts:
             used.update(re.findall(r"\b([searu]\d+)\[k\]", line))
+            group_used.update(int(i) for i in re.findall(r"\bg(\d+)\b", line))
         lines = []
         for name in sorted(used, key=lambda n: (n[0], int(n[1:]))):
             array = {"s": "States", "e": "Externals", "a": "Algebraic", "r": "Rates"}[name[0]]
             lines.append(f"double[] {name} = batch.{array}[{name[1:]}];")
+        lines += [f"double g{i} = batch.Externals[{i}][start];" for i in sorted(group_used)]
         return lines
 
-    def body(eqs) -> str:
-        decls = locals_for(eqs)
-        stmts = [e.assignment(q) for q in eqs]
-        out = [f"            {d}" for d in decls]
+    def body(eqs, emitter) -> str:
+        stmts = [emitter.assignment(q) for q in eqs]
+        if not stmts:
+            return "            // No equations."
+        out = ["            if (start >= end)", "                return;"]
+        out += [f"            {d}" for d in locals_for(stmts)]
         out.append("            for (int k = start; k < end; k++)")
         out.append("            {")
         out.extend(f"                {s}" for s in stmts)
         out.append("            }")
-        return "\n".join(out) if stmts else "            // No equations."
+        return "\n".join(out)
 
     init_lines = []
     for i, (ext_name, literal) in enumerate(m.state_init):
@@ -260,6 +289,7 @@ namespace {NAMESPACE}
             stateInitExternal: new int[] {{ {init_ext} }},
             stateInitLiteral: new double[] {{ {init_lit} }},
             ports: {ports_block},
+            groupExternals: new int[] {{ {", ".join(str(i) for i, v in enumerate(m.externals) if v.name in group)} }},
             instances: new Dictionary<string, IReadOnlyDictionary<string, double>>
             {{
 {instances},
@@ -274,12 +304,12 @@ namespace {NAMESPACE}
 
         public void ComputeRates(double t, KernelBatch batch, int start, int end)
         {{
-{body(rates_eqs)}
+{body(rates_eqs, lean)}
         }}
 
         public void ComputeVariables(double t, KernelBatch batch, int start, int end)
         {{
-{body(variable_eqs)}
+{body(variable_eqs, e)}
         }}
     }}
 }}

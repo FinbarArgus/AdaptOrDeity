@@ -58,7 +58,15 @@ def main(argv: list[str] | None = None) -> int:
             continue
         cls = emit_csharp.class_name(module.module_type, module.version)
         classes.append(cls)
-        expected[KERNEL_DIR / f"{cls}.g.cs"] = emit_csharp.emit(module)
+        # per_cell_inputs: the externals that differ between the instances of a group; the rest are group inputs,
+        # read once per kernel call. Without the key every external is per instance.
+        per_cell = entry.get("per_cell_inputs")
+        group = None if per_cell is None else [v.name for v in module.externals if v.name not in set(per_cell)]
+        try:
+            expected[KERNEL_DIR / f"{cls}.g.cs"] = emit_csharp.emit(module, group)
+        except ModuleError as exc:
+            failures.append(str(exc))
+            continue
         if args.goldens:
             for instance in entry.get("instances", ["default"]):
                 g = entry.get("golden", {})
