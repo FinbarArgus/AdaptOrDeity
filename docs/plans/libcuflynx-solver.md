@@ -50,11 +50,10 @@ The runtime integrates the blocks of a fixed module array, all at once, on OpenM
 1. **Retire the C# path**: initial values from the library (a state-initialisation table in the generated C), then
    `tools/kernelgen`'s C# emitter, `jacobian.py`, `BackwardEulerIntegrator` and `FermenterCell`'s adaptive
    stepping; keep the golden traces as the regression reference.
-2. A libcuflynx PR for the solver and the instance API, after #572 and #520.
 
 ## Open
 
-- Whether computed constants should be computed inside the kernel (no libCellML call after a parameter change) and
-  constants written in as literals: measure after step 3.
+- Constants written into the kernel as literals (computed constants are computed in the kernel since 2026-10-12, for
+  protocol traces: ~5-8% per step on the cell).
 - Group inputs (`per_cell_inputs`): the kernel already reads inputs once per call; sharing them across a group's
   cells matters only for a structure-of-arrays layout, which the instance API does not use.

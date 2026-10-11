@@ -305,7 +305,8 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 
 ## Risks
 - Stiffness and fast-forward to 10⁵–10⁶×: implicit transport, implicit or QSSA kinetics, steady-state solver.
-- libcellml generator edge cases (pin < 0.7); port-semantics drift from libcuflynx (parity goldens).
+- libcellml generator edge cases (our combined 0.7.1 build; libcuflynx #572/#520/#574 unmerged); port-semantics drift
+  from libcuflynx (parity goldens).
 - Unit mismatches between modules (build-time gate); Mono/IL2CPP performance (benchmark in the player).
 - Multi-species wiring upstream: one port carrying every species with per-variable `multi_port`.
 - Upstream-first is slower solo: temporary pins to feature branches allowed; releases need reviewed modules.
