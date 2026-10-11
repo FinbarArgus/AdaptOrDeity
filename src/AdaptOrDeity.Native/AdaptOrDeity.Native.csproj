@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The simulation as a NativeAOT shared library (aod_sim) with C entry points, which Unity loads as a native plugin
+       (decision 2026-10-11; docs/plans/parallel-and-gpu.md step 7). Build: tools/scripts/build_native_sim.sh. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <PublishAot>true</PublishAot>
+    <NativeLib>Shared</NativeLib>
+    <AssemblyName>aod_sim</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <IlcInstructionSet>x86-x64-v3</IlcInstructionSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AdaptOrDeity.Game.Session/AdaptOrDeity.Game.Session.csproj" />
+  </ItemGroup>
+</Project>

@@ -13,6 +13,7 @@ Feature-level plans go in [`docs/plans/`](docs/plans/), one file per feature, an
 dotnet build -c Release && dotnet test -c Release        # needs ~/.dotnet on PATH
 dotnet run --project src/AdaptOrDeity.Headless -- 1.0   # headless one-cell run
 tools/scripts/build_sim_for_unity.sh                     # copy sim DLLs into unity/
+CLANG=<clang> tools/scripts/build_native_sim.sh         # the NativeAOT simulation library (aod_sim) for Unity
 tools/kernelgen/.venv/bin/aod-kernelgen [--goldens|--check|--update-lock]
 tools/kernelgen/.venv/bin/aod-kernelgen-flatten <flat.cellml> content/assembled <type> <version> \
     --modules-root <modules> --supermodule-config <config.json>   # whole cell -> one kernel (ADR 0007)

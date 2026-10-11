@@ -27,6 +27,7 @@ namespace AdaptOrDeity.ArchitectureTests
             ["AdaptOrDeity.Game.Persistence"] = 5,
             ["AdaptOrDeity.Game.Session"] = 6,
             ["AdaptOrDeity.Headless"] = 7,
+            ["AdaptOrDeity.Native"] = 7,
         };
 
         private static string RepoRoot()

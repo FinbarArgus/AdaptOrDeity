@@ -7,7 +7,7 @@ namespace AdaptOrDeity.Game.Session
     /// end never touches simulation state. Call <see cref="Start"/> for real-time play, or
     /// <see cref="RunHeadless"/> for an unpaced run on the calling thread.
     /// </summary>
-    public sealed class SimSession : IDisposable
+    public sealed class SimSession : ISessionFront
     {
         private readonly SimLoop _loop;
         private readonly SimHost _host;
@@ -22,8 +22,11 @@ namespace AdaptOrDeity.Game.Session
         public static SimSession CreateOneCell() => new SimSession(new OneCellWorld());
 
         /// <summary>The stage-1 session: the fermenter cell in a Proterozoic sea, at 1x, 10x and 100x.</summary>
-        public static SimSession CreateFermenter() =>
-            new SimSession(new FermenterWorld(), new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets, ProbeInterval = 1.0 });
+        public static SimSession CreateFermenter() => new SimSession(new FermenterWorld(), FermenterOptions());
+
+        /// <summary>The fermenter session's loop options (also used to shape the native session's frames).</summary>
+        public static SimLoopOptions FermenterOptions() =>
+            new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets, ProbeInterval = 1.0 };
 
         public SessionSchema Schema => _loop.Schema;
 
@@ -35,6 +38,8 @@ namespace AdaptOrDeity.Game.Session
         public void Start() => _host.Start();
 
         public void Enqueue(ISimCommand command) => _loop.Enqueue(command);
+
+        void ISessionFront.Enqueue(SimCommand command) => _loop.Enqueue(command);
 
         public bool TryGetFrame(out SnapshotFrame frame) => _host.TryAcquire(out frame);
 

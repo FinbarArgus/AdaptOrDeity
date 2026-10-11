@@ -5,14 +5,14 @@ using UnityEngine;
 namespace AdaptOrDeity.Presentation
 {
     /// <summary>
-    /// The only bridge between Unity and the simulation. Owns the threaded <see cref="SimSession"/>, picks up
+    /// The only bridge between Unity and the simulation. Owns the threaded session (<see cref="ISessionFront"/>), picks up
     /// the newest snapshot each frame and forwards commands. Everything else in Unity reads <see cref="Frame"/>.
     /// </summary>
     public sealed class SessionBridge : MonoBehaviour
     {
         private const float CellDiameterMetres = 2e-6f;
 
-        private SimSession _session;
+        private ISessionFront _session;
         private readonly List<CellView> _views = new List<CellView>();
         private readonly List<PacketView> _packets = new List<PacketView>();
         private Camera _camera;
@@ -87,7 +87,7 @@ namespace AdaptOrDeity.Presentation
             root.AddComponent<SessionBridge>();
         }
 
-        public void Send(ISimCommand command) => _session.Enqueue(command);
+        public void Send(SimCommand command) => _session.Enqueue(command);
 
         private float _pendingScroll;
 
@@ -97,7 +97,9 @@ namespace AdaptOrDeity.Presentation
         private void Awake()
         {
             Instance = this;
-            _session = SimSession.CreateFermenter();
+            // The simulation library (NativeAOT: modern .NET, threaded) when it loads, else the managed simulation.
+            _session = Sessions.CreateFermenter(preferNative: true, out string where);
+            Debug.Log($"Simulation: {where}");
             _session.TryGetFrame(out var first);
             Frame = first;
             _session.Start();
