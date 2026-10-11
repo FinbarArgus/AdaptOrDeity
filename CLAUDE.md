@@ -23,6 +23,7 @@ dotnet run -c Release --project src/AdaptOrDeity.Headless -- colony-bench 64 60 
 tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
 dotnet run --project src/AdaptOrDeity.Headless -- model <dir> 10 H_ATPase_expression=2   # creature as a module array
 <libcuflynx venv>/bin/python -m pytest tools/interop   # libcuflynx, libcellml, PhLynx read it (see the test's docstring)
+<libcuflynx venv>/bin/python -m pytest -s tools/interop/test_solver_agreement.py   # ours vs CVODES: results, timings
 ```
 
 ## Rules

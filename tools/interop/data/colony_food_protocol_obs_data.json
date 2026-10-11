@@ -1,0 +1,12 @@
+{
+  "protocol_info": {
+    "pre_times": [0.0],
+    "sim_times": [[60.0, 120.0, 120.0]],
+    "params_to_change": {
+      "cell_0/C_glc_e_mod_membrane_face": [[0.1, 50.0, 0.1]]
+    },
+    "experiment_labels": ["food_to_cell_0"]
+  },
+  "prediction_items": [],
+  "data_items": []
+}

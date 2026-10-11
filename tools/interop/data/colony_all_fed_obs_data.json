@@ -1,0 +1,469 @@
+{
+  "protocol_info": {
+    "pre_times": [
+      0.0
+    ],
+    "sim_times": [
+      [
+        60.0,
+        120.0,
+        120.0
+      ]
+    ],
+    "params_to_change": {
+      "cell_0/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_1/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_2/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_3/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_4/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_5/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_6/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_7/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_8/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_9/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_10/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_11/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_12/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_13/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_14/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_15/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_16/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_17/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_18/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_19/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_20/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_21/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_22/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_23/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_24/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_25/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_26/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_27/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_28/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_29/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_30/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_31/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_32/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_33/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_34/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_35/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_36/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_37/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_38/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_39/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_40/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_41/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_42/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_43/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_44/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_45/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_46/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_47/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_48/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_49/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_50/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_51/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_52/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_53/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_54/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_55/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_56/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_57/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_58/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_59/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_60/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_61/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_62/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ],
+      "cell_63/C_glc_e_mod_membrane_face": [
+        [
+          0.1,
+          50.0,
+          0.1
+        ]
+      ]
+    },
+    "experiment_labels": [
+      "food_to_every_cell"
+    ]
+  },
+  "prediction_items": [],
+  "data_items": []
+}
