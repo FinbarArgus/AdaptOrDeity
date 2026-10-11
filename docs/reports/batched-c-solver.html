@@ -1,0 +1,234 @@
+<title>BE_batched_c Solver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,650&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column with wide tables and the pipeline diagram allowed to scroll in place. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --fg: #1d2522;
+  --muted: #5b6863;
+  --line: #d6ddd9;
+  --accent: #0f6e63;
+  --accent-soft: #e1f0ec;
+  --win: #1f7a3d;
+  --lose: #a5462b;
+  --code-bg: #eef1ef;
+  --display: "Literata", Georgia, "Times New Roman", serif;
+  --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131917; --surface: #1a2220; --fg: #e3ebe7; --muted: #9aa9a3; --line: #2e3a36;
+    --accent: #5cc4b2; --accent-soft: #1d332e; --win: #6fcf8c; --lose: #ef9a7e; --code-bg: #212b28;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131917; --surface: #1a2220; --fg: #e3ebe7; --muted: #9aa9a3; --line: #2e3a36;
+  --accent: #5cc4b2; --accent-soft: #1d332e; --win: #6fcf8c; --lose: #ef9a7e; --code-bg: #212b28;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+.page { max-width: 46rem; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 2.4rem; }
+header { display: grid; gap: .6rem; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 650; font-size: clamp(2rem, 5vw, 2.7rem); line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 650; font-size: 1.5rem; line-height: 1.25; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--body); font-weight: 600; font-size: 1.02rem; margin: 0; }
+section { display: grid; gap: .9rem; min-width: 0; }
+p, ul, ol { margin: 0; }
+ul, ol { padding-left: 1.3rem; display: grid; gap: .35rem; }
+.lede { font-size: 1.12rem; color: var(--fg); }
+.muted { color: var(--muted); }
+code { font-family: var(--mono); font-size: .86em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; }
+a { color: var(--accent); }
+.answer { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: .8rem 1rem; display: grid; gap: .4rem; }
+.answer strong { font-family: var(--display); font-weight: 650; }
+.scroll { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: .92rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: .8rem; letter-spacing: .03em; text-transform: uppercase; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+tr.ours td:first-child { font-weight: 600; }
+.win { color: var(--win); font-weight: 600; }
+.lose { color: var(--lose); font-weight: 600; }
+.pipeline { display: grid; gap: 0; }
+.stage { display: grid; grid-template-columns: 9.5rem 1fr; gap: .2rem 1rem; padding: .7rem 0; border-bottom: 1px solid var(--line); }
+.stage:last-child { border-bottom: 0; }
+.stage .who { font-family: var(--mono); font-size: .78rem; color: var(--accent); padding-top: .2rem; }
+.stage .what { min-width: 0; }
+.stage .what p { margin-top: .2rem; color: var(--muted); font-size: .94rem; }
+@media (max-width: 560px) { .stage { grid-template-columns: 1fr; } }
+pre { font-family: var(--mono); font-size: .82rem; background: var(--code-bg); padding: .9rem 1rem; border-radius: 6px; overflow-x: auto; margin: 0; line-height: 1.5; }
+.split { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.2rem; }
+.split > div { display: grid; gap: .4rem; align-content: start; min-width: 0; }
+footer { font-size: .88rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1rem; display: grid; gap: .3rem; }
+</style>
+
+<div class="page">
+<header>
+  <div class="eyebrow">libcuflynx · branch feat/batched-implicit-solver · not yet a PR</div>
+  <h1>BE_batched_c: a CellML solver for many weakly coupled parts</h1>
+  <p class="lede">A new libcuflynx solver that splits a model into independent blocks of states, integrates each block on its own with an implicit method and an exact Jacobian, all in generated C, on several threads. On the AdaptOrDeity colony it is 35–120× faster than CVODES at the same or better accuracy, and it sets up in seconds instead of minutes.</p>
+</header>
+
+<section>
+  <h2>The short answers</h2>
+  <div class="answer"><strong>Is libCellML used?</strong>
+    <p>Yes, for parsing, flattening and analysing the model (our combined libCellML build, 0.7.1 with our speed-up and units PRs). libCellML's own generated C is used too, but only off the hot path: initial values, computed constants and the algebraic variables written to outputs.</p></div>
+  <div class="answer"><strong>Is the C for the rates libCellML's?</strong>
+    <p>No. The rates and the Jacobian are printed by our own code from libCellML's analysed equation trees. That is the faster option: each block computes only the algebraic variables its rates need, over its own small arrays, and identical cells share one function. libCellML's <code>computeRates</code> would compute every algebraic variable of the whole model on every call, and it has no Jacobian.</p></div>
+  <div class="answer"><strong>Are the #520 templates used?</strong>
+    <p>Yes. The solver renders four Jinja2 templates through #520's <code>template_environment()</code>, takes libCellML's C through #520's <code>core_code()</code>, and builds with #520's <code>build_library()</code> (CMake). It does not use #520's <code>model0d</code> templates, which are for the CVODE/RK4 C++ model.</p></div>
+  <div class="answer"><strong>What is slow, then?</strong>
+    <p>Only the first setup. For 64 cells the first load takes about 65 s, of which about 40 s is libCellML parsing, flattening and analysing. The built library is cached under a digest of the CellML files, so later loads take about 0.1 s. CVODES through Myokit needs 821 s to build the same model, every time it changes.</p></div>
+</section>
+
+<section>
+  <h2>From CellML to a running library</h2>
+  <div class="pipeline">
+    <div class="stage"><div class="who">libcuflynx</div><div class="what"><h3>Module array → one flat CellML file</h3><p>The usual generation: <code>module_array.json</code> and parameters become the model's CellML. Nothing new here.</p></div></div>
+    <div class="stage"><div class="who">libCellML</div><div class="what"><h3>Parse, flatten, analyse</h3><p>The analyser orders the equations and classifies every variable (state, constant, computed constant, algebraic, external). Its equation trees are the input to everything below.</p></div></div>
+    <div class="stage"><div class="who">kernel_ir.py</div><div class="what"><h3>Blocks, programs and kernels (language-neutral)</h3><p>The equation trees become plain tuple expressions. States are split into blocks: the connected components of "this rate reads that state", through the algebraic variables in between. For each block a <em>rates program</em> holds only the algebraic variables its rates need, in dependency order. Forward-mode differentiation of the same trees gives the <em>Jacobian program</em> and its sparsity pattern (ported from AdaptOrDeity's <code>jacobian.py</code>). Blocks whose programs match once states and inputs are numbered locally share one kernel.</p></div></div>
+    <div class="stage"><div class="who">cpp/batched.py</div><div class="what"><h3>Print C and render the templates</h3><p>A thin emitter prints the expressions as C and renders <code>batched_kernels.c/.h</code>, <code>batched_runtime.c</code> and <code>CMakeLists.txt</code>. libCellML's C is added as <code>model0d_core.c/.h</code> (one variables array, from #572), compiled at <code>-O1</code> because it only runs at setup and for outputs.</p></div></div>
+    <div class="stage"><div class="who">CMake</div><div class="what"><h3>Build one shared library</h3><p>Release build with OpenMP, in a folder named after a digest of the sources, so an unchanged model is never rebuilt.</p></div></div>
+    <div class="stage"><div class="who">batched_c_helper.py</div><div class="what"><h3>Run it like any libcuflynx solver</h3><p>Loaded with ctypes behind the same <code>SimulationHelper</code> surface as the Myokit helper, so <code>ProtocolExecutor</code> and <code>obs_data.json</code> protocols run unchanged. Choose it with <code>solver: BE_batched_c</code>; <code>solver_info</code> takes <code>method</code> (<code>backward_euler</code> or <code>trbdf2</code>), <code>rtol</code>, <code>atol</code>, <code>MaximumStep</code>, <code>MaximumNumberOfSteps</code>, <code>threads</code> and <code>jacobian</code>.</p></div></div>
+  </div>
+  <p class="muted">For a colony of 64 identical fermenter cells this gives 64 blocks and one kernel: one rates function and one Jacobian function, called with each cell's own states and inputs.</p>
+</section>
+
+<section>
+  <h2>What the generated C looks like</h2>
+  <p>Each kernel is two functions over a block's own arrays: <code>y</code> its states, <code>in</code> its inputs (constants, computed constants and anything shared), <code>dy</code> its rates, <code>J</code> its Jacobian.</p>
+<pre>/* Kernel 0: 25 states, 278 inputs, used by 64 block(s). */
+static void rates_0(double t, const double *y, const double *in, double *dy)
+{
+    double a12 = in[3] * y[0] / (in[7] + y[0]);   /* only what the rates need */
+    ...
+    dy[0] = a12 - in[41] * y[0];
+}
+
+/* 248 structurally non-zero entries of 25x25. */
+static void jacobian_0(double t, const double *y, const double *in, double *J)
+{
+    double da12_0 = (in[3] - (a12 / (in[7] + y[0]))) / (in[7] + y[0]);
+    ...
+    J[0] = da12_0 - in[41];
+}</pre>
+  <p class="muted">Illustrative, with the shapes the template produces; the real file has one pair per kernel and a table <code>BK_KERNELS[]</code> that the runtime indexes.</p>
+</section>
+
+<section>
+  <h2>How a block is integrated</h2>
+  <ul>
+    <li><strong>An L-stable implicit one-step method per block.</strong> Backward Euler (first order, cheapest step) or TR-BDF2 (second order: a trapezoidal stage, then BDF2; the method of MATLAB's <code>ode23tb</code>). Each block has its own step size, so quiet cells take long steps while a busy one takes short ones.</li>
+    <li><strong>Modified Newton with the exact Jacobian.</strong> The Jacobian and the LU factors of <code>I − aJ</code> are kept across iterations and steps, and redone when Newton slows or fails, after a set number of steps, or when <code>a</code> changes. Entries that come out non-finite fall back to finite differences.</li>
+    <li><strong>Convergence tested on Newton's update</strong>, scaled by its observed rate, as CVODES does. Testing the residual failed on the neonatal model, where a rate is a near-cancellation of terms around 10¹⁵ and the residual is all rounding.</li>
+    <li><strong>Error control.</strong> The local error estimate, weighted by <code>rtol·max|y| + atol</code>, sets the next step. When it would reject a step it is first filtered through <code>(I − aJ)⁻¹</code>, as Radau5 does, so a fast mode the method already damps is not counted as error.</li>
+    <li><strong>Outputs by cubic Hermite interpolation</strong> from the states and rates at both ends of a step, so steps are never cut short to land on output times.</li>
+    <li><strong>Cheap restarts.</strong> Between sub-experiments a block whose inputs did not change carries on with its step; a changed block restarts from its current state with a short step.</li>
+    <li><strong>Threads.</strong> Blocks are independent, so OpenMP runs them on any number of threads with bit-identical results.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>The AdaptOrDeity colony</h2>
+  <p>300 s, both protocols of <code>tools/interop</code>. Error is the worst over all states of max|Δ| / max|reference|, against CVODES (Myokit, libcuflynx defaults). Times are run times in seconds.</p>
+  <h3>16 cells · CVODES: 49.6 s build, 0.62 s / 0.65 s run</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Solver</th><th class="n">rtol</th><th class="n">Cell 0 fed, 1 thread</th><th class="n">All fed, 1 / 8 threads</th><th class="n">Error</th></tr></thead>
+    <tbody>
+      <tr class="ours"><td>BE_batched_c, backward Euler</td><td class="n">1e-4</td><td class="n">0.0041</td><td class="n">0.028 / 0.0083</td><td class="n">1.37%</td></tr>
+      <tr class="ours"><td>BE_batched_c, TR-BDF2</td><td class="n">1e-4</td><td class="n">0.0035</td><td class="n">0.018 / 0.0055</td><td class="n">0.20%</td></tr>
+      <tr class="ours"><td>BE_batched_c, TR-BDF2</td><td class="n">1e-6</td><td class="n">0.0052</td><td class="n">0.047 / 0.012</td><td class="n">0.015%</td></tr>
+      <tr><td>AdaptOrDeity C# (the game today)</td><td class="n">1e-4</td><td class="n">0.084</td><td class="n">0.34 / 0.22</td><td class="n">1.19%</td></tr>
+      <tr><td>CVODES (Myokit)</td><td class="n">1e-6</td><td class="n">0.62</td><td class="n">0.65 / –</td><td class="n">reference</td></tr>
+    </tbody>
+  </table></div>
+  <h3>64 cells · CVODES: 821 s build, 5.68 s / 5.97 s run</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Solver</th><th class="n">rtol</th><th class="n">Cell 0 fed, 1 thread</th><th class="n">All fed, 1 / 8 threads</th><th class="n">Error</th></tr></thead>
+    <tbody>
+      <tr class="ours"><td>BE_batched_c, TR-BDF2</td><td class="n">1e-4</td><td class="n">0.009</td><td class="n">0.066 / 0.018</td><td class="n">0.20%</td></tr>
+      <tr class="ours"><td>BE_batched_c, TR-BDF2</td><td class="n">1e-6</td><td class="n">0.010</td><td class="n">0.168 / 0.037</td><td class="n">0.013%</td></tr>
+      <tr><td>AdaptOrDeity C# (the game today)</td><td class="n">1e-4</td><td class="n">0.14</td><td class="n">0.95 / 0.45</td><td class="n">1.19%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted">The C# times include the game's 0.1 s world steps, which restart its integrator; part of the gap is that, not the language. Per cell, the generated C evaluates the rates in 258 ns (C#: 400–650 ns) and the exact Jacobian in 0.74 µs (C#: 3.9 µs; finite differences in C: 7.0 µs).</p>
+</section>
+
+<section>
+  <h2>libcuflynx's own test models</h2>
+  <p>A stress test on models it was not designed for: one block each, one thread, best of three. Reference: CVODES at rtol 1e-10. CVODES column: libcuflynx's defaults (rtol 1e-6).</p>
+  <div class="scroll"><table>
+    <thead><tr><th>Model (states)</th><th class="n">CVODES</th><th class="n">TR-BDF2 1e-4</th><th class="n">TR-BDF2 1e-5</th><th class="n">TR-BDF2 1e-6</th></tr></thead>
+    <tbody>
+      <tr><td>3compartment (27)</td><td class="n">145 ms / 6%</td><td class="n win">38 ms / 4%</td><td class="n">64 ms / 0.9%</td><td class="n">105 ms / 0.2%</td></tr>
+      <tr><td>cvs_model_0d (113)</td><td class="n">1.11 s / 10%</td><td class="n win">0.39 s / 6%</td><td class="n">0.62 s / 3%</td><td class="n">1.22 s / 0.3%</td></tr>
+      <tr><td>physiological (209)</td><td class="n">2.84 s / 5%</td><td class="n win">1.59 s / 3%</td><td class="n">2.37 s / 0.5%</td><td class="n lose">3.82 s / 0.1%</td></tr>
+      <tr><td>neonatal (67)</td><td class="n">0.93 s / 60%</td><td class="n">0.19 s / 60%</td><td class="n win">0.30 s / 5%</td><td class="n">0.51 s / 3%</td></tr>
+      <tr><td>SN_simple (44)</td><td class="n">21.7 ms / 7e-6</td><td class="n">2.6 ms / 0.06%</td><td class="n">4.7 ms / 0.01%</td><td class="n">8.2 ms / 3e-5</td></tr>
+      <tr><td>Teusink (14)</td><td class="n">4.6 ms / 5e-6</td><td class="n">0.46 ms / 0.04%</td><td class="n">0.86 ms / 0.01%</td><td class="n">1.4 ms / 2e-5</td></tr>
+      <tr><td>Van der Pol (2)</td><td class="n">4.5 ms / 0.5%</td><td class="n lose">0.74 ms / 80%</td><td class="n lose">0.97 ms / 30%</td><td class="n lose">1.6 ms / 5%</td></tr>
+    </tbody>
+  </table></div>
+  <div class="split">
+    <div><h3 class="win">Where it wins</h3>
+      <ul>
+        <li>Many weakly coupled parts: 1–2 orders of magnitude, linear in the number of blocks.</li>
+        <li>Small and medium models at errors around 10⁻⁴–10⁻⁵: 2–10× faster.</li>
+        <li>Heart circulations: as fast as CVODES at its defaults and more accurate (those defaults are 4–60% off on valve states).</li>
+        <li>No heavy build: under a second for these models, then cached.</li>
+      </ul></div>
+    <div><h3 class="lose">Where it loses</h3>
+      <ul>
+        <li>Very tight accuracy: CVODES varies its order up to 5; these methods are first and second order.</li>
+        <li>Oscillators: Van der Pol is 5% off at rtol 1e-6 against CVODES' 0.5%; backward Euler's phase error makes it unusable there.</li>
+        <li>One large tightly coupled block (200+ states): dense LU makes it about 1.3× slower than CVODES at rtol 1e-6.</li>
+      </ul></div>
+  </div>
+</section>
+
+<section>
+  <h2>What the stress tests caught</h2>
+  <ol>
+    <li>Heart models failed at t = 0: flows start at rest with rates near 10¹⁰ through tiny inertances. Fixed with the error filter and a minimum step defined by t + h = t.</li>
+    <li>Newton never converged on the neonatal model (rounding-only residual). Fixed by testing the update, as CVODES does: 234k steps fell to 5.2k with TR-BDF2.</li>
+    <li>Backward Euler's phase error on oscillations and heart cycles: the reason TR-BDF2 was added.</li>
+    <li>Two bugs in #572's C generation (a model with no algebraic variables, and states initialised by computed constants). Both fixed, tested and now pushed to #572.</li>
+    <li>A model that leaves its domain (the square root of a negative) or slides along a jump in its rates: this solver stops with a clear error, where CVODES spins without end.</li>
+  </ol>
+  <p class="muted">Each fix has a test that fails without it. The branch's own tests: 16; with the related suites, 199 passed and 7 skipped.</p>
+</section>
+
+<section>
+  <h2>Not done yet</h2>
+  <ul>
+    <li>Protocol traces (time series in <code>params_to_change</code>), external variables, algebraic loops and sensitivities.</li>
+    <li>Sparse LU for single blocks of more than about 100 states.</li>
+    <li>Splitting one-way coupled blocks further (strongly connected components).</li>
+    <li>A big <code>MaximumStep</code> can skip a sharp driven feature: heart models should set one, as libcuflynx's configs do for CVODE.</li>
+    <li>The build cache locks with <code>fcntl</code>, so it is POSIX only for now.</li>
+    <li><code>control_phys</code> differs from CVODES by 13% on one state, and CVODES fails at tight tolerances there, so which is right is open.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>What it means for AdaptOrDeity</h2>
+  <p>The game will switch to these generated C kernels and this runtime, called from its NativeAOT simulation library (and through P/Invoke from Unity's Mono fallback), replacing its own C# kernel generator and integrator. The shared layer still needs, for the game:</p>
+  <ul>
+    <li>constants written into the kernel as literals, and computed constants computed inside it;</li>
+    <li>per-cell inputs set by configuration (<code>per_cell_inputs</code>), not only detected;</li>
+    <li>an output list, like the game's new <code>outputs</code>, so the game reads a few algebraic variables every step and the rest on demand;</li>
+    <li>SI unit multipliers and states initialised from inputs.</li>
+  </ul>
+</section>
+
+<footer>
+  <p>Branches: <code>feat/batched-implicit-solver</code> (this solver, local), built on #572 (libCellML 0.7.1) and #520 (C++ from templates). Merge order: #572 → #520 → this.</p>
+  <p>Numbers are from the solver's benchmark runs on 2026-10-11 and 12 (20-thread laptop). Code: <code>src/libcuflynx/generators/kernel_ir.py</code>, <code>generators/cpp/batched.py</code>, <code>generators/cpp/templates/batched_*.j2</code>, <code>solver_wrappers/batched_c_helper.py</code>.</p>
+</footer>
+</div>
