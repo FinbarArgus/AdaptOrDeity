@@ -6,6 +6,7 @@ import re
 
 import libcellml as lc
 
+from . import jacobian
 from .module import AnalysedModule, ModuleError
 
 T = lc.AnalyserEquationAst.Type
@@ -233,6 +234,10 @@ def emit(module: AnalysedModule, group_inputs: list[str] | None = None) -> str:
         out.append("            }")
         return "\n".join(out)
 
+    jac_code, jac_nonzeros = jacobian.body(m, lean, rates_eqs)
+    jac_stmts = jac_code.splitlines()
+    jac_body = "\n".join([f"            {d}" for d in locals_for(jac_stmts)] + [f"            {s}" for s in jac_stmts])
+
     init_lines = []
     for i, (ext_name, literal) in enumerate(m.state_init):
         if ext_name is None:
@@ -275,7 +280,7 @@ using AdaptOrDeity.Sim.Modules;
 
 namespace {NAMESPACE}
 {{
-    public sealed class {cls} : IKernel
+    public sealed class {cls} : IJacobianKernel
     {{
         public static readonly KernelDescriptor StaticDescriptor = new KernelDescriptor(
             moduleType: {_cs_string(m.module_type)},
@@ -310,6 +315,13 @@ namespace {NAMESPACE}
         public void ComputeVariables(double t, KernelBatch batch, int start, int end)
         {{
 {body(variable_eqs, e)}
+        }}
+
+        // The exact Jacobian of the rates for instance k: {jac_nonzeros} structurally non-zero entries of {len(m.states)}².
+        public void ComputeJacobian(double t, KernelBatch batch, int k, double[,] jacobian)
+        {{
+            int start = k;
+{jac_body}
         }}
     }}
 }}

@@ -1,7 +1,12 @@
 # Feature plan: exact sparse Jacobians generated ahead of time
 
 Step 3 of the integration speed-ups (steps 1–2, Jacobian reuse and adaptive steps, are done: see the `bench` numbers in
-`adapting_plan.md`). Status: design, not started.
+`adapting_plan.md`). Status (2026-10-11): parts 1–2 done (structural dependence and forward-mode `ComputeJacobian`, in
+`tools/kernelgen/aod_kernelgen/jacobian.py`; `JacobianTests` checks every kernel against central differences and fails
+on a 0.1% error in one entry). The fermenter's Jacobian has 248 structural non-zeros of 625 and costs 3.9 µs against
+23 µs for finite differences. The integrator falls back to finite differences where an exact entry is not finite (a
+concentration underflowing in a denominator; 103 of 346 refreshes in the famine golden). Column colouring and ∂f/∂p
+are not done; coupled multi-cell systems will need the pattern for a sparse LU.
 
 ## What circulatory_autogen does today (surveyed 2026-10-11)
 - **No ahead-of-time derivatives.** libcellml generates Python (or C for the C++ path); derivatives come from

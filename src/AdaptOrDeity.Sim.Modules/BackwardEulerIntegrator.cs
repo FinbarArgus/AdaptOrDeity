@@ -45,6 +45,9 @@ namespace AdaptOrDeity.Sim.Modules
         /// <summary>Steps after which the Jacobian is recomputed even if Newton converges well.</summary>
         public int MaxJacobianAge { get; set; } = 50;
 
+        /// <summary>Use the kernel's exact Jacobian when it has one (<see cref="IJacobianKernel"/>); otherwise finite differences.</summary>
+        public bool UseExactJacobian { get; set; } = true;
+
         /// <summary>Rate evaluations so far (diagnostics: the cost of the integration).</summary>
         public long RateEvaluations { get; private set; }
 
@@ -192,9 +195,20 @@ namespace AdaptOrDeity.Sim.Modules
             return false;
         }
 
-        /// <summary>df/dy at the current state by forward differences (the rates there are in _f).</summary>
+        /// <summary>df/dy at the current state: the kernel's exact Jacobian, or forward differences (the rates there are in _f).</summary>
         private void Jacobian(IKernel kernel, KernelBatch batch, int k, int n, double t1)
         {
+            if (UseExactJacobian && kernel is IJacobianKernel exact)
+            {
+                Array.Clear(_jf, 0, _jf.Length);
+                exact.ComputeJacobian(t1, batch, k, _jf);
+                JacobianEvaluations++;
+                if (Finite(_jf))
+                    return;
+                // at an extreme state (a concentration underflowing in a denominator) an exact derivative can be 0/0
+                // where the rates themselves are finite: differences of the rates are then the better Jacobian
+                FallbackJacobians++;
+            }
             double[][] y = batch.States;
             double[][] r = batch.Rates;
             for (int jc = 0; jc < n; jc++)
@@ -209,6 +223,17 @@ namespace AdaptOrDeity.Sim.Modules
                 y[jc][k] = yj;
             }
             JacobianEvaluations++;
+        }
+
+        /// <summary>Exact Jacobians that had a non-finite entry and were replaced by finite differences.</summary>
+        public long FallbackJacobians { get; private set; }
+
+        private static bool Finite(double[,] m)
+        {
+            foreach (double x in m)
+                if (double.IsNaN(x) || double.IsInfinity(x))
+                    return false;
+            return true;
         }
 
         /// <summary>LU factors (partial pivoting) of I - dt df/dy into _lu/_piv; false if singular.</summary>
@@ -254,7 +279,11 @@ namespace AdaptOrDeity.Sim.Modules
             return true;
         }
 
-        /// <summary>Solves (I - dt df/dy) x = _dx in place with the kept factors.</summary>
+        /// <summary>
+        /// Solves (I - dt df/dy) x = _dx in place with the kept factors. <see cref="Factor"/> swaps whole rows, the stored
+        /// multipliers included, so all the row interchanges apply to the right-hand side first, then forward
+        /// substitution (as LAPACK's getrs).
+        /// </summary>
         private void BackSolve(int n)
         {
             for (int c = 0; c < n; c++)
@@ -266,9 +295,10 @@ namespace AdaptOrDeity.Sim.Modules
                     _dx[c] = _dx[p];
                     _dx[p] = tb;
                 }
+            }
+            for (int c = 0; c < n; c++)
                 for (int i = c + 1; i < n; i++)
                     _dx[i] -= _lu[i, c] * _dx[c];
-            }
             for (int i = n - 1; i >= 0; i--)
             {
                 double sum = _dx[i];

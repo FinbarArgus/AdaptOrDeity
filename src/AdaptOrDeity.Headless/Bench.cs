@@ -19,7 +19,7 @@ namespace AdaptOrDeity.Headless
         private sealed class Scheme
         {
             public string Name = "";
-            public bool Reuse = true, Adaptive;
+            public bool Reuse = true, Adaptive, Exact = true;
             public double Tolerance = 1e-3;
             public int Substeps = 1;
         }
@@ -47,8 +47,9 @@ namespace AdaptOrDeity.Headless
             var accurate = Simulate(new Scheme { Name = "accurate (kept Jacobian, 5 ms steps)", Substeps = 20 }, seconds, swimming);
             var schemes = new[]
             {
-                new Scheme { Name = "Newton, Jacobian every iteration (before)", Reuse = false },
+                new Scheme { Name = "Newton, Jacobian every iteration (before)", Reuse = false, Exact = false },
                 new Scheme { Name = "Modified Newton, Jacobian kept (step 1)" },
+                new Scheme { Name = "adaptive 1e-2, finite-difference Jacobian", Adaptive = true, Tolerance = 1e-2, Exact = false },
                 new Scheme { Name = "+ adaptive steps, tolerance 1e-2 (step 2)", Adaptive = true, Tolerance = 1e-2 },
                 new Scheme { Name = "+ adaptive steps, tolerance 3e-3 (step 2)", Adaptive = true, Tolerance = 3e-3 },
                 new Scheme { Name = "+ adaptive steps, tolerance 1e-3 (step 2)", Adaptive = true, Tolerance = 1e-3 },
@@ -73,6 +74,7 @@ namespace AdaptOrDeity.Headless
         {
             var cell = new FermenterCell(new GenericAdaptiveCell_fermenter(), TraitCatalog.Fermenter);
             cell.Integrator.ReuseJacobian = s.Reuse;
+            cell.Integrator.UseExactJacobian = s.Exact;
             cell.Adaptive = s.Adaptive;
             cell.RelativeTolerance = s.Tolerance;
             cell.SetExternal("C_glc_e_mod_membrane_face", 50.0);
