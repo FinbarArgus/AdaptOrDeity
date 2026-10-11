@@ -384,6 +384,12 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   also allow obstacles and variable diffusivity; an exact spectral step only as a later optimisation for open water.
   Top speed: cells at steady state sleep, and tissue is homogenised (ADR 0006); no clone sharing and no quasi-steady
   field. Food packets become spreading Gaussians (closed form), not grid features.
+- **2026-10-11** Scale (docs/plans/parallel-and-gpu.md, "Scaling to 5,000 cells"): no cap on cells. Cells in a group
+  differ (food and resources reach each differently); representative volume elements for groups come later. Frames
+  carry details for the inspected cell only, and cell positions on the body (the front end turns them with the body).
+  Target: 500x real time, as far as it can be reached. Sleeping steady cells is optional (FermenterCell.SleepTolerance,
+  error measured: 0.3% at 1e-3), off by default; growing, swimming cells never qualify. Code generation may move to
+  libcuflynx (#573): analysis and differentiation shared, thin C and C# emitters.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
