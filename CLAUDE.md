@@ -20,7 +20,7 @@ dotnet run --project src/AdaptOrDeity.Headless -- fermenter 600 H_ATPase_express
 dotnet run -c Release --project src/AdaptOrDeity.Headless -- bench 600   # integrator speed and accuracy
 tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
 dotnet run --project src/AdaptOrDeity.Headless -- model <dir> 10 H_ATPase_expression=2   # creature as a module array
-<circulatory-autogen-modules venv>/bin/python -m pytest tools/interop   # libcuflynx, libcellml, PhLynx read it
+<libcuflynx venv>/bin/python -m pytest tools/interop   # libcuflynx, libcellml, PhLynx read it (see the test's docstring)
 ```
 
 ## Rules
@@ -32,4 +32,6 @@ dotnet run --project src/AdaptOrDeity.Headless -- model <dir> 10 H_ATPase_expres
   analytic and conservation tests for native code; homogenisation checks between levels) and ideally
   **validated** against data. See "Verification and validation" in `adapting_plan.md`.
 - Canonical SI in the simulation; display units only in the UI.
+- libcellml is our combined build (`~/Documents/git_projects/libcellml/perf/build-combined`: upstream main + our
+  performance and units PRs), installed into every venv here; never the PyPI release.
 - Design records for cross-cutting choices: [`docs/adr/`](docs/adr/).

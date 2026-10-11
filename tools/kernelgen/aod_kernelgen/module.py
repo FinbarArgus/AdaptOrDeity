@@ -156,7 +156,7 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
         analyser.addExternalVariable(lc.AnalyserExternalVariable(component.variable(name)))
     analyser.analyseModel(model)
     errors = [d for d in _issues(analyser)]
-    am = analyser.model()
+    am = analyser.analyserModel()
     if errors or not am.isValid():
         raise ModuleError(f"{module_type}/{version}: libcellml analyser failed: {errors}")
 
@@ -179,22 +179,17 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
         return Var(name, units_name, factor, roles[name][1])
 
     states = [make_var(s.variable().name(), s.variable().units().name()) for s in am.states()]
-    externals: list[Var] = []
+    externals = [make_var(av.variable().name(), av.variable().units().name()) for av in am.externalVariables()]
     algebraic: list[Var] = []
     constants: dict[str, float] = {}
-    for av in am.variables():
+    for av in [*am.constants(), *am.computedConstants(), *am.algebraicVariables()]:
         v = av.variable()
-        kind = lc.AnalyserVariable.typeAsString(av.type())
         if v.name() == voi:
             continue
-        if kind == "external":
-            externals.append(make_var(v.name(), v.units().name()))
-        elif kind in ("algebraic", "computed_constant"):
-            algebraic.append(make_var(v.name(), v.units().name()))
-        elif kind == "constant":
+        if lc.AnalyserVariable.typeAsString(av.type()) == "constant" and v.initialValue():
             constants[v.name()] = float(v.initialValue())
-        else:
-            raise ModuleError(f"{module_type}/{version}: unsupported variable kind {kind!r} for {v.name()}")
+        else:   # computed, including a constant computed by an equation (e.g. a flux fixed at zero)
+            algebraic.append(make_var(v.name(), v.units().name()))
 
     external_set = {e.name for e in externals}
     state_init: list[tuple[str | None, float]] = []
@@ -209,21 +204,20 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
 
     equations: list[Equation] = []
     depends: dict[str, list[str]] = {}   # algebraic target -> the algebraic targets it reads
-    for eq in am.equations():
+    for eq in am.analyserEquations():
         kind = lc.AnalyserEquation.typeAsString(eq.type())
         if kind == "external":
             continue
-        if kind in ("true_constant", "variable_based_constant"):
+        if kind == "constant":
             kind = "computed_constant"   # e.g. a flux fixed at zero: evaluated like any algebraic equation
         if kind not in ("algebraic", "ode", "computed_constant"):
             raise ModuleError(f"{module_type}/{version}: unsupported equation type {kind!r} (non-linear algebraic?)")
         if kind == "ode":
             target = eq.ast().leftChild().rightChild().variable().name()
         else:
-            target = eq.variable(0).variable().name()
-            depends[target] = [d.variable(0).variable().name() for d in eq.dependencies()
-                               if lc.AnalyserEquation.typeAsString(d.type()) not in ("ode", "external")
-                               and d.variableCount() > 0]
+            target = eq.ast().leftChild().variable().name()
+            depends[target] = [d.ast().leftChild().variable().name() for d in eq.dependencies()
+                               if lc.AnalyserEquation.typeAsString(d.type()) not in ("ode", "external")]
         equations.append(Equation(kind, target, eq.ast()))
     equations = _dependency_order(equations, depends)
 

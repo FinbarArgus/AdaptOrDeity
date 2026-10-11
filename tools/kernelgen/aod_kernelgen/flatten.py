@@ -173,8 +173,8 @@ def flatten(flat_path: Path, out_root: Path, module_type: str, version: str, sou
 def _restore_literal_units(components, units, modules_root: Path, supermodule_config: Path) -> None:
     """Give each literal in a submodule's equations the units it has in the source module.
 
-    libcuflynx renames units while flattening and, for some conversion factors, attaches the inverse or a dimensionless
-    unit to the number (e.g. 1e-18 tagged um3_per_m3 for m3_per_um3), which leaves the flat model unit-inconsistent.
+    Flattening merges units it takes to be equal, so a literal can come out with another name for its units, and with
+    libcellml 0.6.3 (whose scalingFactor() equates e.g. um3_per_m3 and m3_per_um3) with the inverse of its units.
     The literals of each submodule appear in the same order as in its source file, so units are restored by position;
     the values must agree, or flattening stops.
     """

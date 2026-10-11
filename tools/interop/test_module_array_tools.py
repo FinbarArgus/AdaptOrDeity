@@ -3,7 +3,9 @@ The tools we build models with read the module arrays the game writes (Fermenter
 libcuflynx's schema accepts them, libcuflynx builds their CellML from content/assembled, libcellml validates and
 analyses that model with the player's values in it, and PhLynx builds and exports them.
 
-Run with a Python that has libcuflynx, libcellml, jsonschema and pytest (circulatory-autogen-modules' venv):
+Run with a Python that has libcuflynx (libCellML 0.7 support: circulatory_autogen branch feat/libcellml-0-7 until it
+merges), our combined libcellml build (libcellml/perf/build-combined: the speed-ups and the imported-units fix; 0.6.3
+gives some conversion factors the inverse of their units), jsonschema and pytest:
     <venv>/bin/python -m pytest tools/interop
 PhLynx needs node >= 22.15, a PhLynx checkout with node_modules (PHLYNX_DIR, default ../phlynx) and jsdom (JSDOM_DIR,
 default ../circulatory-autogen-modules/tools/phlynx_bridge); without them that test skips.
@@ -107,8 +109,6 @@ def test_libcuflynx_builds_a_model_libcellml_validates_and_analyses(model, tmp_p
             assert float(initial_value(model, f'{name}_cell_{n}')) == value
 
 
-@pytest.mark.xfail(strict=True, reason='libcuflynx gives some conversion factors the inverse of their units when it '
-                                       'builds a model (the assembled module has none of these warnings)')
 def test_libcuflynx_keeps_the_units_of_literals(game_model, tmp_path):
     analyser = libcellml.Analyser()
     analyser.analyseModel(generate(game_model, tmp_path))
