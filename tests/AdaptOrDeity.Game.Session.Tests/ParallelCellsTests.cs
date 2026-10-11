@@ -67,6 +67,40 @@ namespace AdaptOrDeity.Game.Session.Tests
             }
         }
 
+        [Test]
+        public void NativeCellsAreBitIdenticalOnAnyNumberOfThreads()
+        {
+            if (!AdaptOrDeity.Tests.CellLibrary.Resolve())
+                Assert.Ignore("the cell library is not built (tools/scripts/build_cell_library.py)");
+            AdaptOrDeity.Sim.Physiology.FermenterCell.NativeIntegration = true;
+            try
+            {
+                double[]? reference = null;
+                foreach (int workers in new[] { 1, 4, 8 })
+                {
+                    var loop = Colony(16, workers, out var world);
+                    Assert.That(world.Cell(15).IsNative, Is.True);
+                    world.BathConcentration = 20.0;
+                    loop.StepExactly(600);
+                    var print = Fingerprint(world);
+                    world.Dispose();
+                    if (reference == null)
+                    {
+                        Assert.That(print[print.Length - 4], Is.GreaterThan(0), "no cell touched food");
+                        reference = print;
+                        continue;
+                    }
+                    for (int i = 0; i < print.Length; i++)
+                        Assert.That(BitConverter.DoubleToInt64Bits(print[i]), Is.EqualTo(BitConverter.DoubleToInt64Bits(reference[i])),
+                            $"value {i} differs with {workers} workers");
+                }
+            }
+            finally
+            {
+                AdaptOrDeity.Sim.Physiology.FermenterCell.NativeIntegration = false;
+            }
+        }
+
         [TestCase(1)]
         [TestCase(4)]
         public void SteppingManyCellsDoesNotAllocateOnceWarm(int workers)

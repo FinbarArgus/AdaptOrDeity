@@ -136,6 +136,8 @@ namespace AdaptOrDeity.Sim.Physiology
             kernel.Initialise(Batch, 0, 1);
             kernel.ComputeVariables(0.0, Batch, 0, 1);
             _variablesCurrent = true;
+            if (NativeIntegration && NativeCell.Available(kernel.Descriptor, out _))
+                _native = NativeCell.Create(kernel.Descriptor, NativeRelativeTolerance);
         }
 
         // A daughter: same kernel, a copy of the parent's state and parameters (targets and controls included).
@@ -363,7 +365,9 @@ namespace AdaptOrDeity.Sim.Physiology
         {
             if (!Alive)
                 return;
-            if (Adaptive)
+            if (_native != null)
+                StepNative(dt);
+            else if (Adaptive)
             {
                 if (!StepAdaptive(dt))
                     return;   // asleep: state, inputs and outputs unchanged
@@ -382,6 +386,35 @@ namespace AdaptOrDeity.Sim.Physiology
                 Recompute();
             if (Damage >= 1.0)
                 Alive = false;
+        }
+
+        /// <summary>
+        /// Cells created from now on are integrated by libcuflynx's generated C (<see cref="NativeCell"/>) when the
+        /// library is present (true, the default), else by the C# integrator below.
+        /// </summary>
+        public static bool NativeIntegration { get; set; } = true;
+
+        /// <summary>Relative tolerance of the native integrator (TR-BDF2).</summary>
+        public static double NativeRelativeTolerance { get; set; } = 1e-4;
+
+        /// <summary>Whether this cell is integrated by the native library.</summary>
+        public bool IsNative => _native != null;
+
+        private NativeCell? _native;
+        private bool _nativeRestart = true;   // the batch's states are new to the native instance
+
+        // The native library takes over the integration: the batch's inputs go in (changed parameters recompute its
+        // computed constants and restart what reads them), its states come back.
+        private void StepNative(double dt)
+        {
+            _native!.SetInputs(Batch);
+            if (_nativeRestart)
+            {
+                _native.SetStates(Batch);
+                _nativeRestart = false;
+            }
+            _native.Advance(dt, Batch);
+            Time += dt;
         }
 
         // Adaptive stepping. The cell integrates ahead of the world over [_ta, _tb] with one accepted backward Euler step
@@ -526,6 +559,7 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>The state was set from outside: integrate afresh from it.</summary>
         private void Restart()
         {
+            _nativeRestart = true;
             _interval = false;
             Asleep = false;
             _integrator.Invalidate();
