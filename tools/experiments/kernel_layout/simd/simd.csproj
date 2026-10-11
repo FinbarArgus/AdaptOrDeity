@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><LangVersion>latest</LangVersion>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems><TreatWarningsAsErrors>false</TreatWarningsAsErrors><NoWarn>$(NoWarn);CS1591;CS8618;CS0219</NoWarn></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../../src/AdaptOrDeity.Sim.Modules/*.cs" />
+    <Compile Include="../../../../src/AdaptOrDeity.Sim.Kernels.Generated/Kernels/*.g.cs" />
+    <Compile Include="../LeanFermenter.cs" /><Compile Include="SimdFermenter.cs" /><Compile Include="Program.cs" />
+  </ItemGroup>
+</Project>

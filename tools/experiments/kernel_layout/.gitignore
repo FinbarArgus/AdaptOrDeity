@@ -3,3 +3,4 @@ bin/
 obj/
 LeanFermenter.cs
 cell.txt
+mono_bench.exe

@@ -1,0 +1,306 @@
+<title>Engine and GPU Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,650&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column (~68ch) with full-width figures and tables; numbered sections only where order matters (the path forward). */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #1b2230;
+  --muted: #5a6475;
+  --line: #d9dee6;
+  --accent: #b3263e;      /* oxygenated blood: the CPU path we recommend */
+  --gpu: #1f7a8c;         /* membrane teal: the GPU */
+  --gpu-soft: #e3f1f4;
+  --accent-soft: #f7e6e9;
+  --warn: #9a6400;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #1a2029; --fg: #e4e8ee; --muted: #9aa4b4; --line: #2c3440;
+    --accent: #ff7a8e; --gpu: #5cc3d6; --gpu-soft: #16303a; --accent-soft: #3a1a22; --warn: #e0b04a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1a2029; --fg: #e4e8ee; --muted: #9aa4b4; --line: #2c3440;
+  --accent: #ff7a8e; --gpu: #5cc3d6; --gpu-soft: #16303a; --accent-soft: #3a1a22; --warn: #e0b04a;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.6; }
+.page { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 64px; display: grid; gap: 48px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 650; }
+h2 { font-size: 26px; font-weight: 650; }
+h3 { font-size: 19px; font-weight: 650; }
+p { margin: 0; }
+section { display: grid; gap: 16px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 18px; color: var(--muted); max-width: 64ch; }
+.verdict { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 20px 22px; display: grid; gap: 10px; }
+.verdict ul, .prose ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+code, .mono { font-family: var(--font-mono); font-size: .9em; }
+.num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; font-size: 13px; color: var(--muted); background: var(--bg); white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.r, th.r { text-align: right; }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.cpu { background: var(--accent-soft); color: var(--accent); }
+.pill.gpu { background: var(--gpu-soft); color: var(--gpu); }
+.pill.no { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+figure { margin: 0; display: grid; gap: 8px; }
+figcaption { font-size: 13.5px; color: var(--muted); max-width: 80ch; }
+.chart { background: var(--surface); border: 1px solid var(--line); padding: 12px 8px; overflow-x: auto; }
+.chart svg { display: block; width: 100%; min-width: 620px; height: auto; }
+.chart text { fill: var(--fg); font-family: var(--font-body); font-size: 12.5px; }
+.chart .tick { fill: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+.chart .grid { stroke: var(--line); stroke-width: 1; }
+.chart .bar-cpu { fill: var(--accent); }
+.chart .bar-unity { fill: var(--muted); }
+.chart .bar-gpu { fill: var(--gpu); }
+.chart .val { font-family: var(--font-mono); font-size: 11.5px; fill: var(--fg); }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.two > * { min-width: 0; }
+.box { background: var(--surface); border: 1px solid var(--line); padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.box h3 { font-size: 17px; }
+.box.gpu { border-top: 3px solid var(--gpu); }
+.box.cpu { border-top: 3px solid var(--accent); }
+.lanes { display: grid; gap: 6px; }
+.lane-row { display: grid; grid-template-columns: 70px 1fr; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.cores { display: flex; gap: 6px; flex-wrap: wrap; }
+.core { width: 34px; height: 34px; border: 2px solid var(--accent); background: var(--accent-soft); }
+.warps { display: grid; grid-template-columns: repeat(32, 1fr); gap: 2px; }
+.warps span { aspect-ratio: 1; background: var(--gpu); opacity: .85; }
+ol.path { margin: 0; padding-left: 0; list-style: none; counter-reset: step; display: grid; gap: 12px; }
+ol.path li { counter-increment: step; display: grid; grid-template-columns: 34px 1fr; gap: 12px; background: var(--surface); border: 1px solid var(--line); padding: 14px 16px; }
+ol.path li::before { content: counter(step); font-family: var(--font-mono); font-weight: 500; color: var(--accent); font-size: 18px; }
+ol.path li > div { min-width: 0; display: grid; gap: 4px; }
+.small { font-size: 13.5px; color: var(--muted); }
+pre.mermaid { background: var(--surface); border: 1px solid var(--line); padding: 12px; overflow-x: auto; margin: 0; }
+.sources { font-size: 13px; color: var(--muted); columns: 2 280px; column-gap: 28px; }
+.sources p { break-inside: avoid; margin-bottom: 6px; }
+a { color: var(--gpu); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
+</style>
+
+<div class="page">
+
+<header style="display:grid; gap:14px">
+  <div class="eyebrow">AdaptOrDeity · simulation performance · 11 Oct 2026</div>
+  <h1>Engine and GPU options for many cells</h1>
+  <p class="lede">Should we drop Unity for our own .NET engine, how much faster would the cell simulation get, and when does a GPU actually help? Measured on the development laptop with our real cell kernel, plus what other games and simulation tools do.</p>
+</header>
+
+<section class="verdict" aria-label="Summary">
+  <h2 style="font-size:21px">Short answer</h2>
+  <ul>
+    <li><strong>Most of the speed-up does not need a new engine.</strong> Generating the cell kernel in a lean layout and running cells on all cores gives about 7–8× over today, inside Unity.</li>
+    <li><strong>Leaving Unity's Mono runtime adds about 2× more</strong> (measured, same code), and modern .NET's SIMD adds about 3× on top on one core. Together, roughly 20× over today's path per core.</li>
+    <li><strong>A custom engine is feasible</strong>: the Unity side of the game is only ~1,600 lines (immediate-mode panels, sprites, lines, a camera). But we would own windowing, text, UI, audio, builds and every platform. A lighter option gets the runtime gain while keeping Unity: compile the simulation with .NET NativeAOT and load it into Unity as a native library, or wait for Unity 6.8's CoreCLR player.</li>
+    <li><strong>The GPU pays in single precision only.</strong> Our kernel in float runs ~35× faster than the best CPU path; in double it is no faster than the CPU on a consumer GPU. Single precision is risky for stiff cell chemistry, so use the GPU first for the environment field and drawing, and treat GPU cell kinetics as a gated experiment.</li>
+  </ul>
+</section>
+
+<section>
+  <div class="eyebrow">Measured</div>
+  <h2>Cost of one cell's chemistry, by setup</h2>
+  <p class="prose">Each bar is the time to evaluate one cell's rates once (25 states, 278 inputs, 289 intermediate values): the operation a stiff solver repeats ~70 times per cell per simulated second while the cell's inputs are changing. 4,096 cells, close to the 5,000-cell target. Shorter is better; the scale is logarithmic.</p>
+  <figure>
+    <div class="chart">
+      <svg viewBox="0 0 900 400" role="img" aria-label="Bar chart of nanoseconds per cell per rate evaluation for eight setups, log scale">
+        <!-- log10 scale: x = 290 + (log10(ns) - 0) * 560/4  for 1 ns..10,000 ns -->
+        <g>
+          <line class="grid" x1="290" y1="20" x2="290" y2="360"/><text class="tick" x="290" y="378" text-anchor="middle">1 ns</text>
+          <line class="grid" x1="430" y1="20" x2="430" y2="360"/><text class="tick" x="430" y="378" text-anchor="middle">10</text>
+          <line class="grid" x1="570" y1="20" x2="570" y2="360"/><text class="tick" x="570" y="378" text-anchor="middle">100</text>
+          <line class="grid" x1="710" y1="20" x2="710" y2="360"/><text class="tick" x="710" y="378" text-anchor="middle">1,000</text>
+          <line class="grid" x1="850" y1="20" x2="850" y2="360"/><text class="tick" x="850" y="378" text-anchor="middle">10,000 ns</text>
+        </g>
+        <!-- rows: y step 42 -->
+        <text x="280" y="44" text-anchor="end">Today: Unity Mono, one batch per cell</text>
+        <rect class="bar-unity" x="290" y="30" width="472" height="22"/><text class="val" x="768" y="46">2,365 ns</text>
+
+        <text x="280" y="86" text-anchor="end">Unity Mono, lean layout, 1 core</text>
+        <rect class="bar-unity" x="290" y="72" width="393" height="22"/><text class="val" x="689" y="88">643</text>
+
+        <text x="280" y="128" text-anchor="end">Unity Mono, lean, all cores</text>
+        <rect class="bar-unity" x="290" y="114" width="350" height="22"/><text class="val" x="646" y="130">314</text>
+
+        <text x="280" y="170" text-anchor="end">.NET 8, lean, 1 core</text>
+        <rect class="bar-cpu" x="290" y="156" width="351" height="22"/><text class="val" x="647" y="172">319</text>
+
+        <text x="280" y="212" text-anchor="end">.NET 8, lean, all cores</text>
+        <rect class="bar-cpu" x="290" y="198" width="336" height="22"/><text class="val" x="632" y="214">253</text>
+
+        <text x="280" y="254" text-anchor="end">.NET 10, lean + SIMD, 1 core</text>
+        <rect class="bar-cpu" x="290" y="240" width="289" height="22"/><text class="val" x="585" y="256">116</text>
+
+        <text x="280" y="296" text-anchor="end">GPU, double precision</text>
+        <rect class="bar-gpu" x="290" y="282" width="304" height="22"/><text class="val" x="600" y="298">149</text>
+
+        <text x="280" y="338" text-anchor="end">GPU, single precision</text>
+        <rect class="bar-gpu" x="290" y="324" width="74" height="22"/><text class="val" x="370" y="340">3.4</text>
+      </svg>
+    </div>
+    <figcaption>Grey: Unity's Mono runtime (the editor and Mono builds). Red: modern .NET (CoreCLR). Teal: NVIDIA RTX A1000 laptop GPU through OpenCL. CPU: Intel i7-12700H (6 performance + 8 efficiency cores). Rates agree with today's kernel to the last bit (lean), 10⁻¹³ (SIMD), 10⁻¹⁴ (GPU double) and 2×10⁻⁶ (GPU float). With 65,536 cells the multi-core figures improve to 162 ns (Mono), 72 ns (.NET 8) and ~60 ns (.NET 10 SIMD); at 4,096 cells one evaluation per thread dispatch is too little work to spread well, which a real solver step (many evaluations per dispatch) fixes.</figcaption>
+  </figure>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>What 5,000 busy cells cost</th><th class="r">ns per evaluation</th><th class="r">compute per simulated second</th><th class="r">real-time speed</th></tr></thead>
+      <tbody>
+        <tr><td>Today (Unity Mono, one batch per cell, one core)</td><td class="r num">2,365</td><td class="r num">0.83 s</td><td class="r num">1.2×</td></tr>
+        <tr><td>Lean layout, Unity Mono, all cores</td><td class="r num">314</td><td class="r num">110 ms</td><td class="r num">9×</td></tr>
+        <tr><td>Lean layout, .NET 8, all cores (large batches)</td><td class="r num">72</td><td class="r num">25 ms</td><td class="r num">40×</td></tr>
+        <tr><td>Lean + SIMD, .NET 10, all cores (large batches)</td><td class="r num">~60</td><td class="r num">21 ms</td><td class="r num">~48×</td></tr>
+        <tr><td>GPU, single precision (rates only, data kept on the GPU)</td><td class="r num">3.4</td><td class="r num">1.2 ms</td><td class="r num">~800×</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">Busy means the inputs keep changing (motors switching, food contact): ~70 rate evaluations per cell per simulated second. Linear solves and the Jacobian come on top; cells at steady state cost far less. Top speeds of 10⁵–10⁶× real time with thousands of busy cells are out of reach on any of these, which is why the plan also cuts the number of cells integrated (homogenised tissue, clones, sleeping steady cells).</p>
+</section>
+
+<section>
+  <div class="eyebrow">Where the gains come from</div>
+  <h2>Four independent multipliers</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Change</th><th class="r">Gain</th><th>Needs</th><th>Works in Unity today?</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Lean kernel layout.</strong> Parameters shared by a group stored once; intermediate values kept in registers. Today each cell drags ~5 KB through memory per evaluation.</td><td class="r num">4–5×</td><td>A kernelgen change</td><td><span class="pill cpu">Yes</span></td></tr>
+        <tr><td><strong>All cores.</strong> Cells split into fixed chunks; results identical at any thread count.</td><td class="r num">2–5×</td><td>Batched integrator, ordered sums</td><td><span class="pill cpu">Yes</span></td></tr>
+        <tr><td><strong>Modern runtime.</strong> CoreCLR's optimising JIT instead of Unity's Mono.</td><td class="r num">~2×</td><td>Leave Mono: own engine, a NativeAOT library, or Unity 6.8</td><td><span class="pill no">Not yet</span></td></tr>
+        <tr><td><strong>SIMD.</strong> Four cells per 256-bit register, with vectorised <code>exp</code>/<code>log</code>.</td><td class="r num">~3×</td><td>.NET 9+ intrinsics in our libraries</td><td><span class="pill no">Not yet</span> (netstandard2.1)</td></tr>
+        <tr><td><strong>GPU, single precision.</strong></td><td class="r num">~35× over the best CPU path</td><td>Float accuracy proven; data resident on the GPU</td><td><span class="pill gpu">Compute shaders</span> (not WebGL)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small prose">One finding for the generator: our kernel methods are thousands of lines. .NET only fully optimises them after its tiered recompilation, and with that switched off the SIMD kernel ran 18× slower. kernelgen should split kernels into smaller methods, which also helps Mono and IL2CPP compile times.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Own engine</div>
+  <h2>How hard is it to leave Unity?</h2>
+  <div class="prose" style="display:grid; gap:12px">
+    <p>Our simulation already lives in plain .NET libraries, and the Unity side is small: about 1,600 lines using immediate-mode panels (<code>GUILayout</code>, 104 uses), sprites, line renderers and a camera. A replacement front end for what exists today is weeks, not months. The cost is everything Unity does that we have not needed yet and will: text and player-facing UI, audio, input across devices, asset pipeline, builds, code signing and notarisation on macOS, and any console or web port.</p>
+    <p>Precedents both ways: Celeste, Stardew Valley and Barotrauma shipped on MonoGame; Terraria reached desktop through FNA; Thrive moved to Godot with C#; Factorio and Noita have custom engines. Oxygen Not Included is the closest to our design: a Unity front end with the simulation in a separate native library.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Option</th><th>Effort</th><th>Simulation speed</th><th>GPU compute</th><th>Platforms</th><th>Risk</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Stay on Unity 6 (Mono)</strong>, lean layout + cores</td><td>Low</td><td>~8× over today</td><td>HLSL compute shaders; no doubles on Metal</td><td>All</td><td>Low</td></tr>
+        <tr><td><strong>Unity + NativeAOT simulation library</strong> (C ABI over the cell arrays)</td><td>Medium</td><td>+~2× runtime, + SIMD</td><td>Library can call CUDA/OpenCL directly</td><td>Desktop; mobile possible; no web</td><td>Medium: no public precedent; cannot unload in the editor</td></tr>
+        <tr><td><strong>Unity 6.8 CoreCLR player</strong> (late 2026)</td><td>Low</td><td>Parity promised at first; gains later</td><td>Same as Unity</td><td>Desktop CoreCLR; IL2CPP elsewhere</td><td>Medium: timing</td></tr>
+        <tr><td><strong>Godot 4 C#</strong></td><td>High</td><td>Full CoreCLR</td><td>GLSL compute from C#</td><td>Desktop; mobile experimental; no C# web</td><td>Medium</td></tr>
+        <tr><td><strong>Own engine</strong>: Silk.NET or SDL3 + Dear ImGui</td><td>High</td><td>Full CoreCLR, SIMD, ILGPU (C# GPU kernels, doubles on NVIDIA)</td><td>Vulkan / OpenGL 4.3 / CUDA / OpenCL</td><td>Desktop (macOS weaker)</td><td>High: we maintain everything</td></tr>
+        <tr><td>MonoGame / FNA + ImGui</td><td>High</td><td>Full CoreCLR</td><td>None officially</td><td>Desktop, mobile, console</td><td>Medium</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small prose">Not measured: IL2CPP (Unity's C++ build path, used for most shipped games). The Linux IL2CPP module isn't installed here; published comparisons are old and depend on the code. It may close part of the Mono gap, which step 1 below measures.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Explainer</div>
+  <h2>How a GPU computes, and when it pays</h2>
+  <div class="two">
+    <div class="box cpu">
+      <h3>CPU: a few clever cores</h3>
+      <div class="lanes" aria-hidden="true">
+        <div class="lane-row"><span>14 cores</span><div class="cores"><i class="core"></i><i class="core"></i><i class="core"></i><i class="core"></i><i class="core"></i><i class="core"></i><i class="core"></i><i class="core"></i></div></div>
+      </div>
+      <p>Each core runs its own instruction stream fast, guesses branches, and hides memory delays with large caches. Each can work on four doubles at once (AVX2). Good at different work per item, branches, and small batches.</p>
+    </div>
+    <div class="box gpu">
+      <h3>GPU: thousands of simple lanes</h3>
+      <div class="lanes" aria-hidden="true">
+        <div class="lane-row"><span>1 warp</span><div class="warps"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+      </div>
+      <p>Lanes run in groups of 32 (a warp) that execute the same instruction together. While one warp waits for memory, the GPU switches to another, so it needs tens of thousands of work items to stay busy. Our laptop GPU has 16 multiprocessors; a gaming card has 60–130.</p>
+    </div>
+  </div>
+
+  <div class="prose" style="display:grid; gap:12px">
+    <h3>What decides whether it is faster</h3>
+    <ul>
+      <li><strong>Same work for every item.</strong> One cell per lane works when every cell runs the same equations. When lanes branch differently (one cell needs three Newton iterations, its neighbour ten), the warp runs both paths and the rest of the lanes wait.</li>
+      <li><strong>Precision.</strong> Consumer GPUs do double-precision arithmetic at 1/32 to 1/64 of their single-precision rate; Apple's Metal and WebGPU have no doubles at all. Our measurement shows it: float 3.4 ns, double 149 ns.</li>
+      <li><strong>Getting data there and back.</strong> Launching work costs microseconds, copying results back costs milliseconds (1–7 ms for all rates of 65k–262k cells), and in Unity results arrive a frame or more later. Data must live on the GPU across many steps; read back only small summaries.</li>
+      <li><strong>Enough items.</strong> Below a few thousand items the fixed costs win and the CPU is faster. Obi's Unity physics documents exactly this crossover.</li>
+      <li><strong>Arithmetic per byte.</strong> Simple stencils (diffusion) are limited by memory bandwidth, which GPUs have plenty of; heavy per-item maths (our cells, with exp/log) needs the arithmetic rate, which is high in float only.</li>
+    </ul>
+  </div>
+
+  <pre class="mermaid">
+flowchart TD
+  A[A computation in the game] --> B{Same operations on<br/>thousands of items?}
+  B -- no --> CPU[CPU threads]
+  B -- yes --> C{Is single precision<br/>accurate enough?}
+  C -- no --> D{NVIDIA-only desktop<br/>double precision OK?}
+  D -- no --> CPU
+  D -- yes --> E[Maybe GPU: measure;<br/>usually no faster than CPU threads]
+  C -- yes --> F{Can the data stay on the GPU<br/>for many steps?}
+  F -- no --> CPU
+  F -- yes --> GPU[GPU compute shader]
+  </pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Part of the game</th><th>Where it should run</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Drawing cells, membranes, fields</td><td><span class="pill gpu">GPU</span></td><td>That is what it is for; upload values as textures each frame.</td></tr>
+        <tr><td>Environment field (food, oxygen, signals; 256² and beyond)</td><td><span class="pill cpu">CPU first</span> <span class="pill gpu">GPU if larger</span></td><td>Diffusion is well-conditioned and fine in float, and is exactly the GPU's pattern. At 256² a CPU step should take around a millisecond (an estimate, not yet measured); move it to a compute shader if levels grow to much larger or 3D environments, keeping it resident.</td></tr>
+        <tr><td>Cell chemistry (stiff, double precision, adaptive steps)</td><td><span class="pill cpu">CPU</span> <span class="pill gpu">GPU experiment</span></td><td>Needs double near steady state; cells take different step sizes. Try a float or mixed-precision GPU solver only behind accuracy gates.</td></tr>
+        <tr><td>Swimming bodies, food packets, collisions</td><td><span class="pill cpu">CPU</span></td><td>Few items, branchy, coupled to everything else.</td></tr>
+        <tr><td>Later: creature nervous systems, many creatures' senses</td><td><span class="pill gpu">GPU candidate</span></td><td>Small neural networks over many creatures are float maths over large batches.</td></tr>
+        <tr><td>Offline: evolution searches, parameter sweeps, previews</td><td><span class="pill gpu">GPU candidate</span></td><td>Many independent copies of a model (ensembles) is the GPU's best case, with accuracy checked against CPU runs.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small prose">What other games do: Thrive, Oxygen Not Included, Noita, From Dust and Factorio all simulate their fluids or chemistry on CPU threads in chunks and use the GPU to draw. GPU fluids appear where the fluid itself is the product (Zibra Liquids, Obi's compute backend), and in reaction-diffusion demos that keep everything in GPU textures.</p>
+</section>
+
+<section>
+  <div class="eyebrow">Recommendation</div>
+  <h2>Path forward</h2>
+  <ol class="path">
+    <li><div><strong>Measure the runtime we ship.</strong> Run the kernel benchmark in a Unity IL2CPP player and the experimental CoreCLR player, next to Mono and .NET.<span class="small">Decides how much a runtime change is really worth.</span></div></li>
+    <li><div><strong>Lean kernel layout and all cores, inside Unity.</strong> kernelgen change, batched integrator, fixed chunks.<span class="small">~8× now, no engine decision needed. Already step 1–3 of the parallel plan.</span></div></li>
+    <li><div><strong>Prototype the simulation as a NativeAOT library loaded by Unity.</strong> Same libraries, compiled ahead of time with .NET 10, intrinsics enabled; Unity keeps rendering and UI.<span class="small">Gets the ~2× runtime and ~3× SIMD gains without rewriting the front end. Fall back to the managed build where AOT is a problem.</span></div></li>
+    <li><div><strong>GPU for the field and drawing; GPU cell chemistry only behind gates.</strong> Float accuracy over hours of play, ≥5× over the CPU path including transfers, a CPU fallback.<span class="small">Generate the GPU kernel (HLSL, or C# through ILGPU in a non-Unity build) from the same equations.</span></div></li>
+    <li><div><strong>Revisit leaving Unity</strong> if step 3 fails or the game needs things Unity makes hard. Godot 4 C# is the lowest-risk engine unless the web matters; an ImGui app on Silk.NET is the cheapest if the game stays panel-heavy.</div></li>
+  </ol>
+</section>
+
+<hr>
+
+<section>
+  <h2 style="font-size:19px">Method and sources</h2>
+  <p class="small prose">Benchmarks: <code>dotnet run -c Release --project src/AdaptOrDeity.Headless -- kernel-bench</code> and <code>tools/experiments/kernel_layout/</code> (lean and SIMD kernels derived from the generated fermenter kernel, the same code compiled with Unity 6000.3's Mono, OpenCL on the GPU). Each figure is the best of three timed runs after warm-up. Plan: <code>docs/plans/parallel-and-gpu.md</code>.</p>
+  <div class="sources">
+    <p>Thrive, <a href="https://github.com/Revolutionary-Games/Thrive/blob/master/src/microbe_stage/CompoundCloudPlane.cs">CompoundCloudPlane.cs</a></p>
+    <p>Oxygen Not Included, <a href="https://oxygennotincluded.wiki.gg/wiki/Versions/CU-271819">patch notes on the simulation texture</a></p>
+    <p>From Dust, <a href="https://gdcvault.com/play/1013667/Creating-a-High-Performance-Simulation">GDC 2010</a>; PixelJunk Shooter, <a href="https://gdcvault.com/play/1012358/Go-With-the-Flow-Fluid">GDC 2010</a></p>
+    <p>Factorio, <a href="https://cf-www.factorio.com/blog/post/fff-271">FFF #271</a></p>
+    <p>Stam, <a href="https://www-pt.autodesk.com/research/publications/real-time-fluid-dynamics">Real-Time Fluid Dynamics for Games</a>; <a href="https://developer.nvidia.com/gpugems/GPUGems/gpugems_ch38.html">GPU Gems ch. 38</a></p>
+    <p>Obi, <a href="https://obi.virtualmethodstudio.com/manual/7.0/backends.html">CPU and GPU backends</a></p>
+    <p>Unity, <a href="https://discussions.unity.com/t/path-to-coreclr-2026-upgrade-guide/1714279">Path to CoreCLR</a>; <a href="https://docs.unity3d.com/Manual/burst/csharp-type-support.html">Burst</a></p>
+    <p>Mono vs .NET in Unity, <a href="https://marekfiser.com/blog/mono-vs-dot-net-in-unity/">Marek Fišer</a></p>
+    <p><a href="https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/libraries">NativeAOT libraries</a>; <a href="https://github.com/m4rs-mt/ILGPU">ILGPU</a>; <a href="https://docs.godotengine.org/en/4.6/tutorials/shaders/compute_shaders.html">Godot compute shaders</a></p>
+    <p>Apple, <a href="https://developer.apple.com/forums/thread/709663">no FP64 in Metal</a></p>
+    <p>Myokit, <a href="https://myokit.readthedocs.io/en/latest/api_simulations/SimulationOpenCL.html">SimulationOpenCL</a>; <a href="https://arxiv.org/abs/2304.06835">DiffEqGPU</a>; <a href="https://arxiv.org/pdf/1309.1720">float32 limits in cardiac GPU solvers</a></p>
+    <p>PhysiCell/BioFVM, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC5841829">PMC5841829</a></p>
+  </div>
+</section>
+
+</div>
