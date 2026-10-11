@@ -57,7 +57,7 @@ namespace AdaptOrDeity.Game.Session
                     traces.Add(t.Name);
             Schema = new SessionSchema(world.Overlays, _options.SpeedPresets, inspect?.Details, inspect?.Traits,
                 inspect?.Controls, inspect?.Features, inspect?.InitialCellCapacity ?? world.CellCount, inspect?.MaxGroups ?? 0,
-                traces, food?.Food.HalfSize ?? 0.0, food?.Food.Packets.Count ?? 0);
+                traces, food?.Food.HalfSize ?? 0.0, food?.Food.Settings.InitialPacketCapacity ?? 0);
             // Sample on step counts, not accumulated float times, so sampling is exact and deterministic.
             _stepsPerProbeSample = Math.Max(1L, (long)Math.Round(_options.ProbeInterval / world.MacroDt));
         }
@@ -167,18 +167,23 @@ namespace AdaptOrDeity.Game.Session
 
         internal void ClearProbes() => _probes.Clear();
 
-        /// <summary>Creates a frame sized for this loop's world and options.</summary>
         /// <summary>The cell whose details frames carry (-1: none; <see cref="SimCommands.Inspect"/>).</summary>
         public int InspectedCell { get; set; } = -1;
 
-        /// <summary>A frame for the current colony: room for at least the cells there are, in powers of two.</summary>
+        /// <summary>
+        /// A frame for the current world: room for at least the cells and food packets there are, in powers of two.
+        /// </summary>
         public SnapshotFrame CreateFrame() =>
             new SnapshotFrame(World.Overlays.Count, Capacity(Math.Max(World.CellCount, Schema.InitialCellCapacity)), _options.MaxProbes,
                 _options.ProbeSamples, Schema.Details.Count, Schema.Traits.Count, Schema.Controls.Count, Schema.MaxGroups,
-                Schema.Features.Count, Schema.MaxPackets);
+                Schema.Features.Count, Schema.InitialPacketCapacity == 0 ? 0
+                    : Capacity(Math.Max(PacketsInField, Schema.InitialPacketCapacity)));
 
-        /// <summary>True when <paramref name="frame"/> has no room for the current colony (frames grow, see SimHost).</summary>
-        public bool Outgrown(SnapshotFrame frame) => frame.CellX.Length < World.CellCount;
+        /// <summary>True when <paramref name="frame"/> has no room for the current colony or food (frames grow, see SimHost).</summary>
+        public bool Outgrown(SnapshotFrame frame) =>
+            frame.CellX.Length < World.CellCount || (Schema.InitialPacketCapacity > 0 && frame.PacketX.Length < PacketsInField);
+
+        private int PacketsInField => World is IFoodWorld f ? f.Food.ActiveCount : 0;
 
         private static int Capacity(int cells)
         {

@@ -7,6 +7,58 @@ namespace AdaptOrDeity.Game.Session.Tests
 {
     public class FoodFieldTests
     {
+        [Test]
+        public void FoodKeepsArrivingWhileTheCreatureHoldsEveryPacket()
+        {
+            // Food arrives at the level's rate whatever is in the field: a creature that sticks to every packet and eats
+            // none still gets new ones (the field once held 24 packets and stopped adding food when they were all held).
+            var settings = GameParameters.Default.Food(0.1);
+            settings.InitialPacketCapacity = 4;
+            settings.LyingDensity = 0.0;
+            settings.CarriedShare = 1.0;
+            settings.ArrivalsPerSecond = 0.5;
+            var food = new FoodField(settings);
+            const double seconds = 2000.0;
+            for (int s = 0; s < seconds * 10; s++)
+            {
+                food.Step(0.1);
+                foreach (var p in food.Packets.Where(p => p.Active && !p.Stuck).ToList())
+                    food.StickTo(p.X, p.Y, 1e-9);   // held where it arrives, never eaten
+            }
+            double expected = settings.ArrivalsPerSecond * seconds;
+            Assert.That((double)food.Arrived, Is.EqualTo(expected).Within(4.0 * Math.Sqrt(expected)), "Poisson arrivals at the rate");
+            Assert.That(food.ActiveCount, Is.GreaterThan(4 * 10), "far more packets than the first slots");
+        }
+
+        [Test]
+        public void EachLevelSetsTheRateFromTheTimeline()
+        {
+            var world = new FermenterWorld();
+            var level1 = GameTimeline.Default.ArrivalsAt(1);
+            Assert.That(world.Food.Settings.ArrivalsPerSecond, Is.EqualTo(level1.FoodPerSecond));
+            world.Level = 2;
+            var level2 = GameTimeline.Default.ArrivalsAt(2);
+            Assert.That(world.Food.Settings.ArrivalsPerSecond, Is.EqualTo(level2.FoodPerSecond));
+            Assert.That(world.Food.Settings.CarriedShare, Is.EqualTo(level2.CarriedShare));
+            world.Dispose();
+        }
+
+        [Test]
+        public void FramesShowEveryPacketInTheField()
+        {
+            var world = new FermenterWorld();
+            var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
+            world.Food.SetArrivals(5.0, 1.0);
+            world.Food.Settings.UsedUpFraction = 0.0;
+            loop.StepExactly(200);
+            int active = world.Food.ActiveCount;
+            Assert.That(active, Is.GreaterThan(world.Food.Settings.InitialPacketCapacity));
+            var frame = loop.CreateFrame();
+            loop.WriteSnapshot(frame);
+            Assert.That(frame.PacketCount, Is.EqualTo(active));
+            world.Dispose();
+        }
+
         private static FoodField NewField(int seed)
         {
             var settings = GameParameters.Default.Food(0.1);
@@ -24,6 +76,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             field.Populate(0.0, 0.0);
             double x = 0.0;
             int lyingAhead = 0, lyingBehind = 0;
+            bool sawCarried = false;
             var seen = new System.Collections.Generic.Dictionary<FoodPacket, (double X, double Y)>();
             foreach (var p in field.Packets.Where(p => p.Active))
                 seen[p] = (p.X, p.Y);   // the food scattered at the start
@@ -45,34 +98,16 @@ namespace AdaptOrDeity.Game.Session.Tests
                             lyingBehind++;
                     }
                     else
+                    {
+                        sawCarried = true;
                         Assert.That(p.Vx * p.Vx + p.Vy * p.Vy, Is.EqualTo(1e-12).Within(1e-15), "carried at the carrier's speed");
+                    }
                     seen[p] = (p.X, p.Y);
                 }
             }
             Assert.That(lyingAhead, Is.GreaterThan(0));
             Assert.That(lyingBehind, Is.EqualTo(0), "new lying food comes into view ahead, never behind");
-            Assert.That(field.Packets.Any(p => p.Active && p.Kind == PacketKind.Carried) ||
-                        seen.Keys.Any(p => p.Kind == PacketKind.Carried), Is.True, "carried food arrives too");
-        }
-
-        [Test]
-        public void LyingFoodKeepsItsDensityInView()
-        {
-            // A moving creature keeps about lying_density x the area where food is in view: the window's width times its
-            // length plus a packet radius at each end (food is in view while any of it is).
-            var field = NewField(5);
-            field.Populate(0.0, 0.0);
-            double h = field.HalfSize, r = field.PacketRadius;
-            double expected = field.Settings.LyingDensity * 2 * h * (2 * h + 2 * r), sum = 0.0;
-            double x = 0.0;
-            const int steps = 20000;
-            for (int i = 0; i < steps; i++)
-            {
-                x += 2e-6;
-                field.Step(1.0, x, 0.0, 2e-6, 0.0);
-                sum += field.Packets.Count(p => p.Active && p.Kind == PacketKind.Lying);
-            }
-            Assert.That(sum / steps, Is.EqualTo(expected).Within(0.25 * expected));
+            Assert.That(sawCarried, Is.True, "carried food arrives too");
         }
 
         [Test]
@@ -93,7 +128,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             var world = new FermenterWorld();
             var food = world.Food;
-            food.Settings.MeanInterval = 1e12;   // no carriers
+            food.SetArrivals(0.0, 0.0);   // no food arriving
             food.Settings.LyingDensity = 0.0;   // and no more lying food: only the packet we place
             foreach (var p in food.Packets.Skip(1))
                 typeof(FoodPacket).GetProperty("Active")!.SetValue(p, false);

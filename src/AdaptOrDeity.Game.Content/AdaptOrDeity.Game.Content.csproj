@@ -9,6 +9,7 @@
   <ItemGroup>
     <!-- Content the simulation reads, embedded so the headless build and Unity load the same files. -->
     <EmbeddedResource Include="../../content/parameters.json" LogicalName="content/parameters.json" />
+    <EmbeddedResource Include="../../content/timeline.json" LogicalName="content/timeline.json" />
     <EmbeddedResource Include="../../content/traits/fermenter.json" LogicalName="content/traits/fermenter.json" />
     <!-- The assembled modules' instances: units for the module arrays the game writes. -->
     <EmbeddedResource Include="../../content/assembled/generic_adaptive_cell/versions/fermenter/instances/default/default_parameters.csv" LogicalName="content/assembled/generic_adaptive_cell/versions/fermenter/instances/default/default_parameters.csv" />

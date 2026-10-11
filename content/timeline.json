@@ -12,7 +12,12 @@
     "protein_expression",
     "repair_level",
     "swimming"
-   ]
+   ],
+   "arrivals": {
+    "food_per_s": 0.01,
+    "carried_share": 0.8
+   },
+   "regions": []
   },
   {
    "level": 2,
@@ -24,7 +29,12 @@
     "glycogen_storage",
     "auto_divide",
     "motility_control"
-   ]
+   ],
+   "arrivals": {
+    "food_per_s": 0.01,
+    "carried_share": 0.8
+   },
+   "regions": []
   },
   {
    "level": 3,
@@ -34,7 +44,12 @@
    "unlocks": [
     "chemosensing"
    ],
-   "note": "Historically these exist from the game's start: bacterial chemotaxis evolved from two-component systems after the three domains split, well before 2 Ga (Wuichet & Zhulin 2010). Level 3 is a pacing choice."
+   "note": "Historically these exist from the game's start: bacterial chemotaxis evolved from two-component systems after the three domains split, well before 2 Ga (Wuichet & Zhulin 2010). Level 3 is a pacing choice.",
+   "arrivals": {
+    "food_per_s": 0.01,
+    "carried_share": 0.8
+   },
+   "regions": []
   },
   {
    "level": 4,
@@ -43,7 +58,12 @@
    "summary": "Membrane respiration with heme-copper oxidases where O2 is available (planned).",
    "unlocks": [
     "membrane_respiration"
-   ]
+   ],
+   "arrivals": {
+    "food_per_s": 0.01,
+    "carried_share": 0.8
+   },
+   "regions": []
   },
   {
    "level": 5,
@@ -52,7 +72,12 @@
    "summary": "Mitochondria lift the membrane-area energy limit; Na+/K+-ATPase and the cytoskeleton arrive (planned).",
    "unlocks": [
     "mitochondria"
-   ]
+   ],
+   "arrivals": {
+    "food_per_s": 0.01,
+    "carried_share": 0.8
+   },
+   "regions": []
   },
   {
    "level": 6,
@@ -61,7 +86,12 @@
    "summary": "Adhesion lets cells form groups that are adapted separately: the start of organs (planned).",
    "unlocks": [
     "multiple_groups"
-   ]
+   ],
+   "arrivals": {
+    "food_per_s": 0.01,
+    "carried_share": 0.8
+   },
+   "regions": []
   },
   {
    "level": 7,
@@ -70,10 +100,16 @@
    "summary": "Tissues with collagen and cadherins; a body can hold a fixed size, turning growth energy into replacing damaged and dead cells (planned).",
    "unlocks": [
     "fixed_body_size"
-   ]
+   ],
+   "arrivals": {
+    "food_per_s": 0.01,
+    "carried_share": 0.8
+   },
+   "regions": []
   }
  ],
  "levels_note": "Draft level sequence (2026-10-08) for open question 3 in adapting_plan.md; dates follow the protein and event entries below.",
+ "arrivals_note": "What appears in the world per second at each level, constant whatever is already there: food packets (food_per_s; carried_share of them brought by other creatures, the rest lying on the ground and coming into view), later prey, enemies and friends. A level's regions may override them (regions[].arrivals), to set scarcity or abundance. Placeholders equal to the food supply before 2026-10-12 (one packet per ~100 s, 80% carried) until tuned.",
  "features": [
   {
    "id": "protein_expression",

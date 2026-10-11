@@ -251,6 +251,9 @@ namespace AdaptOrDeity.Game.Session
             {
                 _level = value;
                 ApplyControls();
+                // what the level's world supplies per second (content/timeline.json levels[].arrivals)
+                var arrivals = GameTimeline.Default.ArrivalsAt(value);
+                _food.SetArrivals(arrivals.FoodPerSecond, arrivals.CarriedShare);
             }
         }
 

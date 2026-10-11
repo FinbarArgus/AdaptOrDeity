@@ -98,14 +98,20 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Speed of a creature carrying food [m/s].</summary>
         public double CarrierSpeed { get; set; }
 
-        /// <summary>Food lying on the ground per area [1/m²].</summary>
+        /// <summary>Food lying on the ground per area when the field is first filled [1/m²].</summary>
         public double LyingDensity { get; set; }
+
+        /// <summary>
+        /// Food packets arriving per second [1/s] (the level's and region's rate), whatever is already in the field: a
+        /// colony holding much food still gets new food at this rate.
+        /// </summary>
+        public double ArrivalsPerSecond { get; set; }
+
+        /// <summary>Share of arrivals brought by other creatures; the rest lie on the ground and come into view.</summary>
+        public double CarriedShare { get; set; }
 
         /// <summary>A packet with less than this share of its glucose left is used up and removed.</summary>
         public double UsedUpFraction { get; set; }
-
-        /// <summary>Mean time between creatures arriving with food (carried packets) [s].</summary>
-        public double MeanInterval { get; set; }
 
         /// <summary>Carried packets head inwards within half this angle either side of the boundary's normal [rad].</summary>
         public double EntryAngleSpread { get; set; }
@@ -113,8 +119,8 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Half the side of the square field around the creature [m].</summary>
         public double HalfSize { get; set; }
 
-        /// <summary>Most packets in the field at once.</summary>
-        public int MaxPackets { get; set; }
+        /// <summary>Packet slots made at the start; more are added as needed (there is no limit).</summary>
+        public int InitialPacketCapacity { get; set; }
 
         /// <summary>Random seed (determinism).</summary>
         public int Seed { get; set; }
@@ -134,8 +140,8 @@ namespace AdaptOrDeity.Sim.World
     public sealed class FoodField
     {
         private readonly Random _random;
-        private readonly FoodPacket[] _packets;
-        private double _untilNext, _untilNextLying, _angle;
+        private readonly List<FoodPacket> _packets = new List<FoodPacket>();
+        private double _untilNext, _angle;
 
         public FoodField(FoodSettings settings)
         {
@@ -143,10 +149,9 @@ namespace AdaptOrDeity.Sim.World
             _random = new Random(settings.Seed);
             TraceSpecies = settings.TraceSpecies;
             BackgroundGlucose = settings.BackgroundGlucose;
-            _packets = new FoodPacket[settings.MaxPackets];
-            for (int i = 0; i < _packets.Length; i++)
-                _packets[i] = new FoodPacket(TraceSpecies.Count);
-            _untilNext = 0.0;
+            for (int i = 0; i < settings.InitialPacketCapacity; i++)
+                _packets.Add(new FoodPacket(TraceSpecies.Count));
+            _untilNext = Exponential() / Math.Max(settings.ArrivalsPerSecond, 1e-300);
         }
 
         public FoodSettings Settings { get; }
@@ -192,8 +197,6 @@ namespace AdaptOrDeity.Sim.World
             for (int i = 0; i < n; i++)
             {
                 var slot = FreeSlot();
-                if (slot == null)
-                    return;
                 Fill(slot, PacketKind.Lying, cx + (2.0 * _random.NextDouble() - 1.0) * HalfSize,
                     cy + (2.0 * _random.NextDouble() - 1.0) * HalfSize, 0.0, 0.0);
             }
@@ -232,19 +235,14 @@ namespace AdaptOrDeity.Sim.World
                 else
                     p.Radius = PacketRadius * Math.Sqrt(Fill(p));   // its area shrinks as it is eaten
             }
-            // Carried food arrives at random times; lying food comes into view as the creature sweeps the ground, at the
-            // density times the area swept (speed x the window's width): both Poisson, by exponential intervals.
+            // Food arrives at the level's rate, Poisson (exponential intervals), whatever is already in the field: carried by
+            // another creature, or lying on the ground and coming into view on the sides the creature moves towards.
             _untilNext -= dt;
-            while (_untilNext <= 0.0)
+            while (_untilNext <= 0.0 && Settings.ArrivalsPerSecond > 0.0)
             {
-                Spawn(true, vx, vy);
-                _untilNext += Exponential() * Settings.MeanInterval;
-            }
-            _untilNextLying -= Settings.LyingDensity * Math.Sqrt(vx * vx + vy * vy) * 2.0 * HalfSize * dt;
-            while (_untilNextLying <= 0.0)
-            {
-                Spawn(false, vx, vy);
-                _untilNextLying += Exponential();
+                Spawn(_random.NextDouble() < Settings.CarriedShare, vx, vy);
+                Arrived++;
+                _untilNext += Exponential() / Settings.ArrivalsPerSecond;
             }
         }
 
@@ -319,12 +317,26 @@ namespace AdaptOrDeity.Sim.World
             return dx * dx + dy * dy <= d * d;
         }
 
-        private FoodPacket? FreeSlot()
+        /// <summary>Food packets that have arrived since the field was made (diagnostics).</summary>
+        public long Arrived { get; private set; }
+
+        /// <summary>The rate of arrivals changes (a new level or region): the next arrival is drawn at the new rate.</summary>
+        public void SetArrivals(double perSecond, double carriedShare)
+        {
+            Settings.ArrivalsPerSecond = perSecond;
+            Settings.CarriedShare = carriedShare;
+            _untilNext = perSecond > 0.0 ? Exponential() / perSecond : double.PositiveInfinity;
+        }
+
+        // A free packet slot, or a new one: there is no limit on the food in the field.
+        private FoodPacket FreeSlot()
         {
             foreach (var p in _packets)
                 if (!p.Active)
                     return p;
-            return null;
+            var added = new FoodPacket(TraceSpecies.Count);
+            _packets.Add(added);
+            return added;
         }
 
         // Inward normals of the window's sides: left, right, bottom, top.
@@ -339,8 +351,6 @@ namespace AdaptOrDeity.Sim.World
         private void Spawn(bool carried, double vx, double vy)
         {
             var slot = FreeSlot();
-            if (slot == null)
-                return;
             int side;
             if (carried)
                 side = _random.Next(4);

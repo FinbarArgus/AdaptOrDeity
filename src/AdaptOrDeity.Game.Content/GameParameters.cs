@@ -83,10 +83,11 @@ namespace AdaptOrDeity.Game.Content
             CarrierSpeed = Value("food.carrier_speed"),
             LyingDensity = Value("food.lying_density"),
             UsedUpFraction = Value("food.used_up_fraction"),
-            MeanInterval = Value("food.mean_interval"),
             EntryAngleSpread = Value("food.entry_angle_spread"),
             HalfSize = Value("food.field_half_size"),
-            MaxPackets = Integer("food.max_packets"),
+            InitialPacketCapacity = Integer("food.initial_packet_capacity"),
+            ArrivalsPerSecond = GameTimeline.Default.ArrivalsAt(1).FoodPerSecond,
+            CarriedShare = GameTimeline.Default.ArrivalsAt(1).CarriedShare,
             Seed = Integer("food.seed"),
             TraceSpecies = TraceSpecies,
         };

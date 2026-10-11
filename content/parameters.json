@@ -58,13 +58,6 @@
    "status": "design",
    "note": "a packet with less than this share of its glucose left is used up and removed"
   },
-  "food.mean_interval": {
-   "value": 120.0,
-   "units": "s",
-   "source": "unreferenced_placeholder",
-   "status": "design",
-   "note": "mean time between creatures arriving with food (carried packets; exponential intervals)"
-  },
   "food.entry_angle_spread": {
    "value": 1.5707963267948966,
    "units": "rad",
@@ -79,12 +72,12 @@
    "status": "design",
    "note": "half the side of the square field around the colony"
   },
-  "food.max_packets": {
+  "food.initial_packet_capacity": {
    "value": 24,
    "units": "1",
    "source": "definitional",
    "status": "design",
-   "note": "most packets in the field at once"
+   "note": "packets the first snapshot frames have room for; frames grow when more are in the field"
   },
   "food.seed": {
    "value": 1,
