@@ -373,6 +373,10 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   external arrays don't fit their single-model layout, and the planned exact sparse Jacobians come from the same
   equations. libcellml (our combined build) parses, validates and analyses; libcuflynx assembles supermodules. Later:
   read module configs through libcuflynx's loader once its instance work is released.
+- **2026-10-11** Platforms: desktop only (Windows, macOS, Linux). Engine: stay on Unity for drawing and UI; the
+  simulation is to become a NativeAOT-compiled .NET library loaded by Unity (modern runtime and SIMD), keeping the
+  managed build as a fallback. GPU: drawing and the environment field; cell kinetics on it only behind the gates in
+  docs/plans/parallel-and-gpu.md (no doubles on macOS GPUs). Next: lean kernel layout and parallel cells (steps 1-3).
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
