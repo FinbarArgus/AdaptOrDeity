@@ -103,11 +103,17 @@ def run_cvodes(helper, path: Path):
 
 
 def _state_names():
-    path = REPO / 'src' / 'AdaptOrDeity.Sim.Kernels.Generated' / 'Kernels' / 'GenericAdaptiveCell_fermenter.g.cs'
-    text = path.read_text()
-    block = text[text.index('states: new[]'):text.index('externals: new')]
-    import re
-    return re.findall(r'new VariableInfo\("([^"]+)"', block)
+    """The cell's states, from the game's module library (tools/scripts/build_cell_library.py)."""
+    import ctypes
+    import glob
+    lib = ctypes.CDLL(glob.glob(str(REPO / 'src' / 'AdaptOrDeity.Native' / 'bin' / 'cells' / '*aod_modules.*'))[0])
+    names = []
+    for i in range(lib.bk_state_count()):
+        n, u, c = ctypes.c_char_p(), ctypes.c_char_p(), ctypes.c_char_p()
+        lib.bk_state_info(i, ctypes.byref(n), ctypes.byref(u), ctypes.byref(c))
+        if c.value == b'cell_0_module':
+            names.append(n.value.decode())
+    return names
 
 
 def worst_differences(t_ours, ours, cvodes):

@@ -10,18 +10,18 @@ Feature-level plans go in [`docs/plans/`](docs/plans/), one file per feature, an
 
 ## Commands
 ```bash
+python3 tools/scripts/build_cell_library.py --build      # the modules' C library (aod_modules): needed by every run
 dotnet build -c Release && dotnet test -c Release        # needs ~/.dotnet on PATH
 dotnet run --project src/AdaptOrDeity.Headless -- 1.0   # headless one-cell run
 tools/scripts/build_sim_for_unity.sh                     # copy sim DLLs into unity/
-<libcuflynx venv>/bin/python tools/scripts/build_cell_library.py [--build]  # cells as libcuflynx C (aod_cell);
-#   regenerates src/AdaptOrDeity.Cells/generated (never edited), --build only compiles it (CMake); before:
+<libcuflynx venv>/bin/python tools/scripts/build_cell_library.py  # regenerate src/AdaptOrDeity.Cells/generated
+#   (libcuflynx's C for every module of content/modules.lock.json) and build it; then:
 CLANG=<clang> tools/scripts/build_native_sim.sh         # the NativeAOT simulation library (aod_sim) for Unity
-tools/kernelgen/.venv/bin/aod-kernelgen [--goldens|--check|--update-lock]
+tools/kernelgen/.venv/bin/aod-kernelgen [--goldens|--check|--update-lock]   # module checks, Myokit goldens
 tools/kernelgen/.venv/bin/aod-kernelgen-flatten <flat.cellml> content/assembled <type> <version> \
     --modules-root <modules> --supermodule-config <config.json>   # whole cell -> one kernel (ADR 0007)
 dotnet run --project src/AdaptOrDeity.Headless -- fermenter 600 H_ATPase_expression=2   # cell panel, headless
-dotnet run -c Release --project src/AdaptOrDeity.Headless -- bench 600   # integrator speed and accuracy
-dotnet run -c Release --project src/AdaptOrDeity.Headless -- kernel-bench  # kernel cost per cell, batches, threads
+dotnet run -c Release --project src/AdaptOrDeity.Headless -- bench 600   # the cells' integrator: speed, accuracy
 dotnet run -c Release --project src/AdaptOrDeity.Headless -- colony-bench 64 60  # a colony on 1..8 worker threads
 tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
 dotnet run --project src/AdaptOrDeity.Headless -- model <dir> 10 H_ATPase_expression=2   # creature as a module array
@@ -33,7 +33,8 @@ dotnet run --project src/AdaptOrDeity.Headless -- model <dir> 10 H_ATPase_expres
 - Layering is enforced by `tests/AdaptOrDeity.ArchitectureTests`: Sim never references Game; nothing
   outside `unity/` references UnityEngine. See [`docs/conventions.md`](docs/conventions.md).
 - Physiology equations live upstream in CellML (authored in circulatory-autogen-modules, tested with
-  cam_testing); generated kernels in `src/AdaptOrDeity.Sim.Kernels.Generated/Kernels/` are never edited.
+  cam_testing); the game runs them as libcuflynx's generated C in `src/AdaptOrDeity.Cells/generated/` (the
+  `aod_modules` library, docs/plans/libcuflynx-solver.md), which is never edited.
 - Every module must be **verified** (cam_testing's full test set upstream; golden traces for kernels;
   analytic and conservation tests for native code; homogenisation checks between levels) and ideally
   **validated** against data. See "Verification and validation" in `adapting_plan.md`.

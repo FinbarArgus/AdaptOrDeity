@@ -1,5 +1,8 @@
 # Feature plan: exact sparse Jacobians generated ahead of time
 
+Done, then superseded (2026-10-12): the differentiation moved to libcuflynx (`kernel_ir.py`), whose generated C the
+game now runs; kernelgen no longer emits kernels (docs/plans/libcuflynx-solver.md).
+
 Step 3 of the integration speed-ups (steps 1–2, Jacobian reuse and adaptive steps, are done: see the `bench` numbers in
 `adapting_plan.md`). Status (2026-10-11): parts 1–2 done (structural dependence and forward-mode `ComputeJacobian`, in
 `tools/kernelgen/aod_kernelgen/jacobian.py`; `JacobianTests` checks every kernel against central differences and fails

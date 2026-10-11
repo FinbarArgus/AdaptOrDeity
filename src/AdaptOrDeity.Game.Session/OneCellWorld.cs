@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using AdaptOrDeity.Sim.Kernels.Generated;
+using AdaptOrDeity.Sim.Modules;
 using AdaptOrDeity.Sim.Physiology;
 
 namespace AdaptOrDeity.Game.Session
@@ -28,7 +28,7 @@ namespace AdaptOrDeity.Game.Session
         public OneCellWorld(double bathO2 = DefaultBathO2)
         {
             double conductance = DiffusivityO2 * 4 * CellWidth * CellDepth / (CellWidth / 2);
-            _cell = new SingleCellInBath(new TissueDiffusionVolume_nn(), "default", "C_P", "flux_c", conductance, bathO2);
+            _cell = new SingleCellInBath(NativeModule.Get("tissue_diffusion_volume", "nn"), "default", "C_P", "flux_c", conductance, bathO2);
             // Explicit exchange coupling is stable and accurate for dt well below V/G (~0.025 s).
             MacroDt = 1e-3;
         }

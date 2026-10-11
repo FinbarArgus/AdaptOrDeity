@@ -1,7 +1,7 @@
 name: native
 
-# The cell library (libcuflynx's generated C in src/AdaptOrDeity.Cells) and the NativeAOT simulation library on every
-# desktop platform: built, checked against the C# integrator and the managed session, and kept as artifacts for Unity.
+# The module library (libcuflynx's generated C in src/AdaptOrDeity.Cells) and the NativeAOT simulation library on every
+# desktop platform: built, tested, the native session checked against the managed one, and kept as artifacts for Unity.
 on:
   push:
   pull_request:
@@ -27,13 +27,13 @@ jobs:
       - name: NativeAOT prerequisites (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
-      - name: Build the cell library
+      - name: Build the module library
         run: |
           cmake -S src/AdaptOrDeity.Cells -B build/cells -DCMAKE_BUILD_TYPE=Release
           cmake --build build/cells --config Release
       - run: dotnet build -c Release
-      - name: Native cells against the C# integrator
-        run: dotnet test -c Release --no-build --filter "FullyQualifiedName~NativeCell"
+      - name: Tests on the module library
+        run: dotnet test -c Release --no-build
       - name: Publish the simulation library (cells linked in)
         run: dotnet publish src/AdaptOrDeity.Native/AdaptOrDeity.Native.csproj -c Release -r ${{ matrix.rid }} -o src/AdaptOrDeity.Native/bin/publish/${{ matrix.rid }}
       - name: Native sessions against managed ones
@@ -42,6 +42,6 @@ jobs:
         with:
           name: native-${{ matrix.rid }}
           path: |
-            src/AdaptOrDeity.Native/bin/cells/*aod_cell*
+            src/AdaptOrDeity.Native/bin/cells/*aod_modules*
             src/AdaptOrDeity.Native/bin/publish/${{ matrix.rid }}/aod_sim.*
           if-no-files-found: error

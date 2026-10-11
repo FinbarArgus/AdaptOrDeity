@@ -11,12 +11,12 @@
     <InvariantGlobalization>true</InvariantGlobalization>
     <IlcInstructionSet Condition="$(RuntimeIdentifier.EndsWith('-x64'))">x86-x64-v3</IlcInstructionSet>
   </PropertyGroup>
-  <!-- The cell model in libcuflynx's generated C (src/AdaptOrDeity.Cells, tools/scripts/build_cell_library.py),
-       linked in when built: libaod_cell_static.a (Linux, macOS) or aod_cell_static.lib (Windows). -->
-  <ItemGroup Condition="Exists('bin/cells/libaod_cell_static.a') Or Exists('bin/cells/aod_cell_static.lib')">
-    <DirectPInvoke Include="aod_cell" />
-    <NativeLibrary Include="bin/cells/libaod_cell_static.a" Condition="Exists('bin/cells/libaod_cell_static.a')" />
-    <NativeLibrary Include="bin/cells/aod_cell_static.lib" Condition="Exists('bin/cells/aod_cell_static.lib')" />
+  <!-- The game's modules in libcuflynx's generated C (src/AdaptOrDeity.Cells, tools/scripts/build_cell_library.py),
+       linked in when built: libaod_modules_static.a (Linux, macOS) or aod_modules_static.lib (Windows). -->
+  <ItemGroup Condition="Exists('bin/cells/libaod_modules_static.a') Or Exists('bin/cells/aod_modules_static.lib')">
+    <DirectPInvoke Include="aod_modules" />
+    <NativeLibrary Include="bin/cells/libaod_modules_static.a" Condition="Exists('bin/cells/libaod_modules_static.a')" />
+    <NativeLibrary Include="bin/cells/aod_modules_static.lib" Condition="Exists('bin/cells/aod_modules_static.lib')" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../AdaptOrDeity.Game.Session/AdaptOrDeity.Game.Session.csproj" />

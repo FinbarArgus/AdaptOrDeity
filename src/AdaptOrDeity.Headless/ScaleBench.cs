@@ -4,7 +4,6 @@ using System.Globalization;
 using AdaptOrDeity.Game.Content;
 using AdaptOrDeity.Game.Session;
 using AdaptOrDeity.Sim.Core;
-using AdaptOrDeity.Sim.Kernels.Generated;
 using AdaptOrDeity.Sim.Physiology;
 
 namespace AdaptOrDeity.Headless
@@ -70,10 +69,9 @@ namespace AdaptOrDeity.Headless
         // Milliseconds of wall time per simulated second for n independent cells through the food protocol.
         private static double Cells(int n, bool fed, int workers)
         {
-            var kernel = new GenericAdaptiveCell_fermenter();
             var cells = new FermenterCell[n];
             for (int i = 0; i < n; i++)
-                cells[i] = new FermenterCell(kernel, TraitCatalog.Fermenter);
+                cells[i] = new FermenterCell(TraitCatalog.Fermenter);
             using var pool = new ParallelWork(workers);
             Action<int, int> step = (start, end) =>
             {

@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Linq;
 using AdaptOrDeity.Game.Content;
-using AdaptOrDeity.Sim.Kernels.Generated;
 using AdaptOrDeity.Sim.Modules;
 using AdaptOrDeity.Sim.Physiology;
 
@@ -13,7 +12,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         private const double GameDt = 0.1;   // FermenterWorld's macro step
 
         private static FermenterCell NewCell(string instance = "default") =>
-            new FermenterCell(new GenericAdaptiveCell_fermenter(), TraitCatalog.Fermenter, instance);
+            new FermenterCell(TraitCatalog.Fermenter, instance);
 
         private static double Na(FermenterCell cell) => cell.External("N_A_mod_pool_proteome");
 
@@ -25,66 +24,35 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         }
 
         [Test]
-        public void SleepingCellsStayWithinTheirToleranceOfAwakeOnes()
-        {
-            // A cell rests, is fed for a minute, then rests again; asleep at 1e-3 it skips a third of its calls and stays within a
-            // fraction of a percent of the same cell kept awake (the integrator itself is ~5% from CVODES at the game's
-            // tolerance; tools/interop/test_solver_agreement.py).
-            var awake = NewCell();
-            var sleepy = NewCell();
-            sleepy.SleepTolerance = 1e-3;
-            int n = awake.Batch.States.Length;
-            var scale = new double[n];
-            var worst = new double[n];
-            for (int s = 0; s < 6000; s++)
-            {
-                double t = s * GameDt, glucose = t >= 120 && t < 180 ? 50.0 : 0.1;
-                awake.MembraneGlucose = sleepy.MembraneGlucose = glucose;
-                awake.Step(GameDt);
-                sleepy.Step(GameDt);
-                for (int i = 0; i < n; i++)
-                {
-                    scale[i] = Math.Max(scale[i], Math.Abs(awake.Batch.States[i][0]));
-                    worst[i] = Math.Max(worst[i], Math.Abs(sleepy.Batch.States[i][0] - awake.Batch.States[i][0]));
-                }
-            }
-            Assert.That(sleepy.SleptSteps, Is.GreaterThan(1500), "a resting cell sleeps through many calls");
-            for (int i = 0; i < n; i++)
-                Assert.That(worst[i], Is.LessThan(5e-3 * scale[i] + 1e-15), awake.Batch.Descriptor.States[i].Name);
-        }
-
-        [Test]
         public void AlgebraicValuesReadAfterStepsAreThoseOfTheStateNow()
         {
-            // The kernel's outputs are kept current every step and the rest computed when first read: whatever is read,
-            // and in whatever order, it must be what a full ComputeVariables gives for the cell's state now.
+            // The module's outputs are kept current every step and the rest computed when first read: whatever is read,
+            // and in whatever order, it must be what a cell given the same state and inputs computes in full.
             var cell = NewCell();
             cell.MembraneGlucose = 20.0;
-            var kernel = new GenericAdaptiveCell_fermenter();
-            var reference = new KernelBatch(kernel.Descriptor, 1) { Count = 1 };
+            var d = cell.Batch.Descriptor;
             for (int round = 0; round < 3; round++)
             {
                 Run(cell, 7.3);
                 double thrust = cell.FlagellumThrust;   // an output first, then everything
-                for (int i = 0; i < cell.Batch.States.Length; i++)
-                    reference.States[i][0] = cell.Batch.States[i][0];
-                for (int e = 0; e < cell.Batch.Externals.Length; e++)
-                    reference.Externals[e][0] = cell.Batch.Externals[e][0];
-                kernel.ComputeVariables(cell.Time, reference, 0, 1);
-                Assert.That(thrust, Is.EqualTo(reference.Algebraic[kernel.Descriptor.AlgebraicIndex("i_flagellum__F_one")][0]));
-                foreach (var v in kernel.Descriptor.Algebraic)
-                    Assert.That(cell.AlgebraicValue(v.Name),
-                        Is.EqualTo(reference.Algebraic[kernel.Descriptor.AlgebraicIndex(v.Name)][0]), $"{v.Name} after round {round}");
+                var reference = NewCell();
+                foreach (var v in d.Externals)
+                    reference.SetExternal(v.Name, cell.External(v.Name));
+                foreach (var v in d.States)
+                    reference.SetState(v.Name, cell.State(v.Name));   // each set recomputes every value
+                Assert.That(thrust, Is.EqualTo(reference.AlgebraicValue("i_flagellum__F_one")));
+                foreach (var v in d.Algebraic)
+                    Assert.That(cell.AlgebraicValue(v.Name), Is.EqualTo(reference.AlgebraicValue(v.Name)), $"{v.Name} after round {round}");
             }
         }
 
         [Test]
         public void DefaultInstanceIsTheCalibratedRestAtGameStep()
         {
-            // One hour of backward Euler at the game's 0.1 s step must hold the calibrated rest exactly.
+            // One hour at the game's 0.1 s step must hold the calibrated rest exactly.
             var cell = NewCell();
             Run(cell, 3600.0);
-            Assert.That(cell.Converged, Is.True);
+            Assert.That(cell.Alive, Is.True);
             Assert.That(cell.State("membrane__V"), Is.EqualTo(-105.0).Within(1e-4));
             Assert.That(cell.AlgebraicValue("H__pH_i"), Is.EqualTo(7.6).Within(1e-7));
             Assert.That(cell.State("cytosol__C_ATP"), Is.EqualTo(9.6).Within(1e-6));
@@ -184,7 +152,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             Assert.That(daughter.GrowthInvested, Is.EqualTo(0.0));
             Assert.That(daughter.GrowthFraction, Is.EqualTo(1.0).Within(1e-12), "controls are inherited");
             daughter.Step(GameDt);
-            Assert.That(daughter.Converged, Is.True);
+            Assert.That(daughter.Alive, Is.True);
         }
 
         [Test]
@@ -222,7 +190,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         [Test]
         public void FamineAtTheGameStepFollowsTheMyokitGolden()
         {
-            // The game's 0.1 s backward Euler against CVODE (rtol 1e-10) through 10 min of famine: NRMSE below 2%.
+            // The game's cell at its 0.1 s step against CVODE (rtol 1e-10) through 10 min of famine: NRMSE below 2%.
             string dir = Path.Combine(GoldenDir(), "generic_adaptive_cell", "fermenter");
             var lines = File.ReadAllLines(Path.Combine(dir, "famine.csv"));
             var header = lines[0].Split(',');
@@ -329,43 +297,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             double perHour = cell.GrowthProgress;
             TestContext.WriteLine($"daughter built per hour on food: {perHour:P1}, ATP {cell.State("cytosol__C_ATP"):F2} mM, turnover {cell.Budget().AtpConsumed / cell.RestingTurnover:F1}x rest");
             Assert.That(perHour, Is.GreaterThan(0.25), "a daughter in under 4 h");
-            Assert.That(cell.Converged, Is.True);
-        }
-
-        [Test]
-        public void BackwardEulerIsExactForAStiffLinearDecayAtSteadyState()
-        {
-            // dy/dt = -k (y - 1) with k = 1e6 /s: explicit steps of 0.1 s would explode; backward Euler converges to 1.
-            var kernel = new LinearDecayKernel();
-            var batch = new KernelBatch(kernel.Descriptor, 1) { Count = 1 };
-            batch.States[0][0] = 5.0;
-            var be = new BackwardEulerIntegrator();
-            for (int i = 0; i < 5; i++)
-                be.Step(kernel, batch, i * 0.1, 0.1, 0, 1);
-            Assert.That(batch.States[0][0], Is.EqualTo(1.0).Within(1e-9));
-            Assert.That(be.LastConverged, Is.True);
-        }
-
-        private sealed class LinearDecayKernel : IKernel
-        {
-            public KernelDescriptor Descriptor { get; } = new KernelDescriptor("decay", "test", "decay", "CC0-1.0", "",
-                new[] { new VariableInfo("y", "dimensionless", 1.0, VariableRole.Variable) }, new VariableInfo[0],
-                new VariableInfo[0], new[] { -1 }, new[] { 0.0 }, new PortInfo[0],
-                new System.Collections.Generic.Dictionary<string, System.Collections.Generic.IReadOnlyDictionary<string, double>>());
-
-            public void Initialise(KernelBatch batch, int start, int end)
-            {
-            }
-
-            public void ComputeRates(double t, KernelBatch batch, int start, int end)
-            {
-                for (int k = start; k < end; k++)
-                    batch.Rates[0][k] = -1e6 * (batch.States[0][k] - 1.0);
-            }
-
-            public void ComputeVariables(double t, KernelBatch batch, int start, int end)
-            {
-            }
+            Assert.That(cell.Alive, Is.True);
         }
 
         private static string RepoRoot()

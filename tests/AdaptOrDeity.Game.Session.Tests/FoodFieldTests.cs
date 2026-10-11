@@ -188,11 +188,10 @@ namespace AdaptOrDeity.Game.Session.Tests
         [Test]
         public void OneCellCoastsSmoothlyToAStopAfterOneFlagellarPush()
         {
-            // The real cell (kernel) on the rigid body: the motor runs for 1 s, then stops. Thrust rises and falls with the
+            // The real cell (its module) on the rigid body: the motor runs for 1 s, then stops. Thrust rises and falls with the
             // motors and bundle (tau_bundle), so the speed changes smoothly at the game's 0.1 s step, then decays to a stop;
             // the force only ever points straight away from the flagellum's base.
-            var cell = new AdaptOrDeity.Sim.Physiology.FermenterCell(new AdaptOrDeity.Sim.Kernels.Generated.GenericAdaptiveCell_fermenter(),
-                TraitCatalog.Fermenter);
+            var cell = new AdaptOrDeity.Sim.Physiology.FermenterCell(TraitCatalog.Fermenter);
             var body = new CreatureBody(cell.External("R_cell_mod_membrane") * 1e-6, cell.External("eta_mod_i_flagellum"),
                 new RigidBody2D());
             body.AddCell(0.0, 0.0, 1100.0 * cell.AlgebraicValue("membrane__Vol"), CreatureBody.DefaultAngles(0.5));
@@ -202,7 +201,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             {
                 cell.SetExternal("a_motor_mod_i_flagellum", i < 10 ? 1.0 : 0.0);   // one push: 1 s of running
                 cell.Step(0.1);
-                body.Step(0.1, _ => 1.0, _ => cell.AlgebraicValue("i_flagellum__F_one"));
+                body.Step(0.1, _ => 1.0, _ => Math.Max(0.0, cell.FlagellumThrust));   // as FermenterWorld pushes the body
                 Assert.That(body.ForceX, Is.GreaterThanOrEqualTo(0.0), "pushed away from its base at the back (+x)");
                 Assert.That(Math.Abs(body.ForceY), Is.LessThanOrEqualTo(1e-12 * body.ForceX + 1e-40),
                     "no sideways force without the angle error (to round-off: sin(pi) is not exactly 0)");

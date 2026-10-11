@@ -1,4 +1,6 @@
-"""aod-kernelgen: regenerate C# kernels (and optionally golden traces) from content/modules.lock.json."""
+"""aod-kernelgen: check the modules of content/modules.lock.json (licence, pinned files, libCellML analysis) and
+optionally regenerate their golden traces with Myokit. The game runs the modules as libcuflynx's generated C
+(tools/scripts/build_cell_library.py)."""
 
 from __future__ import annotations
 
@@ -8,12 +10,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import emit_csharp, golden
+from . import golden
 from .module import ModuleError, load
 
 REPO = Path(__file__).resolve().parents[3]
 LOCK = REPO / "content" / "modules.lock.json"
-KERNEL_DIR = REPO / "src" / "AdaptOrDeity.Sim.Kernels.Generated" / "Kernels"
 GOLDEN_DIR = REPO / "tests" / "golden"
 
 
@@ -28,8 +29,7 @@ def _modules_commit(root: Path) -> str:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--goldens", action="store_true", help="also regenerate golden traces with Myokit")
-    ap.add_argument("--check", action="store_true",
-                    help="fail if generated kernels differ from the committed files (CI)")
+    ap.add_argument("--check", action="store_true", help="only check the modules (CI); write nothing")
     ap.add_argument("--update-lock", action="store_true", help="record current module hashes in the lock file")
     args = ap.parse_args(argv)
 
@@ -38,8 +38,6 @@ def main(argv: list[str] | None = None) -> int:
     allow = lock["licence_allowlist"]
     commit = _modules_commit(modules_root)
 
-    expected: dict[Path, str] = {}
-    classes: list[str] = []
     failures: list[str] = []
     for entry in lock["modules"]:
         label = f"{entry['module_type']}/{entry['version']}"
@@ -56,18 +54,7 @@ def main(argv: list[str] | None = None) -> int:
             failures.append(f"{label}: module files changed (sha256 {module.sha256} != lock {locked}); "
                             "review the change, then run with --update-lock")
             continue
-        cls = emit_csharp.class_name(module.module_type, module.version)
-        classes.append(cls)
-        # per_cell_inputs: the externals that differ between the instances of a group; the rest are group inputs,
-        # read once per kernel call. Without the key every external is per instance.
-        per_cell = entry.get("per_cell_inputs")
-        group = None if per_cell is None else [v.name for v in module.externals if v.name not in set(per_cell)]
-        try:
-            expected[KERNEL_DIR / f"{cls}.g.cs"] = emit_csharp.emit(module, group, entry.get("outputs"))
-        except ModuleError as exc:
-            failures.append(str(exc))
-            continue
-        if args.goldens:
+        if args.goldens and not args.check:
             for instance in entry.get("instances", ["default"]):
                 g = entry.get("golden", {})
                 replay = {"integrator": g.get("integrator", "rk4"), "dt": float(g.get("dt", 0.01)),
@@ -76,27 +63,12 @@ def main(argv: list[str] | None = None) -> int:
                 path = golden.write(module, instance, float(g.get("duration_s", 100.0)),
                                     float(g.get("interval_s", 1.0)), GOLDEN_DIR, commit, replay)
                 print(f"golden  {path.relative_to(REPO)}")
-    expected[KERNEL_DIR / "GeneratedKernels.g.cs"] = emit_csharp.emit_registry(classes)
 
     if failures:
         for f in failures:
             print(f"error: {f}", file=sys.stderr)
         return 1
 
-    if args.check:
-        stale = [p for p, text in expected.items() if not p.is_file() or p.read_text() != text]
-        extra = [p for p in KERNEL_DIR.glob("*.g.cs") if p not in expected]
-        for p in stale + extra:
-            print(f"stale: {p.relative_to(REPO)}", file=sys.stderr)
-        return 1 if stale or extra else 0
-
-    KERNEL_DIR.mkdir(parents=True, exist_ok=True)
-    for p in KERNEL_DIR.glob("*.g.cs"):
-        if p not in expected:
-            p.unlink()
-    for p, text in expected.items():
-        p.write_text(text)
-        print(f"kernel  {p.relative_to(REPO)}")
     if args.update_lock:
         LOCK.write_text(json.dumps(lock, indent=2) + "\n")
     return 0

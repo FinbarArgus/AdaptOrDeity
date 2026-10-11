@@ -6,4 +6,9 @@
   <ItemGroup>
     <ProjectReference Include="../AdaptOrDeity.Game.Session/AdaptOrDeity.Game.Session.csproj" />
   </ItemGroup>
+  <!-- The modules' C library (tools/scripts/build_cell_library.py) beside the executable, where the runtime finds it. -->
+  <ItemGroup>
+    <None Include="../AdaptOrDeity.Native/bin/cells/*aod_modules.so;../AdaptOrDeity.Native/bin/cells/*aod_modules.dylib;../AdaptOrDeity.Native/bin/cells/aod_modules*.dll"
+          CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" Visible="false" />
+  </ItemGroup>
 </Project>

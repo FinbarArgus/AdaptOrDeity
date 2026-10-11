@@ -4,7 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 
-namespace AdaptOrDeity.Sim.Kernels.Tests
+namespace AdaptOrDeity.Sim.Modules.Tests
 {
     /// <summary>A golden trace written by tools/kernelgen (Myokit/CVODE): a time column plus named columns.</summary>
     internal sealed class GoldenTrace

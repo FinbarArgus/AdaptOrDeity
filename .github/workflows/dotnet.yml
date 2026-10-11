@@ -17,6 +17,11 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+      # The game's modules run in libcuflynx's generated C (committed in src/AdaptOrDeity.Cells): build it first.
+      - name: Build the module library
+        run: |
+          cmake -S src/AdaptOrDeity.Cells -B build/cells -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/cells --config Release
       - run: dotnet build -c Release
       - run: dotnet test -c Release --no-build
       - run: dotnet run -c Release --no-build --project src/AdaptOrDeity.Headless -- 60

@@ -1,5 +1,8 @@
 # Kernel layout and GPU measurements
 
+Measured on the C# kernels and integrator the game used before it moved to libcuflynx's generated C
+(docs/plans/libcuflynx-solver.md); they were removed after commit 739a347, so check that commit out to rerun these.
+
 Measurements behind [docs/plans/parallel-and-gpu.md](../../../docs/plans/parallel-and-gpu.md). Not part of the build.
 
 ```bash

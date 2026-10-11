@@ -45,11 +45,17 @@ The runtime integrates the blocks of a fixed module array, all at once, on OpenM
   builds both, the NativeAOT library with the cells linked in, and checks them on Linux, Windows and macOS
   (`AOD_REQUIRE_NATIVE=1` makes a missing library a failure, not a skip).
 
+- **The C# path retired** (2026-10-12): one library, `aod_modules`, holds every module of content/modules.lock.json
+  (the fermenter cell and the tissue volume) with their named parameter sets (generated `aod_modules_meta.c`).
+  `NativeModule` builds each module's descriptor from it and `NativeInstance` runs one copy, restricted to the
+  module's blocks; new instances take their initial values from their parameters (libcuflynx
+  `bk_instance_initialise_states`). Removed: the C# kernels and their project, kernelgen's C# emitter and
+  `jacobian.py`, the backward-Euler and RK4 integrators, the cell's own adaptive stepping and the optional sleep.
+  Golden traces are checked against the library; kernelgen checks the modules and writes the goldens.
+
 ## Still to do
 
-1. **Retire the C# path**: initial values from the library (a state-initialisation table in the generated C), then
-   `tools/kernelgen`'s C# emitter, `jacobian.py`, `BackwardEulerIntegrator` and `FermenterCell`'s adaptive
-   stepping; keep the golden traces as the regression reference.
+Nothing beyond the open questions below.
 
 ## Open
 

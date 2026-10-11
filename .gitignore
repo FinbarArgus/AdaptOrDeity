@@ -34,8 +34,8 @@ unity/Packages/com.adaptordeity.sim/Plugins/*.pdb.meta
 unity/Packages/com.adaptordeity.sim/Plugins/*.xml.meta
 # ... and so is the native simulation library (tools/scripts/build_native_sim.sh)
 unity/Packages/com.adaptordeity.sim/Plugins/aod_sim.*
-unity/Packages/com.adaptordeity.sim/Plugins/libaod_cell.*
-unity/Packages/com.adaptordeity.sim/Plugins/aod_cell.*
+unity/Packages/com.adaptordeity.sim/Plugins/libaod_modules.*
+unity/Packages/com.adaptordeity.sim/Plugins/aod_modules.*
 
 # OS / editors
 .DS_Store

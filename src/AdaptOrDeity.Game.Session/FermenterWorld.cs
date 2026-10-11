@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using AdaptOrDeity.Game.Content;
 using AdaptOrDeity.Sim.Core;
-using AdaptOrDeity.Sim.Kernels.Generated;
 using AdaptOrDeity.Sim.Modules;
 using AdaptOrDeity.Sim.Physiology;
 using AdaptOrDeity.Sim.World;
@@ -51,7 +50,6 @@ namespace AdaptOrDeity.Game.Session
                 "how much the cell spends repairing damage; below about 0.1 damage outruns repair and the cell dies"),
         };
 
-        private readonly IKernel _kernel = new GenericAdaptiveCell_fermenter();
         private readonly List<FermenterCell> _cells = new List<FermenterCell>();
         private ParallelWork? _workers;
         private Action<int, int>? _forcePass, _cellPass;   // cached delegates: stepping must not allocate
@@ -105,7 +103,7 @@ namespace AdaptOrDeity.Game.Session
         public FermenterWorld(int? cellLimit = null)
         {
             _cellLimit = cellLimit ?? int.MaxValue;
-            _cells.Add(new FermenterCell(_kernel, TraitCatalog.Fermenter));
+            _cells.Add(new FermenterCell(TraitCatalog.Fermenter));
             var first = _cells[0];
             // Geometry and the medium from the kernel (upstream parameters.json); the rest of the food field from content.
             CellRadius = first.External("R_cell_mod_membrane") * 1e-6;   // µm → m
@@ -298,7 +296,7 @@ namespace AdaptOrDeity.Game.Session
         /// </summary>
         public ModuleArray ToModuleArray()
         {
-            var d = _kernel.Descriptor;
+            var d = FermenterCell.Module.Descriptor;
             var array = new ModuleArray();
             for (int i = 0; i < _cells.Count; i++)
             {
@@ -347,9 +345,6 @@ namespace AdaptOrDeity.Game.Session
         }
 
         private int _workerCount = ParallelWork.DefaultWorkers;
-
-        /// <summary>Steady cells sleep below this drift (<see cref="FermenterCell.SleepTolerance"/>); 0 never.</summary>
-        public double SleepTolerance { get; set; }
 
         public void Dispose()
         {
@@ -445,7 +440,6 @@ namespace AdaptOrDeity.Game.Session
                 _cellY[i] = y;
                 _touching[i] = _food.TouchesAny(x, y, CellRadius);
                 var c = _cells[i];
-                c.SleepTolerance = SleepTolerance;
                 c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
                 for (int tr = 0; tr < nt; tr++)
                     _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);

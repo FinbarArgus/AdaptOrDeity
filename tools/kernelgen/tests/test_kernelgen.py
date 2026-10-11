@@ -5,7 +5,7 @@ from pathlib import Path
 import libcellml as lc
 import pytest
 
-from aod_kernelgen import emit_csharp, units
+from aod_kernelgen import units
 from aod_kernelgen.module import ModuleError, load
 
 REPO = Path(__file__).resolve().parents[3]
@@ -37,11 +37,6 @@ def test_undefined_units_raise():
         units.resolve("nope", _units_model(""))
 
 
-def test_class_name():
-    assert emit_csharp.class_name("tissue_diffusion_volume", "nn") == "TissueDiffusionVolume_nn"
-    assert emit_csharp.class_name("heart", "Argus2026_v01") == "Heart_Argus2026_v01"
-
-
 def test_licence_gate_rejects_unlisted_licence():
     with pytest.raises(ModuleError, match="licence"):
         load(MODULES, "transport", "tissue_diffusion_volume", "nn", licence_allowlist=["MIT"])
@@ -54,10 +49,3 @@ def test_tissue_diffusion_volume_inputs_and_outputs():
     assert [a.name for a in m.algebraic] == ["M_reduced"]
     assert m.state_init == [("C_P_init", 0.0)]
     assert m.voi == "t"
-
-
-def test_emitted_kernel_computes_algebraic_before_rate():
-    m = load(MODULES, "transport", "tissue_diffusion_volume", "nn", licence_allowlist=["CC0-1.0"])
-    code = emit_csharp.emit(m)
-    rates = code[code.index("ComputeRates"):code.index("ComputeVariables")]
-    assert rates.index("// M_reduced") < rates.index("// dC_P/dt")

@@ -2,7 +2,6 @@
 
 from pathlib import Path
 
-from aod_kernelgen import emit_csharp
 from aod_kernelgen.flatten import flatten
 from aod_kernelgen.module import load
 
@@ -57,8 +56,6 @@ def test_flat_model_becomes_one_module(tmp_path: Path):
     assert {e.name for e in m.externals} == {"k_mod_pool", "x_init_mod_pool", "j_mod_src"}
     assert m.instances["default"] == {"j_mod_src": 0.5, "k_mod_pool": 2.0, "x_init_mod_pool": 1.0}
     assert m.state_init == [("x_init_mod_pool", 0.0)]
-    text = emit_csharp.emit(m)
-    assert "class Toy_v1" in text and "new PortInfo[0]" in text
 
 
 ORDER = FLAT.replace(

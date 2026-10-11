@@ -6,7 +6,6 @@ using System.IO;
 using System.Text;
 using AdaptOrDeity.Game.Content;
 using AdaptOrDeity.Sim.Core;
-using AdaptOrDeity.Sim.Kernels.Generated;
 using AdaptOrDeity.Sim.Physiology;
 
 namespace AdaptOrDeity.Headless
@@ -15,7 +14,7 @@ namespace AdaptOrDeity.Headless
     /// <c>AdaptOrDeity.Headless protocol obs_data.json cells out.csv [workers] [relativeTolerance]</c>: a colony of
     /// fermenter cells (each a separate cell, as libcuflynx builds the same colony from a module array) run through the
     /// protocol of a libcuflynx obs_data.json (first experiment: its sub-experiments in turn, each setting
-    /// <c>params_to_change</c> named <c>cell_&lt;i&gt;/&lt;kernel input&gt;</c> before it runs) with the game's integrator on
+    /// <c>params_to_change</c> named <c>cell_&lt;i&gt;/&lt;module input&gt;</c> before it runs) with the game's integrator on
     /// worker threads. Writes every state of every cell each second to <c>out.csv</c> and prints the integration's wall
     /// time as one JSON line. For tools/interop/test_solver_agreement.py.
     /// </summary>
@@ -37,10 +36,9 @@ namespace AdaptOrDeity.Headless
             var changes = protocol.TryGetValue("params_to_change", out var p) && p is Dictionary<string, object?> c
                 ? c : new Dictionary<string, object?>();
 
-            var kernel = new GenericAdaptiveCell_fermenter();
             var colony = new FermenterCell[cells];
             for (int i = 0; i < cells; i++)
-                colony[i] = new FermenterCell(kernel, TraitCatalog.Fermenter) { RelativeTolerance = rtol };
+                colony[i] = new FermenterCell(TraitCatalog.Fermenter) { RelativeTolerance = rtol };
             int n = colony[0].Batch.States.Length;
 
             using var pool = new ParallelWork(workers);
@@ -87,7 +85,7 @@ namespace AdaptOrDeity.Headless
 
             var csv = new StringBuilder("time");
             for (int i = 0; i < cells; i++)
-                foreach (var v in kernel.Descriptor.States)
+                foreach (var v in FermenterCell.Module.Descriptor.States)
                     csv.Append(",cell_").Append(i).Append('/').Append(v.Name);
             csv.Append('\n');
             foreach (var row in rows)
@@ -99,7 +97,7 @@ namespace AdaptOrDeity.Headless
             File.WriteAllText(outPath, csv.ToString());
             long accepted = 0;
             foreach (var cell in colony)
-                accepted += cell.AcceptedSteps;
+                accepted += cell.Statistics.Steps;
             Console.WriteLine(FormattableString.Invariant(
                 $"{{\"wall_s\": {wall:R}, \"workers\": {workers}, \"cells\": {cells}, \"relative_tolerance\": {rtol:R}, \"accepted_steps\": {accepted}}}"));
             return 0;

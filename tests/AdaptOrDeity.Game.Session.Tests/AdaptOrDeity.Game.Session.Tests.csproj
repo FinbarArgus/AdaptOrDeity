@@ -3,6 +3,6 @@
     <ProjectReference Include="../../src/AdaptOrDeity.Game.Session/AdaptOrDeity.Game.Session.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="../CellLibrary.cs" Link="CellLibrary.cs" />
+    <Compile Include="../ModuleLibrary.cs" Link="ModuleLibrary.cs" />
   </ItemGroup>
 </Project>

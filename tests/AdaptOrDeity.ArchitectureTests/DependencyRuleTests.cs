@@ -18,7 +18,6 @@ namespace AdaptOrDeity.ArchitectureTests
             ["AdaptOrDeity.Sim.Core"] = 0,
             ["AdaptOrDeity.Sim.Mesh"] = 1,
             ["AdaptOrDeity.Sim.Modules"] = 1,
-            ["AdaptOrDeity.Sim.Kernels.Generated"] = 2,
             ["AdaptOrDeity.Sim.Transport"] = 2,
             ["AdaptOrDeity.Sim.Physiology"] = 3,
             ["AdaptOrDeity.Sim.World"] = 3,
@@ -89,7 +88,7 @@ namespace AdaptOrDeity.ArchitectureTests
             var assemblies = new[]
             {
                 typeof(Sim.Core.AssemblyMarker).Assembly, typeof(Sim.Mesh.AssemblyMarker).Assembly,
-                typeof(Sim.Modules.AssemblyMarker).Assembly, typeof(Sim.Kernels.Generated.AssemblyMarker).Assembly,
+                typeof(Sim.Modules.AssemblyMarker).Assembly,
                 typeof(Sim.Transport.AssemblyMarker).Assembly, typeof(Sim.Physiology.AssemblyMarker).Assembly,
                 typeof(Sim.World.AssemblyMarker).Assembly, typeof(Game.Rules.AssemblyMarker).Assembly,
                 typeof(Game.Content.AssemblyMarker).Assembly, typeof(Game.Persistence.AssemblyMarker).Assembly,

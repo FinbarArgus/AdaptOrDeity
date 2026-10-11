@@ -50,21 +50,20 @@ namespace AdaptOrDeity.Sim.Physiology
     }
 
     /// <summary>
-    /// The fermenter cell (circulatory-autogen-modules cell/generic_adaptive_cell fermenter, assembled into one kernel),
-    /// stepped by backward Euler, stable at macro steps far longer than the Ca buffer's microsecond time constant.
-    /// Its physiology is all in the kernel: each protein's expression approaches the target the player sets, building
-    /// the new copies costs ATP and is capped and throttled by the cell's protein synthesis, growth is asked in
-    /// multiples of the resting turnover and throttled the same way, and the daughter's cost and the share built are
-    /// kernel outputs. This class sets targets and controls, keeps targets within the membrane room the proteins leave,
-    /// runs the events (division, death) and reads the budget.
+    /// The fermenter cell (circulatory-autogen-modules cell/generic_adaptive_cell fermenter, assembled into one module),
+    /// integrated by libcuflynx's generated C (<see cref="NativeInstance"/>: adaptive TR-BDF2, stable at world steps far
+    /// longer than the Ca buffer's microsecond time constant). Its physiology is all in the module: each protein's
+    /// expression approaches the target the player sets, building the new copies costs ATP and is capped and throttled
+    /// by the cell's protein synthesis, growth is asked in multiples of the resting turnover and throttled the same
+    /// way, and the daughter's cost and the share built are module outputs. This class sets targets and controls, keeps
+    /// targets within the membrane room the proteins leave, runs the events (division, death) and reads the budget.
     /// </summary>
     public sealed class FermenterCell
     {
-        private readonly IKernel _kernel;
-        private readonly IOutputKernel? _outputs;
+        private readonly NativeModule _module;
+        private readonly NativeInstance _native;
         private readonly bool[] _isOutput;
         private bool _variablesCurrent;
-        private readonly BackwardEulerIntegrator _integrator = new BackwardEulerIntegrator();
         private readonly int[] _target, _expression, _areaPerUnit;
         private readonly int _growthLevel, _storeAlloc, _repairLevel, _jRef;
         private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aRna, _aRibo, _aLipid, _aRepair;
@@ -72,12 +71,26 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly int _aGlycAtp, _aUptake, _aThrust, _aFlagPower, _eGlucose, _eMotor;
         private readonly int _sDamage, _sGrowth, _sGlycogen;
 
-        public FermenterCell(IKernel kernel, IReadOnlyList<TraitDefinition> traits, string instance = "default")
+        /// <summary>The fermenter module in the game's module library.</summary>
+        public static NativeModule Module => NativeModule.Get("generic_adaptive_cell", "fermenter");
+
+        /// <summary>Relative tolerance new cells are integrated at.</summary>
+        public static double DefaultRelativeTolerance { get; set; } = 1e-4;
+
+        /// <summary>A cell of the fermenter module with the named parameter set's values and initial values.</summary>
+        public FermenterCell(IReadOnlyList<TraitDefinition> traits, string instance = "default")
+            : this(Module, traits, instance, null)
         {
-            _kernel = kernel;
+        }
+
+        // A new cell, or a daughter: same module, a copy of the parent's state, parameters and integration.
+        private FermenterCell(NativeModule module, IReadOnlyList<TraitDefinition> traits, string instance, FermenterCell? parent)
+        {
+            _module = module;
+            var d = module.Descriptor;
             Traits = traits;
             Instance = instance;
-            Batch = new KernelBatch(kernel.Descriptor, 1) { Count = 1 };
+            Batch = new KernelBatch(d, 1) { Count = 1 };
             Batch.ApplyInstance(instance, 0, 1);
             _target = new int[traits.Count];
             _expression = new int[traits.Count];
@@ -127,34 +140,26 @@ namespace AdaptOrDeity.Sim.Physiology
             _sDamage = St("bio__D");
             _sGrowth = St("bio__P_growth");
             _sGlycogen = St("cytosol__C_glyc");
-            _outputs = kernel as IOutputKernel;
-            _isOutput = new bool[kernel.Descriptor.Algebraic.Count];
-            if (_outputs != null)
-                foreach (int i in _outputs.Outputs)
-                    _isOutput[i] = true;
-            _integrator.ComputeVariablesAfterStep = _outputs == null;
-            kernel.Initialise(Batch, 0, 1);
-            kernel.ComputeVariables(0.0, Batch, 0, 1);
-            _variablesCurrent = true;
-            if (NativeIntegration && NativeCell.Available(kernel.Descriptor, out _))
+            _isOutput = new bool[d.Algebraic.Count];
+            foreach (var (k, _) in module.Outputs)
+                _isOutput[k] = true;
+            if (parent == null)
             {
-                _native = NativeCell.Create(kernel.Descriptor, NativeRelativeTolerance);
-                Array.Clear(_isOutput, 0, _isOutput.Length);
-                foreach (var (k, _) in _native.Map.Outputs)
-                    _isOutput[k] = true;
+                _native = module.CreateInstance(DefaultRelativeTolerance);
+                _native.InitialiseStates(Batch);
+                _native.ComputeVariables(Batch);
+            }
+            else
+            {
+                _native = parent._native.Copy();
+                for (int i = 0; i < Batch.States.Length; i++)
+                    Batch.States[i][0] = parent.Batch.States[i][0];
+                for (int i = 0; i < Batch.Externals.Length; i++)
+                    Batch.Externals[i][0] = parent.Batch.Externals[i][0];
+                Time = parent.Time;
                 Recompute();
             }
-        }
-
-        // A daughter: same kernel, a copy of the parent's state and parameters (targets and controls included).
-        private FermenterCell(IKernel kernel, FermenterCell parent) : this(kernel, parent.Traits, parent.Instance)
-        {
-            for (int i = 0; i < Batch.States.Length; i++)
-                Batch.States[i][0] = parent.Batch.States[i][0];
-            for (int i = 0; i < Batch.Externals.Length; i++)
-                Batch.Externals[i][0] = parent.Batch.Externals[i][0];
-            Time = parent.Time;
-            Recompute();
+            _variablesCurrent = true;
         }
 
         private const string GrowthParameter = "growth_level_mod_bio", StorageParameter = "store_alloc_mod_cytosol",
@@ -162,27 +167,21 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public KernelBatch Batch { get; }
 
-        /// <summary>The kernel's parameter instance the cell started from.</summary>
+        /// <summary>The module's parameter set the cell started from.</summary>
         public string Instance { get; }
 
-        /// <summary>Kernel parameters the player sets: each trait's target, then the growth, storage and repair controls.</summary>
+        /// <summary>Module parameters the player sets: each trait's target, then the growth, storage and repair controls.</summary>
         public IReadOnlyList<string> PlayerParameters { get; }
 
         public IReadOnlyList<TraitDefinition> Traits { get; }
 
         public double Time { get; private set; }
 
-        /// <summary>Resting ATP turnover of the cell [mol/s] (the kernel's J_ref): the scale of growth.</summary>
+        /// <summary>Resting ATP turnover of the cell [mol/s] (the module's J_ref): the scale of growth.</summary>
         public double RestingTurnover => Batch.Externals[_jRef][0];
 
         /// <summary>False once damage reached a lethal load; a dead cell is no longer stepped.</summary>
         public bool Alive { get; private set; } = true;
-
-        /// <summary>True if the last step's Newton iterations converged.</summary>
-        public bool Converged => _integrator.LastConverged;
-
-        /// <summary>Step halvings the last step needed (0 normally; more after abrupt changes).</summary>
-        public int LastHalvings { get; private set; }
 
         /// <summary>Expression now (the pool's state).</summary>
         public double TraitValue(int trait) => Batch.States[_expression[trait]][0];
@@ -311,17 +310,16 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public double State(string name) => Batch.States[St(name)][0];
 
-        /// <summary>Sets a state (tests, development aids) and recomputes the kernel's outputs from it.</summary>
+        /// <summary>Sets a state (tests, development aids) and recomputes the module's values from it.</summary>
         public void SetState(string name, double value)
         {
             Batch.States[St(name)][0] = value;
             Recompute();
-            Restart();
         }
 
         public double AlgebraicValue(string name) => A(Alg(name));
 
-        // Algebraic variable i now: the kernel's outputs are kept current after every step, the rest are computed when
+        // Algebraic variable i now: the module's outputs are kept current after every step, the rest are computed when
         // first read (most steps nobody reads them).
         private double A(int i)
         {
@@ -338,259 +336,51 @@ namespace AdaptOrDeity.Sim.Physiology
         {
             if (_variablesCurrent)
                 return;
-            if (_native != null)
-            {
-                _native.SetInputs(Batch);
-                _native.ComputeVariables(Batch);
-            }
-            else
-                _kernel.ComputeVariables(Time, Batch, 0, 1);
+            _native.SetInputs(Batch);
+            _native.ComputeVariables(Batch);
             _variablesCurrent = true;
         }
 
-        // Every algebraic value after the batch's states were set: the native library takes them (and integrates
-        // afresh from them).
+        // Every algebraic value after the batch's states were set from outside; the integration starts afresh from them.
         private void Recompute()
         {
-            if (_native != null)
-            {
-                _native.SetInputs(Batch);
-                _native.SetStates(Batch);
-                _nativeRestart = false;
-                _native.ComputeVariables(Batch);
-            }
-            else
-                _kernel.ComputeVariables(Time, Batch, 0, 1);
+            _native.SetInputs(Batch);
+            _native.SetStates(Batch);
+            _native.ComputeVariables(Batch);
             _variablesCurrent = true;
         }
 
-        /// <summary>The integrator (diagnostics, benchmarks).</summary>
-        public BackwardEulerIntegrator Integrator => _integrator;
+        /// <summary>Relative local error allowed per step of the cell's integration.</summary>
+        public double RelativeTolerance
+        {
+            get => _relativeTolerance;
+            set
+            {
+                _relativeTolerance = value;
+                _native.SetRelativeTolerance(value);
+            }
+        }
+
+        private double _relativeTolerance = DefaultRelativeTolerance;
+
+        /// <summary>The integration's steps accepted and rejected, rate evaluations and Jacobians so far (diagnostics).</summary>
+        public (long Steps, long Rejected, long RateEvaluations, long Jacobians) Statistics => _native.Statistics;
 
         /// <summary>
-        /// Integrate with error-controlled steps that grow while nothing changes (true), or one backward Euler step per
-        /// call (false: the reference).
+        /// Advances by <paramref name="dt"/> [s]: the cell's inputs go to the library (a changed one restarts what reads
+        /// it), its own adaptive steps cover dt, and the states and the module's outputs come back.
         /// </summary>
-        public bool Adaptive { get; set; } = true;
-
-        /// <summary>Relative local error allowed per adaptive step.</summary>
-        public double RelativeTolerance { get; set; } = 1e-2;
-
-        /// <summary>Longest adaptive step [s].</summary>
-        public double MaxStep { get; set; } = 60.0;
-
-        /// <summary>Adaptive steps accepted and rejected so far (diagnostics).</summary>
-        public long AcceptedSteps { get; private set; }
-
-        public long RejectedSteps { get; private set; }
-
         public void Step(double dt)
         {
             if (!Alive)
                 return;
-            if (_native != null)
-                StepNative(dt);
-            else if (Adaptive)
-            {
-                if (!StepAdaptive(dt))
-                    return;   // asleep: state, inputs and outputs unchanged
-            }
-            else
-            {
-                LastHalvings = _integrator.StepRobust(_kernel, Batch, Time, dt, 0, 1);
-                Time += dt;
-            }
-            if (_native != null)
-            {
-                _native.Outputs(Batch);   // the rest on demand (EnsureVariables)
-                _variablesCurrent = false;
-            }
-            else if (_outputs != null)
-            {
-                _outputs.ComputeOutputs(Time, Batch, 0, 1);   // the rest on demand (EnsureVariables)
-                _variablesCurrent = false;
-            }
-            else
-                Recompute();
-            if (Damage >= 1.0)
-                Alive = false;
-        }
-
-        /// <summary>
-        /// Cells created from now on are integrated by libcuflynx's generated C (<see cref="NativeCell"/>) when the
-        /// library is present (true, the default), else by the C# integrator below.
-        /// </summary>
-        public static bool NativeIntegration { get; set; } = true;
-
-        /// <summary>Relative tolerance of the native integrator (TR-BDF2).</summary>
-        public static double NativeRelativeTolerance { get; set; } = 1e-4;
-
-        /// <summary>Whether this cell is integrated by the native library.</summary>
-        public bool IsNative => _native != null;
-
-        private NativeCell? _native;
-        private bool _nativeRestart = true;   // the batch's states are new to the native instance
-
-        // The native library takes over the integration: the batch's inputs go in (changed parameters recompute its
-        // computed constants and restart what reads them), its states come back.
-        private void StepNative(double dt)
-        {
-            _native!.SetInputs(Batch);
-            if (_nativeRestart)
-            {
-                _native.SetStates(Batch);
-                _nativeRestart = false;
-            }
+            _native.SetInputs(Batch);
             _native.Advance(dt, Batch);
             Time += dt;
-        }
-
-        // Adaptive stepping. The cell integrates ahead of the world over [_ta, _tb] with one accepted backward Euler step
-        // and the world reads the state linearly interpolated at its own time, so the 0.1 s world step costs an
-        // interpolation instead of a solve while nothing changes. A changed input (motor switch, food, a slider) or a state
-        // set from outside restarts the interval at the current time, so nothing is integrated with stale inputs.
-        private double[] _ya = Array.Empty<double>(), _yb = Array.Empty<double>(), _f0 = Array.Empty<double>();
-        private double[] _extAt = Array.Empty<double>(), _errScale = Array.Empty<double>();
-        private double _ta, _tb, _h = 0.1;
-        private bool _interval;
-
-        /// <summary>
-        /// Sleep: a cell whose states would all move by less than this fraction of their size over <see cref="MaxSleep"/>
-        /// (at its current slope) holds its state and skips all work until an input changes or MaxSleep passes. 0 (the
-        /// default) never sleeps: results are then independent of sleeping.
-        /// </summary>
-        public double SleepTolerance { get; set; }
-
-        /// <summary>Longest sleep [s] before the cell looks at its rates again.</summary>
-        public double MaxSleep { get; set; } = 30.0;
-
-        public bool Asleep { get; private set; }
-
-        /// <summary>Calls slept through so far (diagnostics).</summary>
-        public long SleptSteps { get; private set; }
-
-        private double _sleptAt;
-
-        // Returns false when the cell slept through the call (nothing changed).
-        private bool StepAdaptive(double dt)
-        {
-            int n = Batch.States.Length;
-            if (_ya.Length != n)
-            {
-                _ya = new double[n];
-                _yb = new double[n];
-                _f0 = new double[n];
-                _errScale = new double[n];
-                for (int i = 0; i < n; i++)
-                    _errScale[i] = Math.Max(Math.Abs(Batch.States[i][0]), 1e-12);   // typical sizes: the starting state
-                _extAt = new double[Batch.Externals.Length];
-            }
-            double t0 = Time;
-            Time += dt;
-            bool changed = ExternalsChanged();
-            if (Asleep)
-            {
-                if (!changed && Time - _sleptAt < MaxSleep)
-                {
-                    SleptSteps++;
-                    return false;
-                }
-                Asleep = false;
-                _interval = false;   // integrate afresh from the held state
-            }
-            if (!_interval || changed)
-            {
-                // restart from the state now, with a short first step
-                for (int i = 0; i < n; i++)
-                    _ya[i] = _yb[i] = Batch.States[i][0];
-                for (int e = 0; e < _extAt.Length; e++)
-                    _extAt[e] = Batch.Externals[e][0];
-                _ta = _tb = t0;
-                _h = Math.Min(_h, dt);
-                _interval = true;
-            }
-            while (_tb < Time - 1e-9)
-                Advance(n);
-            double theta = (Time - _ta) / (_tb - _ta);
-            for (int i = 0; i < n; i++)
-                Batch.States[i][0] = _ya[i] + theta * (_yb[i] - _ya[i]);
-            if (SleepTolerance > 0.0 && _tb > _ta)
-            {
-                double drift = 0.0;   // largest move of a state over MaxSleep at the current slope, relative to its size
-                for (int i = 0; i < n; i++)
-                    drift = Math.Max(drift, Math.Abs(_yb[i] - _ya[i]) / (_tb - _ta) * MaxSleep / _errScale[i]);
-                if (drift < SleepTolerance)
-                {
-                    Asleep = true;
-                    _sleptAt = Time;
-                }
-            }
-            return true;
-        }
-
-        /// <summary>One accepted step from _tb: error-controlled, halving on rejection or Newton failure.</summary>
-        private void Advance(int n)
-        {
-            double[][] y = Batch.States;
-            for (int i = 0; i < n; i++)
-                y[i][0] = _yb[i];
-            _kernel.ComputeRates(_tb, Batch, 0, 1);
-            for (int i = 0; i < n; i++)
-                _f0[i] = Batch.Rates[i][0];
-            double h = Math.Min(_h, MaxStep);
-            while (true)
-            {
-                _integrator.Step(_kernel, Batch, _tb, h, 0, 1);
-                bool finite = true;
-                for (int i = 0; i < n && finite; i++)
-                    finite = !double.IsNaN(y[i][0]) && !double.IsInfinity(y[i][0]);
-                double err = double.PositiveInfinity;
-                if (_integrator.LastConverged && finite)
-                {
-                    // backward Euler's local error ~ h/2 |f(y1) - f(y0)|, relative to each state's size
-                    _kernel.ComputeRates(_tb + h, Batch, 0, 1);
-                    err = 0.0;
-                    for (int i = 0; i < n; i++)
-                        err = Math.Max(err, 0.5 * h * Math.Abs(Batch.Rates[i][0] - _f0[i]) / (RelativeTolerance * _errScale[i]));
-                }
-                if (err <= 1.0 || h <= 1e-6)
-                {
-                    AcceptedSteps++;
-                    for (int i = 0; i < n; i++)
-                    {
-                        _ya[i] = _yb[i];
-                        _yb[i] = y[i][0];
-                        // each state's size for the error test: the largest it has been (an absolute tolerance that
-                        // follows the state, so one decaying towards zero is not resolved to ever smaller digits)
-                        _errScale[i] = Math.Max(_errScale[i], Math.Abs(y[i][0]));
-                    }
-                    _ta = _tb;
-                    _tb += h;
-                    _h = Math.Min(MaxStep, h * Math.Min(4.0, 0.9 / Math.Sqrt(Math.Max(err, 1e-12))));
-                    return;
-                }
-                RejectedSteps++;
-                for (int i = 0; i < n; i++)
-                    y[i][0] = _yb[i];
-                h *= double.IsInfinity(err) ? 0.25 : Math.Max(0.2, 0.9 / Math.Sqrt(err));
-            }
-        }
-
-        private bool ExternalsChanged()
-        {
-            for (int e = 0; e < _extAt.Length; e++)
-                if (Batch.Externals[e][0] != _extAt[e])
-                    return true;
-            return false;
-        }
-
-        /// <summary>The state was set from outside: integrate afresh from it.</summary>
-        private void Restart()
-        {
-            _nativeRestart = true;
-            _interval = false;
-            Asleep = false;
-            _integrator.Invalidate();
+            _native.Outputs(Batch);   // the rest on demand (EnsureVariables)
+            _variablesCurrent = false;
+            if (Damage >= 1.0)
+                Alive = false;
         }
 
         /// <summary>
@@ -606,11 +396,10 @@ namespace AdaptOrDeity.Sim.Physiology
                 Batch.States[_sGlycogen][0] = Math.Max(0.0, Glycogen * (1.0 - shortfall / GlycogenAtp));
             Batch.States[_sGrowth][0] = 0.0;
             Recompute();
-            Restart();
-            return new FermenterCell(_kernel, this);
+            return new FermenterCell(_module, Traits, Instance, this);
         }
 
-        /// <summary>The energy budget now [mol ATP/s, W], read from the kernel.</summary>
+        /// <summary>The energy budget now [mol ATP/s, W], read from the module.</summary>
         public EnergyBudget Budget()
         {
             EnsureVariables();
@@ -632,16 +421,16 @@ namespace AdaptOrDeity.Sim.Physiology
             };
         }
 
-        private int Ext(string name) => Require(_kernel.Descriptor.ExternalIndex(name), name);
+        private int Ext(string name) => Require(_module.Descriptor.ExternalIndex(name), name);
 
-        private int Alg(string name) => Require(_kernel.Descriptor.AlgebraicIndex(name), name);
+        private int Alg(string name) => Require(_module.Descriptor.AlgebraicIndex(name), name);
 
-        private int St(string name) => Require(_kernel.Descriptor.StateIndex(name), name);
+        private int St(string name) => Require(_module.Descriptor.StateIndex(name), name);
 
         private int Require(int index, string name)
         {
             if (index < 0)
-                throw new ArgumentException($"{_kernel.Descriptor.Key} has no variable {name}");
+                throw new ArgumentException($"{_module.Descriptor.Key} has no variable {name}");
             return index;
         }
     }

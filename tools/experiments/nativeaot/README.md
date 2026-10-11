@@ -1,5 +1,8 @@
 # The simulation as a NativeAOT library (prototype)
 
+Measured on the C# kernels and integrator the game used before it moved to libcuflynx's generated C
+(docs/plans/libcuflynx-solver.md); they were removed after commit 739a347, so check that commit out to rerun these.
+
 The simulation libraries compiled ahead of time with .NET into one shared library with C entry points
 (`Exports.cs`): what Unity would load as a native plugin, keeping drawing and UI on Unity (decision 2026-10-11,
 docs/plans/parallel-and-gpu.md). Not part of the build.

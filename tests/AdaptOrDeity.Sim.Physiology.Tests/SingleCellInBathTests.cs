@@ -1,5 +1,5 @@
 using System;
-using AdaptOrDeity.Sim.Kernels.Generated;
+using AdaptOrDeity.Sim.Modules;
 
 namespace AdaptOrDeity.Sim.Physiology.Tests
 {
@@ -17,7 +17,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         [TestCase(0.02)]  // hypoxic water
         public void ReachesAnalyticSteadyState(double bath)
         {
-            var cell = new SingleCellInBath(new TissueDiffusionVolume_nn(), "default", "C_P", "flux_c", Conductance, bath);
+            var cell = new SingleCellInBath(NativeModule.Get("tissue_diffusion_volume", "nn"), "default", "C_P", "flux_c", Conductance, bath);
             var d = cell.Batch.Descriptor;
             double v = cell.Batch.Externals[d.ExternalIndex("V_P")][0];
             double m = cell.Batch.Externals[d.ExternalIndex("M")][0];
@@ -39,7 +39,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         [Test]
         public void NoConsumptionEquilibratesWithBath()
         {
-            var cell = new SingleCellInBath(new TissueDiffusionVolume_nn(), "default", "C_P", "flux_c", Conductance, 0.2);
+            var cell = new SingleCellInBath(NativeModule.Get("tissue_diffusion_volume", "nn"), "default", "C_P", "flux_c", Conductance, 0.2);
             cell.Batch.Externals[cell.Batch.Descriptor.ExternalIndex("M")][0] = 0.0;
             for (int i = 0; i < 20000; i++)
                 cell.Step(1e-4);

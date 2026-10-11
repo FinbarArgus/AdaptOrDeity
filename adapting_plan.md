@@ -393,6 +393,8 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   libcuflynx (#573): analysis and differentiation shared, thin C and C# emitters.
 - **2026-10-12** Cells move to libcuflynx's generated C and its `BE_batched_c` runtime (docs/plans/libcuflynx-solver.md),
   replacing the game's C# kernels and integrator: ~19x faster per thread on the colony protocol and more accurate.
+- **2026-10-12** The C# simulation path is retired: every module runs from one library of libcuflynx's generated C
+  (`aod_modules`), which every build and test now needs (CMake and a C compiler; CI builds it on all platforms).
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
