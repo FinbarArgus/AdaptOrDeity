@@ -182,6 +182,7 @@ physiology near steady state. Worth trying once 1–3 are done, if a level needs
 | 4 | clones, sleeping steady cells, levels of detail in play | top speed with 5k cells at 60 fps |
 | 5 | environment field: implicit or spectral steps at the exchange interval, several species per pass, on CPU cores; GPU display | 256² field < 5% of the frame at top speed |
 | 6 | GPU field (compute shader) when grids or species grow; GPU cell kinetics only as a gated experiment | measured gain over step 5 |
+| 7 | NativeAOT simulation library in Unity: **prototype done 2026-10-11** (tools/experiments/nativeaot): loads beside Mono; JIT speed; 64-cell colony 1.5× (1 worker) to ~10× (4–8 workers) over Mono, whose threading is slower than one thread (so ParallelWork defaults to 1 worker on Mono). Next: a C ABI for the session (create, commands, step, snapshot into caller-owned buffers), Unity calling it, a managed fallback | Unity editor and player run the game through the library; tests pass on both |
 
 ## Sources
 

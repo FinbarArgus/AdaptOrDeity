@@ -43,9 +43,13 @@ namespace AdaptOrDeity.Sim.Core
 
         /// <summary>
         /// Half the hardware threads less one (roughly the physical cores, leaving one for the front end), at most 8:
-        /// with tens of cells per step, waking more threads costs more than they save (colony-bench).
+        /// with tens of cells per step, waking more threads costs more than they save (colony-bench). One under Mono
+        /// (Unity's editor and Mono builds), where the same colony took 2.5x longer on 4 workers than on 1
+        /// (tools/experiments/nativeaot); the NativeAOT simulation library runs threaded inside Unity instead.
         /// </summary>
-        public static int DefaultWorkers => Math.Max(1, Math.Min(8, Environment.ProcessorCount / 2 - 1));
+        public static int DefaultWorkers => OnMono ? 1 : Math.Max(1, Math.Min(8, Environment.ProcessorCount / 2 - 1));
+
+        private static readonly bool OnMono = Type.GetType("Mono.Runtime") != null;
 
         public int Workers { get; }
 

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The simulation as a NativeAOT shared library with C entry points (docs/plans/parallel-and-gpu.md, step 6;
+       user decision 2026-10-11: Unity keeps drawing and UI, the simulation runs on modern .NET). Prototype. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <PublishAot>true</PublishAot>
+    <NativeLib>Shared</NativeLib>
+    <AssemblyName>aod_sim</AssemblyName>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <IlcInstructionSet>x86-x64-v3</IlcInstructionSet>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/AdaptOrDeity.Game.Session/AdaptOrDeity.Game.Session.csproj" />
+  </ItemGroup>
+</Project>
