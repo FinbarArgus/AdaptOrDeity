@@ -32,6 +32,26 @@ Cost of one evaluation of the fermenter cell's rates (25 states, 278 inputs, 289
 - **Reading results back from the GPU costs about as much as computing them** (1–7 ms for all rates of 65k–262k cells),
   so anything on the GPU must stay there for many steps.
 
+### Scaling to 5,000 cells (2026-10-11, `Headless scale-bench`, 8 workers of 20 hardware threads)
+
+Wall time per simulated second; real-time multiple in brackets.
+
+| cells | game world, 1 / 8 workers | one frame | cells alone, busy, 1 / 8 | cells alone, calm, 1 / 8 |
+|---|---|---|---|---|
+| 64 | 5.7 / 3.3 ms | 0.6 ms, 0.1 MB | 2.0 / 0.3 ms | 0.28 / 0.03 ms |
+| 1,024 | 95 / 20 ms (50×) | 4 ms, 0.6 MB | 28 / 5 ms | 3.2 / 0.8 ms |
+| 5,000 | 572 / 140 ms (7×) | 32 ms, 4.5 MB | 140 / 25–41 ms | 16 / 4.6 ms |
+
+- Cost grows linearly with cells: ~28 µs per busy cell-second and ~3 µs per calm one on one thread.
+- At 5,000 cells the world's serial parts are 44 of its 135 ms (8 workers): motility and body 17, cell inputs 12, food
+  withdrawal 10, division checks 5. They cap its threaded speed-up at ~4×.
+- The threaded session, with the front end taking frames at 60 Hz, reaches 364× real time at 64 cells, 24× at 1,024 and
+  2× at 5,000. That is well below headless at scale: frame writing and the tick budget take the rest.
+- CVODES (libcuflynx + Myokit, one coupled system, 1 core), 300 s with every cell fed:
+  - 16 cells: 0.67 s run, 51 s build;
+  - 64 cells: 5.8 s run, 741 s build. Four times the cells cost 8.7× the time (~N^1.6), so 5,000 cells is out of reach.
+  - Ours on 64 cells: 0.88 s on 1 worker (6.6× CVODES), 0.46 s on 8 (12.7×). With only cell 0 fed: 35× and 58×.
+
 ## What others do
 
 - **Games keep simulation on the CPU and the GPU for showing it.** Thrive (C#, the closest game to ours) diffuses its
