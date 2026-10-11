@@ -9,7 +9,7 @@
     <AssemblyName>aod_sim</AssemblyName>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <InvariantGlobalization>true</InvariantGlobalization>
-    <IlcInstructionSet>x86-x64-v3</IlcInstructionSet>
+    <IlcInstructionSet Condition="$(RuntimeIdentifier.EndsWith('-x64'))">x86-x64-v3</IlcInstructionSet>
   </PropertyGroup>
   <!-- The cell model in libcuflynx's generated C (src/AdaptOrDeity.Cells, tools/scripts/build_cell_library.py),
        linked in when built: libaod_cell_static.a (Linux, macOS) or aod_cell_static.lib (Windows). -->
