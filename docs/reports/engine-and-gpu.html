@@ -106,7 +106,8 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 0; }
     <li><strong>Most of the speed-up does not need a new engine.</strong> Generating the cell kernel in a lean layout and running cells on all cores gives about 7–8× over today, inside Unity.</li>
     <li><strong>Leaving Unity's Mono runtime adds about 2× more</strong> (measured, same code), and modern .NET's SIMD adds about 3× on top on one core. Together, roughly 20× over today's path per core.</li>
     <li><strong>A custom engine is feasible</strong>: the Unity side of the game is only ~1,600 lines (immediate-mode panels, sprites, lines, a camera). But we would own windowing, text, UI, audio, builds and every platform. A lighter option gets the runtime gain while keeping Unity: compile the simulation with .NET NativeAOT and load it into Unity as a native library, or wait for Unity 6.8's CoreCLR player.</li>
-    <li><strong>The GPU pays in single precision only.</strong> Our kernel in float runs ~35× faster than the best CPU path; in double it is no faster than the CPU on a consumer GPU. Single precision is risky for stiff cell chemistry, so use the GPU first for the environment field and drawing, and treat GPU cell kinetics as a gated experiment.</li>
+    <li><strong>The GPU pays in single precision only.</strong> Our kernel in float runs ~35× faster than the best CPU path; in double it is no faster than the CPU on a consumer GPU. Single precision is risky for stiff cell chemistry, so the GPU is for well-conditioned work: drawing and diffusion.</li>
+    <li><strong>Cells on the CPU, diffusion on the GPU</strong> (<a href="#split">below</a>): with one species on a 256² grid, ~1.5× overall, because the cells dominate; with 8 species or a 1024² grid, 5–10×. But the method matters more than the device: implicit steps on the CPU match the GPU in the small case and beat it by 6× on a fine 1024² grid (1 µm spacing), because the explicit step's stability limit forces thousands of steps. The best plan uses both: large implicit steps, on the GPU once the field is big.</li>
   </ul>
 </section>
 
@@ -270,6 +271,103 @@ flowchart TD
   <p class="small prose">What other games do: Thrive, Oxygen Not Included, Noita, From Dust and Factorio all simulate their fluids or chemistry on CPU threads in chunks and use the GPU to draw. GPU fluids appear where the fluid itself is the product (Zibra Liquids, Obi's compute backend), and in reaction-diffusion demos that keep everything in GPU textures.</p>
 </section>
 
+<section id="split">
+  <div class="eyebrow">Measured · cells on the CPU, diffusion on the GPU</div>
+  <h2>What moving only diffusion to the GPU buys</h2>
+  <div class="prose" style="display:grid; gap:12px">
+    <p>Diffusion is the well-conditioned part: it is fine in single precision, every grid point does the same few operations, and it is the textbook GPU job. Unity runs it as a compute shader, or as a fragment shader ping-ponging between two render textures (the GPU Gems method); both work on Windows, macOS and Linux. The cell chemistry stays on the CPU in double precision.</p>
+    <p>The catch is the time step. An explicit diffusion step is only stable for <code>dt ≤ dx² / 4D</code>: with 4 µm grid spacing and oxygen's diffusivity (2×10⁻⁹ m²/s) that is 2 ms, so about 556 steps per simulated second, every one of them on the GPU or CPU. An implicit method (ADI) or an exact spectral step (FFT, multiply by <code>e^(−Dk²Δt)</code>, inverse FFT) has no such limit: one step per 0.1 s exchange with the cells, 10 per simulated second.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Grid</th><th class="r">Explicit step, CPU 1 core</th><th class="r">Explicit, CPU all cores</th><th class="r">Explicit, GPU</th><th class="r">ADI step (any Δt), CPU all cores</th><th class="r">Exact FFT step (any Δt), CPU 1 core</th></tr></thead>
+      <tbody>
+        <tr><td class="num">256²</td><td class="r num">78 µs</td><td class="r num">26 µs</td><td class="r num">6.1 µs</td><td class="r num">125 µs</td><td class="r num">411 µs</td></tr>
+        <tr><td class="num">512²</td><td class="r num">311 µs</td><td class="r num">65 µs</td><td class="r num">17.5 µs</td><td class="r num">1,098 µs</td><td class="r num">3,477 µs</td></tr>
+        <tr><td class="num">1024²</td><td class="r num">1,235 µs</td><td class="r num">532 µs</td><td class="r num">57 µs</td><td class="r num">5,821 µs</td><td class="r num">15,882 µs</td></tr>
+        <tr><td class="num">2048²</td><td class="r num">4,981 µs</td><td class="r num">2,908 µs</td><td class="r num">215 µs</td><td class="r num">13,594 µs</td><td class="r num">70,838 µs</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small prose">Single precision, one chemical species. GPU times are the GPU's own timestamps; issuing each step from the host cost ~85 µs more in this test, which batching many steps per dispatch (as a game would) removes. Coupling 5,000 cells to the GPU field (read the concentration at each cell back, send each cell's uptake) measured ~0.2 ms per exchange. The ADI and FFT codes are untuned (strided column sweeps; numpy's double-precision FFT on one core); tuned versions would be several times faster.</p>
+
+  <h3>Calculator</h3>
+  <p class="small prose">Time per simulated second for 5,000 busy cells plus the field, using the measured costs above. The field on the CPU shares the cores with the cells; on the GPU it runs at the same time as the cells, plus the coupling cost.</p>
+  <form id="calc" class="box" style="grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 18px;" onsubmit="return false">
+    <label class="small" for="c-n">Grid<br><select id="c-n"><option value="256" selected>256²</option><option value="512">512²</option><option value="1024">1024²</option><option value="2048">2048²</option></select></label>
+    <label class="small" for="c-dx">Grid spacing (µm)<br><input id="c-dx" type="number" min="0.5" max="20" step="0.5" value="4"></label>
+    <label class="small" for="c-d">Diffusing molecule<br><select id="c-d"><option value="6.7e-10">glucose (6.7×10⁻¹⁰ m²/s)</option><option value="2e-9" selected>oxygen (2×10⁻⁹ m²/s)</option><option value="1e-10">a protein signal (1×10⁻¹⁰ m²/s)</option></select></label>
+    <label class="small" for="c-s">Chemical species<br><input id="c-s" type="number" min="1" max="16" step="1" value="1"></label>
+    <label class="small" for="c-cells">Cells<br><input id="c-cells" type="number" min="100" max="50000" step="100" value="5000"></label>
+    <label class="small" for="c-path">Cell chemistry on the CPU<br><select id="c-path"><option value="2365">today (Unity Mono, per cell)</option><option value="314">Unity Mono, lean, all cores</option><option value="72" selected>.NET, lean, all cores</option><option value="60">.NET, lean + SIMD, all cores</option></select></label>
+  </form>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Field method</th><th class="r">ms per simulated second</th><th class="r">fastest real-time speed</th><th class="r">vs field on CPU, explicit</th></tr></thead>
+      <tbody id="c-out">
+        <tr><td>CPU, explicit (556 steps/s)</td><td class="r num">39.7</td><td class="r num">25×</td><td class="r num">1.0×</td></tr>
+        <tr><td><strong>GPU, explicit</strong> (cells stay on the CPU)</td><td class="r num">27.2</td><td class="r num">37×</td><td class="r num">1.5×</td></tr>
+        <tr><td>CPU, implicit ADI at each exchange</td><td class="r num">26.4</td><td class="r num">38×</td><td class="r num">1.5×</td></tr>
+        <tr><td>CPU, exact FFT step at each exchange</td><td class="r num">29.3</td><td class="r num">34×</td><td class="r num">1.4×</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small" id="c-note">Cells take 25.2 ms per simulated second; the explicit CPU field 14.5 ms (37% of the total). The cells dominate, so moving the field anywhere gives at most 1.6× overall.</p>
+  <p class="small prose">Try 8 species (GPU 4.8×, implicit CPU 4.0×), a 1024² grid (GPU 9.5×, implicit CPU 3.8×), or 1024² at 1 µm spacing (GPU 9.3×, implicit CPU 57×): finer grids shrink the explicit step quadratically, which no device makes up for.</p>
+
+  <h3>Better ideas than moving the explicit step to the GPU</h3>
+  <ul class="prose">
+    <li><strong>Choose the method before the device.</strong> Implicit steps (an L-stable variant of ADI, or locally one-dimensional backward Euler) or exact spectral steps make the field cost scale with the 10 exchanges per simulated second instead of with the stability limit. At high game speeds this matters more than the GPU: at 1,000× real time an explicit field needs ~9,000 steps per frame on a 256² grid and ~150,000 on a 1024² grid with 1 µm spacing.</li>
+    <li><strong>Several species in one pass.</strong> Pack four species into one RGBA texture or <code>float4</code> buffer (as Thrive does on the CPU with AVX): one memory pass moves four fields, so GPU cost barely grows with the species count.</li>
+    <li><strong>Quasi-steady field at high speed.</strong> When a frame covers more simulated time than the field takes to relax, solve the steady state (a screened Poisson problem, multigrid in a few step-equivalents) once per frame instead of stepping through time.</li>
+    <li><strong>Food packets as Green's functions.</strong> A diffusing packet is a spreading Gaussian with a closed-form solution; sum a few of them where a cell asks, instead of resolving them on a grid.</li>
+    <li><strong>Fine near the creature, coarse far away.</strong> A fine grid that moves with the body inside a coarse far field (nested grids) cuts the points by an order of magnitude.</li>
+    <li><strong>Use spare cores in parallel with the cells.</strong> Running the field on its own cores at the same time as the cells hides it, like the GPU does, without the readback delay.</li>
+    <li><strong>Several steps per GPU pass.</strong> If the explicit step does go to the GPU, update several time steps per dispatch in on-chip memory (temporal blocking) to cut memory traffic.</li>
+  </ul>
+  <p class="small prose">Accuracy notes: the classic Peaceman–Rachford ADI rings when steps are far longer than the explicit limit; use a damped (L-stable) variant. Spectral steps are exact for uniform diffusivity on a rectangle (cosine transforms give no-flux walls); sources and uptake are added at each exchange (operator splitting, which ADR 0002 already uses).</p>
+</section>
+
+<script>
+(function () {
+  var cpuExp = { 256: 26, 512: 65, 1024: 532, 2048: 2908 };      // µs per step, all cores
+  var gpuExp = { 256: 6.1, 512: 17.5, 1024: 57.3, 2048: 215 };
+  var adi = { 256: 125, 512: 1098, 1024: 5821, 2048: 13594 };
+  var fft = { 256: 411, 512: 3477, 1024: 15882, 2048: 70838 };
+  var EVALS = 70, EXCH = 10, COUPLING_MS = 0.2;
+  function v(id) { return parseFloat(document.getElementById(id).value); }
+  function fmt(x) { return x >= 100 ? Math.round(x).toLocaleString('en') : x.toFixed(1); }
+  function speed(ms) { var s = 1000 / ms; return (s >= 10 ? Math.round(s).toLocaleString('en') : s.toFixed(1)) + '×'; }
+  function update() {
+    var n = v('c-n'), dx = v('c-dx') * 1e-6, d = v('c-d'), sp = Math.max(1, v('c-s')), cells = v('c-cells'), ns = v('c-path');
+    if (!(dx > 0 && cells > 0)) return;
+    var cellsMs = cells * EVALS * ns * 1e-6;
+    var steps = Math.ceil(1 / (0.9 * dx * dx / (4 * d)));
+    var rows = [
+      ['CPU, explicit (' + steps.toLocaleString('en') + ' steps/s)', cellsMs + sp * steps * cpuExp[n] / 1000],
+      ['<strong>GPU, explicit</strong> (cells stay on the CPU)', Math.max(cellsMs, sp * steps * gpuExp[n] / 1000) + EXCH * COUPLING_MS],
+      ['CPU, implicit ADI at each exchange', cellsMs + sp * EXCH * adi[n] / 1000],
+      ['CPU, exact FFT step at each exchange', cellsMs + sp * EXCH * fft[n] / 1000]
+    ];
+    var base = rows[0][1];
+    document.getElementById('c-out').innerHTML = rows.map(function (r) {
+      return '<tr><td>' + r[0] + '</td><td class="r num">' + fmt(r[1]) + '</td><td class="r num">' + speed(r[1]) +
+             '</td><td class="r num">' + (base / r[1]).toFixed(1) + '×</td></tr>';
+    }).join('');
+    var fieldShare = (base - cellsMs) / base;
+    document.getElementById('c-note').textContent = 'Cells take ' + fmt(cellsMs) + ' ms per simulated second; the explicit CPU field ' +
+      fmt(base - cellsMs) + ' ms (' + Math.round(100 * fieldShare) + '% of the total). ' +
+      (fieldShare < 0.5 ? 'The cells dominate, so moving the field anywhere gives at most ' + (1 / (1 - fieldShare)).toFixed(1) + '× overall.'
+                        : 'The field dominates, so its method and device decide the speed.');
+  }
+  ['c-n', 'c-dx', 'c-d', 'c-s', 'c-cells', 'c-path'].forEach(function (id) {
+    var el = document.getElementById(id); el.addEventListener('input', update); el.addEventListener('change', update);
+  });
+  update();
+})();
+</script>
+
 <section>
   <div class="eyebrow">Recommendation</div>
   <h2>Path forward</h2>
@@ -277,7 +375,7 @@ flowchart TD
     <li><div><strong>Measure the runtime we ship.</strong> Run the kernel benchmark in a Unity IL2CPP player and the experimental CoreCLR player, next to Mono and .NET.<span class="small">Decides how much a runtime change is really worth.</span></div></li>
     <li><div><strong>Lean kernel layout and all cores, inside Unity.</strong> kernelgen change, batched integrator, fixed chunks.<span class="small">~8× now, no engine decision needed. Already step 1–3 of the parallel plan.</span></div></li>
     <li><div><strong>Prototype the simulation as a NativeAOT library loaded by Unity.</strong> Same libraries, compiled ahead of time with .NET 10, intrinsics enabled; Unity keeps rendering and UI.<span class="small">Gets the ~2× runtime and ~3× SIMD gains without rewriting the front end. Fall back to the managed build where AOT is a problem.</span></div></li>
-    <li><div><strong>GPU for the field and drawing; GPU cell chemistry only behind gates.</strong> Float accuracy over hours of play, ≥5× over the CPU path including transfers, a CPU fallback.<span class="small">Generate the GPU kernel (HLSL, or C# through ILGPU in a non-Unity build) from the same equations.</span></div></li>
+    <li><div><strong>Diffusion with large implicit or exact steps, then on the GPU.</strong> Write the field with steps tied to the cell exchange (implicit or spectral), several species per pass; run it on CPU cores beside the cells at 256², and as a compute shader kept on the GPU once grids or species grow. Cell chemistry stays on the CPU in double.<span class="small">The GPU is for well-conditioned work only: drawing and diffusion.</span></div></li>
     <li><div><strong>Revisit leaving Unity</strong> if step 3 fails or the game needs things Unity makes hard. Godot 4 C# is the lowest-risk engine unless the web matters; an ImGui app on Silk.NET is the cheapest if the game stays panel-heavy.</div></li>
   </ol>
 </section>
@@ -286,7 +384,7 @@ flowchart TD
 
 <section>
   <h2 style="font-size:19px">Method and sources</h2>
-  <p class="small prose">Benchmarks: <code>dotnet run -c Release --project src/AdaptOrDeity.Headless -- kernel-bench</code> and <code>tools/experiments/kernel_layout/</code> (lean and SIMD kernels derived from the generated fermenter kernel, the same code compiled with Unity 6000.3's Mono, OpenCL on the GPU). Each figure is the best of three timed runs after warm-up. Plan: <code>docs/plans/parallel-and-gpu.md</code>.</p>
+  <p class="small prose">Benchmarks: <code>dotnet run -c Release --project src/AdaptOrDeity.Headless -- kernel-bench</code> and <code>tools/experiments/kernel_layout/</code> (lean and SIMD kernels derived from the generated fermenter kernel, the same code compiled with Unity 6000.3's Mono, OpenCL on the GPU) and <code>tools/experiments/diffusion/</code> (explicit, ADI and FFT steps on CPU and GPU). Each figure is the best of three timed runs after warm-up. Plan: <code>docs/plans/parallel-and-gpu.md</code>.</p>
   <div class="sources">
     <p>Thrive, <a href="https://github.com/Revolutionary-Games/Thrive/blob/master/src/microbe_stage/CompoundCloudPlane.cs">CompoundCloudPlane.cs</a></p>
     <p>Oxygen Not Included, <a href="https://oxygennotincluded.wiki.gg/wiki/Versions/CU-271819">patch notes on the simulation texture</a></p>

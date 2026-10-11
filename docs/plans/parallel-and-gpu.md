@@ -115,21 +115,29 @@ desktop, CPU or GPU. The levers that remove work:
 - **Event-driven inputs.** The motor and food contact restart steps; group them so a run/pause switch does not restart
   every cell at once.
 
-### 4. The environment field (256²): CPU first, GPU only if it outgrows the CPU
+### 4. The environment field: large implicit steps, on the GPU once it is big
 
-Diffusion and advection of food, oxygen and signals in a 256² grid is ~65k points of a few operations each per
-substep: well within one CPU core per step, threaded in rows or chunks like Thrive and Noita, in float (diffusion is
-well-conditioned). Implicit diffusion (alternating-direction tridiagonal solves, as BioFVM does) and semi-Lagrangian
-advection (Stam) make the step size a gameplay choice rather than a stability limit.
+The GPU is used only for well-conditioned work: drawing and diffusion (user decision 2026-10-11). Measured
+(tools/experiments/diffusion, single precision): one explicit 5-point step costs 26 µs on all CPU cores and 6 µs on the
+GPU at 256², 532 µs and 57 µs at 1024²; an ADI step (any Δt) 125 µs and 5.8 ms on the CPU; coupling 5,000 cells to a
+GPU field ~0.2 ms per exchange.
 
-The GPU draws the field: upload the concentrations as a texture each frame and shade them (and the Voronoi body mesh's
-values, already planned for M3).
+- **Method first.** An explicit step is stable only for Δt ≤ dx²/4D (2 ms at 4 µm spacing for oxygen, so ~556 steps
+  per simulated second, ~9,000 per frame at 1,000× speed). Use steps tied to the cell exchange instead: an L-stable
+  implicit scheme (damped ADI or locally one-dimensional backward Euler), or an exact spectral step (cosine transform,
+  multiply by e^(−Dk²Δt)) where diffusivity is uniform. With one species at 256² that alone matches the GPU (~1.5× over
+  the explicit CPU field for the whole simulation, because the cells dominate); on a fine grid (1024², 1 µm) implicit
+  CPU steps are ~6× faster than explicit steps on the GPU.
+- **Device second.** At 256² with few species, run the field on CPU cores beside the cells. With many species or
+  larger grids, run it as a Unity compute shader (or fragment shaders over ping-pong render textures) kept on the GPU,
+  four species per float4, reading back only each cell's concentrations through asynchronous readback a frame or more
+  late, which the exchange interval absorbs. Expected 5–10× over the CPU field in those cases.
+- **Cheaper fields.** Solve the quasi-steady field when a frame spans more than its relaxation time; represent food
+  packets as diffusing Gaussians (closed form) rather than grid features; use a fine grid that moves with the body
+  inside a coarse far field.
 
-Move the field to a compute shader only if a level needs a much larger or 3D environment. Then it lives on the GPU for
-whole frames, steps many substeps per dispatch, and returns only what cells need (the concentration at each cell's
-membrane and what cells take up), through asynchronous readback a frame or more late, which the coupling interval
-absorbs. That needs an `ITransportBackend` in the simulation with a Unity-side GPU implementation fed by commands,
-since the simulation thread cannot touch the GPU.
+The simulation thread cannot touch the GPU, so this needs an `ITransportBackend` in the simulation with a Unity-side GPU
+implementation fed by commands.
 
 ### 5. GPU cell kinetics: an experiment with gates, not the plan
 
@@ -163,8 +171,8 @@ physiology near steady state. Worth trying once 1–3 are done, if a level needs
 | 2 | analytic sparse Jacobian (symbolic-jacobians.md) | matches finite differences; goldens unchanged |
 | 3 | batched integrator per group; fixed-chunk `Parallel.For`; ordered reductions | 1 vs N threads bit-identical; no allocation per tick; 5k busy cells ≥10× real time |
 | 4 | clones, sleeping steady cells, levels of detail in play | top speed with 5k cells at 60 fps |
-| 5 | environment field on CPU threads, GPU display | 256² field step < 2 ms |
-| 6 | (if needed) GPU field via compute shader; GPU float/mixed cell kinetics experiment | gates in 4 and 5 above |
+| 5 | environment field: implicit or spectral steps at the exchange interval, several species per pass, on CPU cores; GPU display | 256² field < 5% of the frame at top speed |
+| 6 | GPU field (compute shader) when grids or species grow; GPU cell kinetics only as a gated experiment | measured gain over step 5 |
 
 ## Sources
 
