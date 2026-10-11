@@ -397,7 +397,8 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     to 60 s, the world reading states interpolated within a step; a changed input restarts the step). One cell, one
     core: ~350× → ~3,800× real time with the motors switching every 2–4 s, ~12,000× with steady inputs, and more
     accurate than the old fixed 0.1 s steps (1–3% vs 10–18% against a 5 ms reference). Two hours of play headless:
-    11.4 s → 3.5 s. Next: an analytic sparse Jacobian (see docs/plans/symbolic-jacobians.md), then parallel cells.
+    11.4 s → 3.5 s. Next: see docs/plans/parallel-and-gpu.md (lean kernel layout, analytic Jacobian, batched
+    parallel cells; the GPU for display, cell kinetics on it only as a gated experiment).
 13. Damage model placeholders: 10-day unrepaired lifetime, repair capacity 10× accrual, repair costing 10% of a
     daughter per lethal load, Q10 2; damage does nothing until lethal. Daughters inherit the parent's damage.
 11. libcuflynx relabels some conversion-factor literals with the inverse or a dimensionless unit when flattening

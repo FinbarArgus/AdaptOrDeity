@@ -18,6 +18,7 @@ tools/kernelgen/.venv/bin/aod-kernelgen-flatten <flat.cellml> content/assembled 
     --modules-root <modules> --supermodule-config <config.json>   # whole cell -> one kernel (ADR 0007)
 dotnet run --project src/AdaptOrDeity.Headless -- fermenter 600 H_ATPase_expression=2   # cell panel, headless
 dotnet run -c Release --project src/AdaptOrDeity.Headless -- bench 600   # integrator speed and accuracy
+dotnet run -c Release --project src/AdaptOrDeity.Headless -- kernel-bench  # kernel cost per cell, batches, threads
 tools/kernelgen/.venv/bin/pytest tools/kernelgen/tests
 dotnet run --project src/AdaptOrDeity.Headless -- model <dir> 10 H_ATPase_expression=2   # creature as a module array
 <libcuflynx venv>/bin/python -m pytest tools/interop   # libcuflynx, libcellml, PhLynx read it (see the test's docstring)
