@@ -25,6 +25,35 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         }
 
         [Test]
+        public void SleepingCellsStayWithinTheirToleranceOfAwakeOnes()
+        {
+            // A cell rests, is fed for a minute, then rests again; asleep at 1e-3 it skips a third of its calls and stays within a
+            // fraction of a percent of the same cell kept awake (the integrator itself is ~5% from CVODES at the game's
+            // tolerance; tools/interop/test_solver_agreement.py).
+            var awake = NewCell();
+            var sleepy = NewCell();
+            sleepy.SleepTolerance = 1e-3;
+            int n = awake.Batch.States.Length;
+            var scale = new double[n];
+            var worst = new double[n];
+            for (int s = 0; s < 6000; s++)
+            {
+                double t = s * GameDt, glucose = t >= 120 && t < 180 ? 50.0 : 0.1;
+                awake.MembraneGlucose = sleepy.MembraneGlucose = glucose;
+                awake.Step(GameDt);
+                sleepy.Step(GameDt);
+                for (int i = 0; i < n; i++)
+                {
+                    scale[i] = Math.Max(scale[i], Math.Abs(awake.Batch.States[i][0]));
+                    worst[i] = Math.Max(worst[i], Math.Abs(sleepy.Batch.States[i][0] - awake.Batch.States[i][0]));
+                }
+            }
+            Assert.That(sleepy.SleptSteps, Is.GreaterThan(1500), "a resting cell sleeps through many calls");
+            for (int i = 0; i < n; i++)
+                Assert.That(worst[i], Is.LessThan(5e-3 * scale[i] + 1e-15), awake.Batch.Descriptor.States[i].Name);
+        }
+
+        [Test]
         public void AlgebraicValuesReadAfterStepsAreThoseOfTheStateNow()
         {
             // The kernel's outputs are kept current every step and the rest computed when first read: whatever is read,

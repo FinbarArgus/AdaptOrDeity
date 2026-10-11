@@ -348,6 +348,9 @@ namespace AdaptOrDeity.Game.Session
 
         private int _workerCount = ParallelWork.DefaultWorkers;
 
+        /// <summary>Steady cells sleep below this drift (<see cref="FermenterCell.SleepTolerance"/>); 0 never.</summary>
+        public double SleepTolerance { get; set; }
+
         public void Dispose()
         {
             _workers?.Dispose();
@@ -442,6 +445,7 @@ namespace AdaptOrDeity.Game.Session
                 _cellY[i] = y;
                 _touching[i] = _food.TouchesAny(x, y, CellRadius);
                 var c = _cells[i];
+                c.SleepTolerance = SleepTolerance;
                 c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
                 for (int tr = 0; tr < nt; tr++)
                     _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);

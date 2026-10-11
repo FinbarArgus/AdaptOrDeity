@@ -364,7 +364,10 @@ namespace AdaptOrDeity.Sim.Physiology
             if (!Alive)
                 return;
             if (Adaptive)
-                StepAdaptive(dt);
+            {
+                if (!StepAdaptive(dt))
+                    return;   // asleep: state, inputs and outputs unchanged
+            }
             else
             {
                 LastHalvings = _integrator.StepRobust(_kernel, Batch, Time, dt, 0, 1);
@@ -390,7 +393,25 @@ namespace AdaptOrDeity.Sim.Physiology
         private double _ta, _tb, _h = 0.1;
         private bool _interval;
 
-        private void StepAdaptive(double dt)
+        /// <summary>
+        /// Sleep: a cell whose states would all move by less than this fraction of their size over <see cref="MaxSleep"/>
+        /// (at its current slope) holds its state and skips all work until an input changes or MaxSleep passes. 0 (the
+        /// default) never sleeps: results are then independent of sleeping.
+        /// </summary>
+        public double SleepTolerance { get; set; }
+
+        /// <summary>Longest sleep [s] before the cell looks at its rates again.</summary>
+        public double MaxSleep { get; set; } = 30.0;
+
+        public bool Asleep { get; private set; }
+
+        /// <summary>Calls slept through so far (diagnostics).</summary>
+        public long SleptSteps { get; private set; }
+
+        private double _sleptAt;
+
+        // Returns false when the cell slept through the call (nothing changed).
+        private bool StepAdaptive(double dt)
         {
             int n = Batch.States.Length;
             if (_ya.Length != n)
@@ -405,7 +426,18 @@ namespace AdaptOrDeity.Sim.Physiology
             }
             double t0 = Time;
             Time += dt;
-            if (!_interval || ExternalsChanged())
+            bool changed = ExternalsChanged();
+            if (Asleep)
+            {
+                if (!changed && Time - _sleptAt < MaxSleep)
+                {
+                    SleptSteps++;
+                    return false;
+                }
+                Asleep = false;
+                _interval = false;   // integrate afresh from the held state
+            }
+            if (!_interval || changed)
             {
                 // restart from the state now, with a short first step
                 for (int i = 0; i < n; i++)
@@ -421,6 +453,18 @@ namespace AdaptOrDeity.Sim.Physiology
             double theta = (Time - _ta) / (_tb - _ta);
             for (int i = 0; i < n; i++)
                 Batch.States[i][0] = _ya[i] + theta * (_yb[i] - _ya[i]);
+            if (SleepTolerance > 0.0 && _tb > _ta)
+            {
+                double drift = 0.0;   // largest move of a state over MaxSleep at the current slope, relative to its size
+                for (int i = 0; i < n; i++)
+                    drift = Math.Max(drift, Math.Abs(_yb[i] - _ya[i]) / (_tb - _ta) * MaxSleep / _errScale[i]);
+                if (drift < SleepTolerance)
+                {
+                    Asleep = true;
+                    _sleptAt = Time;
+                }
+            }
+            return true;
         }
 
         /// <summary>One accepted step from _tb: error-controlled, halving on rejection or Newton failure.</summary>
@@ -483,6 +527,7 @@ namespace AdaptOrDeity.Sim.Physiology
         private void Restart()
         {
             _interval = false;
+            Asleep = false;
             _integrator.Invalidate();
         }
 
