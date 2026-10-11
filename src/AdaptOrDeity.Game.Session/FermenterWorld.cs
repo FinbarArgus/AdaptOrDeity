@@ -69,6 +69,9 @@ namespace AdaptOrDeity.Game.Session
         private readonly Func<int, double>[] _read;
         private readonly TraitInfo[] _traits;
         private int _level = 1;
+        private readonly bool[] _bought = new bool[GameFeatures.All.Count];
+        private readonly double _glucosePerPoint = GameParameters.Default.Value("skills.glucose_per_point");
+        private int _pointsSpent;
         private readonly FoodField _food;
         private readonly CreatureBody _body;
         private readonly int _flagellaTrait;
@@ -409,7 +412,7 @@ namespace AdaptOrDeity.Game.Session
                 double c = _cells[i].MembraneGlucose;
                 double uptake = _cells[i].GlucoseUptake * dt;   // mol into the cell
                 if (c > _food.BackgroundGlucose && uptake > 0.0)
-                    _food.Withdraw(_cellX[i], _cellY[i], CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
+                    FoodEaten += _food.Withdraw(_cellX[i], _cellY[i], CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
             }
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
@@ -492,7 +495,30 @@ namespace AdaptOrDeity.Game.Session
 
         public double ReadControl(int group, int control) => _groups[CheckGroup(group)].Controls[control];
 
-        public bool FeatureUnlocked(int feature) => GameFeatures.All[feature].UnlockLevel <= _level;
+        public bool FeatureUnlocked(int feature) =>
+            GameFeatures.All[feature].UnlockLevel <= _level && (GameFeatures.All[feature].Cost == 0 || _bought[feature]);
+
+        /// <summary>Glucose the creature has eaten from food packets since the start [mol].</summary>
+        public double FoodEaten { get; private set; }
+
+        /// <summary>Skill points to spend: one per content skills.glucose_per_point of food eaten, less those spent.</summary>
+        public int SkillPoints => (int)Math.Floor(FoodEaten / _glucosePerPoint) - _pointsSpent;
+
+        public void BuyFeature(int feature)
+        {
+            if (feature < 0 || feature >= _bought.Length)
+                throw new ArgumentOutOfRangeException(nameof(feature), $"no feature {feature}");
+            var info = GameFeatures.All[feature];
+            if (info.Cost == 0 || _bought[feature])
+                throw new InvalidOperationException($"{info.Name} is not for sale");
+            if (info.UnlockLevel > _level)
+                throw new InvalidOperationException($"{info.Name} can be bought from level {info.UnlockLevel}");
+            if (SkillPoints < info.Cost)
+                throw new InvalidOperationException($"{info.Name} costs {info.Cost} points; there are {SkillPoints}");
+            _pointsSpent += info.Cost;
+            _bought[feature] = true;
+            ApplyControls();
+        }
 
         public bool FeatureEnabled(int feature) => _featureEnabled[feature];
 

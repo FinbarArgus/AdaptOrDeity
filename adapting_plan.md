@@ -231,6 +231,15 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   bond graph the game runs). Their comparison is the level 0 ↔ 1 homogenisation check, with a cell-size
   sweep from 2 µm (gradients negligible) to giant cells (where η(Φ) takes over).
 
+## Descriptions and educational content (human review)
+Every text the player reads that explains something (features' effects and explanations, level summaries, protein and
+event notes, tooltips that teach) must be **reviewed, corrected where needed, and ticked off by a human**:
+- Each such text is stored in content with a `reviewed` flag, `false` when written or changed (by Claude or anyone).
+- A human reads it, edits it if needed and sets `reviewed: true`. Claude never sets the flag.
+- Changing a reviewed text sets its flag back to `false`.
+- Tests fail while any text is unreviewed (`tests/AdaptOrDeity.Game.Session.Tests/ContentReviewTests.cs`, for
+  content/timeline.json features and levels). New kinds of educational content get a flag and a test when added.
+
 ## Verification and validation (every module)
 Every module in the game must be **verified**, and ideally **validated**. This covers upstream CellML
 modules and the game's native elements (transport solver, level interfaces, effectiveness factor η(Φ),
@@ -395,6 +404,18 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   replacing the game's C# kernels and integrator: ~19x faster per thread on the colony protocol and more accurate.
 - **2026-10-12** The C# simulation path is retired: every module runs from one library of libcuflynx's generated C
   (`aod_modules`), which every build and test now needs (CMake and a C compiler; CI builds it on all platforms).
+
+- **2026-10-12** Food arrives at a constant rate per level and region (content/timeline.json `arrivals`), whatever
+  the field holds; packet slots are unlimited. Sublevels (scarcity, abundance, stresses) to design. Cells at 2 Ga
+  absorb food (external digestion), they do not engulf (docs/research/food-uptake-and-extracellular-space.md); food
+  packets become small polymer particles (docs/plans/environment-field.md).
+- **2026-10-12** Skill points and the skill window: food eaten earns points (content parameters
+  `skills.glucose_per_point`); features with a cost are bought with them once their level is reached, in a window that
+  opens when the level goes up. The first are the sugar transporters (PTS, ABC, H+ symport) after level 1, priced so a
+  normal level 1 buys one and a very good one two. Their CellML modules are drafted upstream (branch
+  feat/sugar-transporters of circulatory-autogen-modules) and are not yet wired to the features.
+- **2026-10-12** Descriptions and educational content are reviewed by a human (section above): `reviewed` flags in
+  content and tests that fail until each is ticked off.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?

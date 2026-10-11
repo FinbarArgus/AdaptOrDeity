@@ -74,6 +74,15 @@ namespace AdaptOrDeity.Game.Session
 
         bool FeatureEnabled(int feature);
 
+        /// <summary>Glucose eaten from food since the start [mol]: it earns skill points.</summary>
+        double FoodEaten { get; }
+
+        /// <summary>Skill points not yet spent.</summary>
+        int SkillPoints { get; }
+
+        /// <summary>Buys a feature that has a cost (<see cref="FeatureInfo.Cost"/>) once its level is reached.</summary>
+        void BuyFeature(int feature);
+
         /// <summary>Sets the trait's target multiplier for every cell of the group (clamped).</summary>
         void SetTrait(int group, int trait, double multiplier);
 

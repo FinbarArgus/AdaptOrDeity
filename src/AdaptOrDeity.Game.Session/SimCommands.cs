@@ -28,6 +28,7 @@ namespace AdaptOrDeity.Game.Session
         DevCompleteDaughter = 11,
         SetFlagellumAngle = 12,
         Inspect = 13,
+        BuyFeature = 14,
     }
 
     /// <summary>
@@ -94,6 +95,9 @@ namespace AdaptOrDeity.Game.Session
                     return;
                 case SimCommandKind.SetFeature:
                     Inspectable(loop).SetFeature(A, B != 0);
+                    return;
+                case SimCommandKind.BuyFeature:
+                    Inspectable(loop).BuyFeature(A);
                     return;
                 case SimCommandKind.SetLevel:
                     if (A < 1)
@@ -169,6 +173,9 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Turns an unlocked optional feature on or off.</summary>
         public static SimCommand SetFeature(int feature, bool enabled) =>
             new SimCommand(SimCommandKind.SetFeature, feature, enabled ? 1 : 0);
+
+        /// <summary>Buys a feature with skill points (see <see cref="FeatureInfo.Cost"/>).</summary>
+        public static SimCommand BuyFeature(int feature) => new SimCommand(SimCommandKind.BuyFeature, feature);
 
         /// <summary>Sets the level being played (unlocks features); a development control until the time bar drives it.</summary>
         public static SimCommand SetLevel(int level) => new SimCommand(SimCommandKind.SetLevel, level);

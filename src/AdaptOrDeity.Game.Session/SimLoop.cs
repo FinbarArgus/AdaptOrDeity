@@ -222,6 +222,8 @@ namespace AdaptOrDeity.Game.Session
                     for (int g = 0; g < inspect.GroupCount; g++)
                         frame.Controls[c][g] = (float)inspect.ReadControl(g, c);
                 frame.Level = inspect.Level;
+                frame.FoodEaten = inspect.FoodEaten;
+                frame.SkillPoints = inspect.SkillPoints;
                 for (int f = 0; f < frame.FeatureEnabled.Length; f++)
                 {
                     frame.FeatureUnlocked[f] = inspect.FeatureUnlocked(f);

@@ -156,6 +156,11 @@ namespace AdaptOrDeity.UI
                     bridge.Send(SimCommands.SetLevel(frame.Level - 1));
                 if (GUILayout.Button("+", GUILayout.Width(24)))
                     bridge.Send(SimCommands.SetLevel(frame.Level + 1));
+                int forSale = SkillTree.ForSale(bridge.Schema, frame);
+                if (GUILayout.Button(new GUIContent($"Skills ({frame.SkillPoints})",
+                        forSale > 0 ? $"{forSale} to evolve; points come from food eaten" : "points come from food eaten"),
+                        GUILayout.Width(90)))
+                    SkillTree.Toggle();
                 GUILayout.Space(12);
             }
             var labels = new string[bridge.Schema.SpeedPresets.Count];

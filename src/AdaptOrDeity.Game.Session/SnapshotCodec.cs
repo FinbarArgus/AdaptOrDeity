@@ -96,6 +96,8 @@ namespace AdaptOrDeity.Game.Session
             int probeCount = f.ProbeCount; io.Value(ref probeCount); f.ProbeCount = probeCount;
             int groupCount = f.GroupCount; io.Value(ref groupCount); f.GroupCount = groupCount;
             int level = f.Level; io.Value(ref level); f.Level = level;
+            double eaten = f.FoodEaten; io.Value(ref eaten); f.FoodEaten = eaten;
+            int points = f.SkillPoints; io.Value(ref points); f.SkillPoints = points;
             double cx = f.CreatureX; io.Value(ref cx); f.CreatureX = cx;
             double cy = f.CreatureY; io.Value(ref cy); f.CreatureY = cy;
             bool motor = f.MotorOn; io.Value(ref motor); f.MotorOn = motor;

@@ -337,7 +337,9 @@ namespace AdaptOrDeity.UI
                 var info = schema.Features[f];
                 if (!frame.FeatureUnlocked[f])
                 {
-                    GUILayout.Label($"{info.Name}: unlocks at level {info.UnlockLevel}", _small);
+                    GUILayout.Label(info.Cost > 0 && info.UnlockLevel <= frame.Level
+                        ? $"{info.Name}: evolve it in Skills ({info.Cost} points)"
+                        : $"{info.Name}: unlocks at level {info.UnlockLevel}", _small);
                     continue;
                 }
                 if (!info.Optional)

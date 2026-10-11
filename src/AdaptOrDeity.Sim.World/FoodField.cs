@@ -270,22 +270,23 @@ namespace AdaptOrDeity.Sim.World
 
         /// <summary>
         /// Takes <paramref name="mol"/> of glucose that a cell at (x, y) took up beyond the background, from the packets it
-        /// touches in proportion to what each holds.
+        /// touches in proportion to what each holds. Returns what they gave (no more than they held).
         /// </summary>
-        public void Withdraw(double x, double y, double r, double mol)
+        public double Withdraw(double x, double y, double r, double mol)
         {
             if (mol <= 0.0)
-                return;
+                return 0.0;
             double total = 0.0;
             foreach (var p in _packets)
                 if (p.Active && Touches(p, x, y, r))
                     total += p.Glucose;
             if (total <= 0.0)
-                return;
+                return 0.0;
             double share = Math.Min(1.0, mol / total);
             foreach (var p in _packets)
                 if (p.Active && Touches(p, x, y, r))
                     p.Glucose -= p.Glucose * share;
+            return total * share;
         }
 
         /// <summary>Stops every packet that touches a cell at (x, y) of radius r: food stays with the cell that found it.</summary>

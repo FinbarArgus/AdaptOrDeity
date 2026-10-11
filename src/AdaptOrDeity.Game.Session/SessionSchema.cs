@@ -79,8 +79,11 @@ namespace AdaptOrDeity.Game.Session
     /// </summary>
     public sealed class FeatureInfo
     {
-        public FeatureInfo(string id, string name, int unlockLevel, bool optional, bool defaultEnabled, string effect)
+        public FeatureInfo(string id, string name, int unlockLevel, bool optional, bool defaultEnabled, string effect,
+            int cost = 0, string explanation = "")
         {
+            Cost = cost;
+            Explanation = explanation;
             Id = id;
             Name = name;
             UnlockLevel = unlockLevel;
@@ -100,6 +103,12 @@ namespace AdaptOrDeity.Game.Session
         public bool DefaultEnabled { get; }
 
         public string Effect { get; }
+
+        /// <summary>Skill points to buy it once its level is reached (0: unlocked by the level alone).</summary>
+        public int Cost { get; }
+
+        /// <summary>The full explanation for the player (content/timeline.json features[].explanation).</summary>
+        public string Explanation { get; }
     }
 
     /// <summary>A per-group energy control the panel offers as a slider (growth, storage, repair).</summary>

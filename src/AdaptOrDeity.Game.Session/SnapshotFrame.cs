@@ -87,6 +87,11 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Level of the evolutionary time bar being played.</summary>
         public int Level { get; internal set; }
 
+        /// <summary>Glucose eaten from food since the start [mol], and the skill points it has earned not yet spent.</summary>
+        public double FoodEaten { get; internal set; }
+
+        public int SkillPoints { get; internal set; }
+
         /// <summary>Per feature (schema order).</summary>
         public bool[] FeatureUnlocked { get; }
 

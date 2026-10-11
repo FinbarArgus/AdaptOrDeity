@@ -17,7 +17,8 @@
     "food_per_s": 0.01,
     "carried_share": 0.8
    },
-   "regions": []
+   "regions": [],
+   "reviewed": false
   },
   {
    "level": 2,
@@ -34,7 +35,8 @@
     "food_per_s": 0.01,
     "carried_share": 0.8
    },
-   "regions": []
+   "regions": [],
+   "reviewed": false
   },
   {
    "level": 3,
@@ -49,7 +51,8 @@
     "food_per_s": 0.01,
     "carried_share": 0.8
    },
-   "regions": []
+   "regions": [],
+   "reviewed": false
   },
   {
    "level": 4,
@@ -63,7 +66,8 @@
     "food_per_s": 0.01,
     "carried_share": 0.8
    },
-   "regions": []
+   "regions": [],
+   "reviewed": false
   },
   {
    "level": 5,
@@ -77,7 +81,8 @@
     "food_per_s": 0.01,
     "carried_share": 0.8
    },
-   "regions": []
+   "regions": [],
+   "reviewed": false
   },
   {
    "level": 6,
@@ -91,7 +96,8 @@
     "food_per_s": 0.01,
     "carried_share": 0.8
    },
-   "regions": []
+   "regions": [],
+   "reviewed": false
   },
   {
    "level": 7,
@@ -105,7 +111,8 @@
     "food_per_s": 0.01,
     "carried_share": 0.8
    },
-   "regions": []
+   "regions": [],
+   "reviewed": false
   }
  ],
  "levels_note": "Draft level sequence (2026-10-08) for open question 3 in adapting_plan.md; dates follow the protein and event entries below.",
@@ -117,7 +124,9 @@
    "unlock_level": 1,
    "optional": false,
    "default_enabled": true,
-   "effect": "Expression sliders for the transport proteins and glycolytic enzymes of a cell group; new copies cost ATP to build, and every copy costs ATP to keep. The membrane holds only so many transporters (a ceiling that scales with membrane area)."
+   "effect": "Expression sliders for the transport proteins and glycolytic enzymes of a cell group; new copies cost ATP to build, and every copy costs ATP to keep. The membrane holds only so many transporters (a ceiling that scales with membrane area).",
+   "explanation": "A cell's abilities are its proteins: transporters in the membrane, enzymes in the cytosol. Each slider sets how many copies the cell keeps of one protein, relative to its starting amount. Making a protein costs about 4 ATP per amino acid (a 300-residue transporter is ~1,200 ATP), and proteins wear out and are replaced, so every copy kept also costs ATP continuously. Transporters sit in the membrane, which has room for only so many: a few percent of its area at most, a limit that grows with the cell's surface. More of a transporter moves more of its cargo, but only while the cargo is there to move; at low glucose the cell's uptake is limited by how fast glucose diffuses to it, not by how many carriers it has.",
+   "reviewed": false
   },
   {
    "id": "repair_level",
@@ -125,7 +134,9 @@
    "unlock_level": 1,
    "optional": true,
    "default_enabled": true,
-   "effect": "How much a group spends repairing damage (0-1). Low repair saves energy but cells die when damage reaches a lethal load; the colony then relies on division."
+   "effect": "How much a group spends repairing damage (0-1). Low repair saves energy but cells die when damage reaches a lethal load; the colony then relies on division.",
+   "explanation": "Proteins, membranes and DNA are damaged all the time (oxidation, misfolding, chemical wear). Cells spend energy finding and fixing or replacing damaged parts. Spending less on repair leaves more ATP for growth or movement, but damage then accumulates, and a cell dies once it reaches a lethal load. Bacteria live with this trade-off: fast-growing populations can afford to lose cells because division replaces them, which is why turning repair down can pay off once your cells divide.",
+   "reviewed": false
   },
   {
    "id": "swimming",
@@ -133,7 +144,9 @@
    "unlock_level": 1,
    "optional": true,
    "default_enabled": true,
-   "effect": "The cell starts with one flagellum; its motor runs at random (runs and pauses), driving the cell over the ground on the proton motive force. The flagella slider adds more (each costs ATP to build and protons to run). Turn it off to save the energy."
+   "effect": "The cell starts with one flagellum; its motor runs at random (runs and pauses), driving the cell over the ground on the proton motive force. The flagella slider adds more (each costs ATP to build and protons to run). Turn it off to save the energy.",
+   "explanation": "Many bacteria swim with flagella: long helical filaments turned at their base by a rotary motor in the membrane. The motor is not powered by ATP directly but by protons flowing back into the cell through it, about 1,000 per revolution, so swimming spends the proton gradient your H+-ATPase builds with ATP. At this size water is like syrup: a cell stops within a fraction of a micrometre when the motor stops, so it moves only while it pays. Simple bacteria run and tumble at random; steering towards food needs sensing, which comes later.",
+   "reviewed": false
   },
   {
    "id": "growth_and_division",
@@ -141,7 +154,9 @@
    "unlock_level": 2,
    "optional": true,
    "default_enabled": true,
-   "effect": "Put a share of the energy into building a daughter cell (its proteins, RNA, lipids and DNA). Click a cell to divide once the daughter is built."
+   "effect": "Put a share of the energy into building a daughter cell (its proteins, RNA, lipids and DNA). Click a cell to divide once the daughter is built.",
+   "explanation": "A cell divides by first building a second copy of almost everything it has: proteins, ribosomal RNA, lipids for a membrane twice the area, and a copy of its DNA. Most of this cost is protein, and a bacterium spends most of its energy budget on growth when food is plentiful. When the daughter's material is complete the cell splits in two by binary fission. Energy put into growth is energy not available for pumping or repair, so a cell that grows too fast on too little food can starve itself.",
+   "reviewed": false
   },
   {
    "id": "glycogen_storage",
@@ -149,7 +164,9 @@
    "unlock_level": 2,
    "optional": true,
    "default_enabled": true,
-   "effect": "Store glucose as glycogen (2 ATP per glucose, 3 back later). The store is spent automatically when ATP falls, and clicking Divide spends it to finish a daughter that is nearly built (glycogen holds about 1% of a daughter)."
+   "effect": "Store glucose as glycogen (2 ATP per glucose, 3 back later). The store is spent automatically when ATP falls, and clicking Divide spends it to finish a daughter that is nearly built (glycogen holds about 1% of a daughter).",
+   "explanation": "Glycogen is a branched polymer of glucose that cells use as a store. Storing a glucose costs ATP (about 2, to activate and attach it), and breaking it down later returns it as glucose-phosphate ready for glycolysis, saving the ATP that glycolysis would spend to phosphorylate free glucose. Bacteria build glycogen when food is plentiful and spend it when food runs out. Because a polymer adds hardly any osmotic pressure, a cell can store far more glucose this way than as free sugar.",
+   "reviewed": false
   },
   {
    "id": "auto_divide",
@@ -157,7 +174,9 @@
    "unlock_level": 2,
    "optional": true,
    "default_enabled": false,
-   "effect": "Cells divide by themselves as soon as a daughter is built."
+   "effect": "Cells divide by themselves as soon as a daughter is built.",
+   "explanation": "A cell in this game divides when you tell it to; real bacteria divide automatically once a daughter is complete, controlled by proteins that sense the cell's size and DNA replication. Turning this on lets every cell divide as soon as it can, which grows the colony fastest when food is steady, but divides cells even when holding back would leave them better stocked for lean times.",
+   "reviewed": false
   },
   {
    "id": "motility_control",
@@ -165,7 +184,42 @@
    "unlock_level": 2,
    "optional": true,
    "default_enabled": false,
-   "effect": "Processing to decide when to run the flagella (e.g. keep still on food, swim when it runs out). Planned."
+   "effect": "Processing to decide when to run the flagella (e.g. keep still on food, swim when it runs out). Planned.",
+   "explanation": "Bacteria do not swim blindly forever: signalling proteins change how often the motor reverses or pauses, so a cell can stay where food is and swim when it runs out. In E. coli, a chain of proteins (CheA, CheY and others) passes a phosphate signal to the motor in a fraction of a second. This feature will let you choose rules for when the flagella run. (Planned.)",
+   "reviewed": false
+  },
+  {
+   "id": "pts_transport",
+   "name": "Sugar phosphotransferase (PTS)",
+   "unlock_level": 2,
+   "optional": true,
+   "default_enabled": true,
+   "cost": 5,
+   "effect": "A high-affinity glucose transporter that phosphorylates glucose as it brings it in, paid by one PEP from glycolysis.",
+   "explanation": "The phosphotransferase system (PTS) takes glucose across the membrane and attaches a phosphate to it in the same step, using a phosphate passed along a chain of proteins from phosphoenolpyruvate (PEP), an intermediate of glycolysis. Glycolysis would otherwise spend an ATP to phosphorylate free glucose, so the PTS gets glucose in at almost no extra cost, and the fermenter keeps its 2 ATP per glucose. It binds glucose tightly (half-saturated at a few micromolar, compared with millimolar for the starting transporter), so it keeps working when food is scarce. Lactic acid bacteria and E. coli use it for glucose. It is found only in bacteria.",
+   "reviewed": false
+  },
+  {
+   "id": "abc_transport",
+   "name": "ABC sugar importer",
+   "unlock_level": 2,
+   "optional": true,
+   "default_enabled": true,
+   "cost": 5,
+   "effect": "The highest-affinity glucose importer, powered by ATP: about 2 ATP per glucose.",
+   "explanation": "ABC transporters are ATP-powered pumps found in every domain of life, among the oldest protein families. A binding protein outside the membrane catches the sugar at sub-micromolar concentrations and hands it to the pump, which spends two ATP to move it in. That makes it the best scavenger of traces of sugar, but a fermenter makes only 2 ATP per glucose, so importing single glucose this way leaves almost nothing over. In real bacteria ABC importers bring in chains of sugars (oligosaccharides) instead, where one cycle brings in several glucose units for the same cost.",
+   "reviewed": false
+  },
+  {
+   "id": "proton_symport",
+   "name": "Proton-coupled sugar symporter",
+   "unlock_level": 2,
+   "optional": true,
+   "default_enabled": true,
+   "cost": 5,
+   "effect": "Brings glucose in with a proton, driven by the proton gradient the H+-ATPase builds.",
+   "explanation": "Symporters of the major facilitator superfamily (such as GalP and LacY in E. coli) carry a sugar and a proton across the membrane together. The proton flows down the gradient your H+-ATPase builds, which pulls glucose in even against its own gradient, so the cell can take up sugar from medium that holds less than its cytosol. Each glucose costs one proton, roughly a quarter to a third of an ATP to pump back out, and adds to the acid load the cell must remove. Its affinity lies between the starting facilitator and the PTS (tens of micromolar to a millimolar).",
+   "reviewed": false
   },
   {
    "id": "chemosensing",
@@ -173,7 +227,9 @@
    "unlock_level": 3,
    "optional": true,
    "default_enabled": true,
-   "effect": "Express chemoreceptors to sense the trace species in food packets (aspartate, serine, ribose...); receptors cost protein like any other. Planned."
+   "effect": "Express chemoreceptors to sense the trace species in food packets (aspartate, serine, ribose...); receptors cost protein like any other. Planned.",
+   "explanation": "Bacteria smell their surroundings with chemoreceptors: membrane proteins that bind particular molecules (amino acids such as aspartate and serine, sugars such as ribose) and signal to the flagellar motor. A cell compares the concentration now with a few seconds ago and keeps swimming while things improve, which biases its random walk towards food. Food packets in this game carry trace molecules you can learn to follow. Receptors cost protein like any other. (Planned.)",
+   "reviewed": false
   },
   {
    "id": "membrane_respiration",
@@ -181,7 +237,9 @@
    "unlock_level": 4,
    "optional": true,
    "default_enabled": false,
-   "effect": "Planned."
+   "effect": "Planned.",
+   "explanation": "Respiration passes electrons from food to oxygen through a chain of membrane proteins that pump protons out; the protons flow back through ATP synthase and make ATP. Fully oxidising glucose this way yields roughly 15 times the ATP of fermenting it to lactate. Oxygen became available in the shallow seas after the Great Oxidation Event (about 2.4 to 2.1 billion years ago), and heme-copper oxidases that use it are ancient. Respiration needs membrane area for its proteins, which limits how much a single bacterial cell can do. (Planned.)",
+   "reviewed": false
   },
   {
    "id": "mitochondria",
@@ -189,7 +247,9 @@
    "unlock_level": 5,
    "optional": true,
    "default_enabled": false,
-   "effect": "Planned."
+   "effect": "Planned.",
+   "explanation": "Mitochondria descend from bacteria taken inside another cell around 2 to 1.5 billion years ago, the event behind the eukaryotic cell. Each holds its own respiratory membranes, folded inside the cell, so a eukaryote's respiring membrane area is no longer limited to its outer surface. That extra energy paid for larger cells, larger genomes and new machinery such as the cytoskeleton. (Planned.)",
+   "reviewed": false
   },
   {
    "id": "multiple_groups",
@@ -197,7 +257,9 @@
    "unlock_level": 6,
    "optional": true,
    "default_enabled": false,
-   "effect": "Split cells into groups adapted separately (organs later). Sliders always change every cell in the selected cell's group."
+   "effect": "Split cells into groups adapted separately (organs later). Sliders always change every cell in the selected cell's group.",
+   "explanation": "Cells that stick together can specialise: some do one job, others another, as in the heterocysts of filamentous cyanobacteria that fix nitrogen for their neighbours. Splitting your colony into groups lets you adapt each group's proteins and energy use separately. Every slider then changes all the cells of the selected cell's group. This is the start of tissues and organs.",
+   "reviewed": false
   },
   {
    "id": "fixed_body_size",
@@ -205,7 +267,9 @@
    "unlock_level": 7,
    "optional": true,
    "default_enabled": false,
-   "effect": "The group holds its present number of cells: growth energy replaces dead cells instead of adding cells, and goes to repair while the group is full. Easier to maintain; no further growth."
+   "effect": "The group holds its present number of cells: growth energy replaces dead cells instead of adding cells, and goes to repair while the group is full. Easier to maintain; no further growth.",
+   "explanation": "Most animals stop growing at an adult size and from then on spend energy maintaining their body: replacing cells that die and repairing tissues. With this on, a group keeps its present number of cells. Energy that would have made new cells replaces dead ones, and goes to repair while the group is full. A fixed body is easier to keep healthy but no longer grows.",
+   "reviewed": false
   }
  ],
  "events": [
@@ -806,5 +870,6 @@
    "sources": [],
    "notes": "Age not checked (placeholder date, no source yet)."
   }
- ]
+ ],
+ "features_note": "A feature with a cost is bought with skill points in the window that opens when the level goes up, once its level is reached; points come from food eaten (content/parameters.json skills.glucose_per_point). 'effect' is the short text, 'explanation' the full one; 'reviewed' is set by a human who has checked the text (adapting_plan.md, Rules for content)."
 }

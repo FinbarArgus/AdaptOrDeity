@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using AdaptOrDeity.Game.Content;
 
 namespace AdaptOrDeity.Game.Session
 {
     /// <summary>
     /// Game features and the level each unlocks at: content/timeline.json's <c>features</c> (a test keeps them in step).
-    /// Once unlocked, an optional feature is always the player's choice to use.
+    /// Once unlocked, an optional feature is always the player's choice to use. A feature with a cost is bought with skill
+    /// points once its level is reached. Explanations are read from the timeline.
     /// </summary>
     public static class GameFeatures
     {
@@ -20,8 +22,11 @@ namespace AdaptOrDeity.Game.Session
         public const string Mitochondria = "mitochondria";
         public const string MultipleGroups = "multiple_groups";
         public const string FixedBodySize = "fixed_body_size";
+        public const string PtsTransport = "pts_transport";
+        public const string AbcTransport = "abc_transport";
+        public const string ProtonSymport = "proton_symport";
 
-        public static readonly IReadOnlyList<FeatureInfo> All = new[]
+        public static readonly IReadOnlyList<FeatureInfo> All = WithExplanations(new[]
         {
             new FeatureInfo(ProteinExpression, "Protein expression", 1, false, true,
                 "Expression sliders for a cell group's transport proteins and glycolytic enzymes; copies cost ATP to build and to keep, and the membrane holds only so many."),
@@ -37,6 +42,12 @@ namespace AdaptOrDeity.Game.Session
             new FeatureInfo(AutoDivide, "Automatic division", 2, true, false, "Cells divide by themselves once a daughter is built."),
             new FeatureInfo(MotilityControl, "Swimming control", 2, true, false,
                 "Processing to decide when to run the flagella (e.g. keep still on food, swim when it runs out). Planned."),
+            new FeatureInfo(PtsTransport, "Sugar phosphotransferase (PTS)", 2, true, true,
+                "A high-affinity glucose transporter that phosphorylates glucose as it brings it in, paid by one PEP from glycolysis.", 5),
+            new FeatureInfo(AbcTransport, "ABC sugar importer", 2, true, true,
+                "The highest-affinity glucose importer, powered by ATP: about 2 ATP per glucose.", 5),
+            new FeatureInfo(ProtonSymport, "Proton-coupled sugar symporter", 2, true, true,
+                "Brings glucose in with a proton, driven by the proton gradient the H+-ATPase builds.", 5),
             new FeatureInfo(Chemosensing, "Smell (chemoreceptors)", 3, true, true,
                 "Sense the trace species food packets carry, to swim towards them. Planned."),
             new FeatureInfo(MembraneRespiration, "Membrane respiration", 4, true, false, "Planned."),
@@ -45,7 +56,19 @@ namespace AdaptOrDeity.Game.Session
                 "Split cells into groups adapted separately (organs later); sliders change every cell in a group."),
             new FeatureInfo(FixedBodySize, "Fixed body size", 7, true, false,
                 "A group holds its number of cells: growth energy replaces dead cells, and goes to repair while the group is full."),
-        };
+        });
+
+        private static FeatureInfo[] WithExplanations(FeatureInfo[] features)
+        {
+            var timeline = GameTimeline.Default;
+            for (int i = 0; i < features.Length; i++)
+            {
+                var f = features[i];
+                features[i] = new FeatureInfo(f.Id, f.Name, f.UnlockLevel, f.Optional, f.DefaultEnabled, f.Effect, f.Cost,
+                    timeline.Explanation(f.Id));
+            }
+            return features;
+        }
 
         public static int IndexOf(string id)
         {

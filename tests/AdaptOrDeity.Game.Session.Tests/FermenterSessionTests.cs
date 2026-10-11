@@ -237,6 +237,8 @@ namespace AdaptOrDeity.Game.Session.Tests
                 Assert.That(json[i].GetProperty("unlock_level").GetInt32(), Is.EqualTo(f.UnlockLevel));
                 Assert.That(json[i].GetProperty("optional").GetBoolean(), Is.EqualTo(f.Optional));
                 Assert.That(json[i].GetProperty("default_enabled").GetBoolean(), Is.EqualTo(f.DefaultEnabled));
+                Assert.That(json[i].TryGetProperty("cost", out var cost) ? cost.GetInt32() : 0, Is.EqualTo(f.Cost), f.Id);
+                Assert.That(f.Explanation, Is.EqualTo(json[i].GetProperty("explanation").GetString()), f.Id);
             }
             foreach (var level in doc.RootElement.GetProperty("levels").EnumerateArray())
                 foreach (var id in level.GetProperty("unlocks").EnumerateArray())

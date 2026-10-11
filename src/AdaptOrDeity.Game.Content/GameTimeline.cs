@@ -25,6 +25,7 @@ namespace AdaptOrDeity.Game.Content
     {
         private static GameTimeline? _default;
         private readonly Dictionary<int, Dictionary<string, object?>> _levels = new Dictionary<int, Dictionary<string, object?>>();
+        private readonly Dictionary<string, string> _explanations = new Dictionary<string, string>();
 
         private GameTimeline(string json)
         {
@@ -33,6 +34,11 @@ namespace AdaptOrDeity.Game.Content
             {
                 var level = (Dictionary<string, object?>)item!;
                 _levels[(int)Number(level["level"])] = level;
+            }
+            foreach (var item in (List<object?>)root["features"]!)
+            {
+                var feature = (Dictionary<string, object?>)item!;
+                _explanations[(string)feature["id"]!] = feature.TryGetValue("explanation", out var e) ? (string)e! : "";
             }
         }
 
@@ -51,6 +57,9 @@ namespace AdaptOrDeity.Game.Content
                         arrivals = Merge(arrivals, (Dictionary<string, object?>)own!);
             return new Arrivals(Number(arrivals["food_per_s"]), Number(arrivals["carried_share"]));
         }
+
+        /// <summary>The feature's full explanation for the player ("" if it has none).</summary>
+        public string Explanation(string feature) => _explanations.TryGetValue(feature, out var e) ? e : "";
 
         private static Dictionary<string, object?> Merge(Dictionary<string, object?> level, Dictionary<string, object?> region)
         {

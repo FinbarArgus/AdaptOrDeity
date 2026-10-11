@@ -169,6 +169,13 @@
    "source": "definitional",
    "status": "design",
    "note": "where new flagella are placed by default: around the back of the cell, this far apart"
+  },
+  "skills.glucose_per_point": {
+   "value": 1e-15,
+   "units": "mol",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "glucose eaten from food packets per skill point. A fermenter on a packet eats ~1.8e-15 mol per hour (measured 2026-10-12: 1.8e-14 mol in 10 h at contact glucose), so a 5-point transporter takes ~3 h on food; to tune with the length of level 1"
   }
  },
  "trace_species": [
