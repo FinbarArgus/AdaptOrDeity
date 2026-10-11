@@ -178,9 +178,10 @@ def _var_info(v) -> str:
     return f"new VariableInfo({_cs_string(v.name)}, {_cs_string(v.units)}, {_literal(v.si_multiplier)}, VariableRole.{role})"
 
 
-def emit(module: AnalysedModule, group_inputs: list[str] | None = None) -> str:
+def emit(module: AnalysedModule, group_inputs: list[str] | None = None, outputs: list[str] | None = None) -> str:
     """The kernel class. ``group_inputs``: externals shared by every instance of a group (read once per call);
-    the others are per instance. None makes every external per instance."""
+    the others are per instance. None makes every external per instance. ``outputs``: algebraic variables that
+    ComputeOutputs keeps current after every step (with what they depend on), so the rest can be computed on demand."""
     m = module
     group = set(group_inputs or [])
     unknown = group - {v.name for v in m.externals}
@@ -209,6 +210,22 @@ def emit(module: AnalysedModule, group_inputs: list[str] | None = None) -> str:
                 needed.add(i)
                 pending.append(by_index[i])
     rates_eqs = [q for q in rates_eqs if q.kind == "ode" or algebraic_index[q.target] in needed]
+
+    # ComputeOutputs: the outputs and the algebraic variables they read, directly or not, in ComputeVariables' order.
+    unknown = set(outputs or []) - set(algebraic_index)
+    if unknown:
+        raise ModuleError(f"{m.module_type}/{m.version}: outputs that are not algebraic variables: {sorted(unknown)}")
+    output_closure: set[int] = set()
+    pending = [by_index[algebraic_index[n]] for n in outputs or [] if algebraic_index[n] in by_index]
+    output_closure.update(algebraic_index[n] for n in outputs or [])
+    while pending:
+        line = e.assignment(pending.pop()).split(" = ", 1)[1]
+        for i in map(int, re.findall(r"\ba(\d+)\b", line)):
+            if i not in output_closure and i in by_index:
+                output_closure.add(i)
+                pending.append(by_index[i])
+    output_eqs = [q for q in variable_eqs if algebraic_index[q.target] in output_closure]
+    output_indices = ", ".join(str(algebraic_index[n]) for n in outputs or [])
 
     def locals_for(stmts) -> list[str]:
         used, group_used = set(), set()
@@ -280,7 +297,7 @@ using AdaptOrDeity.Sim.Modules;
 
 namespace {NAMESPACE}
 {{
-    public sealed class {cls} : IJacobianKernel
+    public sealed class {cls} : IJacobianKernel, IOutputKernel
     {{
         public static readonly KernelDescriptor StaticDescriptor = new KernelDescriptor(
             moduleType: {_cs_string(m.module_type)},
@@ -315,6 +332,14 @@ namespace {NAMESPACE}
         public void ComputeVariables(double t, KernelBatch batch, int start, int end)
         {{
 {body(variable_eqs, e)}
+        }}
+
+        public IReadOnlyList<int> Outputs {{ get; }} = new int[] {{ {output_indices} }};
+
+        // {len(output_eqs)} of {len(variable_eqs)} algebraic equations.
+        public void ComputeOutputs(double t, KernelBatch batch, int start, int end)
+        {{
+{body(output_eqs, e)}
         }}
 
         // The exact Jacobian of the rates for instance k: {jac_nonzeros} structurally non-zero entries of {len(m.states)}².

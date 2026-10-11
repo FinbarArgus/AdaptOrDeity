@@ -18,7 +18,7 @@ namespace AdaptOrDeity.Game.Session
     /// keeps its number of cells: growth energy replaces dead cells, and goes to repair while the group is full. Cells
     /// share the medium but do not yet exchange anything (the transport graph comes later). Values exchanged here are SI.
     /// </summary>
-    public sealed class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld, IFoodWorld, IDisposable
+    public sealed class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld, IFoodWorld, IParallelWorld, IDisposable
     {
         /// <summary>Sim-seconds per real second: pause, 1x, 10x, 100x, 1000x.</summary>
         public static readonly double[] SpeedPresets = { 0.0, 1.0, 10.0, 100.0, 1000.0 };
@@ -54,8 +54,13 @@ namespace AdaptOrDeity.Game.Session
         private readonly IKernel _kernel = new GenericAdaptiveCell_fermenter();
         private readonly List<FermenterCell> _cells = new List<FermenterCell>();
         private ParallelWork? _workers;
-        private Action<int, int>? _stepCells;
-        private double _stepDt;
+        private Action<int, int>? _forcePass, _cellPass;   // cached delegates: stepping must not allocate
+        private double _stepDt, _cos, _sin;
+        private bool _motorsOn;
+        private double[] _cellX = new double[0], _cellY = new double[0], _forceX = new double[0], _forceY = new double[0];
+        private double[] _torque = new double[0];
+        private bool[] _touching = new bool[0];
+        private int[] _aliveIn = new int[0];   // living cells per group, counted by ApplyControls
 
         /// <summary>Cells per work chunk, and the fewest cells worth spreading over threads.</summary>
         private const int CellChunk = 2, ParallelFrom = 4;
@@ -71,7 +76,6 @@ namespace AdaptOrDeity.Game.Session
         private readonly int _flagellaTrait;
         private readonly double _thrustAngleSd;
         private readonly double[] _defaultAngles;
-        private Func<int, double>? _flagellaOf, _thrustOf;   // cached delegates: stepping must not allocate
         private readonly Random _motilityRandom;
         private readonly double _meanRun, _meanPause;
         private double _untilSwitch;
@@ -282,7 +286,7 @@ namespace AdaptOrDeity.Game.Session
                 double p = 0.0;
                 foreach (var c in _cells)
                     if (c.Alive)
-                        p += c.AlgebraicValue("i_flagellum__P_flag");
+                        p += c.FlagellumPower;
                 return p;
             }
         }
@@ -354,33 +358,57 @@ namespace AdaptOrDeity.Game.Session
         {
             // The creature moves over the ground and the food window follows it. Each cell sees the background plus the
             // packets it touches; what it takes beyond the background comes out of those packets. Glucose crosses the
-            // membrane through the cell's own carriers (Glf) in the kernel.
-            StepMotility(dt);
+            // membrane through the cell's own carriers (Glf) in the kernel. Per-cell work runs on the workers; what cells
+            // share (the body's force, the packets) is summed or settled afterwards in cell order, so results do not
+            // depend on the number of workers.
+            int n = _cells.Count;
+            if (_cellX.Length < n)
+                Array.Resize(ref _cellX, 2 * n);
+            if (_cellY.Length < n)
+                Array.Resize(ref _cellY, 2 * n);
+            if (_forceX.Length < n)
+            {
+                Array.Resize(ref _forceX, 2 * n);
+                Array.Resize(ref _forceY, 2 * n);
+                Array.Resize(ref _torque, 2 * n);
+                Array.Resize(ref _touching, 2 * n);
+            }
+            int nt = _food.TraceSpecies.Count;
+            if (_traceAtCell.Length < n * nt)
+                _traceAtCell = new double[2 * n * nt];
+
+            _motorsOn = SwitchRuns(dt);
+            _forcePass ??= ForcePass;
+            ForEachCell(_forcePass);
+            double fx = 0.0, fy = 0.0, torque = 0.0;
+            for (int i = 0; i < n; i++)
+            {
+                fx += _forceX[i];
+                fy += _forceY[i];
+                torque += _torque[i];
+            }
+            _body.Step(dt, fx, fy, torque);
+
             var b = _body.Body;
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
-            int nt = _food.TraceSpecies.Count;
-            if (_traceAtCell.Length < _cells.Count * nt)
-                _traceAtCell = new double[2 * _cells.Count * nt];
-            for (int i = 0; i < _cells.Count; i++)
+            _cos = Math.Cos(b.Angle);
+            _sin = Math.Sin(b.Angle);
+            _stepDt = dt;
+            _cellPass ??= CellPass;
+            ForEachCell(_cellPass);
+
+            // Food stays with the cell that found it; what cells took beyond the background leaves the packets.
+            for (int i = 0; i < n; i++)
+                if (_touching[i] && _cells[i].Alive)
+                    _food.StickTo(_cellX[i], _cellY[i], CellRadius);
+            for (int i = 0; i < n; i++)
             {
-                CellPosition(i, out double x, out double y);
-                if (_cells[i].Alive)
-                    _food.StickTo(x, y, CellRadius);
-                double c = _food.GlucoseAt(x, y, CellRadius);
-                _cells[i].SetExternal("C_glc_e_mod_membrane_face", c);
-                for (int tr = 0; tr < nt; tr++)
-                    _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
-            }
-            StepCells(dt);
-            for (int i = 0; i < _cells.Count; i++)
-            {
-                double c = _cells[i].External("C_glc_e_mod_membrane_face");
-                double uptake = _cells[i].AlgebraicValue("membrane_face__J_glc") * dt;   // mol into the cell
+                if (!_touching[i])
+                    continue;
+                double c = _cells[i].MembraneGlucose;
+                double uptake = _cells[i].GlucoseUptake * dt;   // mol into the cell
                 if (c > _food.BackgroundGlucose && uptake > 0.0)
-                {
-                    CellPosition(i, out double x, out double y);
-                    _food.Withdraw(x, y, CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
-                }
+                    _food.Withdraw(_cellX[i], _cellY[i], CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
             }
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
@@ -389,23 +417,48 @@ namespace AdaptOrDeity.Game.Session
             ApplyFixedSize();
         }
 
-        // Every cell's own integration, on the worker threads when there are enough cells.
-        private void StepCells(double dt)
+        // Each cell's motors, and its flagella's force on the body from the last step's state (the motors' response to
+        // the proton-motive force is not lagged by more than a step).
+        private void ForcePass(int start, int end)
+        {
+            for (int i = start; i < end; i++)
+            {
+                var c = _cells[i];
+                c.MotorActivation = _motorsOn && c.Alive ? 1.0 : 0.0;
+                double flagella = _flagellaTrait >= 0 ? c.TraitValue(_flagellaTrait) : 0.0;
+                double thrust = c.Alive ? Math.Max(0.0, c.FlagellumThrust) : 0.0;
+                _body.CellForce(i, flagella, thrust, out _forceX[i], out _forceY[i], out _torque[i]);
+            }
+        }
+
+        // Each cell's position, the food at its membrane, and its own integration.
+        private void CellPass(int start, int end)
+        {
+            int nt = _food.TraceSpecies.Count;
+            for (int i = start; i < end; i++)
+            {
+                _body.WorldPosition(i, _cos, _sin, out double x, out double y);
+                _cellX[i] = x;
+                _cellY[i] = y;
+                _touching[i] = _food.TouchesAny(x, y, CellRadius);
+                var c = _cells[i];
+                c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
+                for (int tr = 0; tr < nt; tr++)
+                    _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
+                c.Step(_stepDt);
+            }
+        }
+
+        /// <summary>Runs a pass over every cell, on the worker threads when there are enough cells.</summary>
+        public void ForEachCell(Action<int, int> pass)
         {
             if (_cells.Count < ParallelFrom || _workerCount == 1)
             {
-                for (int i = 0; i < _cells.Count; i++)
-                    _cells[i].Step(dt);
+                pass(0, _cells.Count);
                 return;
             }
             _workers ??= new ParallelWork(_workerCount);
-            _stepCells ??= (start, end) =>
-            {
-                for (int i = start; i < end; i++)
-                    _cells[i].Step(_stepDt);
-            };
-            _stepDt = dt;
-            _workers.Run(_cells.Count, CellChunk, _stepCells);
+            _workers.Run(_cells.Count, CellChunk, pass);
         }
 
         public double Read(int cell, int channel)
@@ -550,9 +603,10 @@ namespace AdaptOrDeity.Game.Session
         /// Runs and pauses at random (no sensing yet: level 2 adds deciding when to swim). In a run every living cell's
         /// motors turn; each flagellum pushes its cell away from its base with the kernel's thrust (proton motive force,
         /// number of flagella), off by a normal error drawn for the run, and the body moves and turns as one rigid body
-        /// against the water's drag. With swimming turned off the motors stay off.
+        /// against the water's drag (<see cref="ForcePass"/>). With swimming turned off the motors stay off. Returns whether
+        /// the motors run this step.
         /// </summary>
-        private void StepMotility(double dt)
+        private bool SwitchRuns(double dt)
         {
             bool on = Active(GameFeatures.Swimming);
             _untilSwitch -= dt;
@@ -563,12 +617,7 @@ namespace AdaptOrDeity.Game.Session
                     _body.NewRun(_motilityRandom, _thrustAngleSd);
                 _untilSwitch += Exponential() * (MotorOn ? _meanRun : _meanPause);
             }
-            foreach (var c in _cells)
-                c.SetExternal("a_motor_mod_i_flagellum", on && MotorOn && c.Alive ? 1.0 : 0.0);
-            // thrust from the last step's state (the motors' response to the PMF is not lagged by more than a step)
-            _flagellaOf ??= i => _flagellaTrait >= 0 ? _cells[i].TraitValue(_flagellaTrait) : 0.0;
-            _thrustOf ??= i => _cells[i].Alive ? Math.Max(0.0, _cells[i].AlgebraicValue("i_flagellum__F_one")) : 0.0;
-            _body.Step(dt, _flagellaOf, _thrustOf);
+            return on && MotorOn;
         }
 
         /// <summary>
@@ -579,12 +628,21 @@ namespace AdaptOrDeity.Game.Session
         {
             bool growthOn = Active(GameFeatures.GrowthAndDivision), storageOn = Active(GameFeatures.GlycogenStorage);
             bool repairOn = Active(GameFeatures.RepairLevel), fixedSize = Active(GameFeatures.FixedBodySize);
+            if (fixedSize)
+            {
+                if (_aliveIn.Length < _groups.Count)
+                    _aliveIn = new int[2 * _groups.Count];
+                Array.Clear(_aliveIn, 0, _groups.Count);
+                for (int i = 0; i < _cells.Count; i++)
+                    if (_cells[i].Alive)
+                        _aliveIn[_cellGroup[i]]++;
+            }
             for (int i = 0; i < _cells.Count; i++)
             {
                 var g = _groups[_cellGroup[i]];
                 double growth = growthOn ? g.Controls[GrowthControl] : 0.0;
                 double repair = repairOn ? g.Controls[RepairControl] : 1.0;
-                if (fixedSize && AliveIn(_cellGroup[i]) >= g.FixedSize)
+                if (fixedSize && _aliveIn[_cellGroup[i]] >= g.FixedSize)
                 {
                     repair = Math.Min(1.0, repair + growth);
                     growth = 0.0;

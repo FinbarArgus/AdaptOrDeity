@@ -25,6 +25,31 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         }
 
         [Test]
+        public void AlgebraicValuesReadAfterStepsAreThoseOfTheStateNow()
+        {
+            // The kernel's outputs are kept current every step and the rest computed when first read: whatever is read,
+            // and in whatever order, it must be what a full ComputeVariables gives for the cell's state now.
+            var cell = NewCell();
+            cell.MembraneGlucose = 20.0;
+            var kernel = new GenericAdaptiveCell_fermenter();
+            var reference = new KernelBatch(kernel.Descriptor, 1) { Count = 1 };
+            for (int round = 0; round < 3; round++)
+            {
+                Run(cell, 7.3);
+                double thrust = cell.FlagellumThrust;   // an output first, then everything
+                for (int i = 0; i < cell.Batch.States.Length; i++)
+                    reference.States[i][0] = cell.Batch.States[i][0];
+                for (int e = 0; e < cell.Batch.Externals.Length; e++)
+                    reference.Externals[e][0] = cell.Batch.Externals[e][0];
+                kernel.ComputeVariables(cell.Time, reference, 0, 1);
+                Assert.That(thrust, Is.EqualTo(reference.Algebraic[kernel.Descriptor.AlgebraicIndex("i_flagellum__F_one")][0]));
+                foreach (var v in kernel.Descriptor.Algebraic)
+                    Assert.That(cell.AlgebraicValue(v.Name),
+                        Is.EqualTo(reference.Algebraic[kernel.Descriptor.AlgebraicIndex(v.Name)][0]), $"{v.Name} after round {round}");
+            }
+        }
+
+        [Test]
         public void DefaultInstanceIsTheCalibratedRestAtGameStep()
         {
             // One hour of backward Euler at the game's 0.1 s step must hold the calibrated rest exactly.

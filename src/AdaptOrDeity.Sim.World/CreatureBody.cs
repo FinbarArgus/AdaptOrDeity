@@ -103,6 +103,13 @@ namespace AdaptOrDeity.Sim.World
                     n[k] = sd * Gaussian(random);
         }
 
+        /// <summary>Position of a cell's centre relative to the body's centre of mass, in the body's frame [m].</summary>
+        public void LocalPosition(int cell, out double x, out double y)
+        {
+            x = _lx[cell] - _cx;
+            y = _ly[cell] - _cy;
+        }
+
         /// <summary>Position of a cell's centre relative to the body's centre of mass, in the world frame [m].</summary>
         public void RelativePosition(int cell, out double x, out double y)
         {
@@ -113,11 +120,15 @@ namespace AdaptOrDeity.Sim.World
         }
 
         /// <summary>Position of a cell's centre over the ground [m].</summary>
-        public void WorldPosition(int cell, out double x, out double y)
+        public void WorldPosition(int cell, out double x, out double y) =>
+            WorldPosition(cell, Math.Cos(Body.Angle), Math.Sin(Body.Angle), out x, out y);
+
+        /// <summary>As <see cref="WorldPosition(int, out double, out double)"/>, with the body angle's cosine and sine given.</summary>
+        public void WorldPosition(int cell, double cos, double sin, out double x, out double y)
         {
-            RelativePosition(cell, out x, out y);
-            x += Body.X;
-            y += Body.Y;
+            double bx = _lx[cell] - _cx, by = _ly[cell] - _cy;
+            x = Body.X + cos * bx - sin * by;
+            y = Body.Y + sin * bx + cos * by;
         }
 
         /// <summary>
@@ -130,23 +141,40 @@ namespace AdaptOrDeity.Sim.World
             double fx = 0.0, fy = 0.0, torque = 0.0;   // body frame
             for (int i = 0; i < CellCount; i++)
             {
-                double f = thrust(i);
-                if (f == 0.0)
-                    continue;
-                double n = flagella(i);
-                double px = _lx[i] - _cx, py = _ly[i] - _cy;
-                for (int k = 0; k < MaxFlagella && k < n; k++)
-                {
-                    double share = Math.Min(1.0, n - k);
-                    double phi = _angles[i][k];
-                    double ax = px + CellRadius * Math.Cos(phi), ay = py + CellRadius * Math.Sin(phi);   // the base
-                    double dir = phi + _noise[i][k];
-                    double gx = -f * share * Math.Cos(dir), gy = -f * share * Math.Sin(dir);             // away from it
-                    fx += gx;
-                    fy += gy;
-                    torque += ax * gy - ay * gx;
-                }
+                CellForce(i, flagella(i), thrust(i), out double gx, out double gy, out double t);
+                fx += gx;
+                fy += gy;
+                torque += t;
             }
+            Step(dt, fx, fy, torque);
+        }
+
+        /// <summary>
+        /// The force and torque about the centre of mass (body frame) of one cell's flagella: <paramref name="flagella"/>
+        /// built, each pushing with <paramref name="thrust"/> [N]. Cells are independent, so this can run in parallel.
+        /// </summary>
+        public void CellForce(int cell, double flagella, double thrust, out double fx, out double fy, out double torque)
+        {
+            fx = fy = torque = 0.0;
+            if (thrust == 0.0)
+                return;
+            double px = _lx[cell] - _cx, py = _ly[cell] - _cy;
+            for (int k = 0; k < MaxFlagella && k < flagella; k++)
+            {
+                double share = Math.Min(1.0, flagella - k);
+                double phi = _angles[cell][k];
+                double ax = px + CellRadius * Math.Cos(phi), ay = py + CellRadius * Math.Sin(phi);   // the base
+                double dir = phi + _noise[cell][k];
+                double gx = -thrust * share * Math.Cos(dir), gy = -thrust * share * Math.Sin(dir);   // away from it
+                fx += gx;
+                fy += gy;
+                torque += ax * gy - ay * gx;
+            }
+        }
+
+        /// <summary>Advances the body by dt under the cells' summed force and torque (body frame).</summary>
+        public void Step(double dt, double fx, double fy, double torque)
+        {
             double c = Math.Cos(Body.Angle), s = Math.Sin(Body.Angle);
             ForceX = c * fx - s * fy;
             ForceY = s * fx + c * fy;

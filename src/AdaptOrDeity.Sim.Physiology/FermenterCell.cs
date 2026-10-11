@@ -61,12 +61,15 @@ namespace AdaptOrDeity.Sim.Physiology
     public sealed class FermenterCell
     {
         private readonly IKernel _kernel;
+        private readonly IOutputKernel? _outputs;
+        private readonly bool[] _isOutput;
+        private bool _variablesCurrent;
         private readonly BackwardEulerIntegrator _integrator = new BackwardEulerIntegrator();
         private readonly int[] _target, _expression, _areaPerUnit;
         private readonly int _growthLevel, _storeAlloc, _repairLevel, _jRef;
         private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aRna, _aRibo, _aLipid, _aRepair;
         private readonly int _aGrowthUsed, _aHeat, _aVol, _aSurface, _aAreaMax, _aDaughter, _aProgress, _aGlycProgress;
-        private readonly int _aGlycAtp;
+        private readonly int _aGlycAtp, _aUptake, _aThrust, _aFlagPower, _eGlucose, _eMotor;
         private readonly int _sDamage, _sGrowth, _sGlycogen;
 
         public FermenterCell(IKernel kernel, IReadOnlyList<TraitDefinition> traits, string instance = "default")
@@ -116,11 +119,23 @@ namespace AdaptOrDeity.Sim.Physiology
             _aProgress = Alg("bio__growth_progress");
             _aGlycProgress = Alg("bio__glycogen_progress");
             _aGlycAtp = Alg("cytosol__M_glyc_ATP");
+            _aUptake = Alg("membrane_face__J_glc");
+            _aThrust = Alg("i_flagellum__F_one");
+            _aFlagPower = Alg("i_flagellum__P_flag");
+            _eGlucose = Ext("C_glc_e_mod_membrane_face");
+            _eMotor = Ext("a_motor_mod_i_flagellum");
             _sDamage = St("bio__D");
             _sGrowth = St("bio__P_growth");
             _sGlycogen = St("cytosol__C_glyc");
+            _outputs = kernel as IOutputKernel;
+            _isOutput = new bool[kernel.Descriptor.Algebraic.Count];
+            if (_outputs != null)
+                foreach (int i in _outputs.Outputs)
+                    _isOutput[i] = true;
+            _integrator.ComputeVariablesAfterStep = _outputs == null;
             kernel.Initialise(Batch, 0, 1);
             kernel.ComputeVariables(0.0, Batch, 0, 1);
+            _variablesCurrent = true;
         }
 
         // A daughter: same kernel, a copy of the parent's state and parameters (targets and controls included).
@@ -131,7 +146,7 @@ namespace AdaptOrDeity.Sim.Physiology
             for (int i = 0; i < Batch.Externals.Length; i++)
                 Batch.Externals[i][0] = parent.Batch.Externals[i][0];
             Time = parent.Time;
-            _kernel.ComputeVariables(Time, Batch, 0, 1);
+            Recompute();
         }
 
         private const string GrowthParameter = "growth_level_mod_bio", StorageParameter = "store_alloc_mod_cytosol",
@@ -169,42 +184,68 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Damage, 1 = lethal.</summary>
         public double Damage => Batch.States[_sDamage][0];
 
+        /// <summary>Glucose at the membrane [mol/m³] (input).</summary>
+        public double MembraneGlucose
+        {
+            get => Batch.Externals[_eGlucose][0];
+            set => Batch.Externals[_eGlucose][0] = value;
+        }
+
+        /// <summary>Flagellar motor activation, 0 or 1 (input).</summary>
+        public double MotorActivation
+        {
+            get => Batch.Externals[_eMotor][0];
+            set => Batch.Externals[_eMotor][0] = value;
+        }
+
+        /// <summary>Glucose taken up [mol/s].</summary>
+        public double GlucoseUptake => A(_aUptake);
+
+        /// <summary>Thrust of one flagellum [N].</summary>
+        public double FlagellumThrust => A(_aThrust);
+
+        /// <summary>Proton-motive power of the flagellar motors [W].</summary>
+        public double FlagellumPower => A(_aFlagPower);
+
         /// <summary>ATP invested in a daughter so far [mol].</summary>
         public double GrowthInvested => Batch.States[_sGrowth][0];
 
         /// <summary>ATP to build a daughter: its proteins, RNA, lipids and DNA [mol].</summary>
-        public double DaughterCost => Batch.Algebraic[_aDaughter][0];
+        public double DaughterCost => A(_aDaughter);
 
         /// <summary>Fraction of a daughter built.</summary>
-        public double GrowthProgress => Batch.Algebraic[_aProgress][0];
+        public double GrowthProgress => A(_aProgress);
 
         /// <summary>Glycogen [mol/m³ of glucose units].</summary>
         public double Glycogen => Batch.States[_sGlycogen][0];
 
         /// <summary>ATP the glycogen store would give [mol].</summary>
-        public double GlycogenAtp => Batch.Algebraic[_aGlycAtp][0];
+        public double GlycogenAtp => A(_aGlycAtp);
 
         /// <summary>Fraction of a daughter the glycogen store could finish.</summary>
-        public double GlycogenProgress => Batch.Algebraic[_aGlycProgress][0];
+        public double GlycogenProgress => A(_aGlycProgress);
 
         /// <summary>True if the daughter is built, or nearly built and glycogen can finish it.</summary>
         public bool CanDivide => Alive && GrowthProgress + GlycogenProgress >= 1.0;
 
         /// <summary>Cell volume [m³].</summary>
-        public double Volume => Batch.Algebraic[_aVol][0];
+        public double Volume => A(_aVol);
 
         /// <summary>Whole cell surface [µm²].</summary>
-        public double SurfaceArea => Batch.Algebraic[_aSurface][0];
+        public double SurfaceArea => A(_aSurface);
 
         /// <summary>Membrane area the proteins may take [µm²]: scales with the cell's surface.</summary>
-        public double TransporterAreaMax => Batch.Algebraic[_aAreaMax][0];
+        public double TransporterAreaMax => A(_aAreaMax);
+
+        /// <summary>Membrane area one unit of trait <paramref name="trait"/> takes [µm²].</summary>
+        public double TraitAreaPerUnit(int trait) => A(_areaPerUnit[trait]);
 
         /// <summary>Membrane area the adaptable proteins take now [µm²].</summary>
         public double TransporterArea()
         {
             double a = 0.0;
             for (int i = 0; i < Traits.Count; i++)
-                a += Batch.Algebraic[_areaPerUnit[i]][0] * TraitValue(i);
+                a += A(_areaPerUnit[i]) * TraitValue(i);
             return a;
         }
 
@@ -218,13 +259,13 @@ namespace AdaptOrDeity.Sim.Physiology
             if (double.IsNaN(multiplier))
                 throw new ArgumentException("multiplier is NaN", nameof(multiplier));
             double m = Math.Min(t.Max, Math.Max(t.Min, multiplier));
-            double unit = Batch.Algebraic[_areaPerUnit[trait]][0];
+            double unit = A(_areaPerUnit[trait]);
             if (unit > 0.0)
             {
                 double others = 0.0;
                 for (int i = 0; i < Traits.Count; i++)
                     if (i != trait)
-                        others += Batch.Algebraic[_areaPerUnit[i]][0] * Math.Max(TraitTarget(i), TraitValue(i));
+                        others += A(_areaPerUnit[i]) * Math.Max(TraitTarget(i), TraitValue(i));
                 m = Math.Max(t.Min, Math.Min(m, (TransporterAreaMax - others) / unit));
             }
             if (t.Step > 0.0)
@@ -266,11 +307,37 @@ namespace AdaptOrDeity.Sim.Physiology
         public void SetState(string name, double value)
         {
             Batch.States[St(name)][0] = value;
-            _kernel.ComputeVariables(Time, Batch, 0, 1);
+            Recompute();
             Restart();
         }
 
-        public double AlgebraicValue(string name) => Batch.Algebraic[Alg(name)][0];
+        public double AlgebraicValue(string name) => A(Alg(name));
+
+        // Algebraic variable i now: the kernel's outputs are kept current after every step, the rest are computed when
+        // first read (most steps nobody reads them).
+        private double A(int i)
+        {
+            if (!_variablesCurrent && !_isOutput[i])
+                EnsureVariables();
+            return Batch.Algebraic[i][0];
+        }
+
+        /// <summary>Whether every algebraic variable is current (diagnostics: reading a non-output computes them all).</summary>
+        public bool AllVariablesCurrent => _variablesCurrent;
+
+        private void EnsureVariables()
+        {
+            if (_variablesCurrent)
+                return;
+            _kernel.ComputeVariables(Time, Batch, 0, 1);
+            _variablesCurrent = true;
+        }
+
+        private void Recompute()
+        {
+            _kernel.ComputeVariables(Time, Batch, 0, 1);
+            _variablesCurrent = true;
+        }
 
         /// <summary>The integrator (diagnostics, benchmarks).</summary>
         public BackwardEulerIntegrator Integrator => _integrator;
@@ -303,6 +370,13 @@ namespace AdaptOrDeity.Sim.Physiology
                 LastHalvings = _integrator.StepRobust(_kernel, Batch, Time, dt, 0, 1);
                 Time += dt;
             }
+            if (_outputs != null)
+            {
+                _outputs.ComputeOutputs(Time, Batch, 0, 1);   // the rest on demand (EnsureVariables)
+                _variablesCurrent = false;
+            }
+            else
+                Recompute();
             if (Damage >= 1.0)
                 Alive = false;
         }
@@ -347,7 +421,6 @@ namespace AdaptOrDeity.Sim.Physiology
             double theta = (Time - _ta) / (_tb - _ta);
             for (int i = 0; i < n; i++)
                 Batch.States[i][0] = _ya[i] + theta * (_yb[i] - _ya[i]);
-            _kernel.ComputeVariables(Time, Batch, 0, 1);
         }
 
         /// <summary>One accepted step from _tb: error-controlled, halving on rejection or Newton failure.</summary>
@@ -425,7 +498,7 @@ namespace AdaptOrDeity.Sim.Physiology
             if (shortfall > 0.0)
                 Batch.States[_sGlycogen][0] = Math.Max(0.0, Glycogen * (1.0 - shortfall / GlycogenAtp));
             Batch.States[_sGrowth][0] = 0.0;
-            _kernel.ComputeVariables(Time, Batch, 0, 1);
+            Recompute();
             Restart();
             return new FermenterCell(_kernel, this);
         }
@@ -433,6 +506,7 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>The energy budget now [mol ATP/s, W], read from the kernel.</summary>
         public EnergyBudget Budget()
         {
+            EnsureVariables();
             double[][] a = Batch.Algebraic;
             return new EnergyBudget
             {

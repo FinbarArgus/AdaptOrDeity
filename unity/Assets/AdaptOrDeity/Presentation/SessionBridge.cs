@@ -29,8 +29,20 @@ namespace AdaptOrDeity.Presentation
         /// <summary>Overlay channel shown, or -1 for the plain view.</summary>
         public int ActiveOverlay { get; set; } = -1;
 
-        /// <summary>Cell shown in the cell panel, or -1 for none.</summary>
-        public int SelectedCell { get; set; } = -1;
+        /// <summary>Cell shown in the cell panel, or -1 for none. Frames carry details for this cell only.</summary>
+        public int SelectedCell
+        {
+            get => _selectedCell;
+            set
+            {
+                if (value == _selectedCell)
+                    return;
+                _selectedCell = value;
+                _session?.Enqueue(SimCommands.Inspect(value));
+            }
+        }
+
+        private int _selectedCell = -1;
 
         public static SessionBridge Instance { get; private set; }
 
@@ -56,10 +68,10 @@ namespace AdaptOrDeity.Presentation
         private float _frameSpan = 0.1f;      // simulated seconds between the last two frames: carry the pose no further
         private double _lastFrameTime;
 
-        /// <summary>A snapshot position relative to the body (metres), as drawn now (world units).</summary>
+        /// <summary>A position on the body (metres, body frame, from its centre of mass), as drawn now (world units).</summary>
         public Vector2 BodyRelative(float x, float y)
         {
-            float c = Mathf.Cos(DeltaAngle), s = Mathf.Sin(DeltaAngle), u = CellView.UnitsPerMetre;
+            float c = Mathf.Cos(DisplayOrientation), s = Mathf.Sin(DisplayOrientation), u = CellView.UnitsPerMetre;
             return new Vector2((c * x - s * y) * u, (s * x + c * y) * u);
         }
 

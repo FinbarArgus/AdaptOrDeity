@@ -45,6 +45,9 @@ namespace AdaptOrDeity.Sim.Modules
         /// <summary>Steps after which the Jacobian is recomputed even if Newton converges well.</summary>
         public int MaxJacobianAge { get; set; } = 50;
 
+        /// <summary>Whether a step ends by computing the kernel's algebraic variables (false when the caller does).</summary>
+        public bool ComputeVariablesAfterStep { get; set; } = true;
+
         /// <summary>Use the kernel's exact Jacobian when it has one (<see cref="IJacobianKernel"/>); otherwise finite differences.</summary>
         public bool UseExactJacobian { get; set; } = true;
 
@@ -96,7 +99,8 @@ namespace AdaptOrDeity.Sim.Modules
                 }
                 worst = Math.Max(worst, halvings);
             }
-            kernel.ComputeVariables(t + dt, batch, start, end);
+            if (ComputeVariablesAfterStep)
+                kernel.ComputeVariables(t + dt, batch, start, end);
             return worst;
         }
 
@@ -138,7 +142,8 @@ namespace AdaptOrDeity.Sim.Modules
                 LastIterations = it;
                 LastConverged &= converged;
             }
-            kernel.ComputeVariables(t1, batch, start, end);
+            if (ComputeVariablesAfterStep)
+                kernel.ComputeVariables(t1, batch, start, end);
         }
 
         /// <summary>

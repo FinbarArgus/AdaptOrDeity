@@ -52,6 +52,25 @@
         "growth_level_mod_bio",
         "store_alloc_mod_cytosol",
         "repair_level_mod_bio"
+      ],
+      "outputs": [
+        "membrane_face__J_glc",
+        "i_flagellum__F_one",
+        "i_flagellum__P_flag",
+        "bio__growth_progress",
+        "bio__glycogen_progress",
+        "H__pH_i",
+        "protein__A_surface",
+        "pool_proteome__a_unit",
+        "pool_Glyc__a_unit",
+        "pool_H_ATPase__a_unit",
+        "pool_NhaA__a_unit",
+        "pool_KefC__a_unit",
+        "pool_Trk__a_unit",
+        "pool_NCX__a_unit",
+        "pool_Glf__a_unit",
+        "pool_LacT__a_unit",
+        "pool_Flagellum__a_unit"
       ]
     }
   ]

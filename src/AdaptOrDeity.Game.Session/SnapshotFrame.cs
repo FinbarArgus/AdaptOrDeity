@@ -128,7 +128,10 @@ namespace AdaptOrDeity.Game.Session
 
         public float CreatureVy { get; internal set; }
 
-        /// <summary>Per cell: position relative to the creature [m] (add <see cref="CreatureX"/> for the ground).</summary>
+        /// <summary>
+        /// Per cell: position on the body relative to its centre of mass, in the body's frame [m]. Turn by
+        /// <see cref="Orientation"/> and add <see cref="CreatureX"/>, <see cref="CreatureY"/> for the ground.
+        /// </summary>
         public float[] CellX { get; }
 
         public float[] CellY { get; }

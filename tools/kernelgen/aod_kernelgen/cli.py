@@ -63,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
         per_cell = entry.get("per_cell_inputs")
         group = None if per_cell is None else [v.name for v in module.externals if v.name not in set(per_cell)]
         try:
-            expected[KERNEL_DIR / f"{cls}.g.cs"] = emit_csharp.emit(module, group)
+            expected[KERNEL_DIR / f"{cls}.g.cs"] = emit_csharp.emit(module, group, entry.get("outputs"))
         except ModuleError as exc:
             failures.append(str(exc))
             continue

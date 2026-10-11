@@ -168,6 +168,9 @@ namespace AdaptOrDeity.Game.Session
         internal void ClearProbes() => _probes.Clear();
 
         /// <summary>Creates a frame sized for this loop's world and options.</summary>
+        /// <summary>The cell whose details frames carry (-1: none; <see cref="SimCommands.Inspect"/>).</summary>
+        public int InspectedCell { get; set; } = -1;
+
         /// <summary>A frame for the current colony: room for at least the cells there are, in powers of two.</summary>
         public SnapshotFrame CreateFrame() =>
             new SnapshotFrame(World.Overlays.Count, Capacity(Math.Max(World.CellCount, Schema.InitialCellCapacity)), _options.MaxProbes,
@@ -194,29 +197,21 @@ namespace AdaptOrDeity.Game.Session
             frame.SpeedIndex = _speedIndex;
             frame.Lagging = Lagging;
             frame.CellCount = World.CellCount;
-            for (int c = 0; c < frame.Channels.Length; c++)
-            {
-                float[] channel = frame.Channels[c];
-                for (int k = 0; k < World.CellCount; k++)
-                    channel[k] = (float)World.Read(k, c);
-            }
+            // per-cell fields: each cell's are independent, so the world may write them on its worker threads
+            _writing = frame;
+            _writeCells ??= WriteCells;
+            if (World is IParallelWorld parallel)
+                parallel.ForEachCell(_writeCells);
+            else
+                WriteCells(0, World.CellCount);
+            _writing = null;
             if (World is IInspectableWorld inspect)
             {
-                for (int d = 0; d < frame.Details.Length; d++)
-                    for (int k = 0; k < World.CellCount; k++)
-                        frame.Details[d][k] = inspect.ReadDetail(k, d);
-                for (int t = 0; t < frame.TraitValues.Length; t++)
-                    for (int k = 0; k < World.CellCount; k++)
-                    {
-                        frame.TraitValues[t][k] = (float)inspect.ReadTrait(k, t);
-                        frame.TraitTargets[t][k] = (float)inspect.ReadTraitTarget(k, t);
-                    }
-                for (int k = 0; k < World.CellCount; k++)
-                {
-                    frame.CellGroup[k] = inspect.CellGroup(k);
-                    frame.CellAlive[k] = inspect.CellAlive(k);
-                    frame.CellCanDivide[k] = inspect.CellCanDivide(k);
-                }
+                // details for the inspected cell only: they cost the cell's whole set of algebraic variables
+                int seen = InspectedCell;
+                if (seen >= 0 && seen < World.CellCount)
+                    for (int d = 0; d < frame.Details.Length; d++)
+                        frame.Details[d][seen] = inspect.ReadDetail(seen, d);
                 frame.GroupCount = inspect.GroupCount;
                 for (int c = 0; c < frame.Controls.Length; c++)
                     for (int g = 0; g < inspect.GroupCount; g++)
@@ -239,27 +234,10 @@ namespace AdaptOrDeity.Game.Session
                 frame.Spin = (float)body.Omega;
                 frame.MechanicalPower = (float)body.Power;
                 frame.HeatToWater = body.Dissipated;
-                for (int k = 0; k < World.CellCount; k++)
-                    for (int f = 0; f < AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella; f++)
-                        frame.FlagellumAngles[k][f] = (float)foodWorld.Body.FlagellumAngle(k, f);
                 if (World is FermenterWorld fw)
                 {
                     frame.MotorOn = fw.MotorOn && fw.FeatureEnabled(GameFeatures.IndexOf(GameFeatures.Swimming));
                     frame.MotorPower = (float)fw.MotorPower;
-                    for (int k = 0; k < World.CellCount; k++)
-                    {
-                        var cell = fw.Cell(k);
-                        frame.CellSurface[k] = (float)(cell.SurfaceArea * 1e-12);   // µm² -> m²
-                        for (int t = 0; t < frame.TraitArea.Length && t < cell.Traits.Count; t++)
-                            frame.TraitArea[t][k] = (float)(cell.AlgebraicValue(cell.Traits[t].AreaPerUnit)
-                                                            * cell.TraitValue(t) * 1e-12);
-                    }
-                }
-                for (int k = 0; k < World.CellCount; k++)
-                {
-                    foodWorld.CellPosition(k, out double x, out double y);
-                    frame.CellX[k] = (float)(x - frame.CreatureX);   // relative to the creature (a floating origin)
-                    frame.CellY[k] = (float)(y - frame.CreatureY);
                 }
                 int n = 0;
                 foreach (var p in foodWorld.Food.Packets)
@@ -284,6 +262,55 @@ namespace AdaptOrDeity.Game.Session
                 else
                     frame.Probes[p].Clear();
             }
+        }
+
+        private SnapshotFrame? _writing;
+        private Action<int, int>? _writeCells;   // cached delegate: writing a frame must not allocate
+
+        // Cells [start, end) of the frame being written.
+        private void WriteCells(int start, int end)
+        {
+            var frame = _writing!;
+            for (int c = 0; c < frame.Channels.Length; c++)
+            {
+                float[] channel = frame.Channels[c];
+                for (int k = start; k < end; k++)
+                    channel[k] = (float)World.Read(k, c);
+            }
+            if (World is IInspectableWorld inspect)
+            {
+                for (int t = 0; t < frame.TraitValues.Length; t++)
+                    for (int k = start; k < end; k++)
+                    {
+                        frame.TraitValues[t][k] = (float)inspect.ReadTrait(k, t);
+                        frame.TraitTargets[t][k] = (float)inspect.ReadTraitTarget(k, t);
+                    }
+                for (int k = start; k < end; k++)
+                {
+                    frame.CellGroup[k] = inspect.CellGroup(k);
+                    frame.CellAlive[k] = inspect.CellAlive(k);
+                    frame.CellCanDivide[k] = inspect.CellCanDivide(k);
+                }
+            }
+            if (World is IFoodWorld foodWorld)
+            {
+                for (int k = start; k < end; k++)
+                {
+                    for (int f = 0; f < AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella; f++)
+                        frame.FlagellumAngles[k][f] = (float)foodWorld.Body.FlagellumAngle(k, f);
+                    foodWorld.Body.LocalPosition(k, out double x, out double y);
+                    frame.CellX[k] = (float)x;   // on the body: the front end turns them with the body
+                    frame.CellY[k] = (float)y;
+                }
+            }
+            if (World is FermenterWorld fw)
+                for (int k = start; k < end; k++)
+                {
+                    var cell = fw.Cell(k);
+                    frame.CellSurface[k] = (float)(cell.SurfaceArea * 1e-12);   // µm² -> m²
+                    for (int t = 0; t < frame.TraitArea.Length && t < cell.Traits.Count; t++)
+                        frame.TraitArea[t][k] = (float)(cell.TraitAreaPerUnit(t) * cell.TraitValue(t) * 1e-12);
+                }
         }
 
         private void StepOnce(double dt)

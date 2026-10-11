@@ -26,12 +26,17 @@ namespace AdaptOrDeity.Game.Session.Tests
         private static double[] Fingerprint(FermenterWorld world)
         {
             int n = world.Cell(0).Batch.States.Length;
-            var values = new double[world.CellCount * (n + 1) + 3];
+            var values = new double[world.CellCount * (n + 1) + 5];
             for (int c = 0; c < world.CellCount; c++)
             {
                 for (int i = 0; i < n; i++)
                     values[c * (n + 1) + i] = world.Cell(c).Batch.States[i][0];
                 values[c * (n + 1) + n] = world.Cell(c).External("C_glc_e_mod_membrane_face");
+            }
+            foreach (var p in world.Food.Packets)
+            {
+                values[values.Length - 5] += p.Glucose;   // food taken from packets, in cell order
+                values[values.Length - 4] += p.Stuck ? 1 : 0;
             }
             values[values.Length - 3] = world.Body.Body.X;
             values[values.Length - 2] = world.Body.Body.Y;
@@ -52,6 +57,7 @@ namespace AdaptOrDeity.Game.Session.Tests
                 world.Dispose();
                 if (reference == null)
                 {
+                    Assert.That(print[print.Length - 4], Is.GreaterThan(0), "no cell touched food: the test would miss the shared part");
                     reference = print;
                     continue;
                 }

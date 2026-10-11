@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace AdaptOrDeity.Game.Session
@@ -97,5 +98,12 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Cell radius [m].</summary>
         double CellRadius { get; }
+    }
+
+    /// <summary>A world that can run a pass over its cells on worker threads (each cell's work independent).</summary>
+    public interface IParallelWorld
+    {
+        /// <summary>Calls <paramref name="pass"/> over ranges of cells covering [0, CellCount), possibly in parallel.</summary>
+        void ForEachCell(Action<int, int> pass);
     }
 }

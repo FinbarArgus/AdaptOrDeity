@@ -10,7 +10,7 @@ using AdaptOrDeity.Sim.Modules;
 
 namespace AdaptOrDeity.Sim.Kernels.Generated
 {
-    public sealed class TissueDiffusionVolume_nn : IJacobianKernel
+    public sealed class TissueDiffusionVolume_nn : IJacobianKernel, IOutputKernel
     {
         public static readonly KernelDescriptor StaticDescriptor = new KernelDescriptor(
             moduleType: "tissue_diffusion_volume",
@@ -88,6 +88,14 @@ namespace AdaptOrDeity.Sim.Kernels.Generated
             {
                 a0[k] = ((e1[k] * s0[k]) / (s0[k] + e0[k])); // M_reduced
             }
+        }
+
+        public IReadOnlyList<int> Outputs { get; } = new int[] {  };
+
+        // 0 of 1 algebraic equations.
+        public void ComputeOutputs(double t, KernelBatch batch, int start, int end)
+        {
+            // No equations.
         }
 
         // The exact Jacobian of the rates for instance k: 1 structurally non-zero entries of 1².

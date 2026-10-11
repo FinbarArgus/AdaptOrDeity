@@ -41,6 +41,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         public void SnapshotCarriesTheEnergyBudget()
         {
             var loop = NewLoop(out _);
+            loop.InspectedCell = 0;
             var frame = loop.CreateFrame();
             loop.StepExactly(10);
             loop.WriteSnapshot(frame);
@@ -51,6 +52,66 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(frame.Details[power][0] / frame.Details[turnover][0], Is.EqualTo(48.65e3).Within(0.1e3));
             Assert.That(frame.Level, Is.EqualTo(1));
             Assert.That(frame.CellAlive[0], Is.True);
+        }
+
+        private static SimLoop Swimming(int cells, out FermenterWorld world)
+        {
+            var loop = NewLoop(out world);
+            loop.Enqueue(SimCommands.SetLevel(2));
+            loop.ApplyCommands();
+            while (world.CellCount < cells)
+            {
+                FinishDaughter(world, world.CellCount - 1);
+                loop.Enqueue(SimCommands.Divide(world.CellCount - 1));
+                loop.ApplyCommands();
+            }
+            loop.StepExactly(300);   // runs and turns
+            return loop;
+        }
+
+        [Test]
+        public void FramePositionsTurnedWithTheBodyAreTheCellsOnTheGround()
+        {
+            var loop = Swimming(5, out var world);
+            Assert.That(world.Body.Body.Angle, Is.Not.EqualTo(0.0), "the body should have turned");
+            var frame = loop.CreateFrame();
+            loop.WriteSnapshot(frame);
+            double c = Math.Cos(frame.Orientation), s = Math.Sin(frame.Orientation);
+            for (int k = 0; k < world.CellCount; k++)
+            {
+                world.CellPosition(k, out double x, out double y);
+                double fx = frame.CreatureX + c * frame.CellX[k] - s * frame.CellY[k];
+                double fy = frame.CreatureY + s * frame.CellX[k] + c * frame.CellY[k];
+                Assert.That(fx, Is.EqualTo(x).Within(1e-9), $"cell {k} x");
+                Assert.That(fy, Is.EqualTo(y).Within(1e-9), $"cell {k} y");
+            }
+        }
+
+        [Test]
+        public void StepsAndFramesComputeOnlyTheKernelsOutputs()
+        {
+            // Every cell's whole set of algebraic variables costs ~6x its outputs: a step, and a frame with no cell
+            // inspected, must not need them.
+            var loop = Swimming(4, out var world);
+            loop.StepExactly(1);
+            loop.WriteSnapshot(loop.CreateFrame());
+            for (int k = 0; k < world.CellCount; k++)
+                Assert.That(world.Cell(k).AllVariablesCurrent, Is.False, $"cell {k}");
+        }
+
+        [Test]
+        public void FramesCarryDetailsForTheInspectedCellOnly()
+        {
+            var loop = Swimming(3, out var world);
+            loop.Enqueue(SimCommands.Inspect(1));
+            loop.ApplyCommands();
+            var frame = loop.CreateFrame();
+            loop.WriteSnapshot(frame);
+            int atp = Detail(loop, "atp_turnover");
+            Assert.That(frame.Details[atp][1], Is.EqualTo(world.ReadDetail(1, atp)));
+            Assert.That(frame.Details[atp][1], Is.Not.EqualTo(0.0));
+            Assert.That(frame.Details[atp][0], Is.EqualTo(0.0));
+            Assert.That(frame.Details[atp][2], Is.EqualTo(0.0));
         }
 
         [Test]

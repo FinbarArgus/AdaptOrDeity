@@ -27,6 +27,7 @@ namespace AdaptOrDeity.Game.Session
         SetLevel = 10,
         DevCompleteDaughter = 11,
         SetFlagellumAngle = 12,
+        Inspect = 13,
     }
 
     /// <summary>
@@ -105,6 +106,9 @@ namespace AdaptOrDeity.Game.Session
                 case SimCommandKind.SetFlagellumAngle:
                     Fermenter(loop, "this world has no flagella").SetFlagellumAngle(A, B, X);
                     return;
+                case SimCommandKind.Inspect:
+                    loop.InspectedCell = A;
+                    return;
                 default:
                     throw new ArgumentException($"unknown command {(int)Kind}");
             }
@@ -175,6 +179,9 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Moves flagellum <paramref name="k"/> of a cell to a base angle on its membrane (body frame) [rad].</summary>
         public static SimCommand SetFlagellumAngle(int cell, int k, double angle) =>
             new SimCommand(SimCommandKind.SetFlagellumAngle, cell, k, x: angle);
+
+        /// <summary>The cell whose details frames carry (-1: none).</summary>
+        public static SimCommand Inspect(int cell) => new SimCommand(SimCommandKind.Inspect, cell);
     }
 
     /// <summary>Something that happened in the simulation, delivered to the front end in order.</summary>

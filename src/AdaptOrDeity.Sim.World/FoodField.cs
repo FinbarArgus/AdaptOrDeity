@@ -304,6 +304,15 @@ namespace AdaptOrDeity.Sim.World
                 }
         }
 
+        /// <summary>Whether a cell at (x, y) of radius r touches any packet.</summary>
+        public bool TouchesAny(double x, double y, double r)
+        {
+            foreach (var p in _packets)
+                if (p.Active && Touches(p, x, y, r))
+                    return true;
+            return false;
+        }
+
         public bool Touches(FoodPacket p, double x, double y, double r)
         {
             double dx = p.X - x, dy = p.Y - y, d = p.Radius + r;

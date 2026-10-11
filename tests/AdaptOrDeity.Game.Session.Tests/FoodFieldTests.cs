@@ -122,6 +122,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(r0, Is.LessThan(world.CellRadius), "food is smaller than the cell");
             Assert.That(world.Cell(0).Budget().AtpGlycolysis, Is.GreaterThan(world.Cell(0).RestingTurnover * 1.01),
                 "more glucose, faster glycolysis");
+            loop.InspectedCell = 0;
             var frame = loop.CreateFrame();
             loop.WriteSnapshot(frame);
             Assert.That(frame.PacketCount, Is.EqualTo(1));
