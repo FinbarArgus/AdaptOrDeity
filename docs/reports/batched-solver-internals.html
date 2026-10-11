@@ -1,0 +1,254 @@
+<title>Inside BE_batched_c</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,650&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; equations, code and tables scroll in place. Same family as the solver overview page. */
+:root {
+  --bg: #f6f7f5;
+  --surface: #ffffff;
+  --fg: #1d2522;
+  --muted: #5b6863;
+  --line: #d6ddd9;
+  --accent: #0f6e63;
+  --accent-soft: #e1f0ec;
+  --warn: #9a5a12;
+  --code-bg: #eef1ef;
+  --display: "Literata", Georgia, "Times New Roman", serif;
+  --body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131917; --surface: #1a2220; --fg: #e3ebe7; --muted: #9aa9a3; --line: #2e3a36;
+    --accent: #5cc4b2; --accent-soft: #1d332e; --warn: #e8b06a; --code-bg: #212b28;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131917; --surface: #1a2220; --fg: #e3ebe7; --muted: #9aa9a3; --line: #2e3a36;
+  --accent: #5cc4b2; --accent-soft: #1d332e; --warn: #e8b06a; --code-bg: #212b28;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+.page { max-width: 46rem; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 2.6rem; }
+header { display: grid; gap: .6rem; }
+.eyebrow { font-family: var(--mono); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 650; font-size: clamp(2rem, 5vw, 2.7rem); line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 650; font-size: 1.5rem; line-height: 1.25; margin: 0; text-wrap: balance; }
+h3 { font-weight: 600; font-size: 1.03rem; margin: 0; }
+section { display: grid; gap: .9rem; min-width: 0; }
+p, ul, ol { margin: 0; }
+ul, ol { padding-left: 1.3rem; display: grid; gap: .35rem; }
+.lede { font-size: 1.1rem; }
+.muted { color: var(--muted); font-size: .94rem; }
+code { font-family: var(--mono); font-size: .86em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; }
+pre { font-family: var(--mono); font-size: .8rem; background: var(--code-bg); padding: .9rem 1rem; border-radius: 6px; overflow-x: auto; margin: 0; line-height: 1.5; }
+.eq { font-family: var(--display); font-size: 1.08rem; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .7rem 1rem; overflow-x: auto; white-space: nowrap; }
+.eq .note { font-family: var(--body); font-size: .85rem; color: var(--muted); margin-left: .8rem; white-space: normal; }
+.eqs { display: grid; gap: .4rem; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: .8rem 1rem; display: grid; gap: .45rem; }
+.callout.warn { border-left-color: var(--warn); }
+.scroll { overflow-x: auto; min-width: 0; }
+table { border-collapse: collapse; width: 100%; font-size: .9rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: .42rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: .78rem; letter-spacing: .03em; text-transform: uppercase; }
+nav { display: flex; flex-wrap: wrap; gap: .4rem .9rem; font-size: .9rem; }
+nav a { color: var(--accent); text-decoration: none; }
+nav a:hover, nav a:focus-visible { text-decoration: underline; }
+a { color: var(--accent); }
+svg text { fill: var(--muted); font-family: var(--mono); font-size: 11px; }
+.fig { display: grid; gap: .4rem; }
+footer { font-size: .88rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 1rem; display: grid; gap: .3rem; }
+</style>
+
+<div class="page">
+<header>
+  <div class="eyebrow">libcuflynx · BE_batched_c · how it works</div>
+  <h1>Inside BE_batched_c: implicit steps, BDF, kernels and generated C</h1>
+  <p class="lede">A lower-level companion to the solver overview. It explains why physiology needs implicit methods, how backward Euler, BDF2 and TR-BDF2 take a step, how the kernels and their exact Jacobians are made from CellML, how the generated C is laid out, and which kinds of adaptive time stepping we have and which we cannot have.</p>
+  <nav>
+    <a href="#stiff">Stiffness</a><a href="#implicit">Implicit steps</a><a href="#bdf">BDF</a><a href="#trbdf2">TR-BDF2</a>
+    <a href="#control">Error control</a><a href="#kernels">Kernels</a><a href="#jacobian">The Jacobian</a>
+    <a href="#c">Generated C</a><a href="#runtime">The runtime</a><a href="#adaptive">Adaptive steps</a>
+  </nav>
+</header>
+
+<section id="stiff">
+  <h2>Why physiology needs implicit methods</h2>
+  <p>A cell model is a system <code>dy/dt = f(t, y)</code> whose parts move on very different time scales. In the fermenter cell, the membrane potential settles in milliseconds (a capacitance of picofarads against pump currents), ion concentrations in seconds, ATP in tens of seconds, and protein pools and growth over hours. That spread is <em>stiffness</em>: the Jacobian <code>J = ∂f/∂y</code> has eigenvalues from about −10⁴ s⁻¹ to −10⁻⁴ s⁻¹.</p>
+  <p>An explicit method such as forward Euler is only stable while every fast mode satisfies <code>|1 + hλ| ≤ 1</code>, so its step must stay below <code>2/|λ_fast|</code>, about 0.2 ms here, for the whole simulation, even when the cell is resting and nothing visible changes. Implicit methods have no such limit: their step is set only by accuracy, so a resting cell can take steps of a minute.</p>
+  <div class="eqs">
+    <div class="eq">explicit Euler: y<sub>n+1</sub> = y<sub>n</sub> + h f(t<sub>n</sub>, y<sub>n</sub>) <span class="note">stable only for h &lt; 2/|λ| on every mode</span></div>
+    <div class="eq">backward Euler: y<sub>n+1</sub> = y<sub>n</sub> + h f(t<sub>n+1</sub>, y<sub>n+1</sub>) <span class="note">stable for every h on decaying modes, and fast modes are damped (L-stable)</span></div>
+  </div>
+</section>
+
+<section id="implicit">
+  <h2>Taking an implicit step: Newton on a small system</h2>
+  <p>Backward Euler's new state appears on both sides, so each step solves a nonlinear system for <code>y = y<sub>n+1</sub></code>:</p>
+  <div class="eq">G(y) = y − c − a f(t, y) = 0 <span class="note">backward Euler: c = y<sub>n</sub>, a = h</span></div>
+  <p>Newton's method linearises <code>G</code> at the current guess and solves for a correction <code>Δ</code>:</p>
+  <div class="eq">(I − a J) Δ = −G(y),&nbsp;&nbsp; y ← y + Δ</div>
+  <ul>
+    <li><strong>Modified Newton.</strong> Forming <code>J</code> and factoring <code>I − aJ</code> (LU with partial pivoting, about n³/3 operations) costs far more than evaluating <code>f</code>. The runtime keeps both across iterations and across steps. It refactors when <code>a</code> changes, and re-evaluates <code>J</code> when Newton converges slowly or fails, or every 50 steps. For the 25-state cell that is a 25 × 25 dense solve: a few microseconds.</li>
+    <li><strong>When Newton has converged.</strong> The runtime tests the size of the update <code>Δ</code>, scaled by the observed rate of convergence ρ (the ratio of successive updates): it stops when <code>min(1, ρ)·‖Δ‖ ≤ 0.01</code> in error-weighted units, in the manner of CVODES. An update that more than doubles means divergence, and a kept Jacobian that no longer halves the update is re-evaluated. Testing the residual <code>G</code> instead failed on the neonatal model, where one rate is a near-cancellation of terms around 10¹⁵ and the residual is all rounding.</li>
+    <li><strong>The predictor.</strong> Newton starts from an explicit extrapolation (<code>y<sub>n</sub> + h f<sub>n</sub></code>), so it usually converges in one to three iterations.</li>
+  </ul>
+</section>
+
+<section id="bdf">
+  <h2>BDF: backward differentiation formulas</h2>
+  <p>BDF methods fit a polynomial through the new point and the last <em>k</em> accepted points and require its derivative at the new point to equal <code>f</code>. Backward Euler is BDF1. BDF2 uses two past points:</p>
+  <div class="eqs">
+    <div class="eq">BDF1: y<sub>n+1</sub> − y<sub>n</sub> = h f<sub>n+1</sub></div>
+    <div class="eq">BDF2: y<sub>n+1</sub> − ⁴⁄₃ y<sub>n</sub> + ⅓ y<sub>n−1</sub> = ⅔ h f<sub>n+1</sub> <span class="note">equal steps; with unequal steps the coefficients depend on the step ratio</span></div>
+  </div>
+  <p>Each new step is still one Newton solve of the same shape, <code>(I − aJ)Δ = −G</code>, with <code>a = ⅔h</code> for BDF2. Higher orders (up to 5 in CVODES) take bigger steps for the same accuracy. CVODES changes both order and step size as it goes, keeping the past in a Nordsieck array (scaled derivatives of the interpolating polynomial).</p>
+  <div class="callout"><strong>Why a multistep method is the wrong fit for the game</strong>
+    <p>A BDF method's history is its accuracy. When an input changes (the motor switches, food arrives, the player moves a slider), the history before the change describes a different system. CVODES then restarts at order 1 with a tiny step and climbs back. In the game, every cell's inputs change every few seconds, so a multistep method would spend most of its time restarting. A <em>one-step</em> method needs only the current state, so a restart costs one short first step.</p></div>
+</section>
+
+<section id="trbdf2">
+  <h2>TR-BDF2: second order in one step</h2>
+  <p>TR-BDF2 (Bank et al. 1985; Hosea and Shampine 1996, MATLAB's <code>ode23tb</code>) gets BDF2's accuracy without history. It works by building a past point inside the step. A trapezoidal stage goes to <code>t<sub>n</sub> + γh</code>, then a BDF2 stage goes to <code>t<sub>n</sub> + h</code> using <code>y<sub>n</sub></code> and that stage:</p>
+  <div class="eqs">
+    <div class="eq">stage 1 (trapezoidal): z − ½γh f(z) = y<sub>n</sub> + ½γh f<sub>n</sub></div>
+    <div class="eq">stage 2 (BDF2): y<sub>n+1</sub> − ½γh f(y<sub>n+1</sub>) = w z − v y<sub>n</sub>,&nbsp; w = 1/(γ(2−γ)),&nbsp; v = (1−γ)² w</div>
+    <div class="eq">γ = 2 − √2 ≈ 0.586 <span class="note">chosen so both stages solve with the same matrix I − ½γh J</span></div>
+  </div>
+  <ul>
+    <li><strong>One factorisation per step size.</strong> Both stages are Newton solves with <code>a = ½γh</code>, so one LU of <code>I − aJ</code> serves both.</li>
+    <li><strong>L-stable and second order.</strong> Fast modes are damped as in backward Euler, and the error per step is O(h³) instead of O(h²). At the same tolerance it takes far fewer steps. On oscillations it has much less phase error: backward Euler's phase drift made it unusable on Van der Pol and heart cycles.</li>
+    <li><strong>Its error estimate</strong> comes free from the three rates at <code>t<sub>n</sub></code>, at the stage and at <code>t<sub>n+1</sub></code>: <code>E = 2kh (f<sub>n</sub>/γ − f<sub>z</sub>/(γ(1−γ)) + f<sub>n+1</sub>/(1−γ))</code>, with <code>k = −(3γ² − 4γ + 2)/(12(2−γ))</code>. For backward Euler the estimate is <code>½h(f<sub>n+1</sub> − f<sub>n</sub>)</code>.</li>
+  </ul>
+</section>
+
+<section id="control">
+  <h2>Choosing the step size</h2>
+  <p>After each attempted step the runtime measures the error estimate <code>E</code> in a weighted max-norm, where each state is weighted by its tolerance:</p>
+  <div class="eq">err = max<sub>i</sub> |E<sub>i</sub>| / (rtol · max(|y<sub>i</sub>|, largest |y<sub>i</sub>| so far) + atol)</div>
+  <ul>
+    <li><strong>err ≤ 1:</strong> the step is accepted. The next step is <code>h · min(4, 0.9 · err<sup>−1/(p+1)</sup>)</code>, with p = 1 for backward Euler and 2 for TR-BDF2. It doesn't grow straight after a rejection.</li>
+    <li><strong>err &gt; 1:</strong> the step is rejected and retried smaller: <code>h · max(0.2, 0.9 · err<sup>−1/(p+1)</sup>)</code>, or a quarter if Newton failed.</li>
+    <li><strong>Filtering.</strong> On a stiff model the raw estimate can be large in a fast mode the method is already damping correctly. Before rejecting, the runtime solves <code>(I − aJ) E′ = E</code> with the factors it has and tests <code>E′</code> instead, as Radau5 does. This is what let the heart models start: at t = 0 their flows sit at rest, with rates near 10¹⁰ through tiny inertances.</li>
+    <li><strong>Weighting by the largest size so far</strong> keeps a state decaying towards zero from being resolved to ever smaller digits.</li>
+  </ul>
+  <div class="fig">
+    <svg viewBox="0 0 640 170" role="img" aria-label="Illustration: step sizes shrink when food arrives and grow while the cell rests">
+      <line x1="40" y1="140" x2="620" y2="140" stroke="var(--line)" stroke-width="1"></line>
+      <line x1="40" y1="20" x2="40" y2="140" stroke="var(--line)" stroke-width="1"></line>
+      <text x="44" y="16">step size (log)</text>
+      <text x="560" y="158">time</text>
+      <rect x="250" y="20" width="110" height="120" fill="var(--accent-soft)"></rect>
+      <text x="262" y="36">food arrives</text>
+      <polyline fill="none" stroke="var(--accent)" stroke-width="2"
+        points="40,60 120,40 200,30 250,30 252,130 262,118 280,100 310,86 360,70 362,125 380,105 420,80 480,55 540,38 620,30"></polyline>
+      <text x="364" y="152">food gone</text>
+    </svg>
+    <p class="muted">Illustration of the shape, not measured data. Each change of input restarts the step small; while nothing changes, steps grow by up to 4× per step until accuracy limits them.</p>
+  </div>
+</section>
+
+<section id="kernels">
+  <h2>From CellML to kernels</h2>
+  <ol>
+    <li><strong>libCellML parses, flattens and analyses</strong> the model. The analyser orders the equations, makes each explicit, and classifies every variable: state, constant, computed constant (depends only on constants), algebraic (depends on states or time) or external.</li>
+    <li><strong><code>kernel_ir.py</code> reads the analyser's equation trees</strong> into plain expressions. They are tuples such as <code>('mul', ('in', 3), ('y', 0))</code>, independent of any language.</li>
+    <li><strong>Blocks.</strong> It builds a graph that joins each rate to the states it reads, directly or through algebraic variables, and takes its connected components. A colony of 64 unconnected cells gives 64 blocks; a circulation is one block. Blocks never read each other's states, so each can be integrated alone, with its own step size.</li>
+    <li><strong>Rates program.</strong> For each block it collects the algebraic variables and computed constants its rates need (the closure, in dependency order) and assigns them to local temporaries <code>a0, a1, …</code>. Inputs are only the constants (and external variables) the block reads, numbered <code>in[0…]</code> in order of first use. The fermenter needs 1,082 temporaries for its 25 rates.</li>
+    <li><strong>Kernel sharing.</strong> Two blocks whose programs are identical once their states and inputs are numbered locally share one kernel: 64 identical cells compile to one <code>rates_0</code>, called with each cell's own arrays.</li>
+    <li><strong>Outputs program.</strong> Optionally, a list of algebraic variables to compute after every step (and what they read). The game reads 17 of the cell's 289 every step and asks for the rest only for the cell on screen.</li>
+  </ol>
+  <div class="callout"><strong>Why the kernel computes the computed constants</strong>
+    <p>libCellML computes computed constants once, in <code>computeComputedConstants</code>. The kernels compute those their rates read, every call. It costs about 5–8% per step on the game's cell. In return, a constant that changes during a run (a protocol trace, or a slider) reaches everything that depends on it with no separate recompute step. libCellML calls some of these equations <code>constant</code> equations (for example <code>J = 0</code>), so the kernel generator classifies an equation by the variable it defines, not by libCellML's equation type.</p></div>
+</section>
+
+<section id="jacobian">
+  <h2>The exact Jacobian, by differentiating the program</h2>
+  <p>Newton needs <code>J = ∂f/∂y</code>. Finite differences cost n extra rate evaluations per Jacobian (25 for the cell) and lose half the digits. Instead the generator differentiates the rates program symbolically, in forward mode. Each temporary <code>a</code> that depends on state <code>j</code> gets a tangent <code>da_j = ∂a/∂y<sub>j</sub></code>, computed right after <code>a</code> by the chain rule. Each rate's entries combine those tangents.</p>
+  <p>A real example from the game's cell: the sodium Nernst potential, and its derivative with respect to state 2 (intracellular Na⁺):</p>
+<pre>const double a2    = (((in[4] * in[5]) / in[6]) * (log((in[7] / y[2])) * 1000.0));      /* (RT/F) ln(Na_o/Na_i) */
+const double da2_2 = (((in[4] * in[5]) / in[6]) * ((((-((in[7] / y[2]) * 1.0)) / y[2]) / (in[7] / y[2])) * 1000.0));
+...
+J[0] = ((1000000.0 * (-da27_0)) / a28);  /* d rate 0 / d state 0 */</pre>
+  <ul>
+    <li><strong>Only structural non-zeros are written:</strong> 248 entries of the cell's 625. The Jacobian function clears the matrix, then fills those.</li>
+    <li><strong>Rules</strong> cover every MathML operation the analyser produces: sums, products, powers, exp/log, trigonometric and hyperbolic functions, min/max, and piecewise (the derivative of the branch taken). The quotient rule is written <code>(du − (u/v)·dv)/v</code>, which stays finite where <code>v²</code> would underflow.</li>
+    <li><strong>Unused tangents are pruned</strong>, and an entry that comes out non-finite at run time falls back to a finite-difference column.</li>
+    <li><strong>Cost:</strong> 0.74 µs per Jacobian for the cell in C, against 7.0 µs for finite differences.</li>
+  </ul>
+</section>
+
+<section id="c">
+  <h2>The generated C, file by file</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>File</th><th>Written by</th><th>What is in it</th></tr></thead>
+    <tbody>
+      <tr><td><code>model0d_core.c/.h</code></td><td>libCellML's C generator, rewritten to one <code>variables</code> array (#572)</td><td><code>initialiseVariables</code>, <code>computeComputedConstants</code>, <code>computeRates</code>, <code>computeVariables</code>, and the <code>STATE_INFO</code>/<code>VARIABLE_INFO</code> tables of names, units and components. Used for initial values and for outputs at <code>-O1</code>; never in the step loop.</td></tr>
+      <tr><td><code>batched_kernels.c/.h</code></td><td><code>kernel_ir</code> + <code>cpp/batched.py</code>, template <code>batched_kernels.c.j2</code></td><td>Per kernel <code>k</code>: <code>rates_k(t, y, in, dy)</code> and <code>jacobian_k(t, y, in, J)</code>. Also the <code>BK_KERNELS[]</code> table (sizes, non-zeros, whether it reads time, function pointers), the block table (each block's kernel, model states and input variables), and <code>bk_model_outputs</code>.</td></tr>
+      <tr><td><code>batched_runtime.c</code></td><td>template <code>batched_runtime.c.j2</code> (fixed code)</td><td>The integrator: block state, Newton, LU, error control, Hermite output, traces, threads, and the C API (<code>bk_run</code>, <code>bk_instance_*</code>, <code>bk_set_trace</code>, …).</td></tr>
+      <tr><td><code>CMakeLists.txt</code></td><td>template</td><td>One shared library (libcuflynx) or a shared plus a static one (AdaptOrDeity), with <code>-O3</code>, <code>-fno-math-errno</code> and OpenMP where available.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Inside a block, everything is small arrays of doubles owned by the block:</p>
+<pre>typedef struct {
+    const BkKernel *k;            /* rates and Jacobian functions */
+    int n, ni;                    /* states, inputs */
+    int *states, *inputs;         /* where they live in the model's arrays */
+    double *in;                   /* the inputs, gathered once per run (traced ones per evaluation) */
+    double ta, tb, h;             /* last accepted step [ta, tb], next step to try */
+    double *ya, *yb, *fa, *fb;    /* states and rates at both ends: cubic Hermite output */
+    double *scale;                /* largest |y| so far, for the error weights */
+    double *J, *lu; int *piv;     /* Jacobian and LU factors of I - aJ, kept across steps */
+    double lu_h, crate;           /* the a the factors are for; Newton's convergence rate */
+    int n_traced; ...             /* inputs driven by protocol traces */
+} BkBlock;</pre>
+  <p>The call path for one run of the model:</p>
+  <pre class="mermaid">
+flowchart TD
+  A["bk_run(sim, states, variables, t0, outputs)"] -->|OpenMP over blocks| B["bk_run_block"]
+  B -->|inputs changed or first run| R["bk_restart: rates at t0, first step size"]
+  B --> L{"tb &lt; next output time?"}
+  L -->|yes| S["bk_advance: one accepted step"]
+  S --> T["bk_try_step: BE stage, or TR then BDF2 stage"]
+  T --> N["bk_newton: modified Newton"]
+  N --> F["bk_rates → rates_k(t, y, in, dy)"]
+  N --> J["bk_jacobian → jacobian_k (finite-difference fallback)"]
+  N --> U["bk_factor / bk_solve: LU of I − aJ"]
+  S --> E["error estimate, filtered through (I − aJ)⁻¹ before rejecting"]
+  L -->|no| H["bk_interpolate: cubic Hermite into the outputs"]
+  </pre>
+</section>
+
+<section id="runtime">
+  <h2>What the runtime adds around the method</h2>
+  <ul>
+    <li><strong>Cheap restarts.</strong> A block compares its gathered inputs with the variables at the start of each run. If nothing it reads changed, it continues its current step; otherwise it restarts from the given states.</li>
+    <li><strong>Output without stopping.</strong> Steps are not cut to land on output times. Outputs are cubic Hermite interpolations from the states and rates at both ends of the step that covers them.</li>
+    <li><strong>Protocol traces.</strong> A traced constant is a piecewise-linear function of the model's clock. A block reading it sets it before every rate and Jacobian evaluation. Each step ends on the trace's next breakpoint, so the step sees one straight piece and keeps its order. Traced inputs are left out of the restart check.</li>
+    <li><strong>Threads.</strong> Blocks share nothing but read-only kernels and traces, so OpenMP can run them in any order on any number of threads. Each block's arithmetic is the same either way, so results are bit-identical.</li>
+    <li><strong>Instances.</strong> For AdaptOrDeity, each cell is a copy of the whole model with its own arrays. It is advanced one world step at a time from the game's own worker threads. A daughter is an exact copy, integration state included.</li>
+  </ul>
+</section>
+
+<section id="adaptive">
+  <h2>Adaptive time steps: what we have, and what we can't have</h2>
+  <p>Every block already takes adaptive steps: from microseconds when a meal starts to minutes when a cell rests. What can't be adaptive is a step <em>shared</em> by things that evolve at different speeds, or a step across a point where the inputs are changed from outside.</p>
+  <div class="callout"><strong>We have: an adaptive step per block</strong>
+    <p>Each cell (or each independent part of a libcuflynx model) chooses its own step from its own error estimate. Quiet cells take long steps while a busy one takes short ones. That is most of the speed-up over CVODES on a colony.</p></div>
+  <div class="callout warn"><strong>We can't have: one adaptive step for the whole colony</strong>
+    <p>Solving all cells as one system with one step size makes every cell step as finely as the busiest one. It also makes the linear solve n_cells times larger, and dense LU cost grows as its cube. That is CVODES on the colony: 4× the cells cost 8.7× the time. Separate blocks avoid both, but only because cells don't read each other's states inside a step.</p></div>
+  <div class="callout warn"><strong>We can't have: steps that run through the game's coupling</strong>
+    <p>In the game, cells interact only through the world: the body's motion from all flagella, food taken from shared packets, and the run/pause motor switch. The world settles these every 0.1 s step (operator splitting), so each cell's inputs are constant within a world step and change between them. A cell's adaptive steps therefore stop at world-step boundaries whenever its inputs changed, and restart (cheaply, since the method is one-step). Making the world step itself adaptive would mean estimating the coupling error and giving every cell the same world step, which brings back the shared step above.</p></div>
+  <div class="callout warn"><strong>We can't have: SIMD or GPU lanes with their own step sizes</strong>
+    <p>Computing four cells at once with vector instructions, or thousands on a GPU, requires the lanes to execute the same instructions in lockstep. Adaptive per-cell steps diverge immediately: different step sizes, numbers of Newton iterations and rejections. Lockstep groups would have to take the smallest step in the group. On the CPU that throws away most of the per-cell adaptivity; on a GPU, where double precision is slow, it is worse. This is why vectorisation was measured and set aside.</p></div>
+  <div class="callout warn"><strong>We don't want: variable-order multistep (BDF up to 5) in the game</strong>
+    <p>As above, its history is invalidated by every input change, and the cells' inputs change every few seconds. CVODES remains the better tool for long, fixed-protocol runs at tight tolerances. That is where it wins in the benchmarks (errors below about 10⁻⁵, oscillators).</p></div>
+</section>
+
+<footer>
+  <p>Code: libcuflynx <code>src/libcuflynx/generators/kernel_ir.py</code>, <code>generators/cpp/batched.py</code>, <code>generators/cpp/templates/batched_*.j2</code>, <code>solver_wrappers/batched_c_helper.py</code> (physiomelinks/circulatory_autogen#574). The game's generated cell: AdaptOrDeity <code>src/AdaptOrDeity.Cells/generated</code>.</p>
+  <p>References: Hosea and Shampine, "Analysis and implementation of TR-BDF2", Applied Numerical Mathematics 20 (1996); Hairer and Wanner, Solving Ordinary Differential Equations II (stiff problems, Radau5's error filter); Hindmarsh et al., "SUNDIALS", ACM TOMS 31 (2005).</p>
+</footer>
+</div>
