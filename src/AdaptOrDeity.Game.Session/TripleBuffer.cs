@@ -30,6 +30,9 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Consumer: the buffer most recently acquired.</summary>
         public T Front => _buffers[_front];
 
+        /// <summary>Producer: whether the last published buffer is still waiting for the consumer.</summary>
+        public bool Unclaimed => (Volatile.Read(ref _ready) & Fresh) != 0;
+
         /// <summary>Producer: replaces the buffer it writes next (e.g. with a larger one).</summary>
         public void ReplaceBack(T buffer) => _buffers[_back] = buffer;
 

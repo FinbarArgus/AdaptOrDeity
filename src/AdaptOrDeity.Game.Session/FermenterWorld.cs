@@ -63,7 +63,7 @@ namespace AdaptOrDeity.Game.Session
         private readonly List<Group> _groups = new List<Group>();
         private readonly bool[] _featureEnabled;
         private readonly DetailInfo[] _details;
-        private readonly Func<FermenterCell, double>[] _read;
+        private readonly Func<int, double>[] _read;
         private readonly TraitInfo[] _traits;
         private int _level = 1;
         private readonly FoodField _food;
@@ -132,20 +132,20 @@ namespace AdaptOrDeity.Game.Session
                 _featureEnabled[f] = GameFeatures.All[f].DefaultEnabled;
 
             var details = new List<DetailInfo>();
-            var read = new List<Func<FermenterCell, double>>();
+            var read = new List<Func<int, double>>();   // by cell index
             void Add(DetailInfo info, Func<FermenterCell, double> f)
             {
                 details.Add(info);
-                read.Add(f);
+                read.Add(i => f(_cells[i]));
             }
             Add(new DetailInfo("medium_glucose", "Food", "Glucose at the membrane", "mol/m³", "mM", 1.0,
                 "background plus any food packet the cell touches"), c => c.External("C_glc_e_mod_membrane_face"));
             for (int tr = 0; tr < _food.TraceSpecies.Count; tr++)
             {
                 int t = tr;
-                Add(new DetailInfo("trace_" + _food.TraceSpecies[t].Id, "Food", _food.TraceSpecies[t].Name + " (smell, needs a receptor)",
-                    "mol/m³", "µM", 1e3, "a trace from " + _food.TraceSpecies[t].Source),
-                    c => _traceAtCell.Length > 0 ? _traceAtCell[_cells.IndexOf(c) * _food.TraceSpecies.Count + t] : 0.0);
+                details.Add(new DetailInfo("trace_" + _food.TraceSpecies[t].Id, "Food", _food.TraceSpecies[t].Name + " (smell, needs a receptor)",
+                    "mol/m³", "µM", 1e3, "a trace from " + _food.TraceSpecies[t].Source));
+                read.Add(i => _traceAtCell.Length > 0 ? _traceAtCell[i * _food.TraceSpecies.Count + t] : 0.0);
             }
             const string rate = "Metabolic rate", made = "ATP made", used = "ATP used", upkeep = "Protein turnover",
                 state = "Cell state", growth = "Growth and storage";
@@ -423,7 +423,7 @@ namespace AdaptOrDeity.Game.Session
             }
         }
 
-        public double ReadDetail(int cell, int detail) => _read[detail](_cells[Check(cell)]);
+        public double ReadDetail(int cell, int detail) => _read[detail](Check(cell));
 
         public double ReadTrait(int cell, int trait) => _cells[Check(cell)].TraitValue(trait);
 

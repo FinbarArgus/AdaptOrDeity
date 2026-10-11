@@ -23,6 +23,14 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Wall-clock time a tick may spend stepping before it publishes [s]: ~30 frames a second at any speed.</summary>
         public double TickBudget { get; set; } = 0.03;
 
+        /// <summary>
+        /// Real seconds a published frame waits for the front end before a newer one replaces it. Ticks in between skip
+        /// writing frames, which cost ~6 µs per cell (30 ms at 5,000 cells).
+        /// </summary>
+        public double FrameInterval { get; set; } = 1.0 / 60.0;
+
+        private double _lastFrame = double.NegativeInfinity;
+
         /// <summary>The exception that stopped the simulation thread, or null while it runs.</summary>
         public Exception? Fault { get; private set; }
 
@@ -64,6 +72,9 @@ namespace AdaptOrDeity.Game.Session
             _loop.ApplyCommands();
             _tickClock.Restart();
             _loop.Advance(realDt * _loop.SpeedMultiplier, _maxStepsPerTick, _outOfTime);
+            if (_frames.Unclaimed && now - _lastFrame < FrameInterval)
+                return;
+            _lastFrame = now;
             if (_loop.Outgrown(_frames.Back))
                 _frames.ReplaceBack(_loop.CreateFrame());   // the colony outgrew the frame: a larger one (rare: sizes double)
             _loop.WriteSnapshot(_frames.Back);

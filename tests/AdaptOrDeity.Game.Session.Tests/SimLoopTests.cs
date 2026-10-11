@@ -124,6 +124,28 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
+        public void FramesWaitingForTheFrontEndAreReplacedOnlyAfterTheFrameInterval()
+        {
+            var loop = new SimLoop(new OneCellWorld());
+            double now = 0.0;
+            using var host = new SimHost(loop, () => now);
+            host.TryAcquire(out _);
+            host.Tick();
+            host.TryAcquire(out var first);
+            host.Tick();                       // published, not yet taken
+            long waiting = first.Sequence + 1;
+            now += 0.5 * host.FrameInterval;
+            host.Tick();                       // too soon: the waiting frame stays
+            host.TryAcquire(out var taken);
+            Assert.That(taken.Sequence, Is.EqualTo(waiting));
+            host.Tick();                       // the last frame was taken: a new one at once
+            now += 2.0 * host.FrameInterval;
+            host.Tick();                       // not taken, but old enough to replace
+            host.TryAcquire(out var newest);
+            Assert.That(newest.Sequence, Is.EqualTo(waiting + 2));
+        }
+
+        [Test]
         public void TickDoesNotAllocateOnceWarm()
         {
             var loop = new SimLoop(new OneCellWorld());
