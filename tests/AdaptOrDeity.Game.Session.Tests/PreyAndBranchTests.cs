@@ -224,10 +224,13 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
-        public void MitochondriaNeedTenSwallowedAndCloseMulticellularity()
+        public void MitochondriaNeedTenSwallowedAndMulticellularityStaysOpen()
         {
+            // a lineage may evolve both: neither closes the other
             int mito = Feature(GameFeatures.Mitochondria), multi = Feature(GameFeatures.Multicellularity);
             Assert.That(GameFeatures.All[mito].RequiresSwallowed, Is.EqualTo(10));
+            Assert.That(GameFeatures.All[mito].Excludes, Is.Empty);
+            Assert.That(GameFeatures.All[multi].Excludes, Is.Empty);
             using (var world = Quiet())
             {
                 world.DevGrantPoints(GameFeatures.All[mito].Cost + GameFeatures.All[multi].Cost);
@@ -236,16 +239,8 @@ namespace AdaptOrDeity.Game.Session.Tests
                 typeof(FermenterWorld).GetProperty(nameof(FermenterWorld.Swallowed))!.SetValue(world, 10);
                 world.BuyFeature(mito);
                 Assert.That(world.FeatureUnlocked(mito), Is.True);
-                Assert.That(world.WhyNotForSale(multi), Does.Contain("closed"));
-                Assert.Throws<InvalidOperationException>(() => world.BuyFeature(multi), "the other path is closed");
-            }
-            using (var world = Quiet())
-            {
-                Colonies.Multicellular(world);
-                typeof(FermenterWorld).GetProperty(nameof(FermenterWorld.Swallowed))!.SetValue(world, 10);
-                world.DevGrantPoints(GameFeatures.All[mito].Cost);
-                Assert.Throws<InvalidOperationException>(() => world.BuyFeature(mito), "and the other way round");
-                Assert.That(world.FeatureUnlocked(mito), Is.False);
+                world.BuyFeature(multi);
+                Assert.That(world.FeatureUnlocked(multi), Is.True, "both");
             }
         }
 
