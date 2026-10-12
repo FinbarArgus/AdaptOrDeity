@@ -19,7 +19,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         // A world without food or prey, its ocean at the given glucose [mol/m³], no swimming.
         private static FermenterWorld Quiet(int level = 1, double ocean = 0.0)
         {
-            var world = new FermenterWorld(environmentField: false) { Workers = 1 };
+            var world = new FermenterWorld { Workers = 1 };
             world.Level = level;
             world.SetFeature(Feature(GameFeatures.Swimming), false);
             world.Food.SetArrivals(0.0, 0.0);

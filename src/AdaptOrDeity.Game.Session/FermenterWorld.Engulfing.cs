@@ -196,6 +196,7 @@ namespace AdaptOrDeity.Game.Session
             _outsideGlucose[i] = c.MembraneGlucose;
             _vacuoleShare[i] = VacuoleOnMembrane(c, _vacuoles[i]);
             _openGlucoseShare[i] *= 1.0 - _vacuoleShare[i];
+            _packetShare[i] *= 1.0 - _vacuoleShare[i];
         }
 
         // A cell's membrane glucose with its vacuole: the share of its membrane lining the vacuole, (r_v / R)² as spheres,
@@ -206,7 +207,7 @@ namespace AdaptOrDeity.Game.Session
                 return 0.0;
             double r = VacuoleRadius(v.Volume * _packetDensity) / CellRadius, w = r * r;   // its lumen's share
             double outside = c.MembraneGlucose, combined = (1.0 - w) * outside + w * v.Input;
-            if (Moved(c.MembraneGlucose, combined))
+            if (Moved(c.MembraneGlucose, combined, _food.BackgroundGlucose))
                 c.MembraneGlucose = combined;
             double m = c.MembraneGlucose;
             return m > 0.0 ? Math.Min(1.0, w * v.Input / m) : 0.0;

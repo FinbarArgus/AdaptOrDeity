@@ -12,9 +12,9 @@ namespace AdaptOrDeity.Game.Session.Tests
     /// </summary>
     public class Level4ColonyTests
     {
-        private static SimLoop Colony(int cells, int workers, out FermenterWorld world, bool field = false)
+        private static SimLoop Colony(int cells, int workers, out FermenterWorld world)
         {
-            world = new FermenterWorld(environmentField: field);
+            world = new FermenterWorld();
             var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             world.Workers = workers;
             loop.Enqueue(SimCommands.SetLevel(4));
@@ -163,7 +163,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             // the open sectors of the cells and the open gaps exchange with the field; what the field gained is what the
             // packets released less what the cells' open sectors took and what came into the gaps, to 1e-12
-            var loop = Colony(19, 1, out var world, field: true);
+            var loop = Colony(19, 1, out var world);
             loop.Enqueue(SimCommands.SetControl(FermenterWorld.InnerGroup, FermenterWorld.MatrixControl, 1.0));
             loop.ApplyCommands();
             var env = world.Environment!;

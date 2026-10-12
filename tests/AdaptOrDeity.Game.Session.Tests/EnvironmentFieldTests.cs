@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         // A world on the environment field with this many cells, not swimming, without food.
         private static (FermenterWorld World, SimLoop Loop) Colony(int cells, int workers = 1, bool food = false)
         {
-            var world = new FermenterWorld(environmentField: true) { Workers = workers };
+            var world = new FermenterWorld { Workers = workers };
             var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             world.Level = 2;
             Colonies.Multicellular(world);
@@ -26,7 +26,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             {
                 world.Food.SetArrivals(0.0, 0.0);
                 foreach (var p in world.Food.Packets.Where(p => p.Active).ToList())
-                    world.Food.Withdraw(p.X, p.Y, 1e-12, p.Glucose);   // emptied: retired at the next step
+                    world.Food.Remove(p);
             }
             return (world, loop);
         }
@@ -37,8 +37,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             return world.Environment!.Field.Sample(species, b.X, b.Y);
         }
 
-        // Puts the first active packet on cell 0, still, and retires the others.
-        private static FoodPacket PacketOnCell(FermenterWorld world)
+        // Puts the first active packet on cell 0 (or this far from it), still, and retires the others.
+        private static FoodPacket PacketOnCell(FermenterWorld world, double away = 0.0)
         {
             var food = world.Food;
             food.SetArrivals(0.0, 0.0);
@@ -47,7 +47,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             foreach (var p in food.Packets.Where(p => p != packet))
                 typeof(FoodPacket).GetProperty("Active")!.SetValue(p, false);
             world.CellPosition(0, out double x, out double y);
-            foreach (var (name, value) in new[] { ("X", (object)x), ("Y", y), ("Vx", 0.0), ("Vy", 0.0) })
+            foreach (var (name, value) in new[] { ("X", (object)(x + away)), ("Y", y), ("Vx", 0.0), ("Vy", 0.0) })
                 typeof(FoodPacket).GetProperty(name)!.SetValue(packet, value);
             return packet;
         }
@@ -57,8 +57,10 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             // A packet's small molecules leak out by diffusion (first order); its polymer stays until enzymes act on it.
             var (world, loop) = Colony(1, food: true);
-            var packet = PacketOnCell(world);
-            world.HydrolysisCapacity = _ => 0.0;   // a cell without its surface hydrolase
+            var packet = PacketOnCell(world, away: -4e-6);   // near the cell, drifting with it in the current: never touching it
+            typeof(FoodPacket).GetProperty("Vx")!.SetValue(packet, world.Body.Body.CurrentVx);
+            typeof(FoodPacket).GetProperty("Vy")!.SetValue(packet, world.Body.Body.CurrentVy);
+            world.HydrolysisCapacity = _ => 0.0;   // and no enzyme on it
             var s = world.Food.Settings;
             double start = packet.Glucose, free = packet.Free;
             Assert.That(free, Is.EqualTo(s.FreeFraction * start).Within(1e-15 * start));
@@ -66,7 +68,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             double leaked = free * (1.0 - Math.Exp(-s.FreeLeakRate * 300.0));
             Assert.That(start - packet.Glucose, Is.EqualTo(leaked).Within(1e-9 * leaked), "the free part leaks, exactly");
             Assert.That(packet.Glucose - packet.Free, Is.EqualTo(start - free).Within(1e-15 * start), "the polymer stays");
-            Assert.That(world.Environment!.PacketGlucose, Is.EqualTo(leaked).Within(1e-9 * leaked), "into the field");
+            Assert.That(world.Environment.PacketGlucose, Is.EqualTo(leaked).Within(1e-9 * leaked), "into the field");
             var b = world.Body.Body;
             Assert.That(world.Environment.Field.Sample(AdaptOrDeity.Sim.World.EnvironmentField.FirstTrace + packet.MainTrace, b.X, b.Y),
                 Is.GreaterThan(0.0), "it smells before anything digests it");
@@ -74,25 +76,47 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
-        public void EnzymesHydrolyseAPacketIntoTheFieldExactly()
+        public void EnzymesHydrolyseAPacketIntoItsFreeSugarExactly()
+        {
+            // The touching cell's enzymes cut polymer into the packet's free sugar at their rate (held back at the
+            // product-inhibition level); the free sugar leaks into the field and the membrane facing the packet takes it up.
+            var (world, loop) = Colony(1, food: true);
+            var packet = PacketOnCell(world);
+            typeof(FoodPacket).GetProperty("Free")!.SetValue(packet, 0.0);   // all polymer: room below the inhibition level
+            const double rate = 1e-17;   // mol glucose/s from cell 0's surface enzymes
+            world.HydrolysisCapacity = i => i == 0 ? rate : 0.0;
+            double start = packet.Glucose;
+            Assert.That(world.Food.Settings.ContactGlucose * AdaptOrDeity.Sim.World.FoodField.Volume(packet), Is.GreaterThan(rate * 10.0),
+                "room for 10 s of hydrolysis");
+            loop.StepExactly(100);
+            double polymer = packet.Glucose - packet.Free;
+            Assert.That(start - polymer, Is.EqualTo(rate * 10.0).Within(1e-9 * rate * 10.0), "the enzymes' rate over 10 s");
+            double leaked = world.Environment.PacketGlucose, eaten = world.EatenFromPackets;
+            Assert.That(leaked, Is.GreaterThan(0.0));
+            Assert.That(eaten, Is.GreaterThan(0.0));
+            Assert.That(start - packet.Glucose, Is.EqualTo(leaked + eaten).Within(1e-12 * start), "into the field or the cell");
+            world.Dispose();
+        }
+
+        [Test]
+        public void HydrolysisStopsWhileThePacketsFreeSugarIsAtTheInhibitionLevel()
         {
             var (world, loop) = Colony(1, food: true);
             var packet = PacketOnCell(world);
-            const double rate = 1e-17;   // mol glucose/s from cell 0's surface enzymes
-            world.HydrolysisCapacity = i => i == 0 ? rate : 0.0;
-            double start = packet.Glucose, free = packet.Free;
+            typeof(FoodPacket).GetProperty("Free")!.SetValue(packet, 0.0);
+            world.HydrolysisCapacity = _ => 1e-15;   // far faster than the cell takes the sugar up
             loop.StepExactly(100);
-            double leaked = free * (1.0 - Math.Exp(-world.Food.Settings.FreeLeakRate * 10.0));
-            double released = start - packet.Glucose;
-            Assert.That(released, Is.EqualTo(rate * 10.0 + leaked).Within(1e-9 * released), "the enzymes' rate over 10 s, and the free leak");
-            Assert.That(world.Environment!.PacketGlucose, Is.EqualTo(released).Within(1e-12 * released), "into the field");
+            double cap = world.Food.Settings.ContactGlucose;
+            // (to 1%: the packet shrinks a little as it is eaten, after the enzymes filled it to the level)
+            Assert.That(packet.Free / AdaptOrDeity.Sim.World.FoodField.Volume(packet), Is.LessThanOrEqualTo(cap * 1.01));
+            Assert.That(packet.Input, Is.GreaterThan(0.9 * cap), "the face sees about the inhibition level");
             world.Dispose();
         }
 
         [Test]
         public void TheBufferTurnsAcidIntoPh()
         {
-            var env = new FermenterWorld(environmentField: true).Environment!;
+            var env = new FermenterWorld().Environment;
             double h0 = env.OceanProtons;
             Assert.That(env.Protons(0.0), Is.EqualTo(h0).Within(1e-12 * h0), "no acid added: the ocean's pH");
             double pH = -Math.Log10(env.Protons(0.1) / 1e3), pH0 = -Math.Log10(h0 / 1e3);
@@ -156,51 +180,76 @@ namespace AdaptOrDeity.Game.Session.Tests
             world.Dispose();
         }
 
-        [Test]
-        public void TheGameSettingsMatchTheReferenceForOneCell()
+        // The game's settings (nested grids, one coarse step and field.fine_substeps fine steps per macro step, the input
+        // tolerance) against the reference (one 1 um grid over the same extent, 64 steps per macro step, every input change
+        // passed, cells at 1e-8), for a colony of this many cells in a 0.1 mM sea drifting with the current. Measured
+        // 2026-10-13: within 0.6% for 1 and 7 cells everywhere below. Bounds: 2% at the membrane and for the cell's input
+        // (the input moves on a change of 1% of its departure from the sea, and the drift adds ~0.5%); the water 5-40 um
+        // away within 2% of the membrane's depletion; uptake within 0.1%.
+        private static void MatchTheReference(int cells, double seconds)
         {
-            // Nested grids, one field step per macro step and the 1% input tolerance against one fine grid over the whole
-            // extent, 64 field steps per macro step, every input change passed and cells at 1e-8: the field around the cell
-            // agrees; the cell's input agrees within the input tolerance (a lone cell's 0.1% depletion stays below it).
             (FermenterWorld World, SimLoop Loop) Run(FieldAccuracy accuracy)
             {
-                var world = new FermenterWorld(environmentField: true, accuracy: accuracy);
+                var world = new FermenterWorld(accuracy: accuracy);
                 var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
+                if (cells > 1)
+                {
+                    world.Level = 2;
+                    Colonies.Multicellular(world);
+                    world.SetFeature(GameFeatures.IndexOf(GameFeatures.Engulfing), false);
+                    while (world.CellCount < cells)
+                    {
+                        var parent = world.Cell(world.CellCount - 1);
+                        parent.SetState("bio__P_growth", parent.DaughterCost);
+                        world.Divide(world.CellCount - 1);
+                    }
+                }
                 world.SetFeature(GameFeatures.IndexOf(GameFeatures.Swimming), false);
                 world.Food.SetArrivals(0.0, 0.0);
                 foreach (var p in world.Food.Packets.Where(p => p.Active).ToList())
-                    world.Food.Withdraw(p.X, p.Y, 1e-12, p.Glucose);
-                world.BathConcentration = 0.1;   // a sea where the cell's uptake draws the water down
-                loop.StepExactly(600);
+                    world.Food.Remove(p);
+                world.BathConcentration = 0.1;   // a sea where the cells' uptake draws the water down
+                loop.StepExactly((long)Math.Round(seconds / world.MacroDt));
                 return (world, loop);
             }
             var (game, _) = Run(FieldAccuracy.Game);
             var (reference, _) = Run(FieldAccuracy.Reference);
             Assert.That(reference.Environment!.Field.Levels, Is.EqualTo(1), "the reference is one grid");
+            var outer = game.Environment!.Field.Level(game.Environment.Field.Levels - 1);
+            Assert.That(reference.Environment.Field.Level(0).Nx * reference.Environment.Field.Level(0).Spacing,
+                Is.EqualTo(outer.Nx * outer.Spacing).Within(1e-12), "over the same extent");
             const int g = AdaptOrDeity.Sim.World.EnvironmentField.Glucose;
-            double Membrane(FermenterWorld w)
+            const double ocean = 0.1;
+            double Membrane(FermenterWorld w, int i)
             {
-                w.CellPosition(0, out double x, out double y);
-                return w.Environment!.AtMembrane(g, x, y, w.CellRadius, w.Cell(0).GlucoseRelease);
+                w.CellPosition(i, out double x, out double y);
+                return w.Environment!.AtMembrane(g, x, y, w.CellRadius, w.Cell(i).GlucoseRelease);
             }
-            double depletionGame = game.Environment!.OceanGlucose - Membrane(game);
-            double depletionRef = reference.Environment!.OceanGlucose - Membrane(reference);
-            Assert.That(depletionRef, Is.GreaterThan(0.0));
-            // measured 2026-10-12: the game's field depletes 7% more at the membrane than the reference
-            Assert.That(depletionGame, Is.EqualTo(depletionRef).Within(0.10 * depletionRef), "the field's depletion at the membrane");
-            // the cell's input moves only by more than the input tolerance: within it of the reference's
-            double tolerance = GameParameters.Default.Value("field.input_tolerance");
-            Assert.That(game.Cell(0).MembraneGlucose, Is.EqualTo(reference.Cell(0).MembraneGlucose)
-                .Within(tolerance * reference.Cell(0).MembraneGlucose), "the cell's input");
-            Assert.That(game.Cell(0).GlucoseRelease, Is.EqualTo(reference.Cell(0).GlucoseRelease)
-                .Within(0.01 * Math.Abs(reference.Cell(0).GlucoseRelease)), "uptake");
+            double membrane0 = ocean - Membrane(reference, 0);
+            for (int i = 0; i < cells; i++)
+            {
+                double depletionRef = ocean - Membrane(reference, i);
+                Assert.That(depletionRef, Is.GreaterThan(0.0));
+                Assert.That(ocean - Membrane(game, i), Is.EqualTo(depletionRef).Within(0.02 * depletionRef), $"cell {i}: depletion at the membrane");
+                double inputRef = ocean - reference.Cell(i).MembraneGlucose;
+                Assert.That(ocean - game.Cell(i).MembraneGlucose, Is.EqualTo(inputRef).Within(0.02 * inputRef), $"cell {i}: the depletion it sees");
+                Assert.That(game.Cell(i).GlucoseRelease, Is.EqualTo(reference.Cell(i).GlucoseRelease)
+                    .Within(1e-3 * Math.Abs(reference.Cell(i).GlucoseRelease)), $"cell {i}: uptake");
+            }
             var b = game.Body.Body;
             var rb = reference.Body.Body;
-            Assert.That(game.Environment.Field.Sample(g, b.X + 10e-6, b.Y), Is.EqualTo(reference.Environment.Field.Sample(g, rb.X + 10e-6, rb.Y))
-                .Within(0.15 * depletionRef), "the water 10 um away");   // measured: 11% of the membrane's depletion (the fine grid's 8 um margin ends there)
+            foreach (double r in new[] { 5e-6, 10e-6, 20e-6, 40e-6 })
+                Assert.That(game.Environment.Field.Sample(g, b.X + r, b.Y), Is.EqualTo(reference.Environment.Field.Sample(g, rb.X + r, rb.Y))
+                    .Within(0.02 * membrane0), $"the water {r * 1e6} um away");
             game.Dispose();
             reference.Dispose();
         }
+
+        [Test]
+        public void TheGameSettingsMatchTheReferenceForOneCell() => MatchTheReference(1, 600.0);
+
+        [Test]
+        public void TheGameSettingsMatchTheReferenceForASmallColony() => MatchTheReference(7, 60.0);
 
         [Test]
         public void TheFieldGrowsWithTheColony()
@@ -258,20 +307,13 @@ namespace AdaptOrDeity.Game.Session.Tests
             SnapshotCodec.Read(bytes, back);
             Assert.That(back.FieldGlucose, Is.EqualTo(frame.FieldGlucose));
             world.Dispose();
-
-            var plain = new FermenterWorld(environmentField: false);
-            var plainLoop = new SimLoop(plain, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
-            var plainFrame = plainLoop.CreateFrame();
-            plainLoop.WriteSnapshot(plainFrame);
-            Assert.That(plainFrame.FieldExtent, Is.EqualTo(0f), "no field, no raster");
-            plain.Dispose();
         }
     
         [Test]
         public void ACellsInputsChangeOnlyWhenTheFieldMovesBeyondTheTolerance()
         {
-            // Each changed input restarts the cell's integrator, so inputs are passed on a change above
-            // field.input_tolerance; what the cell sees stays within it of the field's value at its membrane.
+            // Each changed input restarts the cell's integrator, so inputs are passed on a change above field.input_tolerance
+            // of their departure from the sea; what the cell sees stays within it of the field's value at its membrane.
             var (world, loop) = Colony(8);
             world.BathConcentration = 0.1;
             loop.StepExactly(300);
@@ -290,7 +332,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(changes, Is.LessThan(25), "near steady, most steps keep the input");
             world.CellPosition(3, out double cx, out double cy);
             double field = env.AtMembrane(AdaptOrDeity.Sim.World.EnvironmentField.Glucose, cx, cy, world.CellRadius, c.GlucoseRelease);
-            Assert.That(c.MembraneGlucose, Is.EqualTo(field).Within(2 * tolerance * field));
+            Assert.That(c.MembraneGlucose, Is.EqualTo(field).Within(2 * tolerance * (0.1 - field)));
+            Assert.That(0.1 - field, Is.GreaterThan(1e-4 * 0.1), "a departure the cell sees");
             world.Dispose();
         }
     }

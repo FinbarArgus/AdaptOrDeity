@@ -11,9 +11,9 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 |---|---|---|---|---|---|
 | `food.packet_trace_minor_share` | 0.1 | 1 | unreferenced_placeholder | placeholder | other trace species relative to the main one |
 | `food.free_fraction` | 0.03 | 1 | neidhardt1990physiology | placeholder | share of a packet's glucose equivalents already small molecules: a bacterium's pool of free metabolites is ~3-4% of its dry mass (E. coli), taken as t |
-| `food.free_leak_rate` | 0.00166667 | 1/s | unreferenced_placeholder | placeholder | rate the free small molecules leak out of a packet (a lysed cell): first order, ~10 min time constant; no source yet |
-| `food.contact_glucose` | 50 | mol/m3 | unreferenced_placeholder | placeholder | glucose a cell touching a food packet sees at its membrane (the particle's free sugar, ~70 mM inside it at food.free_fraction of 2.3 M, dissolving int |
-| `food.contact_trace` | 0.01 | mol/m3 | unreferenced_placeholder | placeholder | concentration of a packet's main trace species at a touching membrane |
+| `food.free_leak_rate` | 0.00166667 | 1/s | unreferenced_placeholder | placeholder | rate the free small molecules leak out of a packet (a lysed cell): first order, ~10 min time constant; no source yet. With the field always on (2026-10-13) it decides how much of a touched packet's sugar the cell gets rather than the water |
+| `food.contact_glucose` | 50 | mol/m3 | unreferenced_placeholder | placeholder | free sugar in a packet (or a vacuole) at which enzymes stop cutting its polymer (product inhibition): the most the membrane facing it sees (2026-10-13) |
+| `food.contact_trace` | 0.01 | mol/m3 | unreferenced_placeholder | placeholder | a packet's main trace per its free sugar (per food.contact_glucose): 2e-4 mol of trace with each mol of glucose it leaks |
 | `food.packet_radius` | 8e-07 | m | unreferenced_placeholder | design | radius of a fresh packet (a dead cell or organic particle): smaller than the 1 um cell (user decision 2026-10-09), within the 0.5-2 um particles of do |
 | `food.carrier_speed` | 1e-06 | m/s | unreferenced_placeholder | placeholder | speed of a creature carrying food (prey, or an ally bringing it) over the ground: 1 um/s, slower than a swimming bacterium (~20 um/s) so it can be met |
 | `food.lying_density` | 3.52e+10 | 1/m2 | unreferenced_placeholder | placeholder | food lying on the ground per area when the field is first filled: about 32 packets in the 30 um view (32 / (30 um)^2), 8x the earlier 4 as packets hol |

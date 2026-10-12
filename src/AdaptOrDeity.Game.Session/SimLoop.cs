@@ -196,7 +196,7 @@ namespace AdaptOrDeity.Game.Session
             frame.CellX.Length < World.CellCount || (Schema.InitialPacketCapacity > 0 && frame.PacketX.Length < PacketsInField)
             || (Schema.InitialPreyCapacity > 0 && frame.PreyX.Length < PreyInView) || frame.OrganismX.Length < OrganismsNow;
 
-        // Glucose in the water around the creature on the frame's raster (extent 0 without an environment field).
+        // Glucose, lactate and pH in the water around the creature on the frame's raster (extent 0 without an environment field).
         private static void WriteField(FermenterWorld world, SnapshotFrame frame)
         {
             var env = world.Environment;
@@ -210,8 +210,14 @@ namespace AdaptOrDeity.Game.Session
             double h = extent / m, x0 = frame.CreatureX - 0.5 * extent, y0 = frame.CreatureY - 0.5 * extent;
             for (int j = 0; j < m; j++)
                 for (int i = 0; i < m; i++)
-                    frame.FieldGlucose[j * m + i] = (float)env.Field.Sample(AdaptOrDeity.Sim.World.EnvironmentField.Glucose,
-                        x0 + (i + 0.5) * h, y0 + (j + 0.5) * h);
+                {
+                    double x = x0 + (i + 0.5) * h, y = y0 + (j + 0.5) * h;
+                    frame.FieldGlucose[j * m + i] = (float)env.Field.Sample(AdaptOrDeity.Sim.World.EnvironmentField.Glucose, x, y);
+                    frame.FieldLactate[j * m + i] = (float)env.Field.Sample(AdaptOrDeity.Sim.World.EnvironmentField.Lactate, x, y);
+                    // free H+ [mol/m³] to pH (mol/L)
+                    frame.FieldPh[j * m + i] = (float)(-Math.Log10(1e-3 * env.Protons(
+                        env.Field.Sample(AdaptOrDeity.Sim.World.EnvironmentField.Acid, x, y))));
+                }
             frame.FieldExtent = (float)extent;
         }
 

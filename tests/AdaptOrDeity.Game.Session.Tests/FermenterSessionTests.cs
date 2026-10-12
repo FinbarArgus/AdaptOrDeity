@@ -50,7 +50,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             loop.WriteSnapshot(frame);
             int turnover = Detail(loop, "atp_turnover"), made = Detail(loop, "atp_glycolysis"), power = Detail(loop, "free_energy_power");
             Assert.That(frame.Details[turnover][0] * loop.Schema.Details[turnover].DisplayMultiplier, Is.EqualTo(5.46e5).Within(0.01e5));
-            Assert.That(frame.Details[made][0], Is.EqualTo(frame.Details[turnover][0]).Within(1e-9 * frame.Details[made][0]));
+            // at rest ATP made balances ATP used (to 1e-3: the cell's inputs still follow its own depletion of the water)
+            Assert.That(frame.Details[made][0], Is.EqualTo(frame.Details[turnover][0]).Within(1e-3 * frame.Details[made][0]));
             // ATP is the currency; its free energy (48.6 kJ/mol at rest) turns it into watts
             Assert.That(frame.Details[power][0] / frame.Details[turnover][0], Is.EqualTo(48.65e3).Within(0.1e3));
             Assert.That(frame.Level, Is.EqualTo(1));

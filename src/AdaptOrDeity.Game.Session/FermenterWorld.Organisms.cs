@@ -98,15 +98,20 @@ namespace AdaptOrDeity.Game.Session
 
         internal double UntilSwitch { get; set; }
 
-        // this step: touching a packet, inside the environment field, the share of its uptake from its vacuole, the
-        // glucose outside its membrane, the trace species at its membrane
+        // this step: touching a packet, inside the environment field, the shares of its uptake from its vacuole and from
+        // the packets it touches, the field's glucose at its membrane, the trace species at its membrane; and the glucose
+        // it exchanged with the field in the last step (for the membrane correction)
         internal bool Touching { get; set; }
 
         internal bool InField { get; set; }
 
         internal double VacuoleShare { get; set; }
 
+        internal double PacketShare { get; set; }
+
         internal double OutsideGlucose { get; set; }
+
+        internal double FieldRelease { get; set; }
 
         internal double[] Traces { get; }
     }
@@ -367,32 +372,24 @@ namespace AdaptOrDeity.Game.Session
                 var c = o.Cell;
                 double x = o.X, y = o.Y;
                 o.Touching = _food.TouchesAny(x, y, CellRadius);
-                o.InField = false;
-                if (_environment != null)
-                    ReadEnvironment(o, x, y);
-                else
-                {
-                    c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
-                    for (int t = 0; t < o.Traces.Length; t++)
-                        o.Traces[t] = _food.TraceAt(t, x, y, CellRadius);
-                }
-                o.OutsideGlucose = c.MembraneGlucose;
+                ReadEnvironment(o, x, y);
                 o.VacuoleShare = VacuoleOnMembrane(c, o.Vacuole);
+                o.PacketShare *= 1.0 - o.VacuoleShare;
                 c.Step(_stepDt);
             }
         }
 
-        // As a creature's cell where the field covers the organism (with the membrane correction for its last exchange);
-        // beyond it, the open sea.
+        // As a creature's cell where the field covers the organism (with the membrane correction for its last exchange with
+        // it), beyond it the open sea; the packets it touches on the membrane facing them.
         private void ReadEnvironment(FreeOrganism o, double x, double y)
         {
-            var env = _environment!;
+            var env = _environment;
             var c = o.Cell;
             double r = CellRadius, glucose, lactate, protons;
             o.InField = env.Field.LevelAt(x, y) >= 0;
             if (o.InField)
             {
-                glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? c.GlucoseRelease : 0.0);
+                glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? o.FieldRelease : 0.0);
                 lactate = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? c.LactateRelease : 0.0);
                 protons = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? c.ProtonRelease : 0.0));
             }
@@ -402,11 +399,15 @@ namespace AdaptOrDeity.Game.Session
                 lactate = Math.Max(0.0, env.Field.Sample(EnvironmentField.Lactate, x, y));
                 protons = env.Protons(env.Field.Sample(EnvironmentField.Acid, x, y));
             }
-            if (Moved(c.MembraneGlucose, glucose))
-                c.MembraneGlucose = glucose;
-            if (Moved(c.MembraneLactate, lactate))
+            o.OutsideGlucose = glucose;
+            _food.Faces(x, y, r, out double faced, out double offered);
+            double membrane = (1.0 - faced) * glucose + offered;
+            if (Moved(c.MembraneGlucose, membrane, _food.BackgroundGlucose))
+                c.MembraneGlucose = membrane;
+            o.PacketShare = c.MembraneGlucose > 0.0 ? Math.Min(1.0, offered / c.MembraneGlucose) : 0.0;
+            if (Moved(c.MembraneLactate, lactate, 0.0))
                 c.MembraneLactate = lactate;
-            if (Moved(c.MembraneProtons, protons))
+            if (Moved(c.MembraneProtons, protons, _oceanProtons))
                 c.MembraneProtons = protons;
             for (int t = 0; t < o.Traces.Length; t++)
                 o.Traces[t] = env.Field.Sample(EnvironmentField.FirstTrace + t, x, y);
@@ -420,44 +421,52 @@ namespace AdaptOrDeity.Game.Session
                     _food.StickTo(o.X, o.Y, CellRadius, o.Id, o.X, o.Y, o.Body.Body.Angle);
         }
 
-        // With the environment field: each living organism inside it exchanges as a creature's cell does (before the
-        // field steps); food eaten is its uptake above the open water's glucose.
+        // Each living organism inside the field exchanges with it as a creature's cell does (before the field steps), its
+        // uptake through the membrane facing packets comes out of them, in id order after the creature's cells; food eaten is
+        // that and its field uptake's share above the open water's glucose.
         private void OrganismsExchange(EnvironmentField env, double dt)
         {
             double ocean = env.OceanGlucose;
             foreach (var o in _organisms)
             {
                 var c = o.Cell;
-                if (!c.Alive || !o.InField)
+                o.FieldRelease = 0.0;
+                if (!c.Alive)
                     continue;
-                double j = c.GlucoseRelease, glucose = j * (j < 0.0 ? 1.0 - o.VacuoleShare : 1.0);
-                env.Exchange(EnvironmentField.Glucose, o.X, o.Y, glucose);
-                env.Exchange(EnvironmentField.Lactate, o.X, o.Y, c.LactateRelease);
-                env.Exchange(EnvironmentField.Acid, o.X, o.Y, c.ProtonRelease);
-                CellGlucoseExchanged -= glucose * dt;
-                double m = o.OutsideGlucose;
-                if (glucose < 0.0 && m > ocean)
-                    Eat(o, -glucose * dt * (m - ocean) / m);
+                double j = c.GlucoseRelease;
+                if (o.InField)
+                {
+                    double glucose = j * (j < 0.0 ? 1.0 - o.VacuoleShare - o.PacketShare : 1.0);
+                    env.Exchange(EnvironmentField.Glucose, o.X, o.Y, glucose);
+                    env.Exchange(EnvironmentField.Lactate, o.X, o.Y, c.LactateRelease);
+                    env.Exchange(EnvironmentField.Acid, o.X, o.Y, c.ProtonRelease);
+                    CellGlucoseExchanged -= glucose * dt;
+                    o.FieldRelease = glucose;
+                    double m = o.OutsideGlucose;
+                    if (glucose < 0.0 && m > ocean)
+                        Eat(o, -glucose * dt * (m - ocean) / m);
+                }
+                if (o.PacketShare > 0.0 && c.GlucoseUptake > 0.0)
+                {
+                    double drawn = _food.Draw(o.X, o.Y, CellRadius, c.GlucoseUptake * o.PacketShare * dt, dt);
+                    Eat(o, drawn);
+                    OrganismsEatenFromPackets += drawn;
+                }
             }
         }
 
-        // Under the contact rule: what each organism took beyond the background leaves the packets it touches, after the
-        // creature's cells and in id order; then what it took from its vacuole.
+        /// <summary>Glucose free organisms have taken up from the packets they touch so far [mol].</summary>
+        public double OrganismsEatenFromPackets { get; private set; }
+
+        // What each organism took from its vacuole.
         private void OrganismsEat(double dt)
         {
-            double background = _food.BackgroundGlucose, usedUp = Settings.UsedUpFraction * _prey.Content;
+            double usedUp = Settings.UsedUpFraction * _prey.Content;
             foreach (var o in _organisms)
             {
                 var c = o.Cell;
                 if (!c.Alive)
                     continue;
-                if (_environment == null && o.Touching)
-                {
-                    double outside = _food.GlucoseAt(o.X, o.Y, CellRadius);
-                    double uptake = c.GlucoseUptake * (1.0 - o.VacuoleShare) * dt;
-                    if (outside > background && uptake > 0.0)
-                        Eat(o, _food.Withdraw(o.X, o.Y, CellRadius, uptake * (outside - background) / outside));
-                }
                 var v = o.Vacuole;
                 if (v == null)
                     continue;

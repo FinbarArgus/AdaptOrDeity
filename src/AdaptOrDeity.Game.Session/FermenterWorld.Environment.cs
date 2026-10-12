@@ -7,9 +7,10 @@ using AdaptOrDeity.Sim.World;
 namespace AdaptOrDeity.Game.Session
 {
     // The coupling to the environment field: each macro step the field fits the colony, the enzymes of the cells touching a
-    // food packet hydrolyse it into the field, each cell reads glucose, lactate and pH at its membrane (with the membrane
-    // correction for its own exchange in the last step), steps, and its exchange goes back into the field in cell order;
-    // then the field steps.
+    // food packet hydrolyse its polymer into its free sugar, which leaks into the field; each cell reads glucose, lactate
+    // and pH at its membrane (with the membrane correction for its own exchange with the field in the last step) and, on
+    // the share of its membrane facing them, the free sugar of the packets it touches; it steps, and its exchange goes back
+    // into the field and out of those packets in cell order; then the field steps.
     /// <summary>How the environment field trades accuracy for speed.</summary>
     public enum FieldAccuracy
     {
@@ -31,14 +32,30 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>The environment's accuracy setting.</summary>
         public FieldAccuracy Accuracy { get; }
 
-        private readonly EnvironmentField? _environment;
+        private readonly EnvironmentField _environment;
+        private double[] _packetShare = new double[0];   // per cell: share of its glucose uptake drawn from the packets it touches
+        private double[] _fieldGlucose = new double[0];  // per cell: the field's glucose at its membrane [mol/m³]
+        private double[] _fieldRelease = new double[0];  // per cell: glucose it exchanged with the field in the last step [mol/s]
         private int _colonyCells;
-        private readonly double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");   // 0 for the reference
+        private double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");   // 0 for the reference
+
+        /// <summary>
+        /// Share of an input's departure from the open water by which it must move before a cell sees the change (content
+        /// field.input_tolerance; 0 in the reference): each change restarts the cell's integrator.
+        /// </summary>
+        public double InputTolerance
+        {
+            get => _inputTolerance;
+            set => _inputTolerance = value >= 0.0 ? value : throw new ArgumentOutOfRangeException(nameof(value));
+        }
         private double _colonyRadius;
         private Func<FoodPacket, double>? _hydrolysis;
 
-        /// <summary>The environment field, or null when cells use the contact rule.</summary>
-        public EnvironmentField? Environment => _environment;
+        /// <summary>The environment field: the water around the creature.</summary>
+        public EnvironmentField Environment => _environment;
+
+        /// <summary>Glucose the creature's cells have taken up from the packets they touch so far [mol] (part of <see cref="FoodEaten"/>).</summary>
+        public double EatenFromPackets { get; private set; }
 
         /// <summary>
         /// Glucose the creature's cells and free organisms have taken from the environment field and released into it so
@@ -101,6 +118,7 @@ namespace AdaptOrDeity.Game.Session
         {
             var b = _body.Body;
             var settings = GameParameters.Default.Environment();
+            settings.Grid.Reach = OrganismRange;   // free organisms in range exchange with the field
             if (Accuracy == FieldAccuracy.Reference)
             {
                 settings.Grid.SingleGrid = true;
@@ -110,12 +128,11 @@ namespace AdaptOrDeity.Game.Session
                 first.External("H_o_mod_H"), b.X, b.Y, 2.0 * CellRadius);
         }
 
-        // The open water's glucose: the food field's background, and the field's sea when there is one.
+        // The open water's glucose: the field's sea (and the food field's background, its record of it).
         private void SetOcean(double glucose)
         {
             _food.BackgroundGlucose = glucose;
-            if (_environment != null)
-                _environment.OceanGlucose = glucose;
+            _environment.OceanGlucose = glucose;
         }
 
         /// <summary>The colony's diameter [m]: twice the farthest cell centre from the body's centre, plus a cell.</summary>
@@ -142,56 +159,76 @@ namespace AdaptOrDeity.Game.Session
         private void BeforeCells(double dt)
         {
             var b = _body.Body;
-            _environment!.Follow(b.X, b.Y, ColonyDiameter);
+            _environment.Follow(b.X, b.Y, ColonyDiameter);
             _hydrolysis ??= Hydrolysis;
             _environment.Dissolve(_food, dt, _hydrolysis);
         }
 
-        // Cell i at (x, y) reads the field at its membrane, corrected for what it exchanged in the last step.
+        // Cell i at (x, y) reads the field at its membrane, corrected for what it exchanged with the field in the last step,
+        // and the packets it touches on the membrane facing them.
         private void ReadEnvironment(int i, double x, double y)
         {
-            var env = _environment!;
+            var env = _environment;
             var c = _cells[i];
             double r = CellRadius;
-            double glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? c.GlucoseRelease : 0.0);
+            double glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? _fieldRelease[i] : 0.0);
             double lactate = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? c.LactateRelease : 0.0);
             double protons = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? c.ProtonRelease : 0.0));
-            // an input that moved less than the tolerance keeps its value: each change restarts the cell's integrator
-            if (Moved(c.MembraneGlucose, glucose))
-                c.MembraneGlucose = glucose;
-            if (Moved(c.MembraneLactate, lactate))
+            _fieldGlucose[i] = glucose;
+            _food.Faces(x, y, r, out double faced, out double offered);
+            double membrane = (1.0 - faced) * glucose + offered;
+            // an input that moved less than the tolerance keeps its value: each change restarts the cell's integrator (Moved)
+            if (Moved(c.MembraneGlucose, membrane, _food.BackgroundGlucose))
+                c.MembraneGlucose = membrane;
+            _packetShare[i] = c.MembraneGlucose > 0.0 ? Math.Min(1.0, offered / c.MembraneGlucose) : 0.0;
+            _openGlucoseShare[i] = 1.0 - _packetShare[i];
+            if (Moved(c.MembraneLactate, lactate, 0.0))
                 c.MembraneLactate = lactate;
-            if (Moved(c.MembraneProtons, protons))
+            if (Moved(c.MembraneProtons, protons, _oceanProtons))
                 c.MembraneProtons = protons;
             int nt = env.TraceCount;
             for (int t = 0; t < nt; t++)
                 _traceAtCell[i * nt + t] = env.Field.Sample(EnvironmentField.FirstTrace + t, x, y);
         }
 
-        private bool Moved(double current, double next) =>
-            Math.Abs(next - current) > _inputTolerance * Math.Max(Math.Abs(current), Math.Abs(next));
+        // A membrane input is passed on when it moved by more than field.input_tolerance of its departure from the open
+        // water (ocean): so what a cell does to its own water, however small, reaches it to that share, and a cell in
+        // unchanging water keeps its input.
+        private bool Moved(double current, double next, double ocean) =>
+            Math.Abs(next - current) > _inputTolerance * Math.Abs(next - ocean);
 
-        // Each living cell's exchange over the step goes into the field, in cell order; then the field steps.
+        private double _oceanProtons;
+
+        // Each living cell's exchange over the step goes into the field and out of the packets it touches, in cell order;
+        // then the free organisms', and the field steps.
         private void AfterCells(double dt)
         {
-            var env = _environment!;
+            var env = _environment;
             double ocean = env.OceanGlucose;
             for (int i = 0; i < _cells.Count; i++)
             {
                 var c = _cells[i];
+                _fieldRelease[i] = 0.0;
                 if (!c.Alive)
                     continue;
                 // only the share of the cell's edge on open water (all of it before level 4; the rest went into the
-                // space between cells)
+                // space between cells), and of its uptake not drawn from packets or its vacuole
                 double glucose = OpenGlucoseRelease(i), w = _openReleaseShare[i];
                 env.Exchange(EnvironmentField.Glucose, _cellX[i], _cellY[i], glucose);
                 env.Exchange(EnvironmentField.Lactate, _cellX[i], _cellY[i], w * c.LactateRelease);
                 env.Exchange(EnvironmentField.Acid, _cellX[i], _cellY[i], w * c.ProtonRelease);
                 CellGlucoseExchanged -= glucose * dt;
-                // food eaten: the share of the uptake above the open water's glucose
-                double m = _gaps != null ? _openGlucose[i] : _outsideGlucose[i];
+                _fieldRelease[i] = glucose;
+                // food eaten: the share of the field uptake above the open water's glucose, and all it took from packets
+                double m = _gaps != null ? _openGlucose[i] : _fieldGlucose[i];
                 if (glucose < 0.0 && m > ocean)
                     FoodEaten += -glucose * dt * (m - ocean) / m;
+                if (_packetShare[i] > 0.0 && c.GlucoseUptake > 0.0)
+                {
+                    double drawn = _food.Draw(_cellX[i], _cellY[i], CellRadius, c.GlucoseUptake * _packetShare[i] * dt, dt);
+                    FoodEaten += drawn;
+                    EatenFromPackets += drawn;
+                }
             }
             OrganismsExchange(env, dt);
             if (_workerCount > 1)

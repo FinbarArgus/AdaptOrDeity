@@ -28,8 +28,34 @@ namespace AdaptOrDeity.Presentation
 
         public SessionSchema Schema => _session.Schema;
 
-        /// <summary>Overlay channel shown, or -1 for the plain view.</summary>
-        public int ActiveOverlay { get; set; } = -1;
+        /// <summary>Overlay channel shown, or -1 for the plain view (or a field overlay).</summary>
+        public int ActiveOverlay
+        {
+            get => _activeOverlay;
+            set
+            {
+                _activeOverlay = value;
+                if (value >= 0)
+                    _activeField = -1;
+            }
+        }
+
+        private int _activeOverlay = -1, _activeField = -1;
+
+        /// <summary>Field overlay shown (<see cref="FieldView.Overlays"/>), or -1; showing one clears the cell overlay.</summary>
+        public int ActiveField
+        {
+            get => _activeField;
+            set
+            {
+                _activeField = value;
+                if (value >= 0)
+                    _activeOverlay = -1;
+            }
+        }
+
+        /// <summary>The water overlay's view (its colour range is the legend's).</summary>
+        public FieldView FieldView { get; private set; }
 
         /// <summary>Cell shown in the cell panel, or -1 for none. Frames carry details for this cell only.</summary>
         public int SelectedCell
@@ -137,6 +163,10 @@ namespace AdaptOrDeity.Presentation
 
             _camera = EnsureCamera();
             gameObject.AddComponent<BackgroundView>().Initialise(this, _camera);
+            var field = new GameObject("Water overlay");
+            field.transform.SetParent(transform, false);
+            FieldView = field.AddComponent<FieldView>();
+            FieldView.Initialise(this);
             gameObject.AddComponent<MotionView>().Initialise(this);
             SyncViews();
         }

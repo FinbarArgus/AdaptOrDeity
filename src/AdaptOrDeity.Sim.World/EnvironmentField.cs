@@ -40,13 +40,16 @@ namespace AdaptOrDeity.Sim.World
         public double BufferPk { get; set; }
 
         public IReadOnlyList<TraceSpecies> TraceSpecies { get; set; } = Array.Empty<TraceSpecies>();
+
+        /// <summary>The trace species take one field step every this many (<see cref="NestedField.SetStride"/>).</summary>
+        public int TraceStride { get; set; } = 1;
     }
 
     /// <summary>
     /// The chemistry around the creature (<see cref="NestedField"/>): glucose, lactate, acid, O2 and the trace species
     /// (smells). Glucose, lactate and O2 are concentrations; acid is the H+ added to the water relative to the ocean [mol/m³
     /// of H+ equivalents], diffusing with the carbonate buffer that carries it, and pH follows from it through the buffer
-    /// (<see cref="Protons"/>). Enzymes hydrolyse food packets into it (<see cref="Dissolve"/>); cells exchange with it at their
+    /// (<see cref="Protons"/>). Food packets' free sugar leaks into it (<see cref="Dissolve"/>); cells exchange with it at their
     /// position (<see cref="ICellEnvironment"/>), seeing the membrane correction.
     /// </summary>
     public sealed class EnvironmentField : ICellEnvironment
@@ -76,8 +79,15 @@ namespace AdaptOrDeity.Sim.World
             far[Oxygen] = settings.Oxygen;
             Field = new NestedField(settings.Grid, settings.Diffusivity, far, cx, cy, diameter);
             Field.SetActive(Oxygen, false);   // nothing makes or takes O2 yet
+            // the fine substeps keep a moving cell's own glucose depletion; its lactate and acid barely act back on it
+            Field.SetFineSubsteps(Lactate, 1);
+            Field.SetFineSubsteps(Acid, 1);
             for (int t = 0; t < settings.TraceSpecies.Count; t++)
+            {
                 Field.SetActive(FirstTrace + t, false);
+                Field.SetStride(FirstTrace + t, Math.Max(1, settings.TraceStride));
+                Field.SetFineSubsteps(FirstTrace + t, 1);
+            }
         }
 
         public NestedField Field { get; }
@@ -133,26 +143,28 @@ namespace AdaptOrDeity.Sim.World
         }
 
         /// <summary>
-        /// Each food packet releases its free small molecules (<see cref="FoodField.Leak"/>) and what enzymes hydrolyse of
-        /// its polymer over the step (<paramref name="hydrolysis"/>: the rate acting on a packet [mol glucose/s];
-        /// <see cref="FoodField.Hydrolyse"/>): its glucose, and its traces in proportion (the contact trace per contact
-        /// glucose, times each trace's strength), enter the field where it lies. With no enzyme on it, only the free part
-        /// leaves. Returns the glucose released [mol].
+        /// Each food packet's enzymes (<paramref name="hydrolysis"/>: the rate acting on it [mol glucose/s]) cut its polymer
+        /// into its free sugar (<see cref="FoodField.Hydrolyse"/>, held back at the product-inhibition level), its free sugar
+        /// leaks into the field where it lies (<see cref="FoodField.Leak"/>) with its traces in proportion (the contact trace
+        /// per contact glucose, times each trace's strength), and what it offers the membranes touching it over the step is
+        /// set (<see cref="FoodField.Predict"/>). Returns the glucose released into the field [mol].
         /// </summary>
         public double Dissolve(FoodField food, double dt, Func<FoodPacket, double> hydrolysis)
         {
             double released = 0.0, tracePerGlucose = food.Settings.ContactTrace / food.Settings.ContactGlucose;
-            foreach (var p in food.Packets)
+            var packets = food.Packets;
+            for (int k = 0; k < packets.Count; k++)   // by index: no enumerator to allocate
             {
+                var p = packets[k];
                 if (!p.Active)
                     continue;
-                double mol = food.Leak(p, dt) + food.Hydrolyse(p, hydrolysis(p) * dt);
-                if (mol <= 0.0 || !Field.Deposit(Glucose, p.X, p.Y, mol / dt))
-                {
-                    if (mol > 0.0)
-                        throw new InvalidOperationException("a food packet outside the environment field");
+                food.Hydrolyse(p, hydrolysis(p) * dt);
+                double mol = food.Leak(p, dt);
+                food.Predict(p, dt);
+                if (mol <= 0.0)
                     continue;
-                }
+                if (!Field.Deposit(Glucose, p.X, p.Y, mol / dt))
+                    throw new InvalidOperationException("a food packet outside the environment field");
                 for (int t = 0; t < TraceCount; t++)
                     Field.Deposit(FirstTrace + t, p.X, p.Y, mol / dt * tracePerGlucose * p.Traces[t]);
                 released += mol;

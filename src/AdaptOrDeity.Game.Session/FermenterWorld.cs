@@ -124,15 +124,11 @@ namespace AdaptOrDeity.Game.Session
         }
 
         /// <param name="cellLimit">Most cells, for tests; no limit when null.</param>
-        /// <param name="environmentField">
-        /// Whether cells and food exchange with the environment field (<see cref="Environment"/>); content field.enabled
-        /// when null.
-        /// </param>
         /// <param name="accuracy">
         /// <see cref="FieldAccuracy.Reference"/>: the environment without its speed-for-accuracy trade-offs, to test the
         /// game's settings against.
         /// </param>
-        public FermenterWorld(int? cellLimit = null, bool? environmentField = null, FieldAccuracy accuracy = FieldAccuracy.Game)
+        public FermenterWorld(int? cellLimit = null, FieldAccuracy accuracy = FieldAccuracy.Game)
         {
             Accuracy = accuracy;
             if (accuracy == FieldAccuracy.Reference)
@@ -144,6 +140,7 @@ namespace AdaptOrDeity.Game.Session
                 first.RelativeTolerance = GameParameters.Default.Value("field.reference_cell_tolerance");   // daughters inherit it
             // Geometry from the kernel (upstream parameters.json); the open water and food field from content.
             CellRadius = first.External("R_cell_mod_membrane") * 1e-6;   // µm → m
+            _oceanProtons = first.External("H_o_mod_H");
             _spacing = 2.0 * CellRadius + GameParameters.Default.Value("colony.cell_gap");
             _food = new FoodField(GameParameters.Default.Food(GameTimeline.Default.OceanGlucose(1)));
             _prey = CreatePrey();
@@ -167,11 +164,8 @@ namespace AdaptOrDeity.Game.Session
             _food.Populate(_body.Body.X, _body.Body.Y);
             _food.BodyRange = OrganismRange;   // dead organisms' bodies stay as long as living ones would
             _bodyTrace = BodyTrace();
-            if (environmentField ?? GameParameters.Default.Value("field.enabled") != 0.0)
-            {
-                _environment = CreateEnvironment(first);
-                first.StopAtMacroSteps = true;   // the field changes cells' inputs every macro step; daughters inherit it
-            }
+            _environment = CreateEnvironment(first);
+            first.StopAtMacroSteps = true;   // the field changes cells' inputs every macro step; daughters inherit it
             double avogadro = _avogadro;
             _cellGroup.Add(0);
             _groups.Add(new Group(_cells[0].Traits));
@@ -443,8 +437,9 @@ namespace AdaptOrDeity.Game.Session
 
         private void StepWorld(double t, double dt)
         {
-            // The creature moves over the ground and the food window follows it. Each cell sees the background plus the
-            // packets it touches; what it takes beyond the background comes out of those packets. Glucose crosses the
+            // The creature moves over the ground and the food window follows it. Each cell sees the environment field at its
+            // membrane and, on the share of its membrane facing them, the free sugar of the packets it touches; what it
+            // takes through that share comes out of those packets. Glucose crosses the
             // membrane through the cell's own carriers (Glf, and the PTS, ABC and H+ symport once evolved) in the kernel,
             // each seeing the same membrane glucose. Per-cell work runs on the workers; what cells
             // share (the body's force, the packets) is summed or settled afterwards in cell order, so results do not
@@ -466,6 +461,9 @@ namespace AdaptOrDeity.Game.Session
             {
                 Array.Resize(ref _vacuoleShare, 2 * n);
                 Array.Resize(ref _outsideGlucose, 2 * n);
+                Array.Resize(ref _packetShare, 2 * n);
+                Array.Resize(ref _fieldGlucose, 2 * n);
+                Array.Resize(ref _fieldRelease, 2 * n);
             }
             if (_forceX.Length < n)
             {
@@ -498,14 +496,13 @@ namespace AdaptOrDeity.Game.Session
             _sin = Math.Sin(b.Angle);
             EngulfAndDigest(dt);
             EngulfAndDigestOrganisms(dt);
-            if (_environment != null)
-                BeforeCells(dt);
+            BeforeCells(dt);
             _cellPass ??= CellPass;
             ForEachCell(_cellPass);
             StepOrganismCells();
 
-            // Food stays with the cell that found it; what cells took beyond the background leaves the packets (with the
-            // environment field: the cells' exchange goes into the field and the field steps).
+            // Food stays with the cell that found it; the cells' exchange goes into the field, what they took through the
+            // membrane facing packets comes out of those packets, and the field steps.
             for (int i = 0; i < n; i++)
                 if (_touching[i] && _cells[i].Alive)
                     _food.StickTo(_cellX[i], _cellY[i], CellRadius);
@@ -513,17 +510,7 @@ namespace AdaptOrDeity.Game.Session
             // the space between cells first (its open gaps exchange with the field before the field steps)
             if (_gaps != null && _space != null)
                 StepSpace(dt);
-            if (_environment != null)
-                AfterCells(dt);
-            for (int i = 0; i < n && _environment == null; i++)
-            {
-                if (!_touching[i])
-                    continue;
-                double c = _food.GlucoseAt(_cellX[i], _cellY[i], CellRadius);
-                double uptake = _cells[i].GlucoseUptake * _openGlucoseShare[i] * dt;   // mol into the cell from open water
-                if (c > _food.BackgroundGlucose && uptake > 0.0)
-                    FoodEaten += _food.Withdraw(_cellX[i], _cellY[i], CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
-            }
+            AfterCells(dt);
             TakeUpFromVacuoles(dt);
             OrganismsEat(dt);
             NoticeAtpDip();
@@ -552,7 +539,6 @@ namespace AdaptOrDeity.Game.Session
         // Each cell's position, the food at its membrane, and its own integration.
         private void CellPass(int start, int end)
         {
-            int nt = _food.TraceSpecies.Count;
             for (int i = start; i < end; i++)
             {
                 _body.WorldPosition(i, _cos, _sin, out double x, out double y);
@@ -563,14 +549,8 @@ namespace AdaptOrDeity.Game.Session
                 _openGlucoseShare[i] = _openReleaseShare[i] = 1.0;
                 if (_gaps != null && _space != null)
                     SetMembraneFromColony(i, c, x, y);
-                else if (_environment != null)
-                    ReadEnvironment(i, x, y);
                 else
-                {
-                    c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
-                    for (int tr = 0; tr < nt; tr++)
-                        _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
-                }
+                    ReadEnvironment(i, x, y);
                 AddVacuoleToMembrane(i, c);
                 c.Step(_stepDt);
             }

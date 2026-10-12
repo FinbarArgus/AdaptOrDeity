@@ -19,18 +19,18 @@ namespace AdaptOrDeity.Headless
         {
             int[] sizes = args.Length > 0 ? Array.ConvertAll(args, a => int.Parse(a, CultureInfo.InvariantCulture))
                 : new[] { 1, 64, 512, 5000 };
-            Console.WriteLine("cells  grid N x levels  workers  ms/step  us/cell/step");
+            Console.WriteLine("cells  grid N x levels, outer  workers  ms/step  us/cell/step");
             foreach (int cells in sizes)
                 foreach (int workers in new[] { 1, ParallelWork.DefaultWorkers })
                 {
-                    double ms = Time(cells, workers, out int n, out int levels);
+                    double ms = Time(cells, workers, out int n, out int levels, out int outer);
                     Console.WriteLine(FormattableString.Invariant(
-                        $"{cells,5}  {n,6} x {levels}  {workers,9}  {ms,7:F3}  {1e3 * ms / cells,12:F2}"));
+                        $"{cells,5}  {n,6} x {levels}, {outer,5}  {workers,9}  {ms,7:F3}  {1e3 * ms / cells,12:F2}"));
                 }
             return 0;
         }
 
-        private static double Time(int cells, int workers, out int n, out int levels)
+        private static double Time(int cells, int workers, out int n, out int levels, out int outer)
         {
             const double dt = 0.1, radius = 1e-6;
             double spacing = 2.0 * radius + GameParameters.Default.Value("colony.cell_gap");
@@ -67,6 +67,7 @@ namespace AdaptOrDeity.Headless
             }
             n = env.Field.CellsPerSide;
             levels = env.Field.Levels;
+            outer = env.Field.OuterCells;
             return sw!.Elapsed.TotalMilliseconds / steps;
         }
     }
