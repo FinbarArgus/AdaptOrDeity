@@ -9,8 +9,8 @@ namespace AdaptOrDeity.UI
     /// The window on the right that opens when a cell is selected (ONI's side screen): the cell's metabolic rate, where
     /// its ATP comes from and goes, growth and storage, its state, and the controls of its group: protein expression,
     /// energy to growth, glycogen storage and repair, a Divide button and the unlocked features. Sliders change every
-    /// cell in the selected cell's group. Once Regulation is unlocked each expression slider and the growth slider has a
-    /// cog that opens a popup choosing which falling species lower it. Everything shown comes from the snapshot schema.
+    /// cell in the selected cell's group. Once Regulation is unlocked each expression slider, the growth slider and each
+    /// part of the maintenance has a cog that opens a popup choosing which falling species lower it. Everything shown comes from the snapshot schema.
     /// IMGUI for the vertical slice.
     /// </summary>
     public sealed class CellPanel : MonoBehaviour
@@ -39,7 +39,7 @@ namespace AdaptOrDeity.UI
         private float[] _sliders = new float[0];
         private float[] _controls = new float[0];
         private int _slidersForGroup = -1;
-        private int _regulationTarget = -1;   // the target whose regulation popup is open (a trait, or growth), or -1
+        private int _regulationTarget = -1;   // the target whose regulation popup is open (a trait, growth or maintenance), or -1
         private GUIStyle _header, _big, _small, _right;
 
         /// <summary>True while the panel is drawn (other HUD elements move left of it).</summary>
@@ -109,7 +109,9 @@ namespace AdaptOrDeity.UI
                             "under ATP used) and a little each second to keep. The membrane holds only so many proteins. " +
                             "Each membrane protein shows as an arc of the cell's rim in its colour, as long as the share " +
                             "of the surface it takes. Drag a flagellum's base (on the selected cell) to move it around the " +
-                            "membrane.", _small);
+                            "membrane. Changes take time: a protein rises over minutes (hours for the big ones, as fast as " +
+                            "the ribosomes and ATP allow) and falls only as it is degraded, about 1% an hour; each slider " +
+                            "shows the level now → the target.", _small);
             for (int t = 0; t < schema.Traits.Count; t++)
                 if (schema.Traits[t].Feature == null || Unlocked(schema, frame, schema.Traits[t].Feature))
                     DrawTraitSlider(bridge, schema.Traits[t], frame, cell, group, t);
@@ -119,6 +121,7 @@ namespace AdaptOrDeity.UI
             for (int c = 0; c < schema.Controls.Count; c++)
                 if (Active(schema, frame, schema.Controls[c].Feature))
                     DrawControl(bridge, schema, frame, schema.Controls[c], group, c);
+            DrawMaintenance(schema, frame, group);
 
             GUILayout.Space(6);
             _showFeatures = Foldout(_showFeatures, "Features (your choice once unlocked)");
@@ -154,17 +157,41 @@ namespace AdaptOrDeity.UI
                 _regulationTarget = _regulationTarget == target ? -1 : target;
         }
 
+        /// <summary>
+        /// The maintenance the cell can turn down as species fall (once Regulation is unlocked and on): a row with a cog
+        /// per entry of <see cref="SessionSchema.MaintenanceRegulation"/>. All off by default.
+        /// </summary>
+        private void DrawMaintenance(SessionSchema schema, SnapshotFrame frame, int group)
+        {
+            if (!Active(schema, frame, GameFeatures.Regulation))
+                return;
+            GUILayout.Space(6);
+            GUILayout.Label("Maintenance", _header);
+            GUILayout.Label("What the cell spends to stay as it is. Starving bacteria cut it: tick a falling species to turn " +
+                            "a part down as that species falls (no effect at rest).", _small);
+            for (int k = 0; k < SessionSchema.MaintenanceRegulation.Count; k++)
+            {
+                var (_, name, effect) = SessionSchema.MaintenanceRegulation[k];
+                GUILayout.BeginHorizontal();
+                GUILayout.Label(new GUIContent(name, effect), GUILayout.Width(Width - 84));
+                DrawCog(schema, frame, group, schema.MaintenanceTarget(k));
+                GUILayout.EndHorizontal();
+            }
+        }
+
         // The regulation popup: a toggle per species ("dropping lowers this") and the function, fixed for now.
         private void DrawRegulationPopup(SessionBridge bridge, SessionSchema schema, SnapshotFrame frame, int group)
         {
-            if (!Active(schema, frame, GameFeatures.Regulation) || _regulationTarget > schema.GrowthRegulation)
+            if (!Active(schema, frame, GameFeatures.Regulation) || _regulationTarget >= schema.RegulationTargets)
             {
                 _regulationTarget = -1;
                 return;
             }
             const float w = 360f, h = 330f;
             var rect = new Rect(Screen.width - Width - w - 8f, Top + 40f, w, h);
-            string what = _regulationTarget < schema.Traits.Count ? schema.Traits[_regulationTarget].Label : "Energy to growth";
+            string what = _regulationTarget < schema.Traits.Count ? schema.Traits[_regulationTarget].Label
+                : _regulationTarget == schema.GrowthRegulation ? "Energy to growth"
+                : SessionSchema.MaintenanceRegulation[_regulationTarget - schema.GrowthRegulation - 1].Name;
             GUILayout.Window(0x5E6017, rect, id => DrawRegulation(bridge, frame, group, what), "Regulation");
         }
 
@@ -182,13 +209,16 @@ namespace AdaptOrDeity.UI
             }
             GUILayout.Space(6);
             GUILayout.Label("Function (fixed for now)", _header);
-            GUILayout.Label("target × f, with f = Cⁿ / (Kⁿ + Cⁿ) for each ticked species: n = 4, K = half the species' resting " +
-                            "level. f is 0.94 at rest, 0.5 at half the resting level, near 0 below a quarter. For pH, f falls " +
-                            "as the pH drops (half-way 0.3 below rest). Several ticked species multiply.", _small);
+            GUILayout.Label("target × f for each ticked species: f = 1 / (1 + uⁿ), u = the shortfall below the resting level " +
+                            "(1 at half of it), n = 4. f is exactly 1 at and above rest (no effect), 0.5 at half the resting " +
+                            "level, 0.06 when the species is gone. For pH, f falls as the pH drops (half-way 0.3 below rest). " +
+                            "Several ticked species multiply.", _small);
             GUILayout.Label("Experts will be able to choose the function.", _small);
             GUILayout.Space(4);
-            GUILayout.Label("Turning down pumps, exchangers and flagella saves energy in a famine; turning down glycolysis or " +
-                            "the sugar carriers leaves the cell unable to use food when it returns.", _small);
+            GUILayout.Label("A lowered protein target stops the protein being made, but the copies the cell has fall only as " +
+                            "they are degraded (about 1% an hour), so it saves little in a famine of minutes; turning down " +
+                            "maintenance acts at once. Turning down glycolysis or the sugar carriers for long leaves the cell " +
+                            "short of them when food returns.", _small);
             if (GUILayout.Button("Close"))
                 _regulationTarget = -1;
         }

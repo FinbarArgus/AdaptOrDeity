@@ -178,7 +178,8 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>
         /// Sets whether a fall of <paramref name="species"/> (<see cref="SessionSchema.RegulationSpecies"/>) lowers
-        /// <paramref name="target"/> (a trait's index, or <see cref="SessionSchema.GrowthRegulation"/> for growth) in every
+        /// <paramref name="target"/> (a trait's index, <see cref="SessionSchema.GrowthRegulation"/> for growth, or
+        /// <see cref="SessionSchema.MaintenanceTarget"/> for a part of the maintenance) in every
         /// cell of <paramref name="group"/>. Needs the Regulation feature.
         /// </summary>
         public static SimCommand SetRegulation(int group, int target, int species, bool on) =>
