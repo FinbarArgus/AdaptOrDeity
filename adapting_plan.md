@@ -27,6 +27,17 @@ Upstream work lives on branch `homogenisation-checks` of `circulatory-autogen-mo
 worktree at `~/Documents/git_projects/circulatory-autogen-modules-homogenisation` (uncommitted, awaiting
 review). Review page for the first cell modules: https://claude.ai/artifact/UPtUGRQfVaSEzzDa2UXRMx
 
+## Next: consolidate before new features (designer, 2026-10-12)
+After the prey, engulfing and multicellularity/mitochondria features land and the designer has tested them in Unity,
+no new features until:
+1. **Solidify:** fix what testing finds; turn the field on by default only once it meets its reference
+   (docs/plans/environment-field.md, "Accuracy against the reference"); retire stand-ins (content/upstream copies once
+   upstream is pushed).
+2. **Check every module:** each upstream module passes cam_testing's full set (every test under 10 minutes); each
+   game-side native element has its analytic and conservation tests; goldens current; every value without a checked
+   source is in docs/review/unreferenced-values.md, to go through with the designer.
+3. **Update the plans:** this file, docs/plans/*, and the milestone table, so they hold only what is still to do.
+
 ## Time: the evolutionary time bar
 - An **evolutionary time bar** across the top of the screen runs from **−2.0 billion years** through the
   present day and on into the future.
