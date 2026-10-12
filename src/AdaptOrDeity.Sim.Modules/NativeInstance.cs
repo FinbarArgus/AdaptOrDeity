@@ -106,8 +106,23 @@ namespace AdaptOrDeity.Sim.Modules
         public void Advance(double dt, KernelBatch batch)
         {
             if (bk_instance_advance(_handle, dt) != 0)
-                throw new InvalidOperationException($"{Module.Descriptor.Key}: the integration failed at t = {Time} s");
+                throw new InvalidOperationException($"{Module.Descriptor.Key}: the integration failed: {FailureReason()}");
             CopyStatesTo(batch);
+        }
+
+        private static readonly string[] Statuses = { "ok", "step too small", "too many steps", "non-finite values" };
+
+        // Why and when the first failed block of this module stopped.
+        private string FailureReason()
+        {
+            IntPtr sim = bk_instance_sim(_handle);
+            for (int b = 0; b < Module.Blocks.Length; b++)   // the instance's own blocks, in order
+            {
+                int status = bk_block_status(sim, b, out double failT);
+                if (status != 0)
+                    return $"{(status < Statuses.Length ? Statuses[status] : "status " + status)} at t = {failT} s (block {Module.Blocks[b]})";
+            }
+            return $"at t = {Time} s";
         }
 
         /// <summary>Computes the library's outputs in this module and writes them into the batch's algebraic values.</summary>
@@ -163,6 +178,7 @@ namespace AdaptOrDeity.Sim.Modules
         [DllImport(Library)] private static extern void bk_instance_outputs(IntPtr instance);
         [DllImport(Library)] private static extern void bk_instance_compute_variables(IntPtr instance);
         [DllImport(Library)] private static extern void bk_stats(IntPtr sim, long[] stats);
+        [DllImport(Library)] private static extern int bk_block_status(IntPtr sim, int block, out double failT);
         [DllImport(Library)] private static extern void bk_set_stop_at_outputs(IntPtr sim, int on);
         [DllImport(Library)] private static extern void bk_set_options(IntPtr sim, double rtol, double atol, double hMax, double hMin,
             double newtonTol, int maxNewton, int maxJacobianAge, long maxSteps, int finiteDifferenceJacobian, int method);
