@@ -417,6 +417,11 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 - **2026-10-12** Descriptions and educational content are reviewed by a human (section above): `reviewed` flags in
   content and tests that fail until each is ticked off.
 
+- **2026-10-12** The game keeps libcuflynx's BE_batched_c: inputs will change every macro step (food from the field),
+  where CVODES would restart each step and fall 5-6x behind; at equal accuracy and steady inputs the two are level
+  (docs/plans/libcuflynx-solver.md). libcuflynx gets a multithreaded CVODES C option for other users; reusing the
+  Newton matrix factorisation in BE_batched_c is being measured.
+
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.
