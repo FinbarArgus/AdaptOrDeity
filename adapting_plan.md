@@ -77,6 +77,13 @@ no new features until:
 | New cells | Start at their CellType's baseline steady state. |
 | UX | Oxygen Not Included style: hotkeyed overlay tabs, legends, hover tooltips, category build menu, speed controls, warnings, level report; live plots on click; flux arrows; educational parameter inspector; stylised 2D art; the evolutionary time bar on top. |
 
+### Organelles visible in the cell (designer, 2026-10-13; not started)
+Once organelles are in the cell model (mitochondria first, from the level-2 branch; later others such as a nucleus,
+vacuoles beyond today's food vacuole, and a cytoskeleton), the player sees them inside each cell in Unity: drawn
+from the model's own state (count, size or volume share, activity), not decoration, and moving or changing with it
+(e.g. mitochondria multiplying with their protein pool, dimming as respiration slows). Each organelle gets its overlay
+or detail rows in the cell panel, like the membrane carriers' arcs today.
+
 ### Environment, threats and behaviour (user notes, 2026-10-09; not started)
 - **Visible motion** (done 2026-10-09). The creature drifts with a slow near-bed current
   (`environment.current_*`, 2 µm/s placeholder) and swims on its flagella (`Sim.World.CreatureMotion`). The view follows it
