@@ -227,8 +227,11 @@ namespace AdaptOrDeity.Game.Session.Tests
             // Level 1: one flagellum at the back whose motor runs at random. During a run the body swims at ~15 um/s
             // (the kernel's thrust against Stokes drag) and turns a little (the thrust's random angle); in a pause only the
             // current carries it. Its mechanical power is a small share of the motor's proton-motive power; the rest and
-            // the drag's work end as heat. With swimming turned off the motors stay off.
+            // the drag's work end as heat. With swimming turned off the motors stay off. No food: a held meal would slow it.
             var world = new FermenterWorld();
+            world.Food.SetArrivals(0.0, 0.0);
+            foreach (var p in world.Food.Packets.Where(p => p.Active).ToList())
+                world.Food.Remove(p);
             var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             int on = 0, steps = 3000, runsStarted = 0;
             bool last = false;

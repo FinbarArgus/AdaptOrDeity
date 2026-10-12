@@ -547,6 +547,23 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   - The field covers the free organisms' range; smells step every 1 s; frames carry lactate and pH, shown in Unity as
     water overlays (F7-F9).
 
+- **2026-10-13** Survival, achievements and memory (designer requests; docs/plans/scoring.md, free-daughters.md,
+  environment-field.md, regulation.md):
+  - No food points: each level has a survival meter (falls while the creature's cells have ATP below half their resting
+    level) and a damage meter (100 x (1 - the worst mean damage load)); at the level's end each converts to points
+    (`scoring.*`); reproduction points as before. Stars (0-3) from the level's points; achievements and a seen record
+    shown in a level-end window. `skills.glucose_per_point` is retired; `FoodEaten` is a statistic.
+  - Regulation unlocks after the first gap of 60 s without food (touched, held or engulfed), not at the first ATP dip.
+  - Free organisms and dead bodies out of range are frozen with their whole state until the creature comes back (caps
+    256 organisms, 1,024 bodies; beyond, the farthest is forgotten).
+  - Held meals weigh on the body: their mass and, outside the cells, their Stokes drag (a fresh packet slows a one-cell
+    body to 1/1.8; at Re ~1e-5 only drag changes the speed). Held food stays against its cell as it shrinks (it lost
+    contact before, so cells starved holding food).
+  - The packet face: what leaks from a touched packet comes out at the contact, in the cell's near field; the cell takes
+    k/(k + 4 pi D a) of it (Glf 5e-4, PTS ~9%). The near field cannot widen the ~5% face for the starting cell; the face
+    (a sealed contact) stays.
+  - Scripted players (left alone, mediocre, great, optimised) calibrate level 1 and are the LevelTests.
+
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.
@@ -592,13 +609,18 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     draws, food at 3e-3 to 7e-3 packets/s gave 1 to 21 points, not in order of the rate.
 19. In the field each packet a cell touches gets the cell's whole hydrolase rate (several touching packets are digested
     in parallel); share the enzyme over the faces? And the face share (the cap the packet covers, ~5%) is geometry with
-    no source for how close a cell and a particle sit. (2026-10-13)
+    no source for how close a cell and a particle sit. (2026-10-13) Asked to widen it: the near field of the contact
+    cannot (a Glf cell takes ~0.05% of what comes out at its surface; docs/plans/environment-field.md); a larger sealed
+    contact, higher-affinity carriers or a periplasm-like envelope would. Designer's choice.
     Regulation (2026-10-13) avoids the trap only while some food remains (half the resting glucose): the unregulated
     maintenance ATPase still drains ATP to 0 in a full famine. Should maintenance fall in a famine too, and should
     regulation unlock before the first crash?
 20. libcuflynx's runtime failed after a division with hard restarts on inputs changing every step (vacuole cells): soft
     restarts avoid it; worth a minimal reproduction upstream. (2026-10-12)
-21. Free organisms (docs/plans/free-daughters.md): a dead body beyond the organisms' range (60 µm) is dropped; keep far
-    bodies? And should lineage points diminish by generation, since descendants may out-earn food? (2026-10-13)
+21. Free organisms (docs/plans/free-daughters.md): should lineage points diminish by generation, since descendants may
+    out-earn the survival points? (Far bodies and organisms are now frozen until the creature returns, 2026-10-13.)
+22. Scoring (docs/plans/scoring.md): starvation is absorbing (open question 18), so the survival meter mostly measures
+    the day of the first long famine; whether points should also reward recovering, and the damage meter's baseline
+    (~1.1% of a lethal load at rest), are open. (2026-10-13)
 17. Communication and memory: what a signal costs, what memory stores (places, individuals, threats) and how it
     is modelled (neural cells, a game abstraction, or both). Levels and dates decided when we get there.

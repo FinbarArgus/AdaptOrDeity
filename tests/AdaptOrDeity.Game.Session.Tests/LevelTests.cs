@@ -32,35 +32,67 @@ namespace AdaptOrDeity.Game.Session.Tests
             using var world = new FermenterWorld();
             Assert.That(world.BathConcentration, Is.EqualTo(GameTimeline.Default.OceanGlucose(1)));
         }
+    }
 
-        // A week-long calibration: a cell left alone earns one 5-point transporter and starts to starve before the week
-        // ends; one kept on food earns two. Then level 2 begins by itself.
-        [Test]
-        public void ALevelOneCellLeftAloneEarnsOneTransporterAndStartsToStarve()
+    /// <summary>
+    /// The level-1 calibration (docs/plans/scoring.md): each reference player plays the week once (its own fixture, so
+    /// each stays under 10 minutes and they run in parallel), and the stars it earns are the designer's targets: left alone
+    /// the cell starves within the level (no star); a mediocre player one star, a great one two, the best found three.
+    /// </summary>
+    public abstract class LevelOneBot
+    {
+        protected BotOutcome Outcome { get; private set; } = new BotOutcome();
+
+        protected abstract ScriptedPlayer Player { get; }
+
+        [OneTimeSetUp]
+        public void Play()
         {
-            using var world = new FermenterWorld();
-            int cost = GameFeatures.All[GameFeatures.IndexOf(GameFeatures.PtsTransport)].Cost;
-            int damage = -1;
-            for (int d = 0; d < world.Details.Count; d++)
-                if (world.Details[d].Id == "damage")
-                    damage = d;
-            double start = world.ReadDetail(0, damage);
-            Run(world, Week + 1.0);
-            TestContext.Progress.WriteLine($"left alone: ate {world.FoodEaten:G4} mol, {world.SkillPoints} points, damage {world.ReadDetail(0, damage):F3}");
-            Assert.That(world.SkillPoints, Is.InRange(cost, 2 * cost - 1), $"one transporter (ate {world.FoodEaten:G4} mol)");
-            Assert.That(world.ReadDetail(0, damage), Is.GreaterThan(start + 0.05), "starting to starve");
-            Assert.That(world.Level, Is.EqualTo(2), "the next level begins when the week is up");
+            Outcome = BotOutcome.Play(Player);
+            TestContext.Progress.WriteLine(Outcome.ToString());
         }
 
         [Test]
-        public void ALevelOneCellKeptOnFoodEarnsTwoTransporters()
+        public void TheNextLevelBeginsWhenTheWeekIsUp() => Assert.That(Outcome.Score!.Level, Is.EqualTo(1));
+    }
+
+    [Parallelizable(ParallelScope.Self)]
+    public class LevelOneLeftAlone : LevelOneBot
+    {
+        protected override ScriptedPlayer Player => Bots.LeftAlone();
+
+        [Test]
+        public void ItStarvesWithinTheLevelAndEarnsNoStar()
         {
-            using var world = new FermenterWorld();
-            int cost = GameFeatures.All[GameFeatures.IndexOf(GameFeatures.PtsTransport)].Cost;
-            world.Food.SetArrivals(0.015, 0.8);   // 3x the level's food: it never runs out
-            Run(world, Week - 1.0);
-            TestContext.Progress.WriteLine($"kept on food: ate {world.FoodEaten:G4} mol, {world.SkillPoints} points");
-            Assert.That(world.SkillPoints, Is.GreaterThanOrEqualTo(2 * cost), $"ate {world.FoodEaten:G4} mol");
+            Assert.That(Outcome.StarvingFrom, Is.LessThan(GameTimeline.Default.DurationOf(1)), "starving at the end");
+            Assert.That(Outcome.Score!.Stars, Is.EqualTo(0), Outcome.ToString());
         }
+    }
+
+    [Parallelizable(ParallelScope.Self)]
+    public class LevelOneMediocre : LevelOneBot
+    {
+        protected override ScriptedPlayer Player => Bots.Mediocre();
+
+        [Test]
+        public void ItEarnsOneStar() => Assert.That(Outcome.Score!.Stars, Is.EqualTo(1), Outcome.ToString());
+    }
+
+    [Parallelizable(ParallelScope.Self)]
+    public class LevelOneGreat : LevelOneBot
+    {
+        protected override ScriptedPlayer Player => Bots.Great();
+
+        [Test]
+        public void ItEarnsTwoStars() => Assert.That(Outcome.Score!.Stars, Is.EqualTo(2), Outcome.ToString());
+    }
+
+    [Parallelizable(ParallelScope.Self)]
+    public class LevelOneOptimised : LevelOneBot
+    {
+        protected override ScriptedPlayer Player => Bots.Optimised();
+
+        [Test]
+        public void ItEarnsThreeStars() => Assert.That(Outcome.Score!.Stars, Is.EqualTo(3), Outcome.ToString());
     }
 }

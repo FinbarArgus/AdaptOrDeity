@@ -157,6 +157,15 @@ namespace AdaptOrDeity.Game.Session
             return p;
         }
 
+        /// <summary>The best strategy found by the search in docs/plans/scoring.md (perfect control as far as found).</summary>
+        public static ScriptedPlayer Optimised()
+        {
+            var p = Rename(Great(), "optimised");
+            foreach (var pump in new[] { "NhaA_expression", "KefC_expression", "Trk_expression", "NCX_expression", "flagella" })
+                p.Regulation.Add((pump, "ATP"));
+            return p;
+        }
+
         private static ScriptedPlayer Rename(ScriptedPlayer from, string name)
         {
             var p = new ScriptedPlayer(name) { Swim = from.Swim };

@@ -23,7 +23,13 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `environment.current_speed` | 2e-06 | m/s | unreferenced_placeholder | placeholder | drift of the water over the ground, which carries the creature: a slow near-bed current, 2 um/s (a cell moves with its water; over the sea floor the f |
 | `motility.mean_run` | 2 | s | unreferenced_placeholder | placeholder | mean length of a run with the motor on (random, exponential; E. coli runs ~1 s between tumbles) |
 | `motility.mean_pause` | 4 | s | unreferenced_placeholder | placeholder | mean pause with the motor off between runs (random, exponential); each run sets off in a random direction |
-| `skills.glucose_per_point` | 2e-14 | mol | unreferenced_placeholder | design | glucose eaten per skill point: calibrated so a level-1 cell left alone for the week earns one 5-point transporter and one kept on food all week two (L |
+| `scoring.survival_points` | 5 | 1 | unreferenced_placeholder | design | skill points the survival meter converts to at 100/100 when a level ends (designer 2026-10-13); calibrated with the scripted players (docs/plans/scoring.md) |
+| `scoring.damage_points` | 5 | 1 | unreferenced_placeholder | design | skill points the damage meter converts to at 100/100 |
+| `scoring.starving_atp_fraction` | 0.5 | 1 | unreferenced_placeholder | design | a living cell is starving while its ATP is below this fraction of its resting level |
+| `scoring.starvation_to_empty` | 1 | 1 | unreferenced_placeholder | design | starvation of the whole creature that empties the survival meter, in level durations |
+| `scoring.star_points_1` | 5 | 1 | unreferenced_placeholder | design | a level's points for one star (a mediocre player; set from the scripted players) |
+| `scoring.star_points_2` | 10 | 1 | unreferenced_placeholder | design | points for two stars (a great player) |
+| `scoring.star_points_3` | 15 | 1 | unreferenced_placeholder | design | points for three stars (the best strategy found) |
 | `skills.points_per_offspring` | 1 | 1 | unreferenced_placeholder | design | reproduction points: skill points per daughter released in the creature's lineage (its own daughters at division without multicellularity, and its free organisms' daughters, any generation |
 | `field.diffusivity.lactate` | 1e-09 | m2/s | unreferenced_placeholder | placeholder | lactate anion in water: ~1.0e-9 m2/s, typical of small organic anions; needs a measured value |
 | `field.diffusivity.aspartate` | 8e-10 | m2/s | longsworth1953diffusion | placeholder | amino acids of aspartate's size diffuse at ~0.8-0.9e-9 m2/s at 25 C (glycine 1.06e-9, alanine 0.91e-9); aspartate's own value to check |
@@ -54,8 +60,9 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
   ran out of ATP on days 1.5-4, 4e-3 never (gaps between packets decide, see the plan's decision log).
 - `levels[].arrivals.prey_per_s` (0 at level 1, see the decision log for level 2's value): calibrated for play, not sourced.
 - Feature costs: multicellularity and mitochondria (points), mitochondria's `requires_swallowed` 10 (designer's number).
-- Regulation (`features[regulation]`): unlocked when a cell's ATP first falls below `requires_atp_below` 0.5 of its resting
-  level (design, designer's "below a certain level"); free (no points). Its explanation cites Potrykus & Cashel 2008 and
+- Regulation (`features[regulation]`): unlocked after the first gap of `requires_food_gap_s` (60 s) without food (design,
+  designer's "after the first gap of not contacting food"; a minute is about half a cell's ATP reserve in a full famine);
+  free (no points). Its explanation cites Potrykus & Cashel 2008 and
   Schneider, Gaal & Gourse 2002 (looked up, not read in full).
 
 ## Upstream (circulatory-autogen-modules homogenisation-checks a12d84a: feat/sugar-transporters and feat/extracellular-matrix merged; the game's cell since 2026-10-12)
@@ -95,8 +102,10 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 
 ## Game design values without a physical source
 
-- Skill points per glucose (1.5e-14 mol), reproduction points per offspring, and skill costs: calibrated by tests, design
-  values.
+- Survival and damage points per level, star thresholds, reproduction points per offspring, and skill costs: calibrated
+  with the scripted players (docs/plans/scoring.md), design values.
+- Achievements (content/timeline.json achievements[]): their texts are reviewed: false; the famine one uses the
+  regulation gap.
 - Prey (content prey.*): radius 0.5 µm, run speed 3 µm/s, mean run 2 s: design, chosen so prey can be met and engulfed.
 - Engulfing: the vacuole's membrane share (r_v/R)², the cell's whole hydrolase acting in the vacuole as well as outside, and
   the vacuole kept at the packet density as it is digested: game conventions (docs/plans/prey-and-branches.md).
