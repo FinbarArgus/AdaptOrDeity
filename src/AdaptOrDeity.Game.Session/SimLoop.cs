@@ -337,7 +337,7 @@ namespace AdaptOrDeity.Game.Session
                     var cell = fw.Cell(k);
                     frame.CellSurface[k] = (float)(cell.SurfaceArea * 1e-12);   // µm² -> m²
                     for (int t = 0; t < frame.TraitArea.Length && t < cell.Traits.Count; t++)
-                        frame.TraitArea[t][k] = (float)(cell.TraitAreaPerUnit(t) * cell.TraitValue(t) * 1e-12);
+                        frame.TraitArea[t][k] = (float)(cell.TraitShare(t) * cell.TransporterAreaMax * 1e-12);   // µm² -> m²
                 }
         }
 

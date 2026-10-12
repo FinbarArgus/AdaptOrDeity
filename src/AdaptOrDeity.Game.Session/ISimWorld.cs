@@ -86,8 +86,11 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Buys a feature that has a cost (<see cref="FeatureInfo.Cost"/>) once its level is reached.</summary>
         void BuyFeature(int feature);
 
-        /// <summary>Sets the trait's target multiplier for every cell of the group (clamped).</summary>
-        void SetTrait(int group, int trait, double multiplier);
+        /// <summary>
+        /// Sets the trait's target for every cell of the group (clamped to its range and the membrane room): a multiplier,
+        /// a count, or a share of the membrane ceiling (<see cref="TraitInfo.IsShare"/>).
+        /// </summary>
+        void SetTrait(int group, int trait, double value);
 
         void SetControl(int group, int control, double value);
 

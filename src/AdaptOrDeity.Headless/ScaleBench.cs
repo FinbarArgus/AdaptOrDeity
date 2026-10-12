@@ -82,7 +82,7 @@ namespace AdaptOrDeity.Headless
             foreach (var (seconds, glucose) in new[] { (60, 0.1), (120, fed ? 50.0 : 0.1), (120, 0.1) })
             {
                 foreach (var c in cells)
-                    c.SetExternal("C_glc_e_mod_membrane_face", glucose);
+                    c.MembraneGlucose = glucose;
                 for (int s = 0; s < seconds; s++)
                     pool.Run(n, Math.Max(1, n / (8 * workers)), step);
             }

@@ -73,6 +73,20 @@ def _issues(obj) -> list[str]:
     return [obj.issue(i).description() for i in range(obj.issueCount())]
 
 
+def _analyser_errors(analyser) -> list[str]:
+    """The analyser's issues that stop generation: all but the warning that a power with a variable exponent (a Hill
+    coefficient as a parameter, ``pow(K, n) + pow(C, n)``) may have different units on each side, which cannot be
+    checked without the exponent's value."""
+    errors = []
+    for i in range(analyser.issueCount()):
+        issue = analyser.issue(i)
+        text = issue.description()
+        if issue.level() == lc.Issue.Level.WARNING and "may result in" in text and "having different units" in text:
+            continue
+        errors.append(text)
+    return errors
+
+
 def _multi_port(raw) -> str:
     if raw is None:
         return "None"
@@ -155,7 +169,7 @@ def load(modules_root: Path, category: str, module_type: str, version: str,
     for name in external_names:
         analyser.addExternalVariable(lc.AnalyserExternalVariable(component.variable(name)))
     analyser.analyseModel(model)
-    errors = [d for d in _issues(analyser)]
+    errors = _analyser_errors(analyser)
     am = analyser.analyserModel()
     if errors or not am.isValid():
         raise ModuleError(f"{module_type}/{version}: libcellml analyser failed: {errors}")

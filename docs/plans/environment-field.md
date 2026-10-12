@@ -80,7 +80,10 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
   stronger and recover slowly (as 1/t at the centre) compared with open water. A 3D correction (the water above the
   layer) would change this; the 10 µm depth is a stand-in.
 - **Other H+ fluxes** (the H+-ATPase, NhaA, the flagellar motor) are not put into the field yet: only H+ with lactate.
-- **Packets** dissolve whether or not a cell is near (no enzymes yet); with the field on, the contact rule is off.
+- **Packets** release their free part whether or not a cell is near; their polymer only where cells touch them, at
+  each touching cell's surface hydrolase rate V_max S/(K_m_poly + S) (S: the packet's polymer over a disc of its radius as
+  deep as the cells; a fresh packet saturates the enzyme, so one cell digests a packet in ~2.5 h). With the field on, the
+  contact rule is off.
 - **1% input tolerance** trades accuracy of the cells' inputs for speed; 0.1% costs 2x the cell time.
 
 ## Decided 2026-10-12 (second round)

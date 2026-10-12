@@ -186,8 +186,8 @@ namespace AdaptOrDeity.Game.Session
             _openGlucoseShare[i] = glc > 0.0 ? Math.Min(1.0, w * openGlc / glc) : w;
         }
 
-        // The glucose the cell exchanges with open water [mol/s] (negative: takes up): its uptake in proportion to what
-        // its open sectors offered, or a release (Glf leaking) by the share of its edge.
+        // The glucose the cell exchanges with open water [mol/s] (negative: takes up): its net uptake through all its
+        // carriers in proportion to what its open sectors offered, or a net release (Glf leaking) by the share of its edge.
         private double OpenGlucoseRelease(int i)
         {
             double j = _cells[i].GlucoseRelease;

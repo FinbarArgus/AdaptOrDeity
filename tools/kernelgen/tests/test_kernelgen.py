@@ -64,3 +64,46 @@ def test_module_without_states_has_a_constant_golden():
     values = m.instances["default"]
     expected = values["A_f"] * values["D_glc"] / (values["d_up"] + values["d_down"])   # f_up = f_down = 1
     assert all(r[g] == pytest.approx(expected, rel=1e-12) for r in rows)
+
+
+def _analysed(math: str) -> lc.Analyser:
+    text = f"""<?xml version='1.0'?>
+<model name="m" xmlns="http://www.cellml.org/cellml/2.0#" xmlns:cellml="http://www.cellml.org/cellml/2.0#">
+  <units name="mM"><unit prefix="milli" units="mole"/><unit exponent="-1" units="litre"/></units>
+  <units name="per_s"><unit exponent="-1" units="second"/></units>
+  <component name="c">
+    <variable name="t" units="second" interface="public_and_private"/>
+    <variable name="x" units="mM" initial_value="1"/>
+    <variable name="K" units="mM" initial_value="1"/>
+    <variable name="n" units="dimensionless"/>
+    <variable name="k" units="per_s" initial_value="1"/>
+    <variable name="y" units="per_s"/>
+    <math xmlns="http://www.w3.org/1998/Math/MathML">
+      <apply><eq/><apply><diff/><bvar><ci>t</ci></bvar><ci>x</ci></apply><apply><times/><ci>y</ci><ci>K</ci></apply></apply>
+      {math}
+    </math>
+  </component>
+</model>"""
+    model = lc.Parser().parseModel(text)
+    analyser = lc.Analyser()
+    # the exponent is an input, as a module's parameters are (its value is not known to the analyser)
+    analyser.addExternalVariable(lc.AnalyserExternalVariable(model.component("c").variable("n")))
+    analyser.analyseModel(model)
+    return analyser
+
+
+def test_a_hill_coefficient_as_a_parameter_is_accepted():
+    from aod_kernelgen.module import _analyser_errors
+
+    hill = """<apply><eq/><ci>y</ci><apply><divide/><apply><times/><ci>k</ci><apply><power/><ci>x</ci><ci>n</ci></apply></apply>
+      <apply><plus/><apply><power/><ci>K</ci><ci>n</ci></apply><apply><power/><ci>x</ci><ci>n</ci></apply></apply></apply></apply>"""
+    analyser = _analysed(hill)
+    assert analyser.issueCount() > 0, "libcellml warns about the variable exponent"
+    assert _analyser_errors(analyser) == []
+
+
+def test_mismatched_units_still_stop_generation():
+    from aod_kernelgen.module import _analyser_errors
+
+    wrong = """<apply><eq/><ci>y</ci><apply><plus/><ci>k</ci><ci>x</ci></apply></apply>"""
+    assert _analyser_errors(_analysed(wrong)) != []

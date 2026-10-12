@@ -27,6 +27,7 @@ namespace AdaptOrDeity.UI
             ["atp_repair"] = new Color(0.95f, 0.45f, 0.55f),
             ["atp_growth"] = new Color(0.55f, 0.90f, 0.40f),
             ["atp_storage"] = new Color(0.80f, 0.65f, 0.45f),
+            ["atp_carriers"] = new Color(0.45f, 0.60f, 0.95f),
             ["atp_other"] = new Color(0.60f, 0.65f, 0.70f),
         };
 
@@ -100,13 +101,15 @@ namespace AdaptOrDeity.UI
 
             GUILayout.Space(10);
             GUILayout.Label("Protein expression", _header);
-            GUILayout.Label("Copies relative to the baseline cell, for every cell in this group. New copies cost ATP to " +
-                            "build (shown under ATP used) and a little each second to keep. The membrane holds only so " +
-                            "many transporters. Each membrane protein shows as an arc of the cell's rim in its colour, as " +
-                            "long as the share of the surface it takes. Drag a flagellum's base (on the selected cell) to " +
-                            "move it around the membrane.", _small);
+            GUILayout.Label("Copies relative to the baseline cell, for every cell in this group; a carrier you evolved is " +
+                            "set as its share of the membrane's room for proteins. New copies cost ATP to build (shown " +
+                            "under ATP used) and a little each second to keep. The membrane holds only so many proteins. " +
+                            "Each membrane protein shows as an arc of the cell's rim in its colour, as long as the share " +
+                            "of the surface it takes. Drag a flagellum's base (on the selected cell) to move it around the " +
+                            "membrane.", _small);
             for (int t = 0; t < schema.Traits.Count; t++)
-                DrawTraitSlider(bridge, schema.Traits[t], frame, cell, group, t);
+                if (schema.Traits[t].Feature == null || Unlocked(schema, frame, schema.Traits[t].Feature))
+                    DrawTraitSlider(bridge, schema.Traits[t], frame, cell, group, t);
 
             GUILayout.Space(10);
             GUILayout.Label("Energy", _header);
@@ -133,14 +136,11 @@ namespace AdaptOrDeity.UI
         /// The creature's swimming and where its energy goes: the motors' proton-motive power, the mechanical power of the
         /// thrust (only a fraction: flagella are inefficient) and the heat the body's motion has put into the water.
         /// </summary>
-        // Glucose leaving through the facilitator: the cell is paying to bring in glucose that runs back out.
+        // Glucose leaving through the facilitator (its own flux, not the total): the cell is paying to bring in glucose
+        // that runs back out.
         private void DrawLeakHint(SessionSchema schema, SnapshotFrame frame, int cell)
         {
-            int d = -1;
-            for (int k = 0; k < schema.Details.Count; k++)
-                if (schema.Details[k].Id == "glucose_in")
-                    d = k;
-            if (d < 0 || frame.Details[d][cell] >= 0.0)
+            if (!CellHints.GlfLeaking(schema, frame, cell))
                 return;
             var old = GUI.color;
             GUI.color = new Color(1f, 0.8f, 0.4f);
@@ -278,6 +278,11 @@ namespace AdaptOrDeity.UI
                 DrawCountSlider(bridge, trait, frame, cell, group, t);
                 return;
             }
+            if (trait.IsShare)
+            {
+                DrawShareSlider(bridge, trait, frame, cell, group, t);
+                return;
+            }
             float current = frame.TraitValues[t][cell], target = frame.TraitTargets[t][cell];
             GUILayout.BeginHorizontal();
             var swatch = GUI.color;
@@ -304,6 +309,36 @@ namespace AdaptOrDeity.UI
             }
             else if (Mathf.Abs(_sliders[t] - target) > 1e-3f && GUIUtility.hotControl == 0)
                 _sliders[t] = target;   // the membrane ceiling clamped the request: show what was accepted
+        }
+
+        /// <summary>
+        /// A carrier the starting cell lacks: its share of the membrane's room for proteins, from 0 to the room the other
+        /// proteins leave.
+        /// </summary>
+        private void DrawShareSlider(SessionBridge bridge, TraitInfo trait, SnapshotFrame frame, int cell, int group, int t)
+        {
+            float current = frame.TraitValues[t][cell], target = frame.TraitTargets[t][cell];
+            GUILayout.BeginHorizontal();
+            var swatch = GUI.color;
+            GUI.color = AdaptOrDeity.Presentation.ProteinColours.For(t);
+            GUILayout.Label("■", GUILayout.Width(14));   // its colour on the membrane
+            GUI.color = swatch;
+            GUILayout.Label(trait.Label, GUILayout.Width(226));
+            GUILayout.FlexibleSpace();
+            string status = Mathf.Abs(current - target) > 1e-3f
+                ? $"{100f * current:F1}% → {100f * target:F1}%"
+                : $"{100f * current:F1}%";
+            GUILayout.Label(status, _right);
+            GUILayout.EndHorizontal();
+            float room = Mathf.Max((float)CellHints.ShareRoom(bridge.Schema, frame, cell, t), target);
+            float moved = GUILayout.HorizontalSlider(_sliders[t], 0f, Mathf.Max(room, 1e-3f), GUILayout.Width(Width - 50));
+            if (Mathf.Abs(moved - _sliders[t]) > 1e-4f)
+            {
+                _sliders[t] = moved;
+                bridge.Send(SimCommands.SetTrait(group, t, moved));
+            }
+            else if (Mathf.Abs(_sliders[t] - target) > 1e-4f && GUIUtility.hotControl == 0)
+                _sliders[t] = target;   // the membrane room clamped the request: show what was accepted
         }
 
         /// <summary>A whole-number trait (e.g. flagella): the count built so far and the number asked for.</summary>

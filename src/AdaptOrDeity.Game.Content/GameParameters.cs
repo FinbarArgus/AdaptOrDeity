@@ -165,13 +165,23 @@ namespace AdaptOrDeity.Game.Content
             foreach (var o in (List<object?>)root["traits"]!)
             {
                 var t = (Dictionary<string, object?>)o!;
-                // an expression multiplier uses the content-wide range; a count (e.g. flagella) carries its own
+                string? protein = t.TryGetValue("protein", out var p) ? (string?)p : null;
+                string? feature = t.TryGetValue("feature", out var f) ? (string?)f : null;
+                var kind = (string)t["kind"]! switch
+                {
+                    "expression" => TraitKind.Expression,
+                    "count" => TraitKind.Count,
+                    "share" => TraitKind.Share,
+                    var other => throw new FormatException($"trait {t["id"]}: unknown kind {other}"),
+                };
+                // an expression multiplier uses the content-wide range; a count (e.g. flagella) or a share carries its own
                 if (t.TryGetValue("range", out var r) && r is Dictionary<string, object?> range)
-                    list.Add(new TraitDefinition((string)t["id"]!, (string)t["label"]!, (string)t["protein"]!,
-                        (string)t["pool"]!, (double)range["min"]!, (double)range["max"]!, (double)range["step"]!));
+                    list.Add(new TraitDefinition((string)t["id"]!, (string)t["label"]!, protein, (string)t["pool"]!,
+                        (double)range["min"]!, (double)range["max"]!,
+                        range.TryGetValue("step", out var step) ? (double)step! : 0.0, kind, feature));
                 else
-                    list.Add(new TraitDefinition((string)t["id"]!, (string)t["label"]!, (string)t["protein"]!,
-                        (string)t["pool"]!, min, max));
+                    list.Add(new TraitDefinition((string)t["id"]!, (string)t["label"]!, protein, (string)t["pool"]!, min, max,
+                        0.0, kind, feature));
             }
             return list;
         }

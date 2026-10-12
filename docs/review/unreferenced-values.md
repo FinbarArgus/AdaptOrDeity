@@ -49,17 +49,22 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 - `levels[].duration_s` for levels 2-7 (a week each): placeholders; level 1's week is the designer's decision.
 - `levels[].arrivals` (1e-4 packets/s, 80% carried): calibrated for play (level 1 starts to starve within the week), not sourced.
 
-## Upstream (circulatory-autogen-modules, branch feat/sugar-transporters)
+## Upstream (circulatory-autogen-modules homogenisation-checks a12d84a: feat/sugar-transporters and feat/extracellular-matrix merged; the game's cell since 2026-10-12)
 
 - Carrier turnovers (PTS 200/s, ABC 20/s, GalP 50/s), footprints (12, 25, 12 nm²), K_m_ATP_carrier 0.1 mM: placeholders.
 - Km values (PTS 5 µM, ABC 0.5 µM, GalP 0.1 mM) taken from the research notes, not checked against the papers.
 - Split glycolysis (commit 670ddfa): dG0_hk -16.7 kJ/mol (textbook, to cite), h_hk 23.8 kJ/mol (to cite), K_ATP_hk 0.1 mM,
-  K_G6P_lg 0.1 mM, lower_glycolysis_headroom 300 (gives G6P 0.33 µM at rest; real cells hold mM): placeholders.
+  lower_glycolysis_headroom 300: placeholders.
+- G6P at rest (commit f0aedae): G6P_i 1 mM is a design operating point (E. coli chemostats hold ~3.5 mM, Chassagnole 2002);
+  n_G6P_lg 4, the lower glycolysis's Hill coefficient, is PFK-1's cooperativity cited from memory (to check); K_G6P_lg, and
+  the matrix's K_G6P_mx and dG0_mx, are derived from these placeholders (G6P_i, n_G6P_lg, the headroom), not measured.
+- Flagellum's membrane share (commit f0aedae): footprint_Flagellum 1700 nm² (the motor's disc out to its stators; the MotA
+  stator width behind it is unchecked).
 - Surface hydrolase (commit 918fab5): kcat 1000 /s (alpha-amylases ~1e3 /s; the 2e3 /s B. licheniformis value uncited),
   K_m_poly 20 mM glucose units (from SusG's 3.1 mM maltoheptaoside, Shipman 1999, converted), length 700 aa, footprint
   20 nm², hydrolysis_capacity 10x resting need (design): no published copy numbers for surface glycosidases found.
 
-## Level 4: extracellular space (upstream branch feat/extracellular-matrix; copies in content/upstream)
+## Level 4: extracellular space (upstream homogenisation-checks a12d84a; copies in content/upstream while that branch is local)
 
 - Matrix cost 3 ATP per glucose unit (range 2-4): accounted from the pathway (sugar activation, carrier recycling,
   export); no measured cost per gram of EPS found.
@@ -74,4 +79,11 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 ## Game design values without a physical source
 
 - Skill points per glucose (2.0e-14 mol) and skill costs: calibrated by tests, design values.
+- Membrane shares in the game (content/traits/fermenter.json): new carriers (PTS, ABC, H+ symport) start at 0 and their
+  sliders run from 0 to the room the other proteins leave (share range 0-1 of the ceiling); expression multipliers stay
+  x0.25-4 of the starting share: design.
+- A food packet's polymer concentration for the surface hydrolase (FermenterWorld.PolymerConcentration): its polymer
+  glucose over a disc of its radius as deep as the cells (h_cell, 2 µm): a game convention, not a measured particle
+  density. A fresh packet then holds ~10 M of glucose units (denser than any polymer gel, a consequence of the placeholder
+  packet amount and radius), so the hydrolase is always saturated.
 - Field accuracy settings: input tolerance 1%, fine grid 1 µm, margin 8 µm, depth 10 µm, 60x extent: design.

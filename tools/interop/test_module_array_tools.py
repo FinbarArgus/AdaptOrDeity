@@ -29,7 +29,7 @@ LIBRARY = REPO / 'content' / 'assembled'
 CELL = LIBRARY / 'generic_adaptive_cell' / 'versions' / 'fermenter'
 BRIDGE = REPO / 'external' / 'circulatory-autogen-modules' / 'tools' / 'phlynx_bridge' / 'export_omex.mjs'
 PREFIX = 'creature'
-STATES_PER_CELL = 25
+STATES_PER_CELL = 30
 
 
 @pytest.fixture(scope='module')
@@ -102,7 +102,9 @@ def test_libcuflynx_builds_a_model_libcellml_validates_and_analyses(model, tmp_p
 
     _, rows = read(directory)
     for n in range(cells):
-        for name, value in [('m_target_mod_pool_H_ATPase', 2.0), ('m_target_mod_pool_Flagellum', 3.0),
+        h_atpase = 2.0 * next(float(r['value']) for r in csv.DictReader((CELL / 'instances' / 'default' / 'default_parameters.csv').open())
+                              if r['variable_name'] == 's_target_mod_pool_H_ATPase')   # twice its starting share
+        for name, value in [('s_target_mod_pool_H_ATPase', h_atpase), ('m_target_mod_pool_Flagellum', 3.0),
                             ('repair_level_mod_bio', 0.5)]:
             row = next(r for r in rows if r['variable_name'] == f'{name}_cell_{n}')
             assert float(row['value']) == value

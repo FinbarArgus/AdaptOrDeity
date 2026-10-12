@@ -65,10 +65,10 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Per cell-panel detail (schema order), per cell: value in SI.</summary>
         public double[][] Details { get; }
 
-        /// <summary>Per trait (schema order), per cell: current multiplier.</summary>
+        /// <summary>Per trait (schema order), per cell: current value (multiplier, count or membrane share).</summary>
         public float[][] TraitValues { get; }
 
-        /// <summary>Per trait, per cell: target multiplier.</summary>
+        /// <summary>Per trait, per cell: target (multiplier, count or membrane share).</summary>
         public float[][] TraitTargets { get; }
 
         /// <summary>Per cell: its group.</summary>

@@ -1,7 +1,7 @@
 {
  "schema_version": 2,
  "organism": "cell/generic_adaptive_cell/fermenter",
- "description": "Traits the player can adapt on the fermenter cell. Each trait is the expression target of one protein_pool of the assembled cell (kernel parameter m_target_mod_<pool>); the pool moves its expression to the target, pays to build and keep the copies, and scales the protein it belongs to (a transporter's density or capacity, or the glycolytic enzymes' V_gly). All of that is CellML (circulatory-autogen-modules cell/protein_pool, protein_expression adaptive). The game only sets targets, within controls.expression_min/max of content/parameters.json and the membrane room the pools leave (protein__A_protein_max). Sliders change every cell of the selected cell's group. Proteins are offered only once they exist (content/timeline.json). Leaks are membrane properties, not proteins, so they are not traits.",
+ "description": "Traits the player can adapt on the fermenter cell. Each trait is the target of one protein_pool of the assembled cell; the pool moves its expression to the target, pays to build and keep the copies, and scales the protein it belongs to (a transporter's density or capacity, or the glycolytic enzymes' V_gly). All of that is CellML (circulatory-autogen-modules cell/protein_pool, protein_expression adaptive). Membrane proteins' pools take a share of the membrane ceiling (kernel parameter s_target_mod_<pool>, a share of protein__A_protein_max); the glycolytic enzymes and the flagella take m_target_mod_<pool>. Kinds: 'expression' is a multiplier of the starting cell's expression within controls.expression_min/max of content/parameters.json (for a membrane protein s_target = multiplier x its starting share); 'count' is whole units; 'share' is a share of the ceiling (0-1) for a carrier the starting cell does not make, offered once its 'feature' (content/timeline.json features) is bought. The game keeps the membrane proteins' shares (hydrolase and flagella included) summing to at most the ceiling. Sliders change every cell of the selected cell's group. Proteins are offered only once they exist (content/timeline.json). Leaks are membrane properties, not proteins, so they are not traits.",
  "traits": [
   {
    "id": "flagella",
@@ -74,13 +74,50 @@
    "kind": "expression",
    "label": "Glycolytic enzymes copies",
    "pool": "pool_Glyc"
+  },
+  {
+   "id": "PTS_share",
+   "feature": "pts_transport",
+   "kind": "share",
+   "label": "PTS glucose carrier (share of membrane)",
+   "pool": "pool_PTS",
+   "range": {
+    "min": 0.0,
+    "max": 1.0,
+    "note": "share of the membrane ceiling; the starting cell has none (upstream s_target 0)"
+   }
+  },
+  {
+   "id": "ABC_share",
+   "feature": "abc_transport",
+   "kind": "share",
+   "label": "ABC glucose importer (share of membrane)",
+   "pool": "pool_ABC",
+   "range": {
+    "min": 0.0,
+    "max": 1.0,
+    "note": "share of the membrane ceiling; the starting cell has none (upstream s_target 0)"
+   }
+  },
+  {
+   "id": "GalP_share",
+   "feature": "proton_symport",
+   "protein": "mfs_sugar_porter",
+   "kind": "share",
+   "label": "H+ glucose symporter (share of membrane)",
+   "pool": "pool_GalP",
+   "range": {
+    "min": 0.0,
+    "max": 1.0,
+    "note": "share of the membrane ceiling; the starting cell has none (upstream s_target 0)"
+   }
   }
  ],
  "expression_time_constant_s": 10.0,
  "expression_time_constant_note": "user decision 2026-10-08: changes show within seconds; building is limited by build_capacity and by ATP, so large increases take minutes",
  "midpoints": "Kinetic midpoints are fixed (user decision 2026-10-08): \u00b110% changed almost nothing.",
- "membrane_share_max": 0.08,
- "membrane_share_note": "placeholder: the adaptable transporters may take 8% of the cell surface (baseline 2.3%); footprints are placeholders (F1Fo ~100 nm\u00b2, 12-TM transporters ~12-15 nm\u00b2). The ceiling scales with membrane area.",
+ "membrane_ceiling_fraction": 0.15,
+ "membrane_ceiling_note": "upstream (protein_expression adaptive area_max_fraction 0.15): the membrane proteins may take 15% of the cell surface, a ceiling that scales with membrane area. At rest they take 36.8% of it (5.5% of the surface): H+-ATPase 0.1008, LacT 0.1738, Glf 0.0497, hydrolase 0.0193, NCX 0.0119, KefC 0.0064, NhaA 0.0036, Trk 0.0019, one flagellum 0.0006; PTS, ABC and GalP 0. Footprints are placeholders (F1Fo ~100 nm2, 12-TM transporters ~12-15 nm2, flagellar motor 1700 nm2).",
  "build_capacity": 5.0,
  "build_capacity_note": "placeholder: at most 5x the resting ATP turnover goes into building new protein (growing cells build protein at many times their maintenance rate)",
  "build_atp_floor_mM": 4.0,

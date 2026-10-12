@@ -40,6 +40,9 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Making extracellular matrix (exopolysaccharide).</summary>
         public double AtpMatrix;
 
+        /// <summary>Sugar carriers that spend ATP or PEP to bring glucose in (PTS 1, ABC 2 per glucose).</summary>
+        public double AtpCarriers;
+
         /// <summary>The remaining maintenance ATPase: everything not yet itemised.</summary>
         public double AtpOtherMaintenance;
 
@@ -49,7 +52,7 @@ namespace AdaptOrDeity.Sim.Physiology
         public double AtpProduced => AtpGlycolysis + AtpFromGlycogen;
 
         public double AtpConsumed => AtpPumps + AtpProteinTurnover + AtpProteinBuild + AtpRna + AtpLipids + AtpRepair
-                                     + AtpGrowth + AtpStorage + AtpMatrix + AtpOtherMaintenance;
+                                     + AtpGrowth + AtpStorage + AtpMatrix + AtpCarriers + AtpOtherMaintenance;
     }
 
     /// <summary>
@@ -58,8 +61,9 @@ namespace AdaptOrDeity.Sim.Physiology
     /// longer than the Ca buffer's microsecond time constant). Its physiology is all in the module: each protein's
     /// expression approaches the target the player sets, building the new copies costs ATP and is capped and throttled
     /// by the cell's protein synthesis, growth is asked in multiples of the resting turnover and throttled the same
-    /// way, and the daughter's cost and the share built are module outputs. This class sets targets and controls, keeps
-    /// targets within the membrane room the proteins leave, runs the events (division, death) and reads the budget.
+    /// way, and the daughter's cost and the share built are module outputs. Membrane proteins take shares of the membrane
+    /// ceiling (protein__A_protein_max). This class sets targets and controls, keeps the membrane proteins' shares within the
+    /// ceiling, sets the same medium glucose on every glucose carrier, runs the events (division, death) and reads the budget.
     /// </summary>
     public sealed class FermenterCell
     {
@@ -68,11 +72,16 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly bool[] _isOutput;
         private bool _variablesCurrent;
         private readonly int[] _target, _expression, _areaPerUnit;
+        private readonly bool[] _shareTarget;      // the trait's target is s_target (a share of the membrane ceiling)
+        private readonly double[] _nominalShare;   // the starting cell's share of each such trait (its s_target)
+        private readonly int[] _poolState, _poolArea, _poolTrait;   // every membrane protein pool: m, a_unit, trait or -1
+        private readonly int[] _eCarrierGlucose, _aCarrierUptake;   // Glf, PTS, ABC, GalP: medium glucose input, J_glc
+        private readonly int _aHydrolysisMax, _eHydrolysisKm, _aPtsCost, _aAbcCost;
         private readonly int _growthLevel, _storeAlloc, _repairLevel, _matrixAlloc, _jRef;
         private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aRna, _aRibo, _aLipid, _aRepair;
         private readonly int _aGrowthUsed, _aHeat, _aVol, _aSurface, _aAreaMax, _aDaughter, _aProgress, _aGlycProgress;
-        private readonly int _aGlycAtp, _aUptake, _aThrust, _aFlagPower, _eGlucose, _eMotor;
-        private readonly int _aGlcOut, _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
+        private readonly int _aGlycAtp, _aThrust, _aFlagPower, _eMotor;
+        private readonly int _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
         private readonly int _aMatrix, _aAtpMatrix;
         private readonly int _sDamage, _sGrowth, _sGlycogen;
 
@@ -100,19 +109,68 @@ namespace AdaptOrDeity.Sim.Physiology
             _target = new int[traits.Count];
             _expression = new int[traits.Count];
             _areaPerUnit = new int[traits.Count];
+            _shareTarget = new bool[traits.Count];
+            _nominalShare = new double[traits.Count];
+            var player = new List<string>();
+            var starting = d.Instances["default"];
             for (int i = 0; i < traits.Count; i++)
             {
-                _target[i] = Ext(traits[i].TargetParameter);
-                _expression[i] = St(traits[i].ExpressionState);
-                _areaPerUnit[i] = Alg(traits[i].AreaPerUnit);
+                var t = traits[i];
+                int share = t.Kind == TraitKind.Count ? -1 : d.ExternalIndex(t.ShareTargetParameter);
+                if (share >= 0)
+                {
+                    _target[i] = share;
+                    _shareTarget[i] = true;
+                    _nominalShare[i] = starting[t.ShareTargetParameter];
+                    if (t.Kind == TraitKind.Expression && !(_nominalShare[i] > 0.0))
+                        throw new ArgumentException($"{t.Id}: the starting cell has no {t.Pool}, so it is a share trait, not a multiplier");
+                    if (t.Kind == TraitKind.Share && _nominalShare[i] != 0.0)
+                        throw new ArgumentException($"{t.Id}: the starting cell has {t.Pool}, so it is a multiplier, not a share trait");
+                    player.Add(t.ShareTargetParameter);
+                }
+                else
+                {
+                    if (t.Kind == TraitKind.Share)
+                        throw new ArgumentException($"{d.Key} has no {t.ShareTargetParameter} for share trait {t.Id}");
+                    _target[i] = Ext(t.ExpressionTargetParameter);
+                    player.Add(t.ExpressionTargetParameter);
+                }
+                _expression[i] = St(t.ExpressionState);
+                _areaPerUnit[i] = Alg(t.AreaPerUnit);
             }
+            // every protein pool with a footprint on the membrane, whether or not the player sets it (e.g. the hydrolase)
+            var pools = new List<(int State, int Area, int Trait)>();
+            foreach (var v in d.Algebraic)
+            {
+                if (!v.Name.StartsWith("pool_", StringComparison.Ordinal) || !v.Name.EndsWith("__a_unit", StringComparison.Ordinal))
+                    continue;
+                string pool = v.Name.Substring(0, v.Name.Length - "__a_unit".Length);
+                int trait = -1;
+                for (int i = 0; i < traits.Count; i++)
+                    if (traits[i].Pool == pool)
+                        trait = i;
+                pools.Add((St(pool + "__m"), Alg(v.Name), trait));
+            }
+            _poolState = new int[pools.Count];
+            _poolArea = new int[pools.Count];
+            _poolTrait = new int[pools.Count];
+            for (int k = 0; k < pools.Count; k++)
+                (_poolState[k], _poolArea[k], _poolTrait[k]) = pools[k];
+            _eCarrierGlucose = new int[Carriers.Length];
+            _aCarrierUptake = new int[Carriers.Length];
+            for (int k = 0; k < Carriers.Length; k++)
+            {
+                _eCarrierGlucose[k] = Ext("C_glc_e_mod_" + Carriers[k]);
+                _aCarrierUptake[k] = Alg(Carriers[k] + "__J_glc");
+            }
+            _aHydrolysisMax = Alg("hydrolase__V_hydrolysis_max");
+            _eHydrolysisKm = Ext("K_m_poly_mod_hydrolase");
+            _aPtsCost = Alg("glc_PTS__J_ATP_cost");
+            _aAbcCost = Alg("glc_ABC__J_ATP_cost");
             _growthLevel = Ext(GrowthParameter);
             _storeAlloc = Ext(StorageParameter);
             _repairLevel = Ext(RepairParameter);
             _matrixAlloc = Ext(MatrixParameter);
-            var player = new List<string>();
-            foreach (var t in traits)
-                player.Add(t.TargetParameter);
             player.Add(GrowthParameter);
             player.Add(StorageParameter);
             player.Add(RepairParameter);
@@ -139,12 +197,9 @@ namespace AdaptOrDeity.Sim.Physiology
             _aProgress = Alg("bio__growth_progress");
             _aGlycProgress = Alg("bio__glycogen_progress");
             _aGlycAtp = Alg("cytosol__M_glyc_ATP");
-            _aUptake = Alg("membrane_face__J_glc");
             _aThrust = Alg("i_flagellum__F_one");
             _aFlagPower = Alg("i_flagellum__P_flag");
-            _eGlucose = Ext("C_glc_e_mod_membrane_face");
             _eMotor = Ext("a_motor_mod_i_flagellum");
-            _aGlcOut = Alg("membrane_face__J_glc_e");
             _aLacOut = Alg("membrane_face__J_lac_e");
             _aHLac = Alg("membrane_face__J_H_lac");
             _eLactate = Ext("C_lac_e_mod_membrane_face");
@@ -181,6 +236,12 @@ namespace AdaptOrDeity.Sim.Physiology
             _variablesCurrent = true;
         }
 
+        /// <summary>
+        /// The glucose carriers (submodules) the cell has: the facilitator Glf (membrane_face) and the PTS, ABC and H+ symport
+        /// (GalP) carriers. Each reads the medium's glucose on its own input, so all are set together.
+        /// </summary>
+        public static readonly string[] Carriers = { "membrane_face", "glc_PTS", "glc_ABC", "glc_GalP" };
+
         private const string GrowthParameter = "growth_level_mod_bio", StorageParameter = "store_alloc_mod_cytosol",
             RepairParameter = "repair_level_mod_bio", MatrixParameter = "mx_alloc_mod_cytosol";
 
@@ -189,8 +250,8 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>The module's parameter set the cell started from.</summary>
         public string Instance { get; }
 
-        /// <summary>Module parameters the player sets: each trait's target, then the growth, storage, repair and matrix
-        /// controls.</summary>
+        /// <summary>Module parameters the player sets: each trait's target (s_target for a membrane protein, m_target
+        /// otherwise), then the growth, storage, repair and matrix controls.</summary>
         public IReadOnlyList<string> PlayerParameters { get; }
 
         public IReadOnlyList<TraitDefinition> Traits { get; }
@@ -203,19 +264,41 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>False once damage reached a lethal load; a dead cell is no longer stepped.</summary>
         public bool Alive { get; private set; } = true;
 
-        /// <summary>Expression now (the pool's state).</summary>
-        public double TraitValue(int trait) => Batch.States[_expression[trait]][0];
+        /// <summary>
+        /// The trait now: the pool's expression relative to the starting cell, or a count, or (a share trait) the share of
+        /// the membrane ceiling its copies take.
+        /// </summary>
+        public double TraitValue(int trait)
+        {
+            double m = Batch.States[_expression[trait]][0];
+            return Traits[trait].Kind == TraitKind.Share ? m * A(_areaPerUnit[trait]) / TransporterAreaMax : m;
+        }
 
-        public double TraitTarget(int trait) => Batch.Externals[_target[trait]][0];
+        /// <summary>The trait's target, in the units of <see cref="TraitValue"/>.</summary>
+        public double TraitTarget(int trait)
+        {
+            double target = Batch.Externals[_target[trait]][0];
+            return _shareTarget[trait] && Traits[trait].Kind == TraitKind.Expression ? target / _nominalShare[trait] : target;
+        }
+
+        /// <summary>The trait's starting share of the membrane ceiling (0 for a share trait or a cytosolic protein).</summary>
+        public double NominalShare(int trait) => _nominalShare[trait];
+
+        /// <summary>Kernel parameter holding the trait's target.</summary>
+        public string TargetParameter(int trait) => PlayerParameters[trait];
 
         /// <summary>Damage, 1 = lethal.</summary>
         public double Damage => Batch.States[_sDamage][0];
 
-        /// <summary>Glucose at the membrane [mol/m³] (input).</summary>
+        /// <summary>Glucose at the membrane [mol/m³] (input of every glucose carrier).</summary>
         public double MembraneGlucose
         {
-            get => Batch.Externals[_eGlucose][0];
-            set => Batch.Externals[_eGlucose][0] = value;
+            get => Batch.Externals[_eCarrierGlucose[0]][0];
+            set
+            {
+                for (int k = 0; k < _eCarrierGlucose.Length; k++)
+                    Batch.Externals[_eCarrierGlucose[k]][0] = value;
+            }
         }
 
         /// <summary>Lactate at the membrane [mol/m³] (input).</summary>
@@ -236,8 +319,8 @@ namespace AdaptOrDeity.Sim.Physiology
             }
         }
 
-        /// <summary>Glucose the cell puts into the water [mol/s] (negative: takes up; the module's J_glc_e).</summary>
-        public double GlucoseRelease => A(_aGlcOut);
+        /// <summary>Glucose the cell puts into the water [mol/s] (negative: takes up; the carriers' J_glc_e summed).</summary>
+        public double GlucoseRelease => -GlucoseUptake;
 
         /// <summary>Lactate the cell puts into the water [mol/s] (J_lac_e).</summary>
         public double LactateRelease => A(_aLacOut);
@@ -252,8 +335,39 @@ namespace AdaptOrDeity.Sim.Physiology
             set => Batch.Externals[_eMotor][0] = value;
         }
 
-        /// <summary>Glucose taken up [mol/s].</summary>
-        public double GlucoseUptake => A(_aUptake);
+        /// <summary>
+        /// Glucose taken up by all the carriers [mol/s]: Glf's, the PTS's (delivered as glucose 6-phosphate), the ABC
+        /// importer's and the H+ symporter's J_glc.
+        /// </summary>
+        public double GlucoseUptake
+        {
+            get
+            {
+                double j = 0.0;
+                for (int k = 0; k < _aCarrierUptake.Length; k++)
+                    j += A(_aCarrierUptake[k]);
+                return j;
+            }
+        }
+
+        /// <summary>Glucose through carrier <paramref name="carrier"/> of <see cref="Carriers"/> [mol/s] (negative: out).</summary>
+        public double CarrierUptake(int carrier) => A(_aCarrierUptake[carrier]);
+
+        /// <summary>Glucose through the facilitator Glf [mol/s]; negative while it leaks glucose out.</summary>
+        public double GlfUptake => A(_aCarrierUptake[0]);
+
+        /// <summary>The surface hydrolase's most rapid release of glucose from polymer [mol glucose/s] (saturating polymer).</summary>
+        public double HydrolysisMax => A(_aHydrolysisMax);
+
+        /// <summary>Polymer concentration at which the hydrolase runs at half its most rapid rate [mol glucose units/m³].</summary>
+        public double HydrolysisHalfSaturation => Batch.Externals[_eHydrolysisKm][0];
+
+        /// <summary>
+        /// Glucose the surface hydrolase releases from polymer at concentration <paramref name="polymer"/> [mol glucose
+        /// units/m³]: V_hydrolysis_max S / (K_m_poly + S) [mol glucose/s].
+        /// </summary>
+        public double Hydrolysis(double polymer) =>
+            polymer > 0.0 ? HydrolysisMax * polymer / (HydrolysisHalfSaturation + polymer) : 0.0;
 
         /// <summary>Extracellular matrix exported [mol of glucose units/s].</summary>
         public double MatrixExport => A(_aMatrix);
@@ -291,43 +405,70 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Whole cell surface [µm²].</summary>
         public double SurfaceArea => A(_aSurface);
 
-        /// <summary>Membrane area the proteins may take [µm²]: scales with the cell's surface.</summary>
+        /// <summary>Membrane area the proteins may take [µm²] (the ceiling): scales with the cell's surface.</summary>
         public double TransporterAreaMax => A(_aAreaMax);
 
-        /// <summary>Membrane area one unit of trait <paramref name="trait"/> takes [µm²].</summary>
+        /// <summary>Membrane area one unit of trait <paramref name="trait"/>'s expression takes [µm²].</summary>
         public double TraitAreaPerUnit(int trait) => A(_areaPerUnit[trait]);
 
-        /// <summary>Membrane area the adaptable proteins take now [µm²].</summary>
-        public double TransporterArea()
+        /// <summary>Share of the membrane ceiling trait <paramref name="trait"/>'s copies take now.</summary>
+        public double TraitShare(int trait) => Batch.States[_expression[trait]][0] * A(_areaPerUnit[trait]) / TransporterAreaMax;
+
+        /// <summary>Share of the membrane ceiling trait <paramref name="trait"/>'s target would take.</summary>
+        public double TraitTargetShare(int trait)
         {
-            double a = 0.0;
-            for (int i = 0; i < Traits.Count; i++)
-                a += A(_areaPerUnit[i]) * TraitValue(i);
-            return a;
+            double target = Batch.Externals[_target[trait]][0];
+            return _shareTarget[trait] ? target : target * A(_areaPerUnit[trait]) / TransporterAreaMax;
+        }
+
+        /// <summary>Share of the membrane ceiling every membrane protein takes now, the hydrolase and flagella included.</summary>
+        public double MembraneShareUsed()
+        {
+            double s = 0.0;
+            for (int k = 0; k < _poolState.Length; k++)
+                s += Batch.States[_poolState[k]][0] * A(_poolArea[k]);
+            return s / TransporterAreaMax;
         }
 
         /// <summary>
-        /// Sets the trait's expression target, clamped to its range and to the membrane room the other proteins leave
-        /// (each counted at the larger of its target and its present expression). The pool approaches it in the kernel.
+        /// Share of the membrane ceiling the proteins other than trait <paramref name="except"/> claim: each trait at the
+        /// larger of its target and its present share, every other membrane pool (the hydrolase) at its present share.
         /// </summary>
-        public void SetTrait(int trait, double multiplier)
+        public double MembraneShareClaimed(int except = -1)
+        {
+            double max = TransporterAreaMax, s = 0.0;
+            for (int k = 0; k < _poolState.Length; k++)
+            {
+                int t = _poolTrait[k];
+                if (t == except && t >= 0)
+                    continue;
+                double now = Batch.States[_poolState[k]][0] * A(_poolArea[k]) / max;
+                s += t >= 0 ? Math.Max(now, TraitTargetShare(t)) : now;
+            }
+            return s;
+        }
+
+        /// <summary>
+        /// Sets the trait's target, clamped to its range and to the membrane room the other proteins leave (each counted
+        /// at the larger of its target and its present share; the shares sum to at most the ceiling). An expression trait
+        /// is a multiple of the starting cell's expression (a membrane protein's s_target is that multiple of its starting
+        /// share), a count is whole units, a share trait is its share of the ceiling. The pool approaches it in the kernel.
+        /// </summary>
+        public void SetTrait(int trait, double value)
         {
             var t = Traits[trait];
-            if (double.IsNaN(multiplier))
-                throw new ArgumentException("multiplier is NaN", nameof(multiplier));
-            double m = Math.Min(t.Max, Math.Max(t.Min, multiplier));
-            double unit = A(_areaPerUnit[trait]);
+            if (double.IsNaN(value))
+                throw new ArgumentException("value is NaN", nameof(value));
+            double v = Math.Min(t.Max, Math.Max(t.Min, value));
+            // the share of the ceiling one unit of the value takes
+            double unit = t.Kind == TraitKind.Share ? 1.0
+                : _shareTarget[trait] ? _nominalShare[trait]
+                : A(_areaPerUnit[trait]) / TransporterAreaMax;
             if (unit > 0.0)
-            {
-                double others = 0.0;
-                for (int i = 0; i < Traits.Count; i++)
-                    if (i != trait)
-                        others += A(_areaPerUnit[i]) * Math.Max(TraitTarget(i), TraitValue(i));
-                m = Math.Max(t.Min, Math.Min(m, (TransporterAreaMax - others) / unit));
-            }
+                v = Math.Max(t.Min, Math.Min(v, (1.0 - MembraneShareClaimed(trait)) / unit));
             if (t.Step > 0.0)
-                m = Math.Max(t.Min, Math.Floor(m / t.Step + 1e-9) * t.Step);   // whole units (e.g. flagella) that fit
-            Batch.Externals[_target[trait]][0] = m;
+                v = Math.Max(t.Min, Math.Floor(v / t.Step + 1e-9) * t.Step);   // whole units (e.g. flagella) that fit
+            Batch.Externals[_target[trait]][0] = _shareTarget[trait] && t.Kind == TraitKind.Expression ? v * unit : v;
         }
 
         /// <summary>
@@ -490,6 +631,7 @@ namespace AdaptOrDeity.Sim.Physiology
                 AtpGrowth = a[_aGrowthUsed][0],
                 AtpStorage = a[_aStore][0],
                 AtpMatrix = a[_aAtpMatrix][0],
+                AtpCarriers = a[_aPtsCost][0] + a[_aAbcCost][0],
                 AtpOtherMaintenance = a[_aMaint][0],
                 Heat = a[_aHeat][0],
             };

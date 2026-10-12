@@ -30,7 +30,9 @@ namespace AdaptOrDeity.Game.Session.Tests
             var schema = loop.Schema;
             Assert.That(schema.Details.Select(d => d.Group).Distinct(), Is.EquivalentTo(new[]
                 { "Food", "Metabolic rate", "ATP made", "ATP used", "Protein turnover", "Growth and storage", "Cell state" }));
-            Assert.That(schema.Traits.Count, Is.EqualTo(9), "8 expression traits and the number of flagella");
+            Assert.That(schema.Traits.Count, Is.EqualTo(12), "8 expression traits, the number of flagella and 3 carriers to evolve");
+            Assert.That(schema.Traits.Where(t => t.IsShare).Select(t => t.Feature), Is.EqualTo(new[]
+                { GameFeatures.PtsTransport, GameFeatures.AbcTransport, GameFeatures.ProtonSymport }));
             Assert.That(schema.Controls.Select(c => c.Id), Is.EqualTo(new[] { "growth", "storage", "repair", "matrix" }));
             Assert.That(schema.InitialCellCapacity, Is.EqualTo(FermenterWorld.InitialCells));
             Assert.That(schema.Details.Single(d => d.Id == "atp_turnover").SiUnit, Is.EqualTo("mol/s"));
