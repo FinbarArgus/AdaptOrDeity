@@ -72,6 +72,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             // The creature drifts in +x; the window follows it. Lying food never moves over the ground and enters the
             // view ahead of the creature; carried food moves with its carrier. Everything in view stays in the window.
             var field = NewField(7);
+            field.SetArrivals(0.01, 0.8);   // enough arrivals to see both kinds in 2000 s
             const double v = 2e-6;
             field.Populate(0.0, 0.0);
             double x = 0.0;

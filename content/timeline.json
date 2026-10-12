@@ -14,11 +14,15 @@
     "swimming"
    ],
    "arrivals": {
-    "food_per_s": 0.01,
+    "food_per_s": 0.0001,
     "carried_share": 0.8
    },
    "regions": [],
-   "reviewed": false
+   "reviewed": false,
+   "duration_s": 604800.0,
+   "ocean": {
+    "glucose": 0.001
+   }
   },
   {
    "level": 2,
@@ -32,11 +36,15 @@
     "motility_control"
    ],
    "arrivals": {
-    "food_per_s": 0.01,
+    "food_per_s": 0.0001,
     "carried_share": 0.8
    },
    "regions": [],
-   "reviewed": false
+   "reviewed": false,
+   "duration_s": 604800.0,
+   "ocean": {
+    "glucose": 0.001
+   }
   },
   {
    "level": 3,
@@ -48,11 +56,15 @@
    ],
    "note": "Historically these exist from the game's start: bacterial chemotaxis evolved from two-component systems after the three domains split, well before 2 Ga (Wuichet & Zhulin 2010). Level 3 is a pacing choice.",
    "arrivals": {
-    "food_per_s": 0.01,
+    "food_per_s": 0.0001,
     "carried_share": 0.8
    },
    "regions": [],
-   "reviewed": false
+   "reviewed": false,
+   "duration_s": 604800.0,
+   "ocean": {
+    "glucose": 0.001
+   }
   },
   {
    "level": 4,
@@ -63,11 +75,15 @@
     "membrane_respiration"
    ],
    "arrivals": {
-    "food_per_s": 0.01,
+    "food_per_s": 0.0001,
     "carried_share": 0.8
    },
    "regions": [],
-   "reviewed": false
+   "reviewed": false,
+   "duration_s": 604800.0,
+   "ocean": {
+    "glucose": 0.001
+   }
   },
   {
    "level": 5,
@@ -78,11 +94,15 @@
     "mitochondria"
    ],
    "arrivals": {
-    "food_per_s": 0.01,
+    "food_per_s": 0.0001,
     "carried_share": 0.8
    },
    "regions": [],
-   "reviewed": false
+   "reviewed": false,
+   "duration_s": 604800.0,
+   "ocean": {
+    "glucose": 0.001
+   }
   },
   {
    "level": 6,
@@ -93,11 +113,15 @@
     "multiple_groups"
    ],
    "arrivals": {
-    "food_per_s": 0.01,
+    "food_per_s": 0.0001,
     "carried_share": 0.8
    },
    "regions": [],
-   "reviewed": false
+   "reviewed": false,
+   "duration_s": 604800.0,
+   "ocean": {
+    "glucose": 0.001
+   }
   },
   {
    "level": 7,
@@ -108,14 +132,18 @@
     "fixed_body_size"
    ],
    "arrivals": {
-    "food_per_s": 0.01,
+    "food_per_s": 0.0001,
     "carried_share": 0.8
    },
    "regions": [],
-   "reviewed": false
+   "reviewed": false,
+   "duration_s": 604800.0,
+   "ocean": {
+    "glucose": 0.001
+   }
   }
  ],
- "levels_note": "Draft level sequence (2026-10-08) for open question 3 in adapting_plan.md; dates follow the protein and event entries below.",
+ "levels_note": "Draft level sequence (2026-10-08) for open question 3 in adapting_plan.md; dates follow the protein and event entries below. Each level lasts duration_s of simulated time (level 1: one week, enough to start starving; later levels' durations are placeholders), then the next level begins and the skill window opens.",
  "arrivals_note": "What appears in the world per second at each level, constant whatever is already there: food packets (food_per_s; carried_share of them brought by other creatures, the rest lying on the ground and coming into view), later prey, enemies and friends. A level's regions may override them (regions[].arrivals), to set scarcity or abundance. Placeholders equal to the food supply before 2026-10-12 (one packet per ~100 s, 80% carried) until tuned.",
  "features": [
   {
@@ -219,6 +247,17 @@
    "cost": 5,
    "effect": "Brings glucose in with a proton, driven by the proton gradient the H+-ATPase builds.",
    "explanation": "Symporters of the major facilitator superfamily (such as GalP and LacY in E. coli) carry a sugar and a proton across the membrane together. The proton flows down the gradient your H+-ATPase builds, which pulls glucose in even against its own gradient, so the cell can take up sugar from medium that holds less than its cytosol. Each glucose costs one proton, roughly a quarter to a third of an ATP to pump back out, and adds to the acid load the cell must remove. Its affinity lies between the starting facilitator and the PTS (tens of micromolar to a millimolar).",
+   "reviewed": false
+  },
+  {
+   "id": "carbon_regulation",
+   "name": "Carbon regulation",
+   "unlock_level": 2,
+   "optional": true,
+   "default_enabled": true,
+   "cost": 3,
+   "effect": "Cells turn the glucose facilitator down by themselves while other carriers bring glucose in, so it stops leaking glucose back out. Planned.",
+   "explanation": "A facilitator such as Glf only lets glucose run down its gradient. Once a cell pumps glucose in with an active carrier (an ABC importer or a proton symporter), the sugar inside can rise above the sugar outside, and the facilitator then carries it straight back out: the cell pays to bring the same glucose in twice. Bacteria avoid this by regulating which carriers they make, a set of controls called carbon catabolite repression: when a preferred sugar and carrier are working, the genes for the others are switched off and some carriers are blocked directly (inducer exclusion). With this skill your cells cut their Glf expression automatically while active carriers supply them. (Planned.)",
    "reviewed": false
   },
   {
@@ -871,5 +910,6 @@
    "notes": "Age not checked (placeholder date, no source yet)."
   }
  ],
- "features_note": "A feature with a cost is bought with skill points in the window that opens when the level goes up, once its level is reached; points come from food eaten (content/parameters.json skills.glucose_per_point). 'effect' is the short text, 'explanation' the full one; 'reviewed' is set by a human who has checked the text (adapting_plan.md, Rules for content)."
+ "features_note": "A feature with a cost is bought with skill points in the window that opens when the level goes up, once its level is reached; points come from food eaten (content/parameters.json skills.glucose_per_point). 'effect' is the short text, 'explanation' the full one; 'reviewed' is set by a human who has checked the text (adapting_plan.md, Rules for content).",
+ "ocean_note": "The open water of each level beyond the creature's surroundings, in mol/m³. Glucose 1 µM: free glucose in open water is nanomolar to low micromolar (placeholder to source); at 1 µM a level-1 cell without food starts starving within days (damage ~9% of lethal per day, measured 2026-10-12). Arrivals 1e-4 packets/s: an untouched cell eats well for about four days and then starts to starve within level 1's week. Later levels copy level 1 until tuned."
 }
