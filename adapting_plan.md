@@ -579,7 +579,10 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   - The packet face: what leaks from a touched packet comes out at the contact, in the cell's near field; the cell takes
     k/(k + 4 pi D a) of it (Glf 5e-4, PTS ~9%). The near field cannot widen the ~5% face for the starting cell; the face
     (a sealed contact) stays.
-  - Scripted players (left alone, mediocre, great, optimised) calibrate level 1 and are the LevelTests.
+  - Scripted players (left alone, mediocre, great, optimised) calibrate level 1 and are the LevelTests (explicit until
+    calibrated). Calibration waits for the next expression model; provisional runs (scoring.md) show that with a 1 µM
+    ocean regulation only delays a full famine's crash, while with ~0.05 mM in the open water a regulated cell survives
+    the famines that kill a cell left alone.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?

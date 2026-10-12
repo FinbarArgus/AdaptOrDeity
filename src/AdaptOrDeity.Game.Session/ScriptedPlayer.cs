@@ -180,23 +180,27 @@ namespace AdaptOrDeity.Game.Session
         }
 
         /// <summary>
-        /// The mediocre player's regulation, plus sensible expression: more glucose carrier and surface hydrolase to eat
-        /// faster while on food, swimming only while it has no food.
+        /// The mediocre player's regulation, and swimming to gather a store of food: on while it holds less than two fresh
+        /// packets' worth, off once it does (it stops to eat, and looks for more before it runs out).
         /// </summary>
         public static ScriptedPlayer Great()
         {
-            var p = Mediocre();
-            p = Rename(p, "great");
-            p.Traits["Glf_expression"] = 2.0;
-            p.Traits["Hydrolase_expression"] = 2.0;
-            p.Swim = SwimPolicy.WithoutFood;
+            var p = Rename(Mediocre(), "great");
+            p.Swim = SwimPolicy.Gather;
+            p.HoldTarget = 2e-14;
             return p;
         }
 
-        /// <summary>The best strategy found by the search in docs/plans/scoring.md (perfect control as far as found).</summary>
+        /// <summary>
+        /// The best strategy found so far (docs/plans/scoring.md; provisional until the search on the next expression model):
+        /// the great player's, with more glucose carrier and surface hydrolase, and the pumps, exchangers and flagella
+        /// regulated by ATP as well.
+        /// </summary>
         public static ScriptedPlayer Optimised()
         {
             var p = Rename(Great(), "optimised");
+            p.Traits["Glf_expression"] = 2.0;
+            p.Traits["Hydrolase_expression"] = 2.0;
             foreach (var pump in new[] { "NhaA_expression", "KefC_expression", "Trk_expression", "NCX_expression", "flagella" })
                 p.Regulation.Add((pump, "ATP"));
             return p;
@@ -204,7 +208,9 @@ namespace AdaptOrDeity.Game.Session
 
         private static ScriptedPlayer Rename(ScriptedPlayer from, string name)
         {
-            var p = new ScriptedPlayer(name) { Swim = from.Swim };
+            var p = new ScriptedPlayer(name) { Swim = from.Swim, HoldTarget = from.HoldTarget };
+            foreach (var f in from.Features)
+                p.Features[f.Key] = f.Value;
             foreach (var t in from.Traits)
                 p.Traits[t.Key] = t.Value;
             foreach (var c in from.Controls)
