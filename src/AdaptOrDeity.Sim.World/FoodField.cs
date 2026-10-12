@@ -517,6 +517,18 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Takes packet <paramref name="p"/> out of the field (a cell engulfed it): its content leaves with it.</summary>
         public void Remove(FoodPacket p) => p.Active = false;
 
+        /// <summary>Whether <paramref name="holder"/> (0 the creature, else a free organism's id) holds a packet in the field.</summary>
+        public bool Holds(int holder)
+        {
+            for (int k = 0; k < _packets.Count; k++)
+            {
+                var p = _packets[k];
+                if (p.Active && p.Stuck && p.Holder == holder)
+                    return true;
+            }
+            return false;
+        }
+
         /// <summary>Whether a cell at (x, y) of radius r touches any packet.</summary>
         public bool TouchesAny(double x, double y, double r)
         {

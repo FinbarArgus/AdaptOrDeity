@@ -82,8 +82,8 @@ namespace AdaptOrDeity.Game.Session
                 "A group holds its number of cells: growth energy replaces dead cells, and goes to repair while the group is full.",
                 requires: NeedsColony),
             new FeatureInfo(Regulation, "Regulation", 1, true, true,
-                "Unlocked when a cell's ATP first falls below half its resting level. A cog beside each expression slider and the growth slider chooses which falling species (ATP, G6P, glucose inside, pH) turn that protein or growth down, so a starving cell spends less.",
-                requiresAtpBelow: 0.5),
+                "Unlocked when your creature first goes a minute without touching or holding food. A cog beside each expression slider and the growth slider chooses which falling species (ATP, G6P, glucose inside, pH) turn that protein or growth down, so a starving cell spends less.",
+                requiresFoodGap: 60.0),
         });
 
         private static FeatureInfo[] WithExplanations(FeatureInfo[] features)
@@ -93,7 +93,7 @@ namespace AdaptOrDeity.Game.Session
             {
                 var f = features[i];
                 features[i] = new FeatureInfo(f.Id, f.Name, f.UnlockLevel, f.Optional, f.DefaultEnabled, f.Effect, f.Cost,
-                    timeline.Explanation(f.Id), f.Requires, f.RequiresSwallowed, f.Excludes, f.RequiresAtpBelow);
+                    timeline.Explanation(f.Id), f.Requires, f.RequiresSwallowed, f.Excludes, f.RequiresFoodGap);
             }
             return features;
         }

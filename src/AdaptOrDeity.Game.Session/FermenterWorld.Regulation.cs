@@ -9,15 +9,25 @@ namespace AdaptOrDeity.Game.Session
     /// species' fall lowers that target. The cells' kernel does the regulating (upstream cell/expression_regulation: the
     /// target times f = x^4/(1 + x^4) for each species switched on); the world keeps each group's switches and pushes them
     /// to its cells, all off while the feature is locked or turned off. Daughters and released organisms copy their
-    /// parent's switches with its other settings. The feature unlocks when a cell of the creature first has its ATP below
-    /// <see cref="FeatureInfo.RequiresAtpBelow"/> of the resting level.
+    /// parent's switches with its other settings. The feature unlocks when the creature first goes
+    /// <see cref="FeatureInfo.RequiresFoodGap"/> without food: no living cell touching a packet, holding one, or with food in
+    /// its vacuole.
     /// </summary>
     public sealed partial class FermenterWorld
     {
-        private readonly double _atpDipFraction = GameFeatures.All[GameFeatures.IndexOf(GameFeatures.Regulation)].RequiresAtpBelow;
+        private readonly double _foodGapToUnlock = GameFeatures.All[GameFeatures.IndexOf(GameFeatures.Regulation)].RequiresFoodGap;
 
-        /// <summary>True once a cell of the creature has had its ATP below the fraction of rest that unlocks regulation.</summary>
-        public bool AtpDipped { get; private set; }
+        /// <summary>
+        /// Time since the creature last touched or held food [s]: no living cell touching a packet, no packet held by the
+        /// creature, no food in a vacuole. Counts from the start of play until the first food.
+        /// </summary>
+        public double TimeWithoutFood { get; private set; }
+
+        /// <summary>True once the creature has gone the gap that unlocks regulation without food.</summary>
+        public bool FoodGapMet { get; private set; }
+
+        /// <summary>When <see cref="FoodGapMet"/> became true [s of simulated time], or NaN before.</summary>
+        public double FoodGapMetAt { get; private set; } = double.NaN;
 
         /// <summary>Regulated targets: each trait (its index), then growth (<see cref="GrowthRegulation"/>).</summary>
         public int RegulationTargets => _traits.Length + 1;
@@ -40,8 +50,7 @@ namespace AdaptOrDeity.Game.Session
             if (!Active(GameFeatures.Regulation))
                 throw new InvalidOperationException(FeatureUnlocked(GameFeatures.IndexOf(GameFeatures.Regulation))
                     ? "Regulation is turned off"
-                    : "Regulation unlocks when a cell's ATP first falls below " +
-                      $"{100.0 * _atpDipFraction:F0}% of its resting level");
+                    : $"Regulation unlocks when the creature first goes {_foodGapToUnlock:F0} s without food");
             _groups[group].Regulation[slot] = on;
             ApplyControls();
         }
@@ -63,18 +72,24 @@ namespace AdaptOrDeity.Game.Session
                     c.SetRegulated(target, s, active && g.Regulation[target * n + s]);
         }
 
-        // Unlocks regulation the first time a living cell of the creature has its ATP below the fraction of rest.
-        private void NoticeAtpDip()
+        // The gap since the creature last had food; regulation unlocks the first time it reaches the feature's gap.
+        private void NoticeFoodGap(double dt)
         {
-            if (AtpDipped)
+            TimeWithoutFood = HasFood() ? 0.0 : TimeWithoutFood + dt;
+            if (FoodGapMet || TimeWithoutFood < _foodGapToUnlock)
                 return;
-            foreach (var c in _cells)
-                if (c.Alive && c.Atp < _atpDipFraction * c.RestingAtp)
-                {
-                    AtpDipped = true;
-                    ApplyControls();
-                    return;
-                }
+            FoodGapMet = true;
+            FoodGapMetAt = _time;
+            ApplyControls();
+        }
+
+        // Whether a living cell of the creature touches a packet or holds food in its vacuole, or the creature holds a packet.
+        private bool HasFood()
+        {
+            for (int i = 0; i < _cells.Count; i++)
+                if (_cells[i].Alive && (_touching[i] || _vacuoles[i] != null))
+                    return true;
+            return _food.Holds(0);
         }
     }
 }

@@ -513,7 +513,7 @@ namespace AdaptOrDeity.Game.Session
             AfterCells(dt);
             TakeUpFromVacuoles(dt);
             OrganismsEat(dt);
-            NoticeAtpDip();
+            NoticeFoodGap(dt);
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))
@@ -602,7 +602,7 @@ namespace AdaptOrDeity.Game.Session
         public bool FeatureUnlocked(int feature)
         {
             var info = GameFeatures.All[feature];
-            if (info.UnlockLevel > _level || (info.Cost > 0 && !_bought[feature]) || (info.RequiresAtpBelow > 0.0 && !AtpDipped))
+            if (info.UnlockLevel > _level || (info.Cost > 0 && !_bought[feature]) || (info.RequiresFoodGap > 0.0 && !FoodGapMet))
                 return false;
             foreach (var other in info.Requires)
                 if (!FeatureUnlocked(GameFeatures.IndexOf(other)))

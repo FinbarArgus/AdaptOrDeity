@@ -81,9 +81,9 @@ namespace AdaptOrDeity.Game.Session
     {
         public FeatureInfo(string id, string name, int unlockLevel, bool optional, bool defaultEnabled, string effect,
             int cost = 0, string explanation = "", IReadOnlyList<string>? requires = null, int requiresSwallowed = 0,
-            IReadOnlyList<string>? excludes = null, double requiresAtpBelow = 0.0)
+            IReadOnlyList<string>? excludes = null, double requiresFoodGap = 0.0)
         {
-            RequiresAtpBelow = requiresAtpBelow;
+            RequiresFoodGap = requiresFoodGap;
             Requires = requires ?? new string[0];
             RequiresSwallowed = requiresSwallowed;
             Excludes = excludes ?? new string[0];
@@ -122,10 +122,10 @@ namespace AdaptOrDeity.Game.Session
         public int RequiresSwallowed { get; }
 
         /// <summary>
-        /// Unlocked only once a cell of the creature has had its ATP below this fraction of the resting level (0: no such
-        /// condition), e.g. regulation by falling metabolites, unlocked by experiencing an energy shortage.
+        /// Unlocked only once the creature has gone this long without touching or holding food [s] (0: no such condition),
+        /// e.g. regulation by falling metabolites, unlocked by the first famine the creature meets.
         /// </summary>
-        public double RequiresAtpBelow { get; }
+        public double RequiresFoodGap { get; }
 
         /// <summary>Features this one closes: once either is bought, the other cannot be.</summary>
         public IReadOnlyList<string> Excludes { get; }
