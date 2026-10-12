@@ -529,6 +529,24 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   range; `organisms.dead_kept` is retired. Every daughter released in the lineage (any generation) counts as offspring
   and earns `skills.points_per_offspring`; frames split the creature's own (`OwnOffspring`).
 
+- **2026-10-13** The environment field is always on (designer: "start the process to make field always on";
+  docs/plans/environment-field.md):
+  - It meets its reference (one fine grid over the same extent, 64 steps, every input passed) within 0.6% for one cell
+    and a 7-cell colony; tests bound it at 2%. Fixes: the outermost grid spans 60 colony diameters to one of its cells
+    (it reached up to 4x beyond, and the reference covered only 60x); the membrane sees the thin layer's analytic near
+    field less what the grid resolves (the old J/(4 pi D a) counted the 2D field twice: 1.6-1.8x the depletion);
+    glucose takes 4 fine-grid substeps per macro step (a drifting cell saw 7% too little of its own depletion); inputs
+    move on 1% of their departure from the sea (a lone cell's own depletion was hidden).
+  - The contact rule and `field.enabled` are gone. A touching cell's hydrolase cuts a packet's polymer into the packet's
+    free sugar (held at 50 mM); the cap of membrane facing the packet (~5%) takes it up, the rest leaks into the water.
+    Sugar released into open water reaches a Glf cell with ~0.05% probability: with that alone a level-1 cell starved
+    within minutes.
+  - Recalibrated: food 5e-3 packets/s at levels 1 and 2 (was 3e-3), `skills.glucose_per_point` 1.2e-14 mol (was 2e-14).
+    Level 1 left alone: 6 points, ATP gone at day 1.7; kept on food: 26 points. Level 2 untouched: 24 points, 4 prey;
+    growth 1 with automatic division: 10 prey, 1 daughter.
+  - The field covers the free organisms' range; smells step every 1 s; frames carry lactate and pH, shown in Unity as
+    water overlays (F7-F9).
+
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.
@@ -570,6 +588,11 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     PEP), so a gap between food packets longer than its reserve kills it slowly even when food returns. With packets of a
     real size (2.7 h of eating each) level 1 and 2's outcomes hang on the gaps, and growth at the level's food rate runs
     ATP out within a day. Keep a small ATP floor, a restart path (glycogen, basal uptake), or richer food? (2026-10-12)
+    With the field (2026-10-13) a fed cell has no reserve beyond its demand, so this decides level 1: on the same random
+    draws, food at 3e-3 to 7e-3 packets/s gave 1 to 21 points, not in order of the rate.
+19. In the field each packet a cell touches gets the cell's whole hydrolase rate (several touching packets are digested
+    in parallel); share the enzyme over the faces? And the face share (the cap the packet covers, ~5%) is geometry with
+    no source for how close a cell and a particle sit. (2026-10-13)
     Regulation (2026-10-13) avoids the trap only while some food remains (half the resting glucose): the unregulated
     maintenance ATPase still drains ATP to 0 in a full famine. Should maintenance fall in a famine too, and should
     regulation unlock before the first crash?

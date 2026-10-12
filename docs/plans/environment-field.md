@@ -25,8 +25,8 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
     (`field.extent_multiple`) in at most 2N cells, with as many cells as that takes (so it spans the extent to one of
     its cells, not up to 4x beyond it), and at least the free organisms' range each way (`NestedFieldSettings.Reach`,
     2 view widths, plus two of its cells). One cell: 24 cells at 1 µm and 34 at 4 µm (136 µm; 30, 120 µm, without the
-    reach); 64 cells: 44 x 3 levels, outer 76 at 16 µm; 512: 80 x 4, outer 54 at 64 µm; 5,000 (~160 µm): 208 x 4, outer
-    ~150 at 64 µm. Each level's corner sits on the next level's grid lines, so a coarse cell under a finer grid (its
+    reach); 64 cells: 44 x 4 levels, outer 24 at 64 µm; 512: 80 x 4, outer 58; 5,000 (~160 µm): 208 x 4, outer 179 (out
+    to 11.5 mm). Each level's corner sits on the next level's grid lines, so a coarse cell under a finer grid (its
     shadow) holds 4x4 fine cells; the outermost recentres by its own cells.
   - **Step (coarse first):** every level takes a Douglas step (its steady state is exact at any step; locally
     one-dimensional steps at the 0.1 s exchange halve the gradient within ~8 µm of a cell, measured). A finer level's
@@ -90,17 +90,24 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
   - **Frames:** `FieldExtent`, `FieldGlucose`, `FieldLactate` and `FieldPh` (64x64 floats centred on the creature over
     max(food window, 3 colony diameters), ground axes; codec ASN6). Unity draws them as the water overlays (F7 glucose,
     F8 lactate, F9 pH; `FieldView`), under the cells, coloured over the range in view (the legend shows it).
-  - **Cost** (`field-bench`, 3 active species, 1 / 8 workers, per 0.1 s step, other jobs running): 1 cell 0.05 / 0.03 ms;
-    64 cells 0.2 / 0.1 ms; 512 cells 0.7 / 0.4 ms; 5,000 cells 5 / 3 ms including the per-cell exchange (the grid alone
-    ~2.9 / 1.4 ms). The cells cost ~3 µs per cell per step with changing inputs (15 ms single-threaded at 5,000), so the
-    field is ~10-30% of them; at one cell it costs more than the cell (~40 µs a step). On colony-bench (512 cells, 20 s)
-    the field world is 2.4x slower than the contact rule, almost all of it the cells' integrator restarting on changed
-    inputs.
-- Tests: tests/AdaptOrDeity.Sim.Core.Tests/NestedFieldTests.cs (geometry, closed-field conservation with sources,
-  far field steady, Gaussian across grid edges, steady point sink vs the thin layer's ln r profile, recentring and
-  regridding conservation, determinism, idle species), DiffusionFieldTests (Douglas steady state and boundedness),
-  tests/AdaptOrDeity.Game.Session.Tests/EnvironmentFieldTests.cs (packet dissolution, buffer, cell and food
-  conservation, a colony depleting glucose and the water recovering when it dies, growth, determinism, frames).
+  - **Cost** (`field-bench`, 3 active species, 1 / 8 workers, per 0.1 s step, other jobs running; 2026-10-12 -> 2026-10-13,
+    with glucose's 4 fine substeps, the outermost grid at the extent and levels narrower than 40 cells on one thread):
+    1 cell 0.04 / 0.05 -> 0.04-0.05 / 0.04-0.05 ms; 64 cells 0.15 / 0.09 -> 0.17 / 0.14 ms; 512 cells 0.50 / 0.28 ->
+    0.62 / 0.45 ms; 5,000 cells 3.5 / 1.7 -> 4.5 / 2.4 ms, including the per-cell exchange. The cells cost ~3 µs per cell
+    per step with changing inputs (15 ms single-threaded at 5,000), so the field is ~15-30% of them. A one-cell world
+    (field, smells every 1 s, the cell) takes ~76 µs a step on one thread, ~95% of it the field: a simulated week in ~7
+    minutes. colony-bench (512 cells, 20 s, 1 / 8 threads): 1.06 / 0.31 s -> 0.98 / 0.32 s (the field world is the only
+    one now; the contact rule ran it in 0.61 s).
+- Tests: tests/AdaptOrDeity.Sim.Core.Tests/NestedFieldTests.cs (geometry and the outermost grid's extent, closed-field
+  conservation with sources, far field steady, Gaussian across grid edges, steady point sink vs the thin layer's ln r
+  profile, the membrane against the analytic thin-layer near field wherever the cell sits on two spacings, a drifting
+  cell's own depletion with fine substeps, strided and per-species substeps conserving, recentring and regridding
+  conservation, determinism, idle species), DiffusionFieldTests (Douglas steady state and boundedness),
+  tests/AdaptOrDeity.Game.Session.Tests/EnvironmentFieldTests.cs (the free part leaking, enzymes cutting polymer into
+  free sugar, product inhibition, buffer, cell and food conservation, a colony depleting glucose and the water
+  recovering when it dies, growth, determinism, frames, the game against the reference for one cell and 7 cells),
+  FoodFieldTests (a touching cell sees a packet's free sugar on its face), ParallelCellsTests (stepping in the field
+  allocates nothing).
 
 ## For the designer
 - **Douglas steps** damp patterns a few cells long slowly at the exchange step (a cell's near field takes ~1-3 s to
@@ -110,31 +117,79 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
   stronger and recover slowly (as 1/t at the centre) compared with open water. A 3D correction (the water above the
   layer) would change this; the 10 µm depth is a stand-in.
 - **Other H+ fluxes** (the H+-ATPase, NhaA, the flagellar motor) are not put into the field yet: only H+ with lactate.
-- **Packets** release their free part whether or not a cell is near; their polymer only where cells touch them, at
-  each touching cell's surface hydrolase rate V_max S/(K_m_poly + S) (S: the packet's polymer over a disc of its radius as
-  deep as the cells; a fresh packet saturates the enzyme, so one cell digests a packet in ~2.5 h). With the field on, the
-  contact rule is off.
-- **1% input tolerance** trades accuracy of the cells' inputs for speed; 0.1% costs 2x the cell time.
+- **Packets** leak their free part whether or not a cell is near; their polymer is cut only where cells touch them, at
+  each touching cell's surface hydrolase rate V_max S/(K_m_poly + S) (S: the packet's polymer over its sphere; saturated),
+  into the packet's free sugar, which the touching membrane takes up on the ~5% of it facing the packet. Each packet a
+  cell touches gets the cell's full hydrolase rate (several touching packets are digested in parallel): a choice to
+  revisit (share the enzyme by the faces?).
+- **A level-1 cell lives at its demand while it touches a packet** (~5e-19 mol/s), and its ATP runs out in the first
+  gap between packets longer than its reserve, for good (starvation is absorbing, open question 18). Whether a lone cell
+  starves on day 0.4 or day 6 hangs on the gaps: on the LevelTests' random draws, food at 3e-3 / 4e-3 / 5e-3 / 6e-3 /
+  7e-3 packets/s gave 1 / 6 / 6 / 3 / 21 points and ATP gone at day 0.43 / 1.9 / 1.7 / 0.8 / 6.1. Calibration
+  (2026-10-13): food 5e-3 packets/s at levels 1 and 2 (was 3e-3), `skills.glucose_per_point` 1.2e-14 mol (was 2e-14).
+- **Growth needs a vacuole:** the face's ~5% of membrane cannot carry growth's uptake (growth 3 needs ~1.9e-18 mol/s), a
+  vacuole lining most of the membrane can. A level-2 cell at growth 3 starves in the gaps between swallowed packets (see
+  the calibration below).
+- **1% input tolerance** of the departure from the sea trades accuracy of the cells' inputs for speed (+15% at 512 cells
+  over the old rule); 0 (every change) costs ~60% more.
+- **Neighbours' near field:** each cell's membrane sees its own 3D near field but its neighbours' only as resolved by the
+  1 µm grid; in a dense colony that underestimates the depletion between cells (each of six neighbours at 2.2 µm would
+  add about 0.6 of its J/(2 pi D d) more).
+
+## Calibration with the field (2026-10-13)
+Explicit probes (deleted after), one random sequence each; LevelTests hold the level-1 results.
+
+| Run | Field (food 5e-3 packets/s, 1.2e-14 mol per point) | Contact rule (2026-10-12: 3e-3, 2e-14) |
+|---|---|---|
+| Level 1 left alone | 7.2e-14 mol, 6 points; ATP gone day 1.7, damage 0.55 by day 7 | 1.69e-13 mol, 8 points; day 3.9 |
+| Level 1 kept on food (1.5e-2 packets/s) | 3.1e-13 mol, 26 points | 2.98e-13 mol (1e-2), 14 points |
+| Level 2 after an untouched level 1 | eats nothing more; dies at the end of level 2 | the same (4 prey) |
+| Level 2 fresh, untouched (prey 2e-4/s) | 3.0e-13 mol, 24 points, 4 prey | 2.98e-13 mol, 14 points, 7 prey |
+| Level 2, level's food, growth 1, automatic division | 5.7e-13 mol, 47 points, 10 prey, 1 daughter | (not measured) |
+| Level 2 kept on food (1.5e-2), growth 1 | 47 points, 10 prey, 1 daughter | |
+| Level 2 kept on food (1.5e-2), growth 3 | 1.1e-12 mol, 93 points, 2 prey, 5 daughters | 5 daughters (1e-2) |
+
+A level-1 cell's outcome hangs on the gaps between packets (see "For the designer"). At level 2 a fed cell eats from
+its vacuole (engulfed packets), which lines most of its membrane: growth works there; the mitochondria path's 10 prey
+are reachable in a week at growth 1. `skills.points_per_offspring` is unchanged (1).
 
 ## Decided 2026-10-12 (second round)
 - Grid: nested grids (fine ~1 µm around the colony; coarser grids x4 spacing and extent out to 60x the colony
-  diameter; conservative flux exchange between grids; per-cell correction J/(4 pi D a) at the membrane).
+  diameter; conservative flux exchange between grids; per-cell correction at the membrane, the thin layer's near field
+  since 2026-10-13).
 - Level 4 (built 2026-10-12, docs/plans/level4-extracellular-space.md): extracellular space between cells as volumes,
   each a module; boundary and inner cell groups; matrix production costs carbon and ATP (researched value).
 - Level 1 lasts one simulated week; skill prices calibrated by bots.
 
-## Accuracy against the reference (FieldAccuracy.Reference, 2026-10-12)
-The reference has none of the trade-offs: one 1 µm grid over the whole extent, 64 field steps per macro step, every
-input change passed to the cells, cells at rtol 1e-8. Against it, for one cell at 0.1 mM (EnvironmentFieldTests):
-- the field's depletion at the membrane is 7% too large;
-- 10 µm away (where the fine grid's 8 µm margin ends) the water is depleted ~1.6x the reference's, 11% of the membrane's
-  depletion: the coarse grid takes over the flux there. A wider margin or finer coarse levels would reduce it;
-- the 1% input tolerance hides a lone cell's depletion (0.1%) from the cell altogether.
-To improve before the field is on by default.
+## Accuracy against the reference (FieldAccuracy.Reference)
+The reference has none of the trade-offs: one 1 µm grid over the game grids' whole extent, 64 field steps per macro
+step, every input change passed to the cells, cells at rtol 1e-8. The game against it (EnvironmentFieldTests, a 0.1 mM
+sea, the creature drifting with the current; depletion = sea - value):
 
-Soft restarts (libcuflynx #574's stop at outputs, on for cells in the field, 2026-10-12): colony-bench 512 cells, 20 s,
-1 thread: contact rule 0.61 s; field with the 1% input tolerance 1.47 -> 0.84 s; every input change passed 3.97 ->
-1.36 s.
+| | 2026-10-12 | 2026-10-13 | bound (test) |
+|---|---|---|---|
+| one cell: depletion at the membrane | +7% | -0.3% | 2% |
+| one cell: depletion the cell sees (its input) | 0 (hidden by the 1% tolerance) | +0.4% | 2% |
+| one cell: water 10 µm away, of the membrane's depletion | +11% (1.6x the reference's) | 0.0% | 2% (5-40 µm) |
+| 7 cells (60 s): membrane, per cell | not measured | +0.4-0.5% (-1.2 to +1.4% without the fine substeps) | 2% |
+| 7 cells: input, per cell | not measured | 0.1-0.5% | 2% |
+| 7 cells: water 5-40 µm away | not measured | 0.5-0.6% | 2% |
+| uptake | | < 0.01% | 0.1% |
+
+What closed the gaps:
+1. **Extent.** The reference covered 60 colony diameters (120 µm for one cell), the game's outermost grid up to 4x that
+   (384 µm); in 2D the depletion goes as ln(R/r), so the game was 7% deeper at the membrane and 1.6x 10 µm away. Against a
+   reference of the same extent the nested grids were already within 0.5% (steady sink, any position). Now the outermost
+   grid spans the extent multiple to one of its cells, and the reference covers the game's extent.
+2. **Membrane correction** (checked against the analytic thin-layer solution): see "Membrane" above. Both the game and
+   the reference had counted the 2D field below r* twice (1.6-1.8x the true depletion at the membrane) and varied by
+   ±9% with the cell's place in its grid cell.
+3. **Time scheme:** a drifting cell's own near field lagged with one Douglas step per macro step (-7%); 4 fine substeps
+   for glucose bring it to -0.7% (+0.1% at 8; swimming at 20 µm/s: -4% at 4).
+4. **Input tolerance:** relative to the input's departure from the sea instead of its value, so a lone cell's own
+   0.07% depletion reaches it. Cost (colony-bench, 512 cells, 20 s, 1 thread, field on): 1.06 s (old rule) -> 1.22 s
+   (new rule and fine substeps); every change passed (tolerance 0) measured 1.36 s on 2026-10-12.
+The fine grid's 8 µm margin needed no change: the coarse flux at its edge costs < 1% of the membrane's depletion.
 
 ## To discuss (earlier notes)
 - **Food model after the research:** cells at 2 Ga absorb (external digestion), they do not engulf; packets as small

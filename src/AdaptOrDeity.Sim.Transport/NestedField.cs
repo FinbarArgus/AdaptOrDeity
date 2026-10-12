@@ -109,7 +109,7 @@ namespace AdaptOrDeity.Sim.Transport
         private const int LinesPerItem = 32;
 
         /// <summary>Levels narrower than this many cells step on one thread (sharing them costs more than it saves).</summary>
-        private const int ParallelFromCells = 64;
+        private const int ParallelFromCells = 40;
 
         /// <summary>
         /// Grids for a colony of diameter <paramref name="diameter"/> [m] centred at (<paramref name="cx"/>,
