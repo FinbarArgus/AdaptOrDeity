@@ -80,8 +80,12 @@ namespace AdaptOrDeity.Game.Session
     public sealed class FeatureInfo
     {
         public FeatureInfo(string id, string name, int unlockLevel, bool optional, bool defaultEnabled, string effect,
-            int cost = 0, string explanation = "")
+            int cost = 0, string explanation = "", IReadOnlyList<string>? requires = null, int requiresSwallowed = 0,
+            IReadOnlyList<string>? excludes = null)
         {
+            Requires = requires ?? new string[0];
+            RequiresSwallowed = requiresSwallowed;
+            Excludes = excludes ?? new string[0];
             Cost = cost;
             Explanation = explanation;
             Id = id;
@@ -109,6 +113,15 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>The full explanation for the player (content/timeline.json features[].explanation).</summary>
         public string Explanation { get; }
+
+        /// <summary>Features that must be unlocked first (e.g. a colony feature needs multicellularity).</summary>
+        public IReadOnlyList<string> Requires { get; }
+
+        /// <summary>Prey cells the creature must have swallowed before the feature can be bought (0: none).</summary>
+        public int RequiresSwallowed { get; }
+
+        /// <summary>Features this one closes: once either is bought, the other cannot be.</summary>
+        public IReadOnlyList<string> Excludes { get; }
     }
 
     /// <summary>A per-group energy control the panel offers as a slider (growth, storage, repair).</summary>
@@ -198,8 +211,10 @@ namespace AdaptOrDeity.Game.Session
         public SessionSchema(IReadOnlyList<OverlayInfo> overlays, IReadOnlyList<double> speedPresets,
             IReadOnlyList<DetailInfo>? details = null, IReadOnlyList<TraitInfo>? traits = null,
             IReadOnlyList<ControlInfo>? controls = null, IReadOnlyList<FeatureInfo>? features = null, int maxCells = 0,
-            int maxGroups = 0, IReadOnlyList<string>? traceSpecies = null, double fieldHalfSize = 0.0, int initialPacketCapacity = 0)
+            int maxGroups = 0, IReadOnlyList<string>? traceSpecies = null, double fieldHalfSize = 0.0, int initialPacketCapacity = 0,
+            int initialPreyCapacity = 0)
         {
+            InitialPreyCapacity = initialPreyCapacity;
             TraceSpecies = traceSpecies ?? new string[0];
             FieldHalfSize = fieldHalfSize;
             InitialPacketCapacity = initialPacketCapacity;
@@ -233,6 +248,9 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Food packets snapshot frames are first sized for; they grow with the food in the field.</summary>
         public int InitialPacketCapacity { get; }
+
+        /// <summary>Prey cells snapshot frames are first sized for; they grow with the prey in view.</summary>
+        public int InitialPreyCapacity { get; }
 
         /// <summary>Cell-panel quantities; an entry's index is its index in <see cref="SnapshotFrame.Details"/>.</summary>
         public IReadOnlyList<DetailInfo> Details { get; }

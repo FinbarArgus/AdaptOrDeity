@@ -13,6 +13,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             var world = new FermenterWorld(environmentField: true) { Workers = workers };
             var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             world.Level = 2;
+            Colonies.Multicellular(world);
+            world.SetFeature(GameFeatures.IndexOf(GameFeatures.Engulfing), false);   // packets on a cell stay outside it
             world.SetFeature(GameFeatures.IndexOf(GameFeatures.Swimming), false);
             while (world.CellCount < cells)
             {

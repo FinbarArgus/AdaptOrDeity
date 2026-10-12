@@ -12,6 +12,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             var loop = NewLoop(out world);
             world.Workers = workers;
             loop.Enqueue(SimCommands.SetLevel(2));
+            Colonies.Multicellular(loop.Enqueue);
+            loop.Enqueue(SimCommands.SetFeature(GameFeatures.IndexOf(GameFeatures.Engulfing), false));   // food touching cells stays shared
             loop.ApplyCommands();
             while (world.CellCount < cells)
             {

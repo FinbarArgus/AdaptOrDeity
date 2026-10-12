@@ -71,11 +71,34 @@ namespace AdaptOrDeity.Game.Content
             return (int)v;
         }
 
+        /// <summary>
+        /// Glucose equivalents per volume of a food packet or prey cell [mol/m³]: a cell's density × its dry share × the
+        /// carbon share of the dry mass, over carbon's molar mass × 6 carbons per glucose (≈ 2.3 M).
+        /// </summary>
+        public double PacketDensity =>
+            Value("body.cell_density") * Value("food.dry_mass_fraction") * Value("food.dry_carbon_fraction")
+            / (Value("food.carbon_molar_mass") * Value("food.carbons_per_glucose"));
+
+        /// <summary>The prey's settings (prey.*); their content is at the packet density.</summary>
+        public PreySettings Prey() => new PreySettings
+        {
+            Radius = Value("prey.radius"),
+            RunSpeed = Value("prey.run_speed"),
+            MeanRun = Value("prey.mean_run"),
+            Density = PacketDensity,
+            FreeFraction = Value("food.free_fraction"),
+            HalfSize = Value("food.field_half_size"),
+            EntryAngleSpread = Value("food.entry_angle_spread"),
+            InitialCapacity = Integer("prey.initial_capacity"),
+            Seed = Integer("prey.seed"),
+            ArrivalsPerSecond = GameTimeline.Default.ArrivalsAt(1).PreyPerSecond,
+        };
+
         /// <summary>The food field's settings; the background glucose comes from the cell kernel.</summary>
         public FoodSettings Food(double backgroundGlucose) => new FoodSettings
         {
             BackgroundGlucose = backgroundGlucose,
-            PacketAmount = Value("food.packet_amount"),
+            PacketDensity = PacketDensity,
             FreeFraction = Value("food.free_fraction"),
             FreeLeakRate = Value("food.free_leak_rate"),
             ContactGlucose = Value("food.contact_glucose"),

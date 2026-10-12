@@ -46,6 +46,7 @@ namespace AdaptOrDeity.Game.Session.Tests
                     damage = d;
             double start = world.ReadDetail(0, damage);
             Run(world, Week + 1.0);
+            TestContext.Progress.WriteLine($"left alone: ate {world.FoodEaten:G4} mol, {world.SkillPoints} points, damage {world.ReadDetail(0, damage):F3}");
             Assert.That(world.SkillPoints, Is.InRange(cost, 2 * cost - 1), $"one transporter (ate {world.FoodEaten:G4} mol)");
             Assert.That(world.ReadDetail(0, damage), Is.GreaterThan(start + 0.05), "starting to starve");
             Assert.That(world.Level, Is.EqualTo(2), "the next level begins when the week is up");
@@ -58,6 +59,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             int cost = GameFeatures.All[GameFeatures.IndexOf(GameFeatures.PtsTransport)].Cost;
             world.Food.SetArrivals(0.01, 0.8);   // food everywhere: it never runs out
             Run(world, Week - 1.0);
+            TestContext.Progress.WriteLine($"kept on food: ate {world.FoodEaten:G4} mol, {world.SkillPoints} points");
             Assert.That(world.SkillPoints, Is.GreaterThanOrEqualTo(2 * cost), $"ate {world.FoodEaten:G4} mol");
         }
     }

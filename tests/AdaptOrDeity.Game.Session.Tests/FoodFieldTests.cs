@@ -154,7 +154,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(Math.Abs(cx1 - cx) + Math.Abs(cy1 - cy), Is.GreaterThan(1e-6), "the creature moved over the ground");
             Assert.That(Dist(packet.X, packet.Y), Is.EqualTo(offset).Within(1e-15), "the food it found moves rigidly with it");
             Assert.That(packet.Glucose, Is.LessThan(g0), "the cell takes glucose from the packet");
-            Assert.That(packet.Radius, Is.EqualTo(r0 * Math.Sqrt(packet.Glucose / g0)).Within(1e-3 * r0), "and it shrinks");
+            Assert.That(packet.Radius, Is.EqualTo(r0 * Math.Pow(packet.Glucose / g0, 1.0 / 3.0)).Within(1e-3 * r0),
+                "and it shrinks, keeping its density");
             Assert.That(r0, Is.LessThan(world.CellRadius), "food is smaller than the cell");
             Assert.That(world.Cell(0).Budget().AtpGlycolysis, Is.GreaterThan(world.Cell(0).RestingTurnover * 1.01),
                 "more glucose, faster glycolysis");
@@ -262,6 +263,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(world.Body.FlagellumAngle(0, 0), Is.EqualTo(0.5 * Math.PI).Within(1e-12));
             var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             loop.Enqueue(SimCommands.SetLevel(2));
+            Colonies.Multicellular(loop.Enqueue);
             loop.ApplyCommands();
             world.DevCompleteDaughter(0);
             loop.Enqueue(SimCommands.Divide(0));

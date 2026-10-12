@@ -14,8 +14,9 @@
     "swimming"
    ],
    "arrivals": {
-    "food_per_s": 0.0001,
-    "carried_share": 0.8
+    "food_per_s": 0.003,
+    "carried_share": 0.8,
+    "prey_per_s": 0.0
    },
    "regions": [],
    "reviewed": false,
@@ -28,16 +29,20 @@
    "level": 2,
    "ga": 1.9,
    "name": "Division",
-   "summary": "Put energy into growth and storage; divide when a daughter is built, or spend glycogen to finish one. Cells form a colony in one group. Processing to decide when to swim (planned).",
+   "summary": "Put energy into growth and storage; divide when a daughter is built, or spend glycogen to finish one. Small prey cells swim past: a cell can engulf them and food packets smaller than itself. Then choose a path: multicellularity, so daughters stay and form a colony, or (after swallowing 10 prey cells) mitochondria. Processing to decide when to swim (planned).",
    "unlocks": [
     "growth_and_division",
     "glycogen_storage",
     "auto_divide",
-    "motility_control"
+    "motility_control",
+    "engulfing",
+    "multicellularity",
+    "mitochondria"
    ],
    "arrivals": {
-    "food_per_s": 0.0001,
-    "carried_share": 0.8
+    "food_per_s": 0.003,
+    "carried_share": 0.8,
+    "prey_per_s": 0.0002
    },
    "regions": [],
    "reviewed": false,
@@ -56,8 +61,9 @@
    ],
    "note": "Historically these exist from the game's start: bacterial chemotaxis evolved from two-component systems after the three domains split, well before 2 Ga (Wuichet & Zhulin 2010). Level 3 is a pacing choice.",
    "arrivals": {
-    "food_per_s": 0.0001,
-    "carried_share": 0.8
+    "food_per_s": 0.003,
+    "carried_share": 0.8,
+    "prey_per_s": 0.0002
    },
    "regions": [],
    "reviewed": false,
@@ -75,8 +81,9 @@
     "membrane_respiration"
    ],
    "arrivals": {
-    "food_per_s": 0.0001,
-    "carried_share": 0.8
+    "food_per_s": 0.003,
+    "carried_share": 0.8,
+    "prey_per_s": 0.0002
    },
    "regions": [],
    "reviewed": false,
@@ -89,13 +96,12 @@
    "level": 5,
    "ga": 1.5,
    "name": "The eukaryotic cell",
-   "summary": "Mitochondria lift the membrane-area energy limit; Na+/K+-ATPase and the cytoskeleton arrive (planned).",
-   "unlocks": [
-    "mitochondria"
-   ],
+   "summary": "The eukaryotic cell: the Na+/K+-ATPase and the cytoskeleton arrive (planned). Mitochondria are a path chosen at level 2.",
+   "unlocks": [],
    "arrivals": {
-    "food_per_s": 0.0001,
-    "carried_share": 0.8
+    "food_per_s": 0.003,
+    "carried_share": 0.8,
+    "prey_per_s": 0.0002
    },
    "regions": [],
    "reviewed": false,
@@ -113,8 +119,9 @@
     "multiple_groups"
    ],
    "arrivals": {
-    "food_per_s": 0.0001,
-    "carried_share": 0.8
+    "food_per_s": 0.003,
+    "carried_share": 0.8,
+    "prey_per_s": 0.0002
    },
    "regions": [],
    "reviewed": false,
@@ -132,8 +139,9 @@
     "fixed_body_size"
    ],
    "arrivals": {
-    "food_per_s": 0.0001,
-    "carried_share": 0.8
+    "food_per_s": 0.003,
+    "carried_share": 0.8,
+    "prey_per_s": 0.0002
    },
    "regions": [],
    "reviewed": false,
@@ -144,7 +152,7 @@
   }
  ],
  "levels_note": "Draft level sequence (2026-10-08) for open question 3 in adapting_plan.md; dates follow the protein and event entries below. Each level lasts duration_s of simulated time (level 1: one week, enough to start starving; later levels' durations are placeholders), then the next level begins and the skill window opens.",
- "arrivals_note": "What appears in the world per second at each level, constant whatever is already there: food packets (food_per_s; carried_share of them brought by other creatures, the rest lying on the ground and coming into view), later prey, enemies and friends. A level's regions may override them (regions[].arrivals), to set scarcity or abundance. Placeholders equal to the food supply before 2026-10-12 (one packet per ~100 s, 80% carried) until tuned.",
+ "arrivals_note": "What appears in the world per second at each level, constant whatever is already there: food packets (food_per_s; carried_share of them brought by other creatures, the rest lying on the ground and coming into view) and prey cells (prey_per_s, none at level 1; food once a cell engulfs them, level 2), later enemies and friends. A level's regions may override them (regions[].arrivals), to set scarcity or abundance. Calibrated 2026-10-12 with packets at a cell's density (4.9e-15 mol): food 3e-3 packets/s, so an untouched level-1 cell eats 1.69e-13 mol and its ATP runs out on day 4 (the outcome hangs on the gaps between packets: in probes 3e-3 to 3.5e-3 ran out on days 1.5-4 depending on the random sequence, 4e-3 never). Prey 2e-4/s from level 2, so a creature that engulfs swallows about 10 in the level's week only with luck or effort: the untouched creature (starving since level 1) swallows 4 and dies at the end of level 2; a fed cell starting level 2 swallows 7 (other seeds: 11; 6 with 3 flagella). Later levels copy level 2 until tuned.",
  "features": [
   {
    "id": "protein_expression",
@@ -261,6 +269,45 @@
    "reviewed": false
   },
   {
+   "id": "engulfing",
+   "name": "Engulfing",
+   "unlock_level": 2,
+   "optional": true,
+   "default_enabled": true,
+   "effect": "A cell that touches a food packet or a prey cell smaller than itself takes it inside, in a vacuole. The cell's surface hydrolase digests it there and the cell's own sugar carriers take the sugar up from the vacuole, so none is lost or shared. What a cell swallows shares one vacuole, which must stay smaller than the cell (food packets always leave room for a prey cell). Prey cells swallowed are counted.",
+   "explanation": "Engulfing (phagocytosis) is how many eukaryotic cells eat: the membrane flows around a particle and closes behind it, leaving it in a vacuole. The vacuole is still outside the cytosol: its membrane faces the food the way the outer membrane faces the sea, so enzymes digest the food in it and transporters carry the sugars across into the cytosol, at the vacuole's high concentration and with nothing lost to the water. At 1.9 billion years ago this is a stretch for a prokaryote-grade cell. Phagocytosis is a eukaryotic trait and is not documented this early. The cultured Asgard archaeon, the closest living relative of the eukaryotes' host cell, makes long membrane protrusions but has not been seen to engulf anything (Imachi et al. 2020); a few modern bacteria do something like it (the planctomycete Candidatus Uab amorphum engulfs other cells; Shiratori et al. 2019). Whether eating by engulfment came before the mitochondrion and made its capture possible ('phagocytosis early') or came after it is debated. The game lets you explore that route.",
+   "reviewed": false
+  },
+  {
+   "id": "multicellularity",
+   "name": "Multicellularity",
+   "unlock_level": 2,
+   "optional": false,
+   "default_enabled": true,
+   "cost": 5,
+   "excludes": [
+    "mitochondria"
+   ],
+   "effect": "Daughters stay attached to the cell that made them, so the creature grows as a colony. Without it each daughter leaves when its parent divides: it counts as offspring, earns reproduction points, and the creature stays one cell. Later colony features (boundary and inner cells, several groups, a fixed body size) need it. Choosing this closes the mitochondria path.",
+   "explanation": "Bacteria that stay stuck together after dividing make chains, filaments and mats; filamentous cyanobacteria were multicellular by about 2.5 to 2.4 billion years ago (Schirrmeister et al. 2015). Staying together lets the cells share the water between them and, later, specialise, and it makes the creature bigger; but every cell then shares the creature's food and fate. In the game this is one of two paths at level 2: a colony of cells, or a single cell that takes in a partner and becomes the start of a eukaryote (mitochondria). Choosing one closes the other. Until then, every daughter that swims off is offspring, and offspring are fitness: the currency evolution counts, since a lineage persists only through the cells it leaves behind. That is why each one earns reproduction points, and why staying single-celled can pay for a while.",
+   "reviewed": false
+  },
+  {
+   "id": "mitochondria",
+   "name": "Mitochondria",
+   "unlock_level": 2,
+   "optional": false,
+   "default_enabled": true,
+   "cost": 5,
+   "requires_swallowed": 10,
+   "excludes": [
+    "multicellularity"
+   ],
+   "effect": "Available once your cells have swallowed 10 prey cells. A swallowed bacterium that is kept alive inside the cell becomes a partner that later breathes for it. Planned: respiration inside the cell is not modelled yet, so evolving it changes nothing in the cell for now. Choosing this closes the multicellularity path.",
+   "explanation": "Mitochondria descend from an alphaproteobacterium that came to live inside another cell, an archaeon related to today's Asgard archaea, somewhere between about 2 and 1.5 billion years ago: the event behind the eukaryotic cell. How the partner got in is debated. In 'phagocytosis early' views the host already ate by engulfing and one meal survived; in others the two lived side by side, trading metabolites, until the host's protrusions wrapped around the partner (Imachi et al. 2020). Here the route is the first: after swallowing enough prey, one is kept. Each mitochondrion holds its own respiratory membranes, folded inside the cell, so a eukaryote's respiring membrane area is no longer limited to its outer surface; that extra energy paid for larger cells, larger genomes and new machinery such as the cytoskeleton. (Planned: the game does not model respiration yet.)",
+   "reviewed": false
+  },
+  {
    "id": "chemosensing",
    "name": "Smell (chemoreceptors)",
    "unlock_level": 3,
@@ -286,6 +333,9 @@
    "unlock_level": 4,
    "optional": false,
    "default_enabled": true,
+   "requires": [
+    "multicellularity"
+   ],
    "effect": "Water between three neighbouring cells becomes a shared space of its own. Cells with part of their edge on open water form the boundary group; cells surrounded by other cells form the inner group. Each group has its own sliders, and cells move between the groups as the colony grows.",
    "explanation": "By about 1.8 billion years ago bacteria had lived in mats and biofilms for more than 1.5 billion years. In a biofilm, cells sit in a shared, unsealed space between them. Food, waste and acid diffuse through the narrow gaps between cells, so cells on the surface see the sea while cells inside see what their neighbours have left. Gradients form across the colony: in modern biofilms oxygen reaches only 50 to 100 micrometres in, and fermenting biofilms such as dental plaque turn acidic inside. The same cell type can then be in two very different places. Splitting the colony into its boundary and its inside is the first step towards a body with an outside and an inside.",
    "reviewed": false
@@ -296,18 +346,11 @@
    "unlock_level": 4,
    "optional": true,
    "default_enabled": true,
+   "requires": [
+    "multicellularity"
+   ],
    "effect": "A slider for each group sets how much matrix (a sugar polymer) its cells export into the space between cells. Each glucose unit of matrix costs one glucose and about 3 ATP. The matrix slows diffusion through the gaps and breaks down slowly, returning some glucose. Matrix made where a cell faces open water is lost to the sea.",
    "explanation": "Biofilm bacteria wrap themselves in extracellular polymeric substances (EPS), mostly polysaccharides. In many biofilms the matrix makes up most of the dry mass, often over 90%, against a few percent for the cells. Making it is costly. Each sugar is phosphorylated and activated as a nucleotide sugar (UDP-glucose or ADP-glucose), polymerised, often on a lipid carrier, and exported. That is about 2 to 4 ATP per sugar unit on top of the sugar itself, and a fermenting cell also loses the 2 ATP it would have made from that glucose. The matrix holds the colony together and slows the diffusion of solutes, keeping what the colony makes and finds near its cells. Its hydrolases also let cells reclaim some of it when food runs short. It is also a public good: neighbours that make none still benefit from it.",
-   "reviewed": false
-  },
-  {
-   "id": "mitochondria",
-   "name": "Mitochondria",
-   "unlock_level": 5,
-   "optional": true,
-   "default_enabled": false,
-   "effect": "Planned.",
-   "explanation": "Mitochondria descend from bacteria taken inside another cell around 2 to 1.5 billion years ago, the event behind the eukaryotic cell. Each holds its own respiratory membranes, folded inside the cell, so a eukaryote's respiring membrane area is no longer limited to its outer surface. That extra energy paid for larger cells, larger genomes and new machinery such as the cytoskeleton. (Planned.)",
    "reviewed": false
   },
   {
@@ -316,6 +359,9 @@
    "unlock_level": 6,
    "optional": true,
    "default_enabled": false,
+   "requires": [
+    "multicellularity"
+   ],
    "effect": "Split cells into groups adapted separately (organs later). Sliders always change every cell in the selected cell's group.",
    "explanation": "Cells that stick together can specialise: some do one job, others another, as in the heterocysts of filamentous cyanobacteria that fix nitrogen for their neighbours. Splitting your colony into groups lets you adapt each group's proteins and energy use separately. Every slider then changes all the cells of the selected cell's group. This is the start of tissues and organs.",
    "reviewed": false
@@ -326,6 +372,9 @@
    "unlock_level": 7,
    "optional": true,
    "default_enabled": false,
+   "requires": [
+    "multicellularity"
+   ],
    "effect": "The group holds its present number of cells: growth energy replaces dead cells instead of adding cells, and goes to repair while the group is full. Easier to maintain; no further growth.",
    "explanation": "Most animals stop growing at an adult size and from then on spend energy maintaining their body: replacing cells that die and repairing tissues. With this on, a group keeps its present number of cells. Energy that would have made new cells replaces dead ones, and goes to repair while the group is full. A fixed body is easier to keep healthy but no longer grows.",
    "reviewed": false
@@ -671,6 +720,28 @@
    "notes": "LldP / LutP are lactate permeases described for uptake. A prokaryotic export carrier for homolactic fermenters needs a source."
   },
   {
+   "id": "glycoside_hydrolase_gh13",
+   "name": "Alpha-amylase family glycoside hydrolases (GH13), surface or secreted",
+   "category": "enzyme",
+   "function": "Hydrolyse polysaccharide (starch- and glycogen-like alpha-glucans) outside the cytosol into oligosaccharides and glucose",
+   "clade": "all domains (GH13 family); surface-anchored and secreted forms in many bacteria",
+   "earliest_ga": null,
+   "latest_ga": null,
+   "available_from_ga": 2.0,
+   "certainty": "likely",
+   "game_role": "The fermenter's surface hydrolase: digests food packets it touches (environment field) and what its cells engulf (vacuoles, level 2).",
+   "models": [
+    "cell/polysaccharide_hydrolase"
+   ],
+   "sources": [
+    "https://rest.uniprot.org/uniprotkb/Q8A1G3",
+    "https://rest.uniprot.org/uniprotkb/P00691",
+    "https://rest.uniprot.org/uniprotkb/P07206",
+    "https://rest.uniprot.org/uniprotkb/P06278"
+   ],
+   "notes": "Lengths (UniProt, checked 2026-10-12): SusG, the surface lipoprotein alpha-amylase of Bacteroides thetaiotaomicron, 692 aa (Q8A1G3; signal 1-22, lipidated Cys23); Bacillus subtilis AmyE, secreted, 659 aa (P00691); Klebsiella pneumoniae pullulanase PulA, a surface lipoprotein, 1,090 aa (P07206); Bacillus licheniformis alpha-amylase, secreted, 512 aa (P06278). The model's 700 aa (upstream L_Hydrolase) is SusG-sized. GH13 is spread over all three domains; its age is not dated here (assumed present at 2 Ga)."
+  },
+  {
    "id": "psii",
    "name": "Photosystem II (oxygenic photosynthesis)",
    "category": "bioenergetics",
@@ -930,6 +1001,6 @@
    "notes": "Age not checked (placeholder date, no source yet)."
   }
  ],
- "features_note": "A feature with a cost is bought with skill points in the window that opens when the level goes up, once its level is reached; points come from food eaten (content/parameters.json skills.glucose_per_point). 'effect' is the short text, 'explanation' the full one; 'reviewed' is set by a human who has checked the text (adapting_plan.md, Rules for content).",
- "ocean_note": "The open water of each level beyond the creature's surroundings, in mol/m³. Glucose 1 µM: free glucose in open water is nanomolar to low micromolar (placeholder to source); at 1 µM a level-1 cell without food starts starving within days (damage ~9% of lethal per day, measured 2026-10-12). Arrivals 1e-4 packets/s: an untouched cell eats well for about four days and then starts to starve within level 1's week. Later levels copy level 1 until tuned."
+ "features_note": "A feature with a cost is bought with skill points in the window that opens when the level goes up, once its level is reached; points come from food eaten (content/parameters.json skills.glucose_per_point). 'effect' is the short text, 'explanation' the full one; 'reviewed' is set by a human who has checked the text (adapting_plan.md, Rules for content). 'requires' lists features that must be evolved first (a later colony feature needs multicellularity); 'requires_swallowed' is the number of prey cells the creature must have engulfed before it can be bought; 'excludes' lists features it closes: buying one makes the others unavailable (multicellularity and mitochondria are two exclusive paths).",
+ "ocean_note": "The open water of each level beyond the creature's surroundings, in mol/m³. Glucose 1 µM: free glucose in open water is nanomolar to low micromolar (placeholder to source); at 1 µM a level-1 cell without food starts starving within days (damage ~9% of lethal per day, measured 2026-10-12). Arrivals: see arrivals_note. Later levels copy level 1 until tuned."
 }

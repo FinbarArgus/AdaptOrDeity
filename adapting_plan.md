@@ -41,8 +41,9 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   inside a level's evaluation window; the single source of truth for simulation time).
 - **Levels and features** are listed in [`content/timeline.json`](content/timeline.json) (draft): level 1 (2.0 Ga)
   the fermenter with expression, repair and one flagellum that runs at random; level 2 (1.9 Ga) growth, division,
-  glycogen and processing to decide when to swim (planned); level 3 (1.85 Ga) smell (chemoreceptors), to swim towards
-  food (bacterial chemotaxis predates 2 Ga; placed here for pacing); level 4 respiration; level 5 the eukaryotic cell; level 6 several cell groups;
+  glycogen, prey and engulfing, the choice between multicellularity and mitochondria, and processing to decide when to
+  swim (planned); level 3 (1.85 Ga) smell (chemoreceptors), to swim towards
+  food (bacterial chemotaxis predates 2 Ga; placed here for pacing); level 4 respiration; level 5 the eukaryotic cell (cytoskeleton; mitochondria are the level-2 path); level 6 several cell groups;
   level 7 animals with an optional fixed body size. Every
   feature, once unlocked, is the player's choice to use; some (fixed size) make the organism easier to maintain.
   The same file lists when each protein existed.
@@ -53,7 +54,7 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
 ## Game design
 | Area | Decision |
 |---|---|
-| Starting organism | A **~2 µm prokaryote-grade fermenter** (homolactic: glucose → 2 lactate + 2 ATP), no mitochondria. **Membrane respiration** is an evolvable trait; O₂ arriving is a planet event; **mitochondria (endosymbiosis)** are a later major milestone that lifts the membrane-area energy limit (Lane & Martin 2010; disputed by Lynch & Marinov 2017). |
+| Starting organism | A **~2 µm prokaryote-grade fermenter** (homolactic: glucose → 2 lactate + 2 ATP), no mitochondria. **Membrane respiration** is an evolvable trait; O₂ arriving is a planet event; **mitochondria (endosymbiosis)** lift the membrane-area energy limit (Lane & Martin 2010; disputed by Lynch & Marinov 2017); at level 2 they are one of two exclusive paths (the other multicellularity), available after swallowing 10 prey cells (docs/plans/prey-and-branches.md; their physiology is planned). |
 | Basal metabolic rate | Maintenance ATP from **Lynch & Marinov (2015)**: C_M = 0.39·V^0.88 × 10⁹ ATP/cell/h at 20 °C (V in µm³), scaled by Q10. Growth cost C_G = 27·V^0.97 × 10⁹ ATP per cell when division arrives. Sanity range: resting rates across life 0.3–9 W/kg (Makarieva et al. 2008). |
 | Space | 2D unstructured (Voronoi) body mesh with a per-cell depth (2.5D). All editing in the flat view; a later fold into 3D is for visualisation only. |
 | Exchange | **In-plane edges only.** Into-screen and out-of-screen surfaces never exchange. Depth only scales volume and in-plane face area. |
@@ -208,9 +209,10 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   of `cell/generic_adaptive_cell`: `empty_membrane` (every general mechanism) and `fermenter` (extends it with its
   proteins); later bases (an animal cell) extend `empty_membrane` the same way. See
   [`docs/plans/generic-adaptive-cell.md`](docs/plans/generic-adaptive-cell.md).
-- **Food packets.** Small particles of glucose, smaller than a cell (0.8 µm radius fresh, 4×10⁻¹⁴ mol, about a quarter
-  of a daughter's glucose; placeholders), with traces of other species (aspartate, serine, ribose, dimethyl sulfide);
-  a packet shrinks as it is eaten (area in proportion to what is left) and is removed below 1%. A cell touching one
+- **Food packets.** Dead cells or organic particles, smaller than a cell (0.8 µm radius fresh), at a cell's density of
+  glucose equivalents (2.3 M: 1.1 g/mL × 30% dry × 50% carbon, 6 C per glucose; a sphere of its radius, 4.9×10⁻¹⁵ mol,
+  about 3% of a daughter's glucose), with traces of other species (aspartate, serine, ribose, dimethyl sulfide);
+  a packet keeps its density as it is eaten (radius as the cube root of what is left) and is removed below 1%. A cell touching one
   sees the contact concentration (50 mM) at its membrane while it lasts and takes glucose up through its own carriers
   (Glf, and the PTS, ABC and H+ symport once bought, all seeing the same membrane glucose); what it takes beyond the
   background comes out of the packet, which then travels with the creature. Traces are recorded at the membrane for smell (level 3); nothing
@@ -466,6 +468,33 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     starves from day 4 (damage 0.35 by day 7); kept on food 2.98e-13 mol (14 points, two). No content value changed.
   - The famine golden moved by design (realistic G6P pool): against the old one V NRMSE 0.12, ATP 0.05, Na+ 0.03.
 
+- **2026-10-12** Prey, engulfing and the level-2 branch (designer requests; docs/plans/prey-and-branches.md):
+  - Packets have a cell's density: 2.3 M glucose equivalents (1.1 g/mL × 30% dry × 50% carbon / (12 g/mol × 6)), a sphere of
+    the 0.8 µm radius: 4.9e-15 mol (was 4e-14). They keep their density as they are eaten (radius as the cube root of what
+    is left). The hydrolase's substrate is the packet's polymer over its sphere (~2.2 M): saturated, surface-limited.
+  - The surface hydrolase is a trait (×0.25–4 of its membrane share; 700 aa, now sourced from UniProt SusG 692 aa, upstream
+    0db734f, values unchanged). It acts in the environment field and in vacuoles; the contact rule ignores it (open question).
+  - Level 2 brings prey (0.5 µm cells at the packet density, run and tumble at 3 µm/s, `prey_per_s` 2e-4) and engulfing
+    (free, optional): a touching prey cell or packet smaller than the cell goes into the cell's one vacuole (it must stay
+    smaller than the cell; packets leave room for a prey cell). The vacuole is outside the cytosol: the cell's hydrolase
+    digests it (held back while its free sugar is at the 50 mM a packet offers, product inhibition), and the cell's
+    carriers take the sugar up on the share of membrane lining it, (r_v/R)². Engulfing is not documented this early (a
+    eukaryotic trait); the game lets the player explore the phagocytosis-early route, and its text says so.
+  - Multicellularity (5 points) and mitochondria (5 points, after 10 prey swallowed) are exclusive paths at level 2.
+    Without multicellularity a daughter leaves at division and earns reproduction points (`skills.points_per_offspring`
+    5); later colony features require multicellularity. Mitochondria's physiology is planned (buying them changes nothing
+    in the cell yet).
+  - Calibration (field off, contact rule; content notes have the details): food arrivals 3e-3 packets/s (was 1e-4) and
+    lying food 32 per view (was 4), as packets hold ~8x less; `skills.glucose_per_point` stays 2e-14 mol. Left alone at
+    level 1 a cell eats 1.69e-13 mol (8 points), its ATP runs out on day 4 (damage 0.32 by day 7); kept on food 2.98e-13
+    mol (14 points). Level 2, prey 2e-4/s: the untouched creature, starving since level 1, swallows 4 and dies at the end of
+    the level; a fed cell starting level 2 swallows 7 (11 and 6 with 3 flagella in probes with other random sequences). A
+    cell kept on food at growth 3 left 5 daughters in the week (10 reproduction points at 2, now 25 at 5); at the level's
+    own food, growth 2-10 runs ATP out within a day and no daughter is made.
+  - A cell with a vacuole has inputs that change every macro step: it uses the soft restarts (StopAtMacroSteps) the
+    field's cells use. With hard restarts the integrator failed a few seconds after a division (deterministically, at any
+    glucose).
+
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.
@@ -503,5 +532,13 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     food gift costs or requires.
 16. Motion: the creature drifts with the current before it can swim and the view follows it (2026-10-09). Should the
     current's speed and direction vary (tides, eddies), and should the player be able to free the camera?
+18. Starvation is absorbing: once ATP reaches 0 the cell cannot restart glycolysis (hexokinase and the PTS need ATP or
+    PEP), so a gap between food packets longer than its reserve kills it slowly even when food returns. With packets of a
+    real size (2.7 h of eating each) level 1 and 2's outcomes hang on the gaps, and growth at the level's food rate runs
+    ATP out within a day. Keep a small ATP floor, a restart path (glycogen, basal uptake), or richer food? (2026-10-12)
+19. The contact rule (field off) takes a touching packet's polymer as if dissolved, so the hydrolase slider matters only in
+    the field and in vacuoles. Make contact eating hydrolase-limited, or turn the field on by default? (2026-10-12)
+20. libcuflynx's runtime failed after a division with hard restarts on inputs changing every step (vacuole cells): soft
+    restarts avoid it; worth a minimal reproduction upstream. (2026-10-12)
 17. Communication and memory: what a signal costs, what memory stores (places, individuals, threats) and how it
     is modelled (neural cells, a game abstraction, or both). Levels and dates decided when we get there.

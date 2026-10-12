@@ -7,11 +7,15 @@ namespace AdaptOrDeity.Game.Content
     /// <summary>What appears in the world per second (content/timeline.json levels[].arrivals).</summary>
     public readonly struct Arrivals
     {
-        public Arrivals(double foodPerSecond, double carriedShare)
+        public Arrivals(double foodPerSecond, double carriedShare, double preyPerSecond = 0.0)
         {
             FoodPerSecond = foodPerSecond;
             CarriedShare = carriedShare;
+            PreyPerSecond = preyPerSecond;
         }
+
+        /// <summary>Prey cells arriving per second [1/s] (levels[].arrivals.prey_per_s).</summary>
+        public double PreyPerSecond { get; }
 
         /// <summary>Food packets arriving per second [1/s], whatever is already in the field.</summary>
         public double FoodPerSecond { get; }
@@ -55,7 +59,7 @@ namespace AdaptOrDeity.Game.Content
                 foreach (var r in list)
                     if (r is Dictionary<string, object?> d && Equals(d["id"], region) && d.TryGetValue("arrivals", out var own))
                         arrivals = Merge(arrivals, (Dictionary<string, object?>)own!);
-            return new Arrivals(Number(arrivals["food_per_s"]), Number(arrivals["carried_share"]));
+            return new Arrivals(Number(arrivals["food_per_s"]), Number(arrivals["carried_share"]), Number(arrivals["prey_per_s"]));
         }
 
         /// <summary>Simulated time a level lasts [s] (levels[].duration_s); the next level then begins.</summary>

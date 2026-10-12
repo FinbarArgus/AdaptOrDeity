@@ -9,19 +9,40 @@
    "status": "placeholder",
    "note": "other trace species relative to the main one"
   },
-  "food.packet_amount": {
-   "value": 4e-14,
-   "units": "mol",
-   "source": "unreferenced_placeholder",
-   "status": "placeholder",
-   "note": "glucose in a fresh food packet: about a quarter of what a 2 um fermenter needs per daughter (1.5e-13 mol)"
+  "food.dry_mass_fraction": {
+   "value": 0.3,
+   "units": "1",
+   "source": "neidhardt1990physiology",
+   "status": "sourced",
+   "note": "share of a cell's mass that is not water: E. coli dry weight ~2.8e-13 g of ~9.5e-13 g wet (~30%; 70% water, BioNumbers). A food packet is a dead cell or organic particle of the same make-up (confidence medium: aggregates and mucilage hold more water)"
+  },
+  "food.dry_carbon_fraction": {
+   "value": 0.5,
+   "units": "1",
+   "source": "neidhardt1990physiology",
+   "status": "sourced",
+   "note": "carbon's share of a bacterium's dry mass: ~50% (Neidhardt 1990; BioNumbers). With body.cell_density (1.1 g/mL) and food.dry_mass_fraction (0.3) a packet holds 1100 x 0.3 x 0.5 / 0.012011 = 13,700 mol C/m3, i.e. 2,290 mol glucose equivalents/m3 (2.3 M; 6 C per glucose). Medium confidence: the game counts all of a dead cell's carbon as glucose equivalents, though protein and nucleic acid would need other enzymes"
+  },
+  "food.carbon_molar_mass": {
+   "value": 0.012011,
+   "units": "kg/mol",
+   "source": "definitional",
+   "status": "definitional",
+   "note": "molar mass of carbon (IUPAC standard atomic weight 12.011)"
+  },
+  "food.carbons_per_glucose": {
+   "value": 6.0,
+   "units": "1",
+   "source": "definitional",
+   "status": "definitional",
+   "note": "carbon atoms in a glucose (C6H12O6): a packet's carbon counted in glucose equivalents"
   },
   "food.free_fraction": {
    "value": 0.03,
    "units": "1",
    "source": "neidhardt1990physiology",
    "status": "placeholder",
-   "note": "share of a packet (a dead cell) already small molecules: a bacterium's pool of free metabolites is ~3-4% of its dry mass (E. coli); taken as the share of its glucose equivalents, to check"
+   "note": "share of a packet's glucose equivalents already small molecules: a bacterium's pool of free metabolites is ~3-4% of its dry mass (E. coli), taken as the same share of its carbon. At the packet density (2.3 M glucose equivalents) that is ~70 mM of free sugar inside the particle, consistent with food.contact_glucose (50 mM at a touching membrane). To check"
   },
   "food.free_leak_rate": {
    "value": 0.0016666666666666668,
@@ -35,7 +56,7 @@
    "units": "mol/m3",
    "source": "unreferenced_placeholder",
    "status": "placeholder",
-   "note": "glucose a cell touching a food packet sees at its membrane (the particle dissolving into the boundary layer), while the packet lasts"
+   "note": "glucose a cell touching a food packet sees at its membrane (the particle's free sugar, ~70 mM inside it at food.free_fraction of 2.3 M, dissolving into the boundary layer), while the packet lasts. The contact rule takes what the cell takes up from the whole packet, polymer included: the surface hydrolase limits digestion only in the environment field and in a vacuole (engulfing)"
   },
   "food.contact_trace": {
    "value": 0.01,
@@ -49,7 +70,7 @@
    "units": "m",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "radius of a fresh packet: smaller than the 1 um cell (user decision 2026-10-09); it shrinks as it is eaten (area in proportion to what is left)"
+   "note": "radius of a fresh packet (a dead cell or organic particle): smaller than the 1 um cell (user decision 2026-10-09), within the 0.5-2 um particles of docs/research/food-uptake-and-extracellular-space.md. Its amount is that of a sphere of this radius at the packet density (2.3 M glucose equivalents x 4/3 pi r^3 = 4.9e-15 mol); contact with a cell uses the disc of this radius in the plane (the sphere's equator). As it is eaten it keeps its density, so its radius goes as the cube root of what is left"
   },
   "food.carrier_speed": {
    "value": 1e-06,
@@ -59,11 +80,11 @@
    "note": "speed of a creature carrying food (prey, or an ally bringing it) over the ground: 1 um/s, slower than a swimming bacterium (~20 um/s) so it can be met"
   },
   "food.lying_density": {
-   "value": 4400000000.0,
+   "value": 35200000000.0,
    "units": "1/m2",
    "source": "unreferenced_placeholder",
    "status": "placeholder",
-   "note": "food lying on the ground per area: about four packets in the 30 um view (4 / (30 um)^2); a moving creature meets it at density x speed x view width"
+   "note": "food lying on the ground per area when the field is first filled: about 32 packets in the 30 um view (32 / (30 um)^2), 8x the earlier 4 as packets hold ~8x less (2026-10-12). Later lying food comes with the arrivals"
   },
   "food.used_up_fraction": {
    "value": 0.01,
@@ -189,7 +210,14 @@
    "units": "mol",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "glucose eaten from food packets per skill point: calibrated so a level-1 cell left alone for the week earns about 6 points (it ate 1.37e-13 mol) (one 5-point transporter) and one kept on food all week earns about 14 (two), measured 2026-10-12 at 1 µM ocean glucose and 1e-4 packets/s (SkillPointTests checks it). Re-measured with the cell from upstream homogenisation-checks a12d84a (1 mM G6P pool, surface hydrolase, membrane shares), field off (contact rule), unchanged value: left alone it ate 1.55e-13 mol (7 points; 4.3e-14 mol a day while on a packet, food gone during day 4, ATP 0 and damage 0.05 -> 0.35 by day 7), kept on food 2.98e-13 mol (14 points) (LevelTests)"
+   "note": "glucose eaten per skill point: calibrated so a level-1 cell left alone for the week earns one 5-point transporter and one kept on food all week two (LevelTests). Re-measured 2026-10-12 with packets at a cell's density (4.9e-15 mol each), field off, food 3e-3 packets/s: left alone it ate 1.69e-13 mol (8 points; ATP gone on day 4, damage 0.32 by day 7); kept on food (0.01 packets/s) 2.98e-13 mol (14 points), the most its carriers take up without growth (4.3e-14 mol a day). The value is unchanged; the outcome is sensitive to the arrival rate and the random sequence (a probe that redrew the arrivals ate 9.45e-14 mol)"
+  },
+  "skills.points_per_offspring": {
+   "value": 5.0,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "reproduction points: skill points per daughter that leaves the creature at division (no multicellularity), on top of the food points (designer request 2026-10-12: offspring are fitness, so staying single-celled pays for a while). Measured 2026-10-12 (one seed): a level-2 cell kept on food (0.01 packets/s) at growth 3 left 5 daughters in the week (74 food points); at the level's own food (3e-3 packets/s) growth 2-10 runs its ATP out within a day and it leaves none. 5 points = one multicellularity, about what a staying daughter would earn by eating in half a day: the single cell is ahead while the colony is small"
   },
   "field.enabled": {
    "value": 0.0,
@@ -323,6 +351,41 @@
    "source": "definitional",
    "status": "design",
    "note": "cells relative tolerance in the reference environment"
+  },
+  "prey.radius": {
+   "value": 5e-07,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "radius of a prey cell: half the creature's 1 um cell, so a cell can engulf it (marine bacteria are often 0.2-1 um across). Its content is a sphere of this radius at the packet density (1.2e-15 mol glucose equivalents), with the packet's free share"
+  },
+  "prey.run_speed": {
+   "value": 3e-06,
+   "units": "m/s",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "swimming speed of prey over the ground during a run: 3 um/s, slower than swimming bacteria (20-30 um/s) so the creature can meet them"
+  },
+  "prey.mean_run": {
+   "value": 2.0,
+   "units": "s",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "mean run before a tumble (exponential); each tumble sets a new heading at random. E. coli runs ~1 s"
+  },
+  "prey.seed": {
+   "value": 5,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "random seed of the prey (determinism)"
+  },
+  "prey.initial_capacity": {
+   "value": 8,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "prey the first snapshot frames have room for; frames grow when more are in view"
   }
  },
  "trace_species": [
@@ -365,6 +428,7 @@
   "saltzman1993dimethylsulfide": "Saltzman, E. S., King, D. B., Holmen, K. and Leck, C. (1993) Experimental determination of the diffusion coefficient of dimethylsulfide in water. Journal of Geophysical Research 98(C9), 16481-16486",
   "planavsky2014low": "Planavsky, N. J. et al. (2014) Low Mid-Proterozoic atmospheric oxygen levels and the delayed rise of animals. Science 346, 635-638",
   "sheldon2006precambrian": "Sheldon, N. D. (2006) Precambrian paleosols and atmospheric CO2 levels. Precambrian Research 147, 148-155",
-  "millero2010carbonate": "Millero, F. J. (2010) Carbonate constants for estuarine waters. Marine and Freshwater Research 61, 139-142"
+  "millero2010carbonate": "Millero, F. J. (2010) Carbonate constants for estuarine waters. Marine and Freshwater Research 61, 139-142",
+  "neidhardt1990physiology": "Neidhardt, F. C., Ingraham, J. L. and Schaechter, M. (1990) Physiology of the Bacterial Cell: A Molecular Approach. Sinauer Associates, Sunderland MA"
  }
 }
