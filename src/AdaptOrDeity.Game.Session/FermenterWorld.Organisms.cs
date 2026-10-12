@@ -46,6 +46,8 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Its body: one cell at the centre of mass, with the flagella its parent cell had.</summary>
         public CreatureBody Body { get; }
 
+        /// <summary>True until it dies; at its death it leaves <see cref="FermenterWorld.Organisms"/> and its body becomes
+        /// food (<see cref="Remains"/>).</summary>
         public bool Alive => Cell.Alive;
 
         /// <summary>Where its cell is over the ground [m].</summary>
@@ -57,6 +59,12 @@ namespace AdaptOrDeity.Game.Session
         public double ReleasedAt { get; }
 
         public double DiedAt { get; internal set; } = double.NaN;
+
+        /// <summary>
+        /// The food packet its body became when it died (<see cref="PacketKind.Body"/>), or null while it lives. The slot is
+        /// reused for other food once the body is eaten or gone (inactive).
+        /// </summary>
+        public FoodPacket? Remains { get; internal set; }
 
         /// <summary>True while its flagellar motors run (a run; false in a pause).</summary>
         public bool MotorOn { get; internal set; }
@@ -109,10 +117,10 @@ namespace AdaptOrDeity.Game.Session
     /// several take from one packet in a step comes out in turn, the creature's cells first, then the organisms by id, as
     /// colony cells share it), engulfs prey and packets if engulfing was on when it was released, exchanges with the
     /// environment field where the field covers it, divides by itself if it was released with growth and automatic
-    /// division on (its daughters are its offspring: they earn the player nothing), and dies at a lethal damage load.
-    /// A dead organism drifts for organisms.dead_kept and is removed; one farther than organisms.range_view_widths view
-    /// widths from the creature is no longer simulated; at most organisms.max are (a new daughter replaces a dead one,
-    /// else the farthest). Each organism's motion and integration run on the workers, and what organisms share (packets,
+    /// division on (its daughters are the creature's lineage: each earns reproduction points), and dies at a lethal damage
+    /// load. At its death its body becomes food where it lies (<see cref="PacketKind.Body"/>, eaten by the packets' rules)
+    /// and it leaves the list. One farther than organisms.range_view_widths view widths from the creature is no longer
+    /// simulated, nor is a dead body; at most organisms.max organisms are (a new daughter replaces the farthest). Each organism's motion and integration run on the workers, and what organisms share (packets,
     /// the field) is settled afterwards in id order, so results do not depend on the number of workers.
     /// </summary>
     public sealed partial class FermenterWorld
@@ -121,13 +129,13 @@ namespace AdaptOrDeity.Game.Session
         private readonly List<(FreeOrganism Parent, FermenterCell Daughter)> _released =
             new List<(FreeOrganism, FermenterCell)>();
         private int _nextOrganism = 1;
+        private int _bodyTrace = -1;
         private readonly int _motilitySeed = GameParameters.Default.Integer("motility.seed");
         private readonly int _maxOrganisms = GameParameters.Default.Integer("organisms.max");
-        private readonly double _deadKept = GameParameters.Default.Value("organisms.dead_kept");
         private readonly double _rangeWidths = GameParameters.Default.Value("organisms.range_view_widths");
         private Action<int, int>? _organismMotion, _organismPass;
 
-        /// <summary>Free organisms simulated now, in id order (living and recently dead).</summary>
+        /// <summary>Free organisms simulated now, in id order (all living: a dead one is food).</summary>
         public IReadOnlyList<FreeOrganism> Organisms => _organisms;
 
         /// <summary>The free organism with this id, or null if it is not simulated (never released, or removed).</summary>
@@ -148,8 +156,8 @@ namespace AdaptOrDeity.Game.Session
         /// </summary>
         public double OrganismRange => _rangeWidths * 2.0 * _food.HalfSize;
 
-        /// <summary>Free organisms released so far (the creature's daughters and theirs), that died, and that went out of
-        /// range or were replaced at the cap.</summary>
+        /// <summary>Free organisms released so far (the creature's daughters and theirs), that died (their bodies became
+        /// food), and that went out of range or were replaced at the cap.</summary>
         public int OrganismsReleased { get; private set; }
 
         public int OrganismsDied { get; private set; }
@@ -199,10 +207,12 @@ namespace AdaptOrDeity.Game.Session
                 Active(GameFeatures.Swimming), Active(GameFeatures.Engulfing), autoDivides);
         }
 
-        // A daughter of a free organism: released the same way, behind its parent, with what its parent had.
+        // A daughter of a free organism: released the same way, behind its parent, with what its parent had. It is the
+        // creature's lineage: offspring that earns reproduction points.
         private void ReleaseFromOrganism(FreeOrganism parent, FermenterCell daughter)
         {
             parent.Daughters++;
+            Offspring++;
             double angle = parent.Body.Body.Angle;
             Release(daughter, parent.X - _spacing * Math.Cos(angle), parent.Y - _spacing * Math.Sin(angle), angle,
                 parent.Body.FlagellumAngles(0), parent.Id, parent.Generation + 1, parent.Swims, parent.Engulfs,
@@ -229,26 +239,28 @@ namespace AdaptOrDeity.Game.Session
             OrganismsReleased++;
         }
 
-        // At the cap: the first dead organism goes, else the one farthest from the creature (the first of equals).
+        // At the cap: one that died this step becomes food now; else the organism farthest from the creature goes (the
+        // first of equals).
         private void MakeRoom()
         {
-            int gone = -1;
-            for (int k = 0; k < _organisms.Count && gone < 0; k++)
+            for (int k = 0; k < _organisms.Count; k++)
                 if (!_organisms[k].Alive)
-                    gone = k;
-            if (gone < 0)
-            {
-                var b = _body.Body;
-                double far = -1.0;
-                for (int k = 0; k < _organisms.Count; k++)
                 {
-                    var o = _organisms[k];
-                    double d2 = (o.X - b.X) * (o.X - b.X) + (o.Y - b.Y) * (o.Y - b.Y);
-                    if (d2 > far)
-                    {
-                        far = d2;
-                        gone = k;
-                    }
+                    Die(_organisms[k]);
+                    _organisms.RemoveAt(k);
+                    return;
+                }
+            int gone = -1;
+            var b = _body.Body;
+            double far = -1.0;
+            for (int k = 0; k < _organisms.Count; k++)
+            {
+                var o = _organisms[k];
+                double d2 = (o.X - b.X) * (o.X - b.X) + (o.Y - b.Y) * (o.Y - b.Y);
+                if (d2 > far)
+                {
+                    far = d2;
+                    gone = k;
                 }
             }
             Remove(_organisms[gone]);
@@ -468,7 +480,41 @@ namespace AdaptOrDeity.Game.Session
             OrganismsEaten += mol;
         }
 
-        // Deaths, divisions, and organisms that are no longer simulated: dead long enough, or out of range.
+        /// <summary>
+        /// Glucose equivalents in a dead cell's body [mol]: a sphere of the cell's radius at the packet density
+        /// (food.* density: all of a cell's carbon, its small molecules included, as glucose), with food.free_fraction of
+        /// it free. A dead organism's body holds this plus what its vacuole held.
+        /// </summary>
+        public double DeadCellAmount => Settings.SphereAmount(CellRadius);
+
+        // A dead organism's body becomes food where it lies, drifting with its water: its cell at the packet density plus
+        // its vacuole's content (polymer and free sugar as they were), smelling of serine (lysed cells). The packets it
+        // held lie where they are.
+        private void Die(FreeOrganism o)
+        {
+            o.DiedAt = _time;
+            OrganismsDied++;
+            _food.Release(o.Id);
+            double cell = DeadCellAmount, glucose = cell, free = Settings.FreeFraction * cell;
+            if (o.Vacuole != null)
+            {
+                glucose += o.Vacuole.Glucose;
+                free += o.Vacuole.Free;
+                o.Vacuole = null;
+            }
+            var water = o.Body.Body;
+            o.Remains = _food.AddBody(o.X, o.Y, water.CurrentVx, water.CurrentVy, CellRadius, glucose, free, _bodyTrace);
+        }
+
+        private int BodyTrace()
+        {
+            for (int t = 0; t < _food.TraceSpecies.Count; t++)
+                if (_food.TraceSpecies[t].Id == "serine")
+                    return t;
+            return 0;
+        }
+
+        // Deaths (the body becomes food), divisions, and organisms out of range (no longer simulated).
         private void OrganismLives()
         {
             var b = _body.Body;
@@ -479,22 +525,18 @@ namespace AdaptOrDeity.Game.Session
             {
                 var o = _organisms[k];
                 var c = o.Cell;
-                if (!c.Alive && double.IsNaN(o.DiedAt))
+                if (!c.Alive)
                 {
-                    o.DiedAt = _time;
-                    OrganismsDied++;
-                    Remove(o);   // its packets lie where they are; its vacuole's content goes
-                }
-                bool expired = !c.Alive && _time - o.DiedAt >= _deadKept;
-                bool away = Math.Abs(o.X - b.X) > range || Math.Abs(o.Y - b.Y) > range;
-                if (expired || away)
-                {
-                    Remove(o);
-                    if (away && !expired)
-                        OrganismsGone++;
+                    Die(o);
                     continue;
                 }
-                if (o.AutoDivides && c.Alive && c.GrowthProgress >= 1.0)
+                if (Math.Abs(o.X - b.X) > range || Math.Abs(o.Y - b.Y) > range)
+                {
+                    Remove(o);
+                    OrganismsGone++;
+                    continue;
+                }
+                if (o.AutoDivides && c.GrowthProgress >= 1.0)
                 {
                     var daughter = c.Divide();
                     if (daughter != null)

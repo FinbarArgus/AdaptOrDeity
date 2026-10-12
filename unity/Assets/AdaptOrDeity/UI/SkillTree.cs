@@ -118,7 +118,8 @@ namespace AdaptOrDeity.UI
             var features = schema.Features;
             GUILayout.Label($"Skill points: {frame.SkillPoints} to spend", _title);
             GUILayout.Label($"Earned so far: food {frame.FoodPoints}, reproduction {frame.ReproductionPoints} " +
-                            $"({frame.Offspring} daughters left on their own). Eaten: {frame.FoodEaten * 6.02214076e23:G3} glucose " +
+                            $"({frame.Offspring} daughters left on their own: {frame.OwnOffspring} your creature's, " +
+                            $"{frame.Offspring - frame.OwnOffspring} theirs). Eaten: {frame.FoodEaten * 6.02214076e23:G3} glucose " +
                             $"molecules. Prey swallowed: {frame.Swallowed}.", _wrap);
             if (_confirm >= 0)
             {

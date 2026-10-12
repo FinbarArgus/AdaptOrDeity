@@ -160,6 +160,8 @@ namespace AdaptOrDeity.Game.Session
             _body = new CreatureBody(CellRadius, first.External("eta_mod_i_flagellum"), GameParameters.Default.Body());
             AddToBody(0, _defaultAngles);
             _food.Populate(_body.Body.X, _body.Body.Y);
+            _food.BodyRange = OrganismRange;   // dead organisms' bodies stay as long as living ones would
+            _bodyTrace = BodyTrace();
             if (environmentField ?? GameParameters.Default.Value("field.enabled") != 0.0)
             {
                 _environment = CreateEnvironment(first);
@@ -632,8 +634,9 @@ namespace AdaptOrDeity.Game.Session
         public int FoodPoints => (int)Math.Floor(FoodEaten / _glucosePerPoint);
 
         /// <summary>
-        /// Points earned by reproducing: content skills.points_per_offspring for each daughter that left the creature
-        /// (divisions without multicellularity). Daughters that stay in a colony earn none.
+        /// Points earned by reproducing: content skills.points_per_offspring for each daughter released in the creature's
+        /// lineage (<see cref="Offspring"/>: its own daughters without multicellularity, and the daughters of free
+        /// organisms, any generation). Daughters that stay in a colony earn none.
         /// </summary>
         public int ReproductionPoints => (int)Math.Floor(Offspring * _pointsPerOffspring);
 
@@ -770,7 +773,9 @@ namespace AdaptOrDeity.Game.Session
                 return;
             if (!Active(GameFeatures.Multicellularity))
             {
-                Offspring++;   // without multicellularity the daughter swims off on its own (FermenterWorld.Organisms.cs)
+                // without multicellularity the daughter swims off on its own (FermenterWorld.Organisms.cs)
+                Offspring++;
+                OwnOffspring++;
                 ReleaseFromCreature(cell, daughter);
                 return;
             }

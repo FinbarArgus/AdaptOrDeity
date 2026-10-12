@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Game.Session
     /// </summary>
     public static class SnapshotCodec
     {
-        private const int Magic = 0x41534E33;   // "ASN3"
+        private const int Magic = 0x41534E34;   // "ASN4"
 
         // Bytes before the frame's fields: the magic number and the shape (HeaderFields integers).
         private const int HeaderFields = 12, HeaderBytes = 4 + 4 * HeaderFields;
@@ -120,6 +120,7 @@ namespace AdaptOrDeity.Game.Session
             int prey = f.PreyCount; io.Value(ref prey); f.PreyCount = prey;
             int swallowed = f.Swallowed; io.Value(ref swallowed); f.Swallowed = swallowed;
             int offspring = f.Offspring; io.Value(ref offspring); f.Offspring = offspring;
+            int own = f.OwnOffspring; io.Value(ref own); f.OwnOffspring = own;
             int foodPoints = f.FoodPoints; io.Value(ref foodPoints); f.FoodPoints = foodPoints;
             int reproduction = f.ReproductionPoints; io.Value(ref reproduction); f.ReproductionPoints = reproduction;
             int organisms = f.OrganismCount; io.Value(ref organisms); f.OrganismCount = organisms;
@@ -149,6 +150,7 @@ namespace AdaptOrDeity.Game.Session
             io.Block(f.PacketFill);
             io.Block(f.PacketTrace);
             io.Block(f.PacketCarried);
+            io.Block(f.PacketBody);
             io.Block(f.FieldGlucose);
             io.Block(f.PreyX);
             io.Block(f.PreyY);
@@ -163,7 +165,6 @@ namespace AdaptOrDeity.Game.Session
             io.Block(f.OrganismX);
             io.Block(f.OrganismY);
             io.Block(f.OrganismOrientation);
-            io.Block(f.OrganismAlive);
             io.Block(f.OrganismMotorOn);
             io.Block(f.OrganismFlagella);
             io.Block(f.OrganismVacuoleRadius);

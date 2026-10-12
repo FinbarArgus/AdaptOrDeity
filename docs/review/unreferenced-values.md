@@ -24,7 +24,7 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `motility.mean_run` | 2 | s | unreferenced_placeholder | placeholder | mean length of a run with the motor on (random, exponential; E. coli runs ~1 s between tumbles) |
 | `motility.mean_pause` | 4 | s | unreferenced_placeholder | placeholder | mean pause with the motor off between runs (random, exponential); each run sets off in a random direction |
 | `skills.glucose_per_point` | 2e-14 | mol | unreferenced_placeholder | design | glucose eaten per skill point: calibrated so a level-1 cell left alone for the week earns one 5-point transporter and one kept on food all week two (L |
-| `skills.points_per_offspring` | 5 | 1 | unreferenced_placeholder | design | reproduction points: skill points per daughter that leaves the creature at division (no multicellularity), on top of the food points (designer request |
+| `skills.points_per_offspring` | 1 | 1 | unreferenced_placeholder | design | reproduction points: skill points per daughter released in the creature's lineage (its own daughters at division without multicellularity, and its free organisms' daughters, any generation |
 | `field.diffusivity.lactate` | 1e-09 | m2/s | unreferenced_placeholder | placeholder | lactate anion in water: ~1.0e-9 m2/s, typical of small organic anions; needs a measured value |
 | `field.diffusivity.aspartate` | 8e-10 | m2/s | longsworth1953diffusion | placeholder | amino acids of aspartate's size diffuse at ~0.8-0.9e-9 m2/s at 25 C (glycine 1.06e-9, alanine 0.91e-9); aspartate's own value to check |
 | `field.diffusivity.serine` | 8.5e-10 | m2/s | longsworth1953diffusion | placeholder | near alanine's 0.91e-9 m2/s at 25 C; serine's own value to check |
@@ -36,7 +36,6 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `prey.radius` | 5e-07 | m | unreferenced_placeholder | design | radius of a prey cell: half the creature's 1 um cell, so a cell can engulf it (marine bacteria are often 0.2-1 um across). Its content is a sphere of  |
 | `prey.run_speed` | 3e-06 | m/s | unreferenced_placeholder | design | swimming speed of prey over the ground during a run: 3 um/s, slower than swimming bacteria (20-30 um/s) so the creature can meet them |
 | `prey.mean_run` | 2 | s | unreferenced_placeholder | placeholder | mean run before a tumble (exponential); each tumble sets a new heading at random. E. coli runs ~1 s |
-| `organisms.dead_kept` | 600 | s | unreferenced_placeholder | design | how long a dead free organism stays in the water (drifting, drawn grey) before it is removed; it does not become food yet |
 
 ## Cited from memory, to check (marked "sourced" but not looked up)
 

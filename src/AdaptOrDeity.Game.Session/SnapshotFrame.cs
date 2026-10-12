@@ -17,7 +17,6 @@ namespace AdaptOrDeity.Game.Session
             OrganismX = new float[organismCapacity];
             OrganismY = new float[organismCapacity];
             OrganismOrientation = new float[organismCapacity];
-            OrganismAlive = new bool[organismCapacity];
             OrganismMotorOn = new bool[organismCapacity];
             OrganismFlagella = new float[organismCapacity];
             OrganismFlagellumAngles = Allocate<float>(organismCapacity, AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella);
@@ -40,6 +39,7 @@ namespace AdaptOrDeity.Game.Session
             PacketFill = new float[packetCapacity];
             PacketTrace = new int[packetCapacity];
             PacketCarried = new bool[packetCapacity];
+            PacketBody = new bool[packetCapacity];
             FlagellumAngles = Allocate<float>(cellCapacity, AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella);
             TraitArea = Allocate(traitCount, cellCapacity);
             CellSurface = new float[cellCapacity];
@@ -189,6 +189,10 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>True if the packet is carried by another creature; false if it lies on the ground.</summary>
         public bool[] PacketCarried { get; }
 
+        /// <summary>True if the packet is a dead free organism's body (drawn as a dead cell); its radius shrinks as it is
+        /// eaten.</summary>
+        public bool[] PacketBody { get; }
+
         /// <summary>Prey cells around the creature; only the first <see cref="PreyCount"/> are valid. Positions relative to
         /// the creature and radii [m], ground axes.</summary>
         public int PreyCount { get; internal set; }
@@ -205,8 +209,11 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Prey cells the creature has engulfed since the start.</summary>
         public int Swallowed { get; internal set; }
 
-        /// <summary>Daughters that left the creature (divisions without multicellularity).</summary>
+        /// <summary>Daughters released in the creature's lineage (each earns reproduction points), and how many of them
+        /// are its own (generation 1); the rest are its free organisms' daughters.</summary>
         public int Offspring { get; internal set; }
+
+        public int OwnOffspring { get; internal set; }
 
         /// <summary>
         /// Free-living organisms (daughters released without multicellularity, and their offspring), in id order; only the
@@ -225,8 +232,6 @@ namespace AdaptOrDeity.Game.Session
         public float[] OrganismY { get; }
 
         public float[] OrganismOrientation { get; }
-
-        public bool[] OrganismAlive { get; }
 
         /// <summary>Per organism: true while its flagellar motors run.</summary>
         public bool[] OrganismMotorOn { get; }
@@ -248,7 +253,8 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Per cell-panel detail (schema order): the inspected organism's value in SI.</summary>
         public double[] OrganismDetails { get; }
 
-        /// <summary>Free organisms released so far, that died, and that went out of range (or were replaced at the cap).</summary>
+        /// <summary>Free organisms released so far, that died (their bodies became food), and that went out of range (or were
+        /// replaced at the cap).</summary>
         public int OrganismsReleased { get; internal set; }
 
         public int OrganismsDied { get; internal set; }

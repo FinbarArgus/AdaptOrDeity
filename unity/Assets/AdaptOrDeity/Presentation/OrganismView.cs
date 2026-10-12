@@ -5,13 +5,13 @@ namespace AdaptOrDeity.Presentation
     /// <summary>
     /// Draws one free-organism slot: a daughter that left the creature (or one of its offspring), drawn like the
     /// creature's cells but paler and with a white outline, so it is plainly not the player's. It grows as it builds a
-    /// daughter, takes the overlay's colour when one is shown, turns grey when dead, and its flagella trail from their
-    /// bases and beat while its motors run. Hidden while the slot is empty.
+    /// daughter, takes the overlay's colour when one is shown, and its flagella trail from their bases and beat while its
+    /// motors run. Frames carry living organisms only: a dead one's body is food (<see cref="PacketView"/>). Hidden while
+    /// the slot is empty.
     /// </summary>
     public sealed class OrganismView : MonoBehaviour
     {
         private static readonly Color PlainColour = new Color(0.74f, 0.90f, 0.74f, 0.9f);
-        private static readonly Color DeadColour = new Color(0.55f, 0.55f, 0.55f, 0.8f);
         private static readonly Color OutlineColour = new Color(0.95f, 0.98f, 1f, 0.9f);
         private static readonly Color VacuoleColour = new Color(0.95f, 0.78f, 0.40f, 0.85f);
         private const int TailPoints = 12;
@@ -96,11 +96,8 @@ namespace AdaptOrDeity.Presentation
             _body.transform.localScale = new Vector3(d, d, 1f);
             _outline.transform.localScale = new Vector3(d * 1.1f, d * 1.1f, 1f);
             _outline.color = OutlineColour;
-            bool alive = f.OrganismAlive[_slot];
             int overlay = _bridge.ActiveOverlay;
-            if (!alive)
-                _body.color = DeadColour;
-            else if (overlay < 0 || overlay >= f.OrganismChannels.Length)
+            if (overlay < 0 || overlay >= f.OrganismChannels.Length)
                 _body.color = PlainColour;
             else
             {
@@ -110,15 +107,15 @@ namespace AdaptOrDeity.Presentation
                 _body.color = Color.Lerp(c, Color.white, 0.25f);   // paler than the creature's cells
             }
             float vacuole = f.OrganismVacuoleRadius[_slot] * u;
-            _vacuole.enabled = alive && vacuole > 0f;
+            _vacuole.enabled = vacuole > 0f;
             _vacuole.transform.localScale = new Vector3(2f * vacuole, 2f * vacuole, 1f);
-            DrawFlagella(f, 0.5f * grown, alive);
+            DrawFlagella(f, 0.5f * grown);
         }
 
         // Fixed at their base angles on the membrane, turning with the organism, beating while its motors run.
-        private void DrawFlagella(AdaptOrDeity.Game.Session.SnapshotFrame f, float radius, bool alive)
+        private void DrawFlagella(AdaptOrDeity.Game.Session.SnapshotFrame f, float radius)
         {
-            float count = alive ? f.OrganismFlagella[_slot] : 0f;
+            float count = f.OrganismFlagella[_slot];
             float beat = f.OrganismMotorOn[_slot] ? Time.time * 25f : 0f;
             const float length = 0.35f;   // as the creature's: ~3.5 µm
             for (int i = 0; i < _tails.Length; i++)
