@@ -15,6 +15,7 @@ namespace AdaptOrDeity.Presentation
         private ISessionFront _session;
         private readonly List<CellView> _views = new List<CellView>();
         private readonly List<PacketView> _packets = new List<PacketView>();
+        private readonly List<PreyView> _prey = new List<PreyView>();
         private Camera _camera;
         private float _zoom = 1f;   // multiplies the size that frames the colony
 
@@ -143,6 +144,14 @@ namespace AdaptOrDeity.Presentation
                 view.Initialise(this, _packets.Count, CellView.CircleSprite());
                 _packets.Add(view);
             }
+            while (_prey.Count < Frame.PreyX.Length)
+            {
+                var go = new GameObject($"Prey {_prey.Count}");
+                go.transform.SetParent(transform, false);
+                var view = go.AddComponent<PreyView>();
+                view.Initialise(this, _prey.Count, CellView.CircleSprite());
+                _prey.Add(view);
+            }
             FrameCamera();
         }
 
@@ -150,6 +159,15 @@ namespace AdaptOrDeity.Presentation
         public PacketView PacketAt(Vector2 world)
         {
             foreach (var p in _packets)
+                if (p.Contains(world))
+                    return p;
+            return null;
+        }
+
+        /// <summary>The prey cell under a world point, or null.</summary>
+        public PreyView PreyAt(Vector2 world)
+        {
+            foreach (var p in _prey)
                 if (p.Contains(world))
                     return p;
             return null;

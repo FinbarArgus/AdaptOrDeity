@@ -67,6 +67,7 @@ namespace AdaptOrDeity.Presentation
             float scale = grown * (_bridge.SelectedCell == _cellIndex ? 1.12f : 1f);
             transform.localScale = new Vector3(scale, scale, 1f);
             DrawFlagella(frame, 0.5f * grown);
+            DrawVacuole(frame);
             if (!frame.CellAlive[_cellIndex])
             {
                 _renderer.color = DeadColour;
@@ -227,6 +228,35 @@ namespace AdaptOrDeity.Presentation
                 }
                 start += sweep + gap;
             }
+        }
+
+        private SpriteRenderer _vacuole;
+        private static readonly Color FoodVacuole = new Color(0.95f, 0.78f, 0.40f, 0.85f);
+        private static readonly Color PreyVacuole = new Color(0.62f, 0.40f, 0.85f, 0.9f);
+
+        /// <summary>
+        /// What the cell has engulfed: its vacuole drawn inside it, where the item came in, at its size (it shrinks as it is
+        /// digested); violet when it holds prey cells, amber for food packets only.
+        /// </summary>
+        private void DrawVacuole(AdaptOrDeity.Game.Session.SnapshotFrame frame)
+        {
+            if (_vacuole == null)
+            {
+                var go = new GameObject($"Vacuole {_cellIndex}");
+                go.transform.SetParent(_tailRoot, false);
+                _vacuole = go.AddComponent<SpriteRenderer>();
+                _vacuole.sprite = CircleSprite();
+                _vacuole.sortingOrder = 2;   // over the cell's body
+            }
+            float r = frame.VacuoleRadius.Length > _cellIndex ? frame.VacuoleRadius[_cellIndex] : 0f;
+            _vacuole.enabled = r > 0f;
+            if (r <= 0f)
+                return;
+            var at = _bridge.BodyRelative(frame.VacuoleX[_cellIndex], frame.VacuoleY[_cellIndex]);
+            _vacuole.transform.localPosition = new Vector3(at.x, at.y, -0.05f);
+            float d = 2f * r * UnitsPerMetre;
+            _vacuole.transform.localScale = new Vector3(d, d, 1f);
+            _vacuole.color = frame.VacuolePrey[_cellIndex] > 0 ? PreyVacuole : FoodVacuole;
         }
 
         public static Sprite CircleSprite()

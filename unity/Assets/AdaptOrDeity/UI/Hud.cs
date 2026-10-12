@@ -158,10 +158,25 @@ namespace AdaptOrDeity.UI
                 if (GUILayout.Button("+", GUILayout.Width(24)))
                     bridge.Send(SimCommands.SetLevel(frame.Level + 1));
                 int forSale = SkillTree.ForSale(bridge.Schema, frame);
+                string earned = $"earned: food {frame.FoodPoints}, reproduction {frame.ReproductionPoints}";
                 if (GUILayout.Button(new GUIContent($"Skills ({frame.SkillPoints})",
-                        forSale > 0 ? $"{forSale} to evolve; points come from food eaten" : "points come from food eaten"),
-                        GUILayout.Width(90)))
+                        (forSale > 0 ? $"{forSale} to evolve; " : "") + earned), GUILayout.Width(90)))
                     SkillTree.Toggle();
+                if (frame.Level >= 2)
+                {
+                    // prey swallowed (10 open the mitochondria path) and daughters that left (reproduction points)
+                    GUILayout.Label(new GUIContent($"Swallowed {frame.Swallowed}",
+                        "prey cells your cells have engulfed; 10 make mitochondria available"), GUILayout.Width(95));
+                    GUILayout.Label(new GUIContent($"Offspring {frame.Offspring}",
+                        "daughters that swam off on their own (without multicellularity); each earns reproduction points"),
+                        GUILayout.Width(85));
+                    // development aids until play-testing is done: points and a prey cell swimming at the creature
+                    if (GUILayout.Button(new GUIContent("+5", "development: 5 skill points"), GUILayout.Width(30)))
+                        bridge.Send(SimCommands.DevGrantPoints(5));
+                    if (GUILayout.Button(new GUIContent("Prey", "development: a prey cell swimming at the creature"),
+                            GUILayout.Width(44)))
+                        bridge.Send(SimCommands.DevSpawnPrey());
+                }
                 GUILayout.Space(12);
             }
             var labels = new string[bridge.Schema.SpeedPresets.Count];
@@ -285,6 +300,14 @@ namespace AdaptOrDeity.UI
             if (cam == null || mouse.x > Screen.width - RightInset())
                 return;
             var world = (Vector2)cam.ScreenToWorldPoint(new Vector3(mouse.x, Screen.height - mouse.y, 0f));
+            var prey = bridge.PreyAt(world);
+            if (prey != null && prey.Slot < frame.PreyCount)
+            {
+                bool canEngulf = frame.Level >= 2;
+                ShowTooltip(mouse, "Prey cell\nA small bacterium, swimming by run and tumble\n" +
+                    (canEngulf ? "Your cells engulf it on contact (Engulfing)" : "Engulfing comes at level 2"));
+                return;
+            }
             var packet = bridge.PacketAt(world);
             if (packet == null || packet.Slot >= frame.PacketCount)
                 return;
@@ -292,6 +315,14 @@ namespace AdaptOrDeity.UI
             int t = frame.PacketTrace[packet.Slot];
             string text = $"Food packet\nGlucose left: {100f * frame.PacketFill[packet.Slot]:F0}%\n" +
                           $"Smells of {(t < traces.Count ? traces[t] : "?")} (needs a receptor to sense)";
+            _tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, richText = true, padding = new RectOffset(8, 8, 6, 6) };
+            var content = new GUIContent(text);
+            var size = _tooltipStyle.CalcSize(content);
+            GUI.Box(new Rect(mouse.x + 16, mouse.y + 16, size.x, size.y), content, _tooltipStyle);
+        }
+
+        private void ShowTooltip(Vector2 mouse, string text)
+        {
             _tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, richText = true, padding = new RectOffset(8, 8, 6, 6) };
             var content = new GUIContent(text);
             var size = _tooltipStyle.CalcSize(content);
