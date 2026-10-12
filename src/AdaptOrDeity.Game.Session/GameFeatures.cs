@@ -26,6 +26,8 @@ namespace AdaptOrDeity.Game.Session
         public const string AbcTransport = "abc_transport";
         public const string ProtonSymport = "proton_symport";
         public const string CarbonRegulation = "carbon_regulation";
+        public const string BoundaryInnerGroups = "boundary_inner_groups";
+        public const string ExtracellularMatrix = "extracellular_matrix";
 
         public static readonly IReadOnlyList<FeatureInfo> All = WithExplanations(new[]
         {
@@ -54,6 +56,10 @@ namespace AdaptOrDeity.Game.Session
             new FeatureInfo(Chemosensing, "Smell (chemoreceptors)", 3, true, true,
                 "Sense the trace species food packets carry, to swim towards them. Planned."),
             new FeatureInfo(MembraneRespiration, "Membrane respiration", 4, true, false, "Planned."),
+            new FeatureInfo(BoundaryInnerGroups, "Boundary and inner cells", 4, false, true,
+                "Water between three neighbouring cells becomes a shared space of its own. Cells with part of their edge on open water form the boundary group; cells surrounded by other cells form the inner group. Each group has its own sliders, and cells move between the groups as the colony grows."),
+            new FeatureInfo(ExtracellularMatrix, "Extracellular matrix", 4, true, true,
+                "A slider for each group sets how much matrix (a sugar polymer) its cells export into the space between cells. Each glucose unit of matrix costs one glucose and about 3 ATP. The matrix slows diffusion through the gaps and breaks down slowly, returning some glucose. Matrix made where a cell faces open water is lost to the sea."),
             new FeatureInfo(Mitochondria, "Mitochondria", 5, true, false, "Planned."),
             new FeatureInfo(MultipleGroups, "Several cell groups", 6, true, false,
                 "Split cells into groups adapted separately (organs later); sliders change every cell in a group."),

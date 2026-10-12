@@ -37,6 +37,9 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Storing glucose as glycogen.</summary>
         public double AtpStorage;
 
+        /// <summary>Making extracellular matrix (exopolysaccharide).</summary>
+        public double AtpMatrix;
+
         /// <summary>The remaining maintenance ATPase: everything not yet itemised.</summary>
         public double AtpOtherMaintenance;
 
@@ -46,7 +49,7 @@ namespace AdaptOrDeity.Sim.Physiology
         public double AtpProduced => AtpGlycolysis + AtpFromGlycogen;
 
         public double AtpConsumed => AtpPumps + AtpProteinTurnover + AtpProteinBuild + AtpRna + AtpLipids + AtpRepair
-                                     + AtpGrowth + AtpStorage + AtpOtherMaintenance;
+                                     + AtpGrowth + AtpStorage + AtpMatrix + AtpOtherMaintenance;
     }
 
     /// <summary>
@@ -65,11 +68,12 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly bool[] _isOutput;
         private bool _variablesCurrent;
         private readonly int[] _target, _expression, _areaPerUnit;
-        private readonly int _growthLevel, _storeAlloc, _repairLevel, _jRef;
+        private readonly int _growthLevel, _storeAlloc, _repairLevel, _matrixAlloc, _jRef;
         private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aRna, _aRibo, _aLipid, _aRepair;
         private readonly int _aGrowthUsed, _aHeat, _aVol, _aSurface, _aAreaMax, _aDaughter, _aProgress, _aGlycProgress;
         private readonly int _aGlycAtp, _aUptake, _aThrust, _aFlagPower, _eGlucose, _eMotor;
         private readonly int _aGlcOut, _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
+        private readonly int _aMatrix, _aAtpMatrix;
         private readonly int _sDamage, _sGrowth, _sGlycogen;
 
         /// <summary>The fermenter module in the game's module library.</summary>
@@ -105,12 +109,14 @@ namespace AdaptOrDeity.Sim.Physiology
             _growthLevel = Ext(GrowthParameter);
             _storeAlloc = Ext(StorageParameter);
             _repairLevel = Ext(RepairParameter);
+            _matrixAlloc = Ext(MatrixParameter);
             var player = new List<string>();
             foreach (var t in traits)
                 player.Add(t.TargetParameter);
             player.Add(GrowthParameter);
             player.Add(StorageParameter);
             player.Add(RepairParameter);
+            player.Add(MatrixParameter);
             PlayerParameters = player;
             _jRef = Ext("J_ref_mod_protein");
             _aGly = Alg("cytosol__J_ATP_gly");
@@ -144,6 +150,8 @@ namespace AdaptOrDeity.Sim.Physiology
             _eLactate = Ext("C_lac_e_mod_membrane_face");
             _eHe = Ext("H_e_mod_membrane_face");
             _eHo = Ext("H_o_mod_H");
+            _aMatrix = Alg("cytosol__J_mx");
+            _aAtpMatrix = Alg("cytosol__J_ATP_mx");
             _sDamage = St("bio__D");
             _sGrowth = St("bio__P_growth");
             _sGlycogen = St("cytosol__C_glyc");
@@ -172,14 +180,15 @@ namespace AdaptOrDeity.Sim.Physiology
         }
 
         private const string GrowthParameter = "growth_level_mod_bio", StorageParameter = "store_alloc_mod_cytosol",
-            RepairParameter = "repair_level_mod_bio";
+            RepairParameter = "repair_level_mod_bio", MatrixParameter = "mx_alloc_mod_cytosol";
 
         public KernelBatch Batch { get; }
 
         /// <summary>The module's parameter set the cell started from.</summary>
         public string Instance { get; }
 
-        /// <summary>Module parameters the player sets: each trait's target, then the growth, storage and repair controls.</summary>
+        /// <summary>Module parameters the player sets: each trait's target, then the growth, storage, repair and matrix
+        /// controls.</summary>
         public IReadOnlyList<string> PlayerParameters { get; }
 
         public IReadOnlyList<TraitDefinition> Traits { get; }
@@ -243,6 +252,9 @@ namespace AdaptOrDeity.Sim.Physiology
 
         /// <summary>Glucose taken up [mol/s].</summary>
         public double GlucoseUptake => A(_aUptake);
+
+        /// <summary>Extracellular matrix exported [mol of glucose units/s].</summary>
+        public double MatrixExport => A(_aMatrix);
 
         /// <summary>Thrust of one flagellum [N].</summary>
         public double FlagellumThrust => A(_aThrust);
@@ -331,6 +343,13 @@ namespace AdaptOrDeity.Sim.Physiology
         {
             get => Batch.Externals[_storeAlloc][0];
             set => Batch.Externals[_storeAlloc][0] = Math.Min(1.0, Math.Max(0.0, value));
+        }
+
+        /// <summary>Share of the matrix-making capacity in use, 0-1.</summary>
+        public double MatrixAllocation
+        {
+            get => Batch.Externals[_matrixAlloc][0];
+            set => Batch.Externals[_matrixAlloc][0] = Math.Min(1.0, Math.Max(0.0, value));
         }
 
         /// <summary>How much the cell invests in repair, 0-1.</summary>
@@ -452,6 +471,7 @@ namespace AdaptOrDeity.Sim.Physiology
                 AtpRepair = a[_aRepair][0],
                 AtpGrowth = a[_aGrowthUsed][0],
                 AtpStorage = a[_aStore][0],
+                AtpMatrix = a[_aAtpMatrix][0],
                 AtpOtherMaintenance = a[_aMaint][0],
                 Heat = a[_aHeat][0],
             };

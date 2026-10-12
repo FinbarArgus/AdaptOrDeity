@@ -281,6 +281,26 @@
    "reviewed": false
   },
   {
+   "id": "boundary_inner_groups",
+   "name": "Boundary and inner cells",
+   "unlock_level": 4,
+   "optional": false,
+   "default_enabled": true,
+   "effect": "Water between three neighbouring cells becomes a shared space of its own. Cells with part of their edge on open water form the boundary group; cells surrounded by other cells form the inner group. Each group has its own sliders, and cells move between the groups as the colony grows.",
+   "explanation": "By about 1.8 billion years ago bacteria had lived in mats and biofilms for more than 1.5 billion years. In a biofilm, cells sit in a shared, unsealed space between them. Food, waste and acid diffuse through the narrow gaps between cells, so cells on the surface see the sea while cells inside see what their neighbours have left. Gradients form across the colony: in modern biofilms oxygen reaches only 50 to 100 micrometres in, and fermenting biofilms such as dental plaque turn acidic inside. The same cell type can then be in two very different places. Splitting the colony into its boundary and its inside is the first step towards a body with an outside and an inside.",
+   "reviewed": false
+  },
+  {
+   "id": "extracellular_matrix",
+   "name": "Extracellular matrix",
+   "unlock_level": 4,
+   "optional": true,
+   "default_enabled": true,
+   "effect": "A slider for each group sets how much matrix (a sugar polymer) its cells export into the space between cells. Each glucose unit of matrix costs one glucose and about 3 ATP. The matrix slows diffusion through the gaps and breaks down slowly, returning some glucose. Matrix made where a cell faces open water is lost to the sea.",
+   "explanation": "Biofilm bacteria wrap themselves in extracellular polymeric substances (EPS), mostly polysaccharides. In many biofilms the matrix makes up most of the dry mass, often over 90%, against a few percent for the cells. Making it is costly. Each sugar is phosphorylated and activated as a nucleotide sugar (UDP-glucose or ADP-glucose), polymerised, often on a lipid carrier, and exported. That is about 2 to 4 ATP per sugar unit on top of the sugar itself, and a fermenting cell also loses the 2 ATP it would have made from that glucose. The matrix holds the colony together and slows the diffusion of solutes, keeping what the colony makes and finds near its cells. Its hydrolases also let cells reclaim some of it when food runs short. It is also a public good: neighbours that make none still benefit from it.",
+   "reviewed": false
+  },
+  {
    "id": "mitochondria",
    "name": "Mitochondria",
    "unlock_level": 5,

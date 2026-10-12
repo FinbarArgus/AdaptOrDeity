@@ -148,13 +148,15 @@ namespace AdaptOrDeity.Game.Session
                 var c = _cells[i];
                 if (!c.Alive)
                     continue;
-                double glucose = c.GlucoseRelease;
+                // only the share of the cell's edge on open water (all of it before level 4; the rest went into the
+                // space between cells)
+                double glucose = OpenGlucoseRelease(i), w = _openReleaseShare[i];
                 env.Exchange(EnvironmentField.Glucose, _cellX[i], _cellY[i], glucose);
-                env.Exchange(EnvironmentField.Lactate, _cellX[i], _cellY[i], c.LactateRelease);
-                env.Exchange(EnvironmentField.Acid, _cellX[i], _cellY[i], c.ProtonRelease);
+                env.Exchange(EnvironmentField.Lactate, _cellX[i], _cellY[i], w * c.LactateRelease);
+                env.Exchange(EnvironmentField.Acid, _cellX[i], _cellY[i], w * c.ProtonRelease);
                 CellGlucoseExchanged -= glucose * dt;
                 // food eaten: the share of the uptake above the open water's glucose
-                double m = c.MembraneGlucose;
+                double m = _gaps != null ? _openGlucose[i] : c.MembraneGlucose;
                 if (glucose < 0.0 && m > ocean)
                     FoodEaten += -glucose * dt * (m - ocean) / m;
             }

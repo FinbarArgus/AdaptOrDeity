@@ -55,6 +55,13 @@ def run(module: AnalysedModule, instance: str, duration: float, interval: float)
         path.write_text(text)
         model = myokit.formats.importer("cellml").model(str(path))
     columns = [v.name for v in module.states] + [v.name for v in module.algebraic]
+    if not module.states:
+        # a module without states (e.g. a diffusion face) has nothing to integrate: its values are constant once its
+        # inputs are fixed, so the trace is those values at every logged time
+        qnames = [f"{module.component}.{n}" for n in columns]
+        values = [model.get(q).eval() for q in qnames]
+        times = [i * interval for i in range(int(duration / interval + 0.5) + 1)]
+        return ["time"] + columns, [[t] + values for t in times]
     # Myokit cannot log quantities that are constant once inputs are fixed (e.g. membrane area); leave them out.
     columns = [n for n in columns if not model.get(f"{module.component}.{n}").is_constant()]
     qnames = [f"{module.component}.{n}" for n in columns]

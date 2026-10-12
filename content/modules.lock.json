@@ -35,8 +35,8 @@
         "nrmse_tolerance": 0.01,
         "compare": "states"
       },
-      "sha256": "cb212335cacd378be95ff486d2a83a31b711414190c86836cbbfc1f950f64f8d",
-      "per_cell_inputs_note": "inputs the game sets per cell (FermenterWorld, FermenterCell): glucose, lactate and H+ at the membrane (H+ also as H_o), the motor, each trait target (clamped per cell to the membrane room) and the growth, storage and repair controls; every other input is shared by the cells of a group (docs/plans/parallel-and-gpu.md)",
+      "sha256": "cd393e7e033f39ae3d25bf1060159490729a340af80d7b51f8b78bf5dd4d9333",
+      "per_cell_inputs_note": "inputs the game sets per cell (FermenterWorld, FermenterCell): glucose, lactate and H+ at the membrane (H+ also as H_o), the motor, each trait target (clamped per cell to the membrane room) and the growth, storage, repair and matrix controls; every other input is shared by the cells of a group (docs/plans/parallel-and-gpu.md)",
       "per_cell_inputs": [
         "C_glc_e_mod_membrane_face",
         "C_lac_e_mod_membrane_face",
@@ -54,7 +54,8 @@
         "m_target_mod_pool_Glyc",
         "growth_level_mod_bio",
         "store_alloc_mod_cytosol",
-        "repair_level_mod_bio"
+        "repair_level_mod_bio",
+        "mx_alloc_mod_cytosol"
       ],
       "outputs": [
         "membrane_face__J_glc",
@@ -76,8 +77,44 @@
         "pool_NCX__a_unit",
         "pool_Glf__a_unit",
         "pool_LacT__a_unit",
-        "pool_Flagellum__a_unit"
+        "pool_Flagellum__a_unit",
+        "cytosol__J_mx"
       ]
+    },
+    {
+      "category": "",
+      "module_type": "extracellular_volume",
+      "version": "biofilm_ArgusUNPUBLISHED_v01",
+      "root": "content/upstream",
+      "note": "one volume of the space between cells (level 4); copied from circulatory-autogen-modules branch feat/extracellular-matrix c34eb0b (tools/build_extracellular_space.py) until it is merged upstream and the submodule follows",
+      "instances": [
+        "default"
+      ],
+      "golden": {
+        "duration_s": 600.0,
+        "interval_s": 5.0
+      },
+      "sha256": "d36fcee51d9255ef0c76b4d6339509197b35ba29da5506dcfc2ae8aa0c00a0fc",
+      "per_cell_inputs_note": "the game makes a copy per gap between three cells (ExtracellularSpace) and sets its volume and the matrix the cells deliver; diffusion between volumes is the game's transport step with the extracellular_face law",
+      "outputs": [
+        "f_hind",
+        "J_mx_lost"
+      ]
+    },
+    {
+      "category": "",
+      "module_type": "extracellular_face",
+      "version": "biofilm_ArgusUNPUBLISHED_v01",
+      "root": "content/upstream",
+      "note": "diffusion between two volumes of the space between cells; the game reads its diffusivities and applies its conductance law in the transport step (ExtracellularSpace.Conductance, checked against this module); copied from circulatory-autogen-modules branch feat/extracellular-matrix c34eb0b (tools/build_extracellular_space.py) until it is merged upstream and the submodule follows",
+      "instances": [
+        "default"
+      ],
+      "sha256": "b5ea9d9e9080590427c81c68bea616273216d54dbfbbf102a4ee76d309fbe0db",
+      "golden": {
+        "duration_s": 10.0,
+        "interval_s": 1.0
+      }
     }
   ]
 }

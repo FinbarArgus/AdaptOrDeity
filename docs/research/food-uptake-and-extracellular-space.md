@@ -54,7 +54,7 @@ check). [M]
 
 ## Extracellular space between cells
 - Prokaryotes: biofilms and mats from 3.48 Ga (Noffke 2013) and stromatolites 3.43 Ga (Allwood 2006) [H]. The matrix
-  (EPS, ~90% of biofilm dry mass; Flemming & Wingender 2010) slows diffusion to ~0.25-0.9 of water (Stewart 2003, check)
+  (EPS, 50-90% of the organic matter and often >90% of the dry mass; Flemming & Wingender 2010) and the cells together slow diffusion to 0.2-0.8 of water, ~0.25 for organic solutes and ~0.6 for gases (Stewart 2003; Stewart 1998)
   and O2 reaches only ~50-100 µm into active biofilms (Stewart & Franklin 2008): a shared, unsealed space with gradients.
 - Filamentous cyanobacteria: multicellularity ~2.5-2.4 Ga (Schirrmeister 2015) [M]; a continuous periplasm under one
   outer membrane, septal junctions between cells (Flores 2006, check; Flores & Herrero 2010; Mullineaux 2008) [H];
@@ -67,6 +67,73 @@ check). [M]
 - For the game: at level 4 (~1.8 Ga, prokaryote) a biofilm or filament colony is defensible: boundary cells face the
   sea, inner cells sit in a shared matrix (or shared periplasm), unsealed, with slowed diffusion and O2 falling inwards.
   A sealed, regulated interstitial fluid belongs to animals (level 7); adhesion and matrix proteins to level 6.
+
+## Cost of making the matrix (EPS)
+Literature summary (2026-10-12) for level 4's matrix control. No source gives a measured ATP per gram of EPS: the per-sugar
+cost below is pathway accounting, so treat it as [M] at best.
+
+**Cost per sugar unit, beyond the glucose itself**
+- Activation: the sugar is phosphorylated (PTS or hexokinase, 1 ATP-equivalent), then glucose-1-P is activated with UTP or
+  ATP to a nucleotide sugar plus PPi. UTP is regenerated at 1 ATP, and PPi hydrolysis spends another phosphoanhydride
+  bond. That is ~2-3 ATP-equivalents per residue, the same chemistry as the model's glycogen (2 ATP per unit) [M].
+- Synthase-dependent pathways (cellulose BcsA, alginate, PNAG; Pel and Psl in part) polymerise straight from the
+  nucleotide sugar and export through a coupled pore. Their cost is about the activation cost, ~2-3 [M] (Sutherland 2001).
+- Wzx/Wzy heteropolysaccharides, as in lactic acid bacteria and many Gram-negatives, build repeat units on an
+  undecaprenyl-phosphate carrier. Recycling the carrier adds ~1 phosphoanhydride per repeat (0.2-0.5 per sugar).
+  Epimerase and dehydrogenase steps add 0-3 on some residues, and export through Wza/Wzc costs little. In total ~3-4 per
+  residue [L-M] (De Vuyst & Degeest 1999; Welman & Maddox 2003). ABC-dependent export adds ~1 per unit, and acetylation
+  ~1 per group [L].
+- So the direct cost is ~2-4 ATP-equivalents per sugar unit above the sugar [M]. The glucose a fermenter diverts also loses
+  the 2 ATP glycolysis would have made from it. That opportunity cost is NOT added: the model accounts for it itself
+  (the glucose leaves the cytosol) [H].
+
+**Carbon**
+- A glucosyl residue is 162 g/mol against 180 g/mol for glucose, so 1.11 g of glucose per g of EPS at full carbon
+  efficiency [H]. High-yield industrial producers (xanthan) reach ~0.5 g EPS per g glucose, a ceiling [M].
+- Lactic acid bacteria make little EPS: tens to a few hundred mg/L from 20-40 g/L sugar, ~0.5-3% of the sugar fermented
+  (Welman & Maddox 2003; De Vuyst & Degeest 1999) [M].
+- In biofilms the matrix is most of the biomass (above). The share of one cell's carbon flux that goes to it is poorly
+  known: a few % to tens of % [L].
+- Making matrix is a costly, shared good. In models of mixed biofilms producers still win, because the polymer lifts their
+  lineage towards the oxygen (Xavier & Foster 2007). Further reading: Nadell, Xavier & Foster 2009; Dragos & Kovacs 2017.
+
+**Breakdown and turnover**
+- EPS is partly biodegradable. Cells use it as a reserve when starved, and matrix hydrolases (dispersin B, alginate lyase,
+  glycoside hydrolases) cause dispersal (Zhang & Bishop 2003; Flemming & Wingender 2010). Rates are scarce and specific to
+  each system. A half-life of about a week, with about half returned as usable sugar, is a placeholder [L]. Erosion and
+  detachment depend on shear; the game counts matrix above the densest gel as squeezed out into the sea.
+
+**Diffusion in the matrix**
+- Use a polymer volume fraction phi = c M v, with c in mol of glucose units per m³, M = 0.162 kg/mol and partial specific
+  volume v ≈ 0.6 mL/g (polysaccharides 0.6-0.65; dextran 0.61). That gives phi = 9.7e-5 c [M].
+- Mackie-Meares obstruction gives D/D0 = ((1 - phi)/(1 + phi))², 0.67 at phi = 0.1 (Mackie & Meares 1955; review: Amsden
+  1998) [M]. EPS gels hold ~10-100 g/L (alginate gels 10-20 g/L) [M]. At 50 g/L (phi = 0.03) the matrix alone slows small
+  solutes by only ~11%. Most of the biofilm's 0.25 for organics comes from the cells and the tortuous path between them,
+  which the game's geometry already has (the gaps).
+- Diffusivities in water (Stewart 2003, Table 1) are at 25 °C: O2 2.0e-9, glucose 6.7e-10 m²/s [H]. Scaled to 20 °C by
+  T/viscosity (x 0.873): glucose 5.9e-10, O2 1.75e-9. From limiting ionic conductivities: lactate ~9e-10 and free H+
+  ~8e-9 m²/s [M]. In buffered seawater most protons move on the buffer (bicarbonate ~1e-9 m²/s), so H+ spreads at about
+  the buffer's speed.
+- O2 reaches only ~50-100 µm into active biofilms (Stewart & Franklin 2008). Fermenting biofilms acidify: dental plaque
+  falls to pH ~4.5-5.5 after sugar [M]. At 1.8 Ga there was little O2, so O2 gradients matter little to a fermenter.
+
+**Game values (upstream modules/cell/generic_adaptive_cell/parameters.json)**
+
+| parameter | value | units | source | confidence |
+|---|---|---|---|---|
+| ATP per glucose unit of matrix (direct, above the glucose) | 3 (2-4) | ATP/unit | pathway accounting: Sutherland 2001, De Vuyst & Degeest 1999, Welman & Maddox 2003 | L-M |
+| glucose per matrix unit | 1 | glucose/unit | definition | H |
+| matrix capacity at full allocation | 0.1 x resting glycolytic flux | - | placeholder (lactic acid bacteria 0.01-0.03; biofilm formers more) | L |
+| matrix breakdown rate | 1e-6 (half-life ~8 d) | 1/s | placeholder, Zhang & Bishop 2003 loosely | L |
+| share of broken-down matrix returned as glucose | 0.5 | - | placeholder | L |
+| densest matrix gel | 50 (309 mM glucose units) | kg/m³ | biofilm EPS 10-100 g/L | L-M |
+| polymer volume per glucose unit | 9.7e-5 | m³/mol | 0.162 kg/mol x 0.6 mL/g | M |
+| hindrance | ((1 - phi)/(1 + phi))² | - | Mackie & Meares 1955 | M |
+| D glucose, lactate, H+ (free), O2 at 20 °C | 5.9e-10, 9e-10, 8e-9, 1.75e-9 | m²/s | Stewart 2003 (scaled); ionic conductivities | M |
+| seawater buffer capacity | 0.3 | mM H+ per pH unit | placeholder (0.1-0.5) | L |
+
+In the cell's units: matrix synthesis is glucose + 3 ATP -> one glucose unit of matrix outside + 3 ADP + 3 Pi. With the
+2 ATP glycolysis forgoes, each unit costs the fermenter ~5 ATP of its 2-ATP-per-glucose economy, 2.5 glucose-equivalents.
 
 ## References
 Abreu 2007 IJSEM 10.1099/ijs.0.64857-0; Adams, Goss & Leys 2010 PLoS ONE 10.1371/journal.pone.0015040; Alcolombri 2021
@@ -89,6 +156,8 @@ Michels 1979 FEMS Microbiol Lett 10.1111/j.1574-6968.1979.tb03258.x (check); Mul
 10.1128/MMBR.62.1.1-34.1998; Parfrey 2011 PNAS 10.1073/pnas.1110633108 (check); Reintjes 2017 ISME J
 10.1038/ismej.2017.26; Schirrmeister, Gugger & Donoghue 2015 Palaeontology 10.1111/pala.12178; Sebé-Pedrós 2010 Mol Biol
 Evol 10.1093/molbev/msq089 (check); Shiratori 2019 Nat Commun 10.1038/s41467-019-13499-2; Smith, Simon, Alldredge & Azam
-1992 Nature 10.1038/359139a0; Stewart 2003 J Bacteriol 10.1128/JB.185.5.1485-1491.2003 (check); Stewart & Franklin 2008
+1992 Nature 10.1038/359139a0; Stewart 2003 J Bacteriol 10.1128/JB.185.5.1485-1491.2003; Stewart & Franklin 2008
 Nat Rev Microbiol 10.1038/nrmicro1838; Tomitani 2006 PNAS 10.1073/pnas.0600999103; Weisser 1995 J Bacteriol
 10.1128/jb.177.11.3351-3354.1995; Wells & Goldberg 1991 Nature 10.1038/353342a0; Zhu 2016 Nat Commun (no DOI given).
+
+Matrix cost (2026-10-12): Amsden 1998 Macromolecules 10.1021/ma980765f (check); De Vuyst & Degeest 1999 FEMS Microbiol Rev 10.1111/j.1574-6976.1999.tb00395.x (check); Dragos & Kovacs 2017 Trends Microbiol 10.1016/j.tim.2016.12.010 (check); Flemming & Wingender 2010 Nat Rev Microbiol 10.1038/nrmicro2415 (verified); Mackie & Meares 1955 Proc R Soc A 10.1098/rspa.1955.0234 (check); Nadell, Xavier & Foster 2009 FEMS Microbiol Rev 10.1111/j.1574-6976.2008.00150.x (check); Stewart 1998 Biotechnol Bioeng 10.1002/(SICI)1097-0290(19980805)59:3<261::AID-BIT1>3.0.CO;2-9; Stewart 2003 J Bacteriol 10.1128/JB.185.5.1485-1491.2003 (verified); Sutherland 2001 Microbiology 10.1099/00221287-147-1-3 (check); Welman & Maddox 2003 Trends Biotechnol 10.1016/S0167-7799(03)00107-0 (check); Xavier & Foster 2007 PNAS 10.1073/pnas.0607651104 (verified); Zhang & Bishop 2003 Chemosphere 10.1016/S0045-6535(02)00319-3 (check).
