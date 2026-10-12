@@ -429,6 +429,16 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   (5) the field is nested grids: a fine grid around the colony inside coarser ones out to 60x its diameter, with a
   per-cell diffusion-limit correction; (6) level 4 brings extracellular space now: boundary and inner cell groups,
   the space between cells as volumes (each a module), and a researched cost of making the matrix.
+- **2026-10-12** Level 4's space between cells (docs/plans/level4-extracellular-space.md):
+  - Volumes are the lattice (Delaunay) triangles of the cell centres. Each volume is an instance of upstream
+    `extracellular_volume`, joined through the cell-cell gaps by the `extracellular_face` law. The rim gaps open to the
+    sea.
+  - Cells see and feed their six 60° sectors.
+  - Transport is the game's backward Euler step, with exact bookkeeping. The matrix chemistry runs in the modules.
+  - The automatic groups are boundary and inner.
+  - Matrix costs 1 glucose + 3 ATP per glucose unit (pathway accounting, 2-4), with an allocation slider per group.
+  - The upstream modules sit on branch feat/extracellular-matrix (on homogenisation-checks), copied into
+    `content/upstream/` until merged.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?

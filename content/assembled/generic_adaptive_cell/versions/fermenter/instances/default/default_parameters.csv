@@ -43,6 +43,7 @@ K_ADP_hyd_mod_cytosol,millimolar,0.5,from the supermodule default instance,no
 K_ADP_mob_mod_cytosol,millimolar,0.5,from the supermodule default instance,no
 K_ATP_gly_mod_cytosol,millimolar,1.0,from the supermodule default instance,no
 K_ATP_hyd_mod_cytosol,millimolar,0.5,from the supermodule default instance,no
+K_ATP_mx_mod_cytosol,millimolar,1.0,from the supermodule default instance,no
 K_ATP_store_mod_cytosol,millimolar,1.0,from the supermodule default instance,no
 K_D_mod_bio,dimensionless,0.1,from the supermodule default instance,no
 K_Pi_gly_mod_cytosol,millimolar,1.0,from the supermodule default instance,no
@@ -50,6 +51,7 @@ K_Pi_hyd_mod_cytosol,millimolar,5.0,from the supermodule default instance,no
 K_Pi_mob_mod_cytosol,millimolar,5.0,from the supermodule default instance,no
 K_act_H_mod_i_H_ATPase,millimolar,2.5118864315095822e-05,from the supermodule default instance,no
 K_glc_mod_cytosol,millimolar,0.1,from the supermodule default instance,no
+K_glc_mx_mod_cytosol,millimolar,0.1,from the supermodule default instance,no
 K_glc_store_mod_cytosol,millimolar,0.1,from the supermodule default instance,no
 K_glc_t_mod_membrane_face,millimolar,4.1,from the supermodule default instance,no
 K_glyc_mob_mod_cytosol,millimolar,10.0,from the supermodule default instance,no
@@ -109,11 +111,12 @@ R_cell_mod_membrane,um,1.0,from the supermodule default instance,no
 T,kelvin,293.15,from the supermodule default instance,no
 T_ref_dmg_mod_bio,kelvin,293.15,from the supermodule default instance,no
 T_ref_mod_cytosol,kelvin,293.15,from the supermodule default instance,no
-V_gly_mod_cytosol,millimolar_per_s_1,6.319127470321385,from the supermodule default instance,no
-V_hyd_mod_cytosol,millimolar_per_s_1,0.08367164468728808,from the supermodule default instance,no
-V_mob_mod_cytosol,millimolar_per_s_1,0.14428780266714164,from the supermodule default instance,no
+V_gly_mod_cytosol,millimolar_per_s,6.319127470321385,from the supermodule default instance,no
+V_hyd_mod_cytosol,millimolar_per_s,0.08367164468728808,from the supermodule default instance,no
+V_mob_mod_cytosol,millimolar_per_s,0.14428780266714164,from the supermodule default instance,no
+V_mx_max_mod_cytosol,millimolar_per_s,0.0072143901333570825,from the supermodule default instance,no
 V_rest_approx_mod_membrane,milliV,-105.0,from the supermodule default instance,no
-V_store_max_mod_cytosol,millimolar_per_s_1,0.05050073093349957,from the supermodule default instance,no
+V_store_max_mod_cytosol,millimolar_per_s,0.05050073093349957,from the supermodule default instance,no
 a_init_mod_i_flagellum,dimensionless,0.0,from the supermodule default instance,no
 a_motor_mod_i_flagellum,dimensionless,0.0,from the supermodule default instance,no
 alpha_NaCa_mod_i_NaCa,dimensionless,1.2,from the supermodule default instance,no
@@ -171,6 +174,7 @@ c_syn_mod_pool_proteome,dimensionless,24.0,from the supermodule default instance
 dG0_ferm_mod_cytosol,J_per_mol,-196000.0,from the supermodule default instance,no
 dG0_hyd_mod_cytosol,J_per_mol,-30500.0,from the supermodule default instance,no
 dG0_hyd_mod_i_H_ATPase,J_per_mol,-30500.0,from the supermodule default instance,no
+dG0_mx_mod_cytosol,J_per_mol,-72500.0,from the supermodule default instance,no
 dG0_store_mod_cytosol,J_per_mol,-42000.0,from the supermodule default instance,no
 dT_Q10_mod_bio,kelvin,10.0,from the supermodule default instance,no
 dT_Q10_mod_cytosol,kelvin,10.0,from the supermodule default instance,no
@@ -199,9 +203,10 @@ h_ATP_mod_cytosol,J_per_mol,20500.0,from the supermodule default instance,no
 h_cell_mod_membrane,um,2.0,from the supermodule default instance,no
 h_glyc_poly_mod_cytosol,J_per_mol,0.0,from the supermodule default instance,no
 h_lac_gly_mod_cytosol,J_per_mol,63000.0,from the supermodule default instance,no
+h_mx_poly_mod_cytosol,J_per_mol,0.0,from the supermodule default instance,no
 jmax_glc_mod_membrane_face,mol_per_s_per_um2,1.5466948602977742e-18,from the supermodule default instance,no
 jmax_lac_mod_membrane_face,mol_per_s_per_um2,4.32863408001425e-18,from the supermodule default instance,no
-k_bind_Ca_mod_Ca,per_millimolar_s_1,100000.0,from the supermodule default instance,no
+k_bind_Ca_mod_Ca,per_millimolar_s,100000.0,from the supermodule default instance,no
 k_deg_mod_pool_Flagellum,per_s,2.777777777777778e-06,from the supermodule default instance,no
 k_deg_mod_pool_Glf,per_s,2.777777777777778e-06,from the supermodule default instance,no
 k_deg_mod_pool_Glyc,per_s,2.777777777777778e-06,from the supermodule default instance,no
@@ -235,6 +240,7 @@ m_target_mod_pool_NCX,dimensionless,1.0,from the supermodule default instance,no
 m_target_mod_pool_NhaA,dimensionless,1.0,from the supermodule default instance,no
 m_target_mod_pool_Trk,dimensionless,1.0,from the supermodule default instance,no
 m_target_mod_pool_proteome,dimensionless,1.0,from the supermodule default instance,no
+mx_alloc_mod_cytosol,dimensionless,0.0,from the supermodule default instance,no
 n_0_mod_pool_Flagellum,dimensionless,1.0,from the supermodule default instance,no
 n_0_mod_pool_Glf,dimensionless,11704.838040881496,from the supermodule default instance,no
 n_0_mod_pool_Glyc,dimensionless,1884955.592153876,from the supermodule default instance,no
@@ -245,6 +251,7 @@ n_0_mod_pool_NCX,dimensionless,2801.9209327573735,from the supermodule default i
 n_0_mod_pool_NhaA,dimensionless,682.4493169455936,from the supermodule default instance,no
 n_0_mod_pool_Trk,dimensionless,90.9932422594125,from the supermodule default instance,no
 n_0_mod_pool_proteome,dimensionless,16964600.329384882,from the supermodule default instance,no
+n_ATP_mx_mod_cytosol,dimensionless,3.0,from the supermodule default instance,no
 n_H_mod_i_H_ATPase,dimensionless,3.3333333333333335,from the supermodule default instance,no
 n_H_rev_mod_i_flagellum,dimensionless,1200.0,from the supermodule default instance,no
 n_half_mod_i_flagellum,dimensionless,2.0,from the supermodule default instance,no

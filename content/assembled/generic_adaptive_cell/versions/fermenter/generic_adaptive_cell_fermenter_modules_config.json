@@ -7,7 +7,7 @@
   "component_type": "cell",
   "default_instance": "default",
   "licence": "CC0-1.0",
-  "assembled_from": "circulatory-autogen-modules homogenisation-checks worktree (uncommitted), cell/generic_adaptive_cell/versions/fermenter, assembled by libcuflynx 2026-10-09",
+  "assembled_from": "circulatory-autogen-modules feat/extracellular-matrix (based on homogenisation-checks 0ffad77), cell/generic_adaptive_cell/versions/fermenter, assembled by libcuflynx 2026-10-12",
   "entrance_ports": [],
   "exit_ports": [],
   "general_ports": [],
@@ -331,6 +331,12 @@
     "constant"
    ],
    [
+    "K_ATP_mx_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
     "K_ATP_store_mod_cytosol",
     "millimolar",
     "access",
@@ -368,6 +374,12 @@
    ],
    [
     "K_glc_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_glc_mx_mod_cytosol",
     "millimolar",
     "access",
     "constant"
@@ -752,19 +764,25 @@
    ],
    [
     "V_gly_mod_cytosol",
-    "millimolar_per_s_1",
+    "millimolar_per_s",
     "access",
     "constant"
    ],
    [
     "V_hyd_mod_cytosol",
-    "millimolar_per_s_1",
+    "millimolar_per_s",
     "access",
     "constant"
    ],
    [
     "V_mob_mod_cytosol",
-    "millimolar_per_s_1",
+    "millimolar_per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "V_mx_max_mod_cytosol",
+    "millimolar_per_s",
     "access",
     "constant"
    ],
@@ -776,7 +794,7 @@
    ],
    [
     "V_store_max_mod_cytosol",
-    "millimolar_per_s_1",
+    "millimolar_per_s",
     "access",
     "constant"
    ],
@@ -1261,6 +1279,12 @@
     "variable"
    ],
    [
+    "cytosol__A_mx",
+    "J_per_mol",
+    "access",
+    "variable"
+   ],
+   [
     "cytosol__A_store",
     "J_per_mol",
     "access",
@@ -1321,6 +1345,12 @@
     "variable"
    ],
    [
+    "cytosol__Gamma_mx",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "cytosol__Gamma_store",
     "dimensionless",
     "access",
@@ -1345,6 +1375,12 @@
     "variable"
    ],
    [
+    "cytosol__J_ATP_mx",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "cytosol__J_ATP_store",
     "mol_per_s",
     "access",
@@ -1352,6 +1388,12 @@
    ],
    [
     "cytosol__J_ATP_turnover",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "cytosol__J_mx",
     "mol_per_s",
     "access",
     "variable"
@@ -1370,6 +1412,12 @@
    ],
    [
     "cytosol__K_eq_mob",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "cytosol__K_eq_mx",
     "dimensionless",
     "access",
     "variable"
@@ -1412,25 +1460,31 @@
    ],
    [
     "cytosol__v_gly",
-    "millimolar_per_s_2",
+    "millimolar_per_s",
     "access",
     "variable"
    ],
    [
     "cytosol__v_hyd",
-    "millimolar_per_s_2",
+    "millimolar_per_s",
     "access",
     "variable"
    ],
    [
     "cytosol__v_mob",
-    "millimolar_per_s_2",
+    "millimolar_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "cytosol__v_mx",
+    "millimolar_per_s",
     "access",
     "variable"
    ],
    [
     "cytosol__v_store",
-    "millimolar_per_s_2",
+    "millimolar_per_s",
     "access",
     "variable"
    ],
@@ -1448,6 +1502,12 @@
    ],
    [
     "dG0_hyd_mod_i_H_ATPase",
+    "J_per_mol",
+    "access",
+    "constant"
+   ],
+   [
+    "dG0_mx_mod_cytosol",
     "J_per_mol",
     "access",
     "constant"
@@ -1616,6 +1676,12 @@
    ],
    [
     "h_lac_gly_mod_cytosol",
+    "J_per_mol",
+    "access",
+    "constant"
+   ],
+   [
+    "h_mx_poly_mod_cytosol",
     "J_per_mol",
     "access",
     "constant"
@@ -1922,7 +1988,7 @@
    ],
    [
     "k_bind_Ca_mod_Ca",
-    "per_millimolar_s_1",
+    "per_millimolar_s",
     "access",
     "constant"
    ],
@@ -2377,6 +2443,12 @@
     "variable"
    ],
    [
+    "mx_alloc_mod_cytosol",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "n_0_mod_pool_Flagellum",
     "dimensionless",
     "access",
@@ -2432,6 +2504,12 @@
    ],
    [
     "n_0_mod_pool_proteome",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "n_ATP_mx_mod_cytosol",
     "dimensionless",
     "access",
     "constant"

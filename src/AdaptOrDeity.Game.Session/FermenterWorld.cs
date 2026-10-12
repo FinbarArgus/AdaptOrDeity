@@ -14,16 +14,17 @@ namespace AdaptOrDeity.Game.Session
     /// sea. Cell physiology comes from the kernel; game-side values (food, colony, control ranges) from content/parameters.json.
     /// Cells belong to groups; traits and energy controls are set per group and apply to every cell in it. From level 2 a
     /// cell can put energy into a daughter and divide; at a lethal damage load it dies. With a fixed body size a group
-    /// keeps its number of cells: growth energy replaces dead cells, and goes to repair while the group is full. Cells
-    /// share the medium but do not yet exchange anything (the transport graph comes later). Values exchanged here are SI.
+    /// keeps its number of cells: growth energy replaces dead cells, and goes to repair while the group is full. From level 4
+    /// the water between the cells is a space of its own and the cells fall into boundary and inner groups
+    /// (FermenterWorld.Colony.cs). Values exchanged here are SI.
     /// </summary>
-    public sealed class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld, IFoodWorld, IParallelWorld, IDisposable
+    public sealed partial class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld, IFoodWorld, IParallelWorld, IDisposable
     {
         /// <summary>Sim-seconds per real second: pause, 1x, 10x, 100x, 1000x.</summary>
         public static readonly double[] SpeedPresets = { 0.0, 1.0, 10.0, 100.0, 1000.0 };
 
         public const int GroupLimit = 8;
-        public const int GrowthControl = 0, StorageControl = 1, RepairControl = 2;
+        public const int GrowthControl = 0, StorageControl = 1, RepairControl = 2, MatrixControl = 3;
 
         /// <summary>Cells snapshot frames are first sized for; they grow with the colony.</summary>
         public const int InitialCells = 64;
@@ -48,6 +49,9 @@ namespace AdaptOrDeity.Game.Session
                 "how hard the cell stores glucose as glycogen (2 ATP per glucose, 3 back later)"),
             new ControlInfo("repair", "Repair", 0.0, 1.0, 1.0, GameFeatures.RepairLevel, "",
                 "how much the cell spends repairing damage; below about 0.1 damage outruns repair and the cell dies"),
+            new ControlInfo("matrix", "Extracellular matrix", 0.0, 1.0, 0.0, GameFeatures.ExtracellularMatrix, "of capacity",
+                "how hard the cells make matrix for the space between cells (each glucose unit costs a glucose and about " +
+                "3 ATP; matrix made on open water is lost to the sea)"),
         };
 
         private readonly List<FermenterCell> _cells = new List<FermenterCell>();
@@ -93,6 +97,13 @@ namespace AdaptOrDeity.Game.Session
                     Targets[i] = 1.0;
                 for (int c = 0; c < ControlList.Length; c++)
                     Controls[c] = ControlList[c].DefaultValue;
+            }
+
+            /// <summary>A group with another's trait targets and controls.</summary>
+            public Group(Group other)
+            {
+                Targets = (double[])other.Targets.Clone();
+                Array.Copy(other.Controls, Controls, Controls.Length);
             }
 
             public double[] Targets { get; }
@@ -186,6 +197,8 @@ namespace AdaptOrDeity.Game.Session
             Add(new DetailInfo("atp_growth", used, "Growth (building a daughter)", "mol/s", "ATP/s", avogadro),
                 c => c.Budget().AtpGrowth);
             Add(new DetailInfo("atp_storage", used, "Storing glycogen", "mol/s", "ATP/s", avogadro), c => c.Budget().AtpStorage);
+            Add(new DetailInfo("atp_matrix", used, "Making matrix", "mol/s", "ATP/s", avogadro,
+                "about 3 ATP per glucose unit of matrix exported, besides the glucose"), c => c.Budget().AtpMatrix);
             Add(new DetailInfo("atp_other", used, "Other maintenance", "mol/s", "ATP/s", avogadro,
                 "everything not yet itemised (Lynch & Marinov total less the items above)"),
                 c => c.Budget().AtpOtherMaintenance);
@@ -198,6 +211,11 @@ namespace AdaptOrDeity.Game.Session
                     c => c.AlgebraicValue("pool_" + k + "__J_ATP"));
             }
             Add(new DetailInfo("growth_progress", growth, "Daughter built", "", "%", 100.0), c => c.GrowthProgress);
+            Add(new DetailInfo("matrix_export", growth, "Matrix exported", "mol/s", "glucose units/s", avogadro,
+                "into the space between cells (lost to the sea where the cell faces open water)"), c => c.MatrixExport);
+            details.Add(new DetailInfo("open_share", growth, "Edge on open water", "", "%", 100.0,
+                "the rest of the edge faces the space between cells (level 4)"));
+            read.Add(OpenShare);
             Add(new DetailInfo("glycogen_progress", growth, "Glycogen (share of a daughter)", "", "%", 100.0),
                 c => c.GlycogenProgress);
             Add(new DetailInfo("glycogen", growth, "Glycogen", "mol/m³", "mM glucose", 1.0), c => c.Glycogen);
@@ -359,6 +377,8 @@ namespace AdaptOrDeity.Game.Session
         {
             _workers?.Dispose();
             _workers = null;
+            _space?.Dispose();
+            _space = null;
         }
 
         public void Step(double t, double dt)
@@ -380,9 +400,12 @@ namespace AdaptOrDeity.Game.Session
             // membrane through the cell's own carriers (Glf) in the kernel. Per-cell work runs on the workers; what cells
             // share (the body's force, the packets) is summed or settled afterwards in cell order, so results do not
             // depend on the number of workers.
+            UpdateColony();
             int n = _cells.Count;
             if (_cellX.Length < n)
                 Array.Resize(ref _cellX, 2 * n);
+            if (_openGlucoseShare.Length < n)
+                Array.Resize(ref _openGlucoseShare, 2 * n);
             if (_cellY.Length < n)
                 Array.Resize(ref _cellY, 2 * n);
             if (_forceX.Length < n)
@@ -424,11 +447,13 @@ namespace AdaptOrDeity.Game.Session
             {
                 if (!_touching[i])
                     continue;
-                double c = _cells[i].MembraneGlucose;
-                double uptake = _cells[i].GlucoseUptake * dt;   // mol into the cell
+                double c = _food.GlucoseAt(_cellX[i], _cellY[i], CellRadius);
+                double uptake = _cells[i].GlucoseUptake * _openGlucoseShare[i] * dt;   // mol into the cell from open water
                 if (c > _food.BackgroundGlucose && uptake > 0.0)
                     FoodEaten += _food.Withdraw(_cellX[i], _cellY[i], CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
             }
+            if (_gaps != null && _space != null)
+                StepSpace(dt);
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))
@@ -461,7 +486,14 @@ namespace AdaptOrDeity.Game.Session
                 _cellY[i] = y;
                 _touching[i] = _food.TouchesAny(x, y, CellRadius);
                 var c = _cells[i];
-                c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
+                double food = _food.GlucoseAt(x, y, CellRadius);
+                if (_gaps != null && _space != null)
+                    SetMembraneFromColony(i, c, food);
+                else
+                {
+                    c.MembraneGlucose = food;
+                    _openGlucoseShare[i] = 1.0;
+                }
                 for (int tr = 0; tr < nt; tr++)
                     _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
                 c.Step(_stepDt);
@@ -670,6 +702,7 @@ namespace AdaptOrDeity.Game.Session
         {
             bool growthOn = Active(GameFeatures.GrowthAndDivision), storageOn = Active(GameFeatures.GlycogenStorage);
             bool repairOn = Active(GameFeatures.RepairLevel), fixedSize = Active(GameFeatures.FixedBodySize);
+            bool matrixOn = Active(GameFeatures.ExtracellularMatrix);
             if (fixedSize)
             {
                 if (_aliveIn.Length < _groups.Count)
@@ -693,6 +726,7 @@ namespace AdaptOrDeity.Game.Session
                 c.GrowthFraction = growth;
                 c.StorageAllocation = storageOn ? g.Controls[StorageControl] : 0.0;
                 c.RepairLevel = repair;
+                c.MatrixAllocation = matrixOn ? g.Controls[MatrixControl] : 0.0;
             }
         }
 

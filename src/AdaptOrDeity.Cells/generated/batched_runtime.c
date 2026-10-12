@@ -85,6 +85,9 @@ typedef struct {
     double origin;
 } BkSim;
 
+/* The solver this library integrates with. */
+BK_API const char *bk_solver_name(void) { return "BE_batched_c"; }
+
 BK_API int bk_kernel_count(void) { return BK_KERNEL_COUNT; }
 BK_API int bk_kernel_states(int k) { return BK_KERNELS[k].n_states; }
 BK_API int bk_kernel_inputs(int k) { return BK_KERNELS[k].n_inputs; }
@@ -130,6 +133,8 @@ BK_API BkSim *bk_create(int n_blocks, const int *kernel, const int *state_offset
         B->inputs = (int *) malloc(sizeof(int) * (B->ni > 0 ? B->ni : 1));
         memcpy(B->inputs, inputs + input_offsets[b], sizeof(int) * B->ni);
         B->in = bk_zeros(B->ni);
+        B->traced_slot = (int *) calloc(B->ni > 0 ? B->ni : 1, sizeof(int));
+        B->traced = (const BkTrace **) calloc(B->ni > 0 ? B->ni : 1, sizeof(BkTrace *));
         B->ya = bk_zeros(n); B->yb = bk_zeros(n); B->fa = bk_zeros(n); B->fb = bk_zeros(n);
         B->scale = bk_zeros(n);
         B->y = bk_zeros(n); B->f = bk_zeros(n); B->g = bk_zeros(n); B->dx = bk_zeros(n);
@@ -138,8 +143,6 @@ BK_API BkSim *bk_create(int n_blocks, const int *kernel, const int *state_offset
         B->J = bk_zeros(n * n); B->lu = bk_zeros(n * n);
         B->piv = (int *) calloc(n > 0 ? n : 1, sizeof(int));
         B->lu_h = NAN;
-        B->traced_slot = (int *) calloc(B->ni > 0 ? B->ni : 1, sizeof(int));
-        B->traced = (const BkTrace **) calloc(B->ni > 0 ? B->ni : 1, sizeof(BkTrace *));
     }
     return sim;
 }
@@ -235,10 +238,10 @@ BK_API void bk_destroy(BkSim *sim)
         return;
     for (int b = 0; b < sim->n_blocks; ++b) {
         BkBlock *B = &sim->blocks[b];
-        free(B->states); free(B->inputs); free(B->in);
+        free(B->states); free(B->inputs); free(B->in); free(B->traced_slot); free((void *) B->traced);
         free(B->ya); free(B->yb); free(B->fa); free(B->fb); free(B->scale);
         free(B->y); free(B->f); free(B->g); free(B->dx); free(B->ftmp); free(B->y1); free(B->c); free(B->fz);
-        free(B->J); free(B->lu); free(B->piv); free(B->traced_slot); free((void *) B->traced);
+        free(B->J); free(B->lu); free(B->piv);
     }
     for (int r = 0; r < sim->n_traces; ++r)
         bk_free_trace(sim->traces[r]);
@@ -286,12 +289,6 @@ BK_API void bk_set_time_origin(BkSim *sim, double origin)
     }
 }
 
-static double bk_weight(const BkOptions *o, const BkBlock *B, int i, double y)
-{
-    double s = fabs(y) > B->scale[i] ? fabs(y) : B->scale[i];
-    return 1.0 / (o->rtol * s + o->atol);
-}
-
 /* The traced inputs at runtime clock t. */
 static void bk_apply_traces(BkBlock *B, double t)
 {
@@ -317,20 +314,44 @@ static double bk_next_breakpoint(const BkBlock *B, double t)
     return next;
 }
 
-static void bk_rates(BkBlock *B, double t, const double *y, double *f)
-{
-    if (B->n_traced)
-        bk_apply_traces(B, t);
-    B->k->rates(t - B->origin, y, B->in, f);
-    B->rates_calls++;
-}
-
 static int bk_finite(const double *x, int n)
 {
     for (int i = 0; i < n; ++i)
         if (!isfinite(x[i]))
             return 0;
     return 1;
+}
+
+/* The block's inputs from the variables (traced ones excepted, which their traces drive); 1 if any changed. */
+static int bk_gather_inputs(BkBlock *B, const double *variables)
+{
+    int changed = 0;
+    for (int k = 0; k < B->ni; ++k) {
+        int traced = 0;
+        for (int r = 0; r < B->n_traced; ++r)
+            traced |= B->traced_slot[r] == k;
+        if (traced)
+            continue;              /* driven by its trace, not by the variables */
+        double v = variables[B->inputs[k]];
+        if (!(v == B->in[k]) && !(isnan(v) && isnan(B->in[k])))
+            changed = 1;
+        B->in[k] = v;
+    }
+    return changed;
+}
+
+static double bk_weight(const BkOptions *o, const BkBlock *B, int i, double y)
+{
+    double s = fabs(y) > B->scale[i] ? fabs(y) : B->scale[i];
+    return 1.0 / (o->rtol * s + o->atol);
+}
+
+static void bk_rates(BkBlock *B, double t, const double *y, double *f)
+{
+    if (B->n_traced)
+        bk_apply_traces(B, t);
+    B->k->rates(t - B->origin, y, B->in, f);
+    B->rates_calls++;
 }
 
 /* df/dy at (t, y), whose rates are f: the kernel's exact Jacobian, or forward differences where it is not
@@ -651,18 +672,7 @@ static void bk_interpolate(const BkBlock *B, double t, double *out)
 static void bk_run_block(const BkOptions *o, BkBlock *B, double *states, const double *variables, double t0,
                          int n_out, const double *t_out, double *out, int n_states)
 {
-    int changed = !B->active;
-    for (int k = 0; k < B->ni; ++k) {
-        int traced = 0;
-        for (int r = 0; r < B->n_traced; ++r)
-            traced |= B->traced_slot[r] == k;
-        if (traced)
-            continue;              /* driven by its trace, not by the variables */
-        double v = variables[B->inputs[k]];
-        if (!(v == B->in[k]) && !(isnan(v) && isnan(B->in[k])))
-            changed = 1;
-        B->in[k] = v;
-    }
+    int changed = bk_gather_inputs(B, variables) || !B->active;
     double eps = 1e-12 * (fabs(t0) + 1.0);
     if (!changed && !(B->ta - eps <= t0 && t0 <= B->tb + eps))
         changed = 1;            /* not where the last run left this block */
@@ -934,6 +944,20 @@ BK_API int bk_instance_advance(BkInstance *I, double dt)
         failed += I->sim->blocks[b].status != BK_OK;
     }
     I->t = t1;
+    return failed;
+}
+
+/* Advances n instances by dt each, on OpenMP threads (instances are independent, so the results are the same on
+   any number). Returns the number of instances with a failed block. */
+BK_API int bk_instances_advance(int n, BkInstance **instances, double dt, int threads)
+{
+    int failed = 0;
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(dynamic, 1) num_threads(threads > 0 ? threads : 1) reduction(+:failed)
+#endif
+    for (int i = 0; i < n; ++i)
+        failed += bk_instance_advance(instances[i], dt) != 0;
+    (void) threads;
     return failed;
 }
 

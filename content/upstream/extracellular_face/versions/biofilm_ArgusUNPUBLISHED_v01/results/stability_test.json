@@ -1,0 +1,390 @@
+{
+  "test": "stability_test",
+  "status": "passed",
+  "message": "9 of 9 solver families work at some step (10 of 29 configurations tried); all declared-supported ones do",
+  "metrics": {
+    "matrix": [
+      {
+        "config": {
+          "solver": "CVODE_myokit",
+          "rtol": 0.0001,
+          "atol": 1e-06
+        },
+        "label": "CVODE_myokit (rtol=0.0001, atol=1e-06)",
+        "works": true,
+        "difference": 0.0026539101294667687,
+        "seconds": 0.717,
+        "note": ""
+      },
+      {
+        "config": {
+          "solver": "CVODE_myokit",
+          "rtol": 1e-06,
+          "atol": 1e-08
+        },
+        "label": "CVODE_myokit (rtol=1e-06, atol=1e-08)",
+        "works": true,
+        "difference": 3.6754520339423005e-05,
+        "seconds": 0.705,
+        "note": ""
+      },
+      {
+        "config": {
+          "solver": "CVODE_myokit",
+          "rtol": 1e-08,
+          "atol": 1e-10
+        },
+        "label": "CVODE_myokit (rtol=1e-08, atol=1e-10)",
+        "works": true,
+        "difference": 1.1946106718909063e-06,
+        "seconds": 0.707,
+        "note": ""
+      },
+      {
+        "config": {
+          "solver": "solve_ivp",
+          "method": "RK45"
+        },
+        "label": "solve_ivp (method=RK45)",
+        "works": true,
+        "difference": 0.005698570886583129,
+        "seconds": 0.077,
+        "note": ""
+      },
+      {
+        "config": {
+          "solver": "solve_ivp",
+          "method": "BDF"
+        },
+        "label": "solve_ivp (method=BDF)",
+        "works": true,
+        "difference": 0.0030933803092959736,
+        "seconds": 0.075,
+        "note": ""
+      },
+      {
+        "config": {
+          "solver": "solve_ivp",
+          "method": "LSODA"
+        },
+        "label": "solve_ivp (method=LSODA)",
+        "works": true,
+        "difference": 0.0013340308176589487,
+        "seconds": 0.077,
+        "note": ""
+      },
+      {
+        "config": {
+          "solver": "fixed_step_euler",
+          "dt": 0.01
+        },
+        "label": "fixed_step_euler (dt=0.01)",
+        "works": false,
+        "difference": null,
+        "seconds": 0.0,
+        "note": "ValueError: math domain error"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_euler",
+          "dt": 0.005
+        },
+        "label": "fixed_step_euler (dt=0.005)",
+        "works": false,
+        "difference": null,
+        "seconds": 0.0,
+        "note": "ValueError: math domain error"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_euler",
+          "dt": 0.0025
+        },
+        "label": "fixed_step_euler (dt=0.0025)",
+        "works": false,
+        "difference": 53.206438629276526,
+        "seconds": 0.001,
+        "note": "difference 5.3e+01 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_euler",
+          "dt": 0.00125
+        },
+        "label": "fixed_step_euler (dt=0.00125)",
+        "works": false,
+        "difference": 0.4203086827184839,
+        "seconds": 0.001,
+        "note": "difference 4.2e-01 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_euler",
+          "dt": 0.000625
+        },
+        "label": "fixed_step_euler (dt=0.000625)",
+        "works": false,
+        "difference": 0.12672781262288943,
+        "seconds": 0.002,
+        "note": "difference 1.3e-01 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_euler",
+          "dt": 0.0003125
+        },
+        "label": "fixed_step_euler (dt=0.0003125)",
+        "works": false,
+        "difference": 0.055280903823432474,
+        "seconds": 0.004,
+        "note": "difference 5.5e-02 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_euler",
+          "dt": 0.00015625
+        },
+        "label": "fixed_step_euler (dt=0.00015625)",
+        "works": false,
+        "difference": 0.02697928338295772,
+        "seconds": 0.008,
+        "note": "difference 2.7e-02 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_euler",
+          "dt": 7.8125e-05
+        },
+        "label": "fixed_step_euler (dt=7.8125e-05)",
+        "works": false,
+        "difference": 0.01307611068590439,
+        "seconds": 0.015,
+        "note": "difference 1.3e-02 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_euler",
+          "dt": 3.90625e-05
+        },
+        "label": "fixed_step_euler (dt=3.90625e-05)",
+        "works": true,
+        "difference": 0.006252959146720087,
+        "seconds": 0.018,
+        "note": ""
+      },
+      {
+        "config": {
+          "solver": "fixed_step_heun",
+          "dt": 0.01
+        },
+        "label": "fixed_step_heun (dt=0.01)",
+        "works": false,
+        "difference": null,
+        "seconds": 0.0,
+        "note": "ValueError: math domain error"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_heun",
+          "dt": 0.005
+        },
+        "label": "fixed_step_heun (dt=0.005)",
+        "works": false,
+        "difference": null,
+        "seconds": 0.0,
+        "note": "ValueError: math domain error"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_heun",
+          "dt": 0.0025
+        },
+        "label": "fixed_step_heun (dt=0.0025)",
+        "works": false,
+        "difference": 78.76435391102606,
+        "seconds": 0.001,
+        "note": "difference 7.9e+01 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_heun",
+          "dt": 0.00125
+        },
+        "label": "fixed_step_heun (dt=0.00125)",
+        "works": false,
+        "difference": 0.19502924090388213,
+        "seconds": 0.002,
+        "note": "difference 2.0e-01 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_heun",
+          "dt": 0.000625
+        },
+        "label": "fixed_step_heun (dt=0.000625)",
+        "works": false,
+        "difference": 0.04363036955741449,
+        "seconds": 0.003,
+        "note": "difference 4.4e-02 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_heun",
+          "dt": 0.0003125
+        },
+        "label": "fixed_step_heun (dt=0.0003125)",
+        "works": false,
+        "difference": 0.010409607566823943,
+        "seconds": 0.006,
+        "note": "difference 1.0e-02 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_heun",
+          "dt": 0.00015625
+        },
+        "label": "fixed_step_heun (dt=0.00015625)",
+        "works": true,
+        "difference": 0.0025496502815134433,
+        "seconds": 0.011,
+        "note": ""
+      },
+      {
+        "config": {
+          "solver": "fixed_step_rk4",
+          "dt": 0.01
+        },
+        "label": "fixed_step_rk4 (dt=0.01)",
+        "works": false,
+        "difference": null,
+        "seconds": 0.0,
+        "note": "ValueError: math domain error"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_rk4",
+          "dt": 0.005
+        },
+        "label": "fixed_step_rk4 (dt=0.005)",
+        "works": false,
+        "difference": 1099049568.9059472,
+        "seconds": 0.001,
+        "note": "difference 1.1e+09 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_rk4",
+          "dt": 0.0025
+        },
+        "label": "fixed_step_rk4 (dt=0.0025)",
+        "works": false,
+        "difference": 0.395606955345469,
+        "seconds": 0.001,
+        "note": "difference 4.0e-01 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_rk4",
+          "dt": 0.00125
+        },
+        "label": "fixed_step_rk4 (dt=0.00125)",
+        "works": false,
+        "difference": 0.0968829185953831,
+        "seconds": 0.003,
+        "note": "difference 9.7e-02 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_rk4",
+          "dt": 0.000625
+        },
+        "label": "fixed_step_rk4 (dt=0.000625)",
+        "works": false,
+        "difference": 0.029610604207600293,
+        "seconds": 0.005,
+        "note": "difference 3.0e-02 > tol"
+      },
+      {
+        "config": {
+          "solver": "fixed_step_rk4",
+          "dt": 0.0003125
+        },
+        "label": "fixed_step_rk4 (dt=0.0003125)",
+        "works": true,
+        "difference": 0.007642375493497476,
+        "seconds": 0.009,
+        "note": ""
+      },
+      {
+        "config": {
+          "solver": "CVODE_myokit",
+          "rtol": 1e-06,
+          "atol": 1e-12
+        },
+        "label": "CVODE_myokit (rtol=1e-06, atol=1e-12)",
+        "works": true,
+        "difference": 7.843868034783507e-06,
+        "seconds": 0.737,
+        "note": ""
+      }
+    ],
+    "families": [
+      {
+        "family": "CVODE_myokit (rtol=0.0001, atol=1e-06)",
+        "works_at": "CVODE_myokit (rtol=0.0001, atol=1e-06)",
+        "stop": ""
+      },
+      {
+        "family": "CVODE_myokit (rtol=1e-06, atol=1e-08)",
+        "works_at": "CVODE_myokit (rtol=1e-06, atol=1e-08)",
+        "stop": ""
+      },
+      {
+        "family": "CVODE_myokit (rtol=1e-08, atol=1e-10)",
+        "works_at": "CVODE_myokit (rtol=1e-08, atol=1e-10)",
+        "stop": ""
+      },
+      {
+        "family": "solve_ivp (method=RK45)",
+        "works_at": "solve_ivp (method=RK45)",
+        "stop": ""
+      },
+      {
+        "family": "solve_ivp (method=BDF)",
+        "works_at": "solve_ivp (method=BDF)",
+        "stop": ""
+      },
+      {
+        "family": "solve_ivp (method=LSODA)",
+        "works_at": "solve_ivp (method=LSODA)",
+        "stop": ""
+      },
+      {
+        "family": "fixed_step_euler",
+        "works_at": "fixed_step_euler (dt=3.90625e-05)",
+        "stop": ""
+      },
+      {
+        "family": "fixed_step_heun",
+        "works_at": "fixed_step_heun (dt=0.00015625)",
+        "stop": ""
+      },
+      {
+        "family": "fixed_step_rk4",
+        "works_at": "fixed_step_rk4 (dt=0.0003125)",
+        "stop": ""
+      }
+    ],
+    "tol": 0.01,
+    "budget_seconds": 240.0,
+    "t_end": 0.05,
+    "supported": [
+      "CVODE_myokit (rtol=1e-06, atol=1e-12)"
+    ],
+    "n_working": 10,
+    "n_configs": 29
+  },
+  "plots": [],
+  "details": [],
+  "timestamp": "2026-10-12 02:46 UTC"
+}

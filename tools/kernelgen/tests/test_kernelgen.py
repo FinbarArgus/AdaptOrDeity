@@ -49,3 +49,18 @@ def test_tissue_diffusion_volume_inputs_and_outputs():
     assert [a.name for a in m.algebraic] == ["M_reduced"]
     assert m.state_init == [("C_P_init", 0.0)]
     assert m.voi == "t"
+
+
+def test_module_without_states_has_a_constant_golden():
+    from aod_kernelgen import golden
+
+    m = load(REPO / "content" / "upstream", "", "extracellular_face", "biofilm_ArgusUNPUBLISHED_v01",
+             licence_allowlist=["CC0-1.0"])
+    assert m.states == []
+    header, rows = golden.run(m, "default", 3.0, 1.0)
+    assert header[0] == "time" and "G_glc" in header
+    assert [r[0] for r in rows] == [0.0, 1.0, 2.0, 3.0]
+    g = header.index("G_glc")
+    values = m.instances["default"]
+    expected = values["A_f"] * values["D_glc"] / (values["d_up"] + values["d_down"])   # f_up = f_down = 1
+    assert all(r[g] == pytest.approx(expected, rel=1e-12) for r in rows)

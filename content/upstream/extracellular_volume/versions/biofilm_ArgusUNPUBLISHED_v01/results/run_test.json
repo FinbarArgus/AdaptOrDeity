@@ -1,0 +1,58 @@
+{
+  "test": "run_test",
+  "status": "passed",
+  "message": "generated and simulated 0.1 s; all 29 outputs finite; note: identically zero: fS__C_lac_down",
+  "metrics": {
+    "n_time_points": 1001,
+    "sim_time": 0.1,
+    "final_values": {
+      "C_glc": 0.11735572230730336,
+      "C_lac": 0.003513271514318301,
+      "C_H": 5.884364917527655e-05,
+      "C_O2": 0.003521499080318304,
+      "C_mx": 339.43412680683105,
+      "N_mx_lost": 1.0469892068819197e-19,
+      "phi": 0.03299299712562397,
+      "f_hind": 0.8763235514191619,
+      "r_mx": 0.00033943412680683104,
+      "r_ovf": 0.7263728786375468,
+      "J_mx_lost": 1.045990102862851e-18,
+      "pH": 7.23030040243764,
+      "V_e": 1.4396817324298869e-18,
+      "fN__J_glc_down": 8.128864164129813e-18,
+      "fN__J_lac_down": 2.463990452719409e-18,
+      "fN__J_H_down": 1.7976905869458982e-17,
+      "fN__J_O2_down": 7.227200080630988e-19,
+      "fS__J_glc_up": -8.109110630565733e-18,
+      "fS__J_lac_up": -2.5039908923139168e-18,
+      "fS__J_H_up": -1.8016908664750874e-17,
+      "fS__J_O2_up": -7.227200721461602e-19,
+      "fN__C_glc_up": 0.15000000000000002,
+      "fN__C_lac_up": 0.01,
+      "fN__C_H_up": 7.517808504409087e-05,
+      "fN__C_O2_up": 0.0045000000000000005,
+      "fS__C_glc_down": 0.1,
+      "fS__C_lac_down": 0.0,
+      "fS__C_H_down": 5.011872336272725e-05,
+      "fS__C_O2_down": 0.003
+    },
+    "constant_outputs": [
+      "V_e",
+      "fN__C_glc_up",
+      "fN__C_lac_up",
+      "fN__C_H_up",
+      "fN__C_O2_up",
+      "fS__C_glc_down",
+      "fS__C_lac_down",
+      "fS__C_H_down",
+      "fS__C_O2_down"
+    ]
+  },
+  "plots": [
+    "plots/run.png"
+  ],
+  "details": [
+    "constant outputs: V_e, fN__C_glc_up, fN__C_lac_up, fN__C_H_up, fN__C_O2_up, fS__C_glc_down, fS__C_lac_down, fS__C_H_down, fS__C_O2_down"
+  ],
+  "timestamp": "2026-10-12 02:46 UTC"
+}

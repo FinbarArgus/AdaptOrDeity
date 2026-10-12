@@ -1,0 +1,182 @@
+{
+  "test": "verification_test_BC",
+  "status": "passed",
+  "message": "62 runs over 15 boundary conditions and constants: all finite, invariants hold",
+  "metrics": {
+    "swept_kind": "boundary conditions and constants",
+    "swept": [
+      "j_glc_cell",
+      "j_lac_cell",
+      "j_mx_cell",
+      "C_glc_init",
+      "C_H_init",
+      "C_O2_init",
+      "C_mx_init",
+      "V_e",
+      "b_H",
+      "c_std",
+      "v_mx",
+      "k_mx",
+      "f_mx_glc",
+      "C_mx_max",
+      "k_ovf"
+    ],
+    "n_runs": 62,
+    "n_failures": 0,
+    "sweep_mode": "all",
+    "sweep_values": {
+      "j_glc_cell": [
+        -4e-20,
+        -2e-20,
+        0.0
+      ],
+      "j_lac_cell": [
+        0.0,
+        4e-20,
+        8e-20
+      ],
+      "j_mx_cell": [
+        0.0,
+        2.25e-20,
+        4.5e-20
+      ],
+      "C_glc_init": [
+        0.05,
+        0.07500000000000001,
+        0.1,
+        0.15000000000000002,
+        0.2
+      ],
+      "C_H_init": [
+        2.5059361681363626e-05,
+        3.758904252204544e-05,
+        5.011872336272725e-05,
+        7.517808504409087e-05,
+        0.0001002374467254545
+      ],
+      "C_O2_init": [
+        0.0015,
+        0.0022500000000000003,
+        0.003,
+        0.0045000000000000005,
+        0.006
+      ],
+      "C_mx_init": [
+        0.0,
+        113.16872427983539,
+        226.33744855967078,
+        339.5061728395062
+      ],
+      "V_e": [
+        4.3190451972896607e-19,
+        1.3658020140646653e-18,
+        4.319045197289661e-18
+      ],
+      "b_H": [
+        1299.797120010738,
+        1949.695680016107,
+        2599.594240021476,
+        3899.391360032214,
+        5199.188480042952
+      ],
+      "c_std": [
+        500.0,
+        750.0,
+        1000.0,
+        1500.0,
+        2000.0
+      ],
+      "v_mx": [
+        4.8599999999999995e-05,
+        7.29e-05,
+        9.719999999999999e-05,
+        0.0001458,
+        0.00019439999999999998
+      ],
+      "k_mx": [
+        0.0,
+        5e-05,
+        0.0001
+      ],
+      "f_mx_glc": [
+        0.0,
+        0.5,
+        1.0
+      ],
+      "C_mx_max": [
+        154.320987654321,
+        231.48148148148147,
+        308.641975308642,
+        462.96296296296293,
+        617.283950617284
+      ],
+      "k_ovf": [
+        0.0005,
+        0.00075,
+        0.001,
+        0.0015,
+        0.002
+      ]
+    },
+    "skipped_out_of_range": [],
+    "bounds": {
+      "C_glc_init": [
+        0.0,
+        null,
+        "non-negative quantity (millimolar)"
+      ],
+      "C_lac_init": [
+        0.0,
+        null,
+        "non-negative quantity (millimolar)"
+      ],
+      "C_H_init": [
+        0.0,
+        null,
+        "non-negative quantity (millimolar)"
+      ],
+      "C_O2_init": [
+        0.0,
+        null,
+        "non-negative quantity (millimolar)"
+      ],
+      "C_mx_init": [
+        0.0,
+        null,
+        "non-negative quantity (millimolar)"
+      ],
+      "V_e": [
+        0.0,
+        null,
+        "non-negative quantity (m3)"
+      ],
+      "c_std": [
+        0.0,
+        null,
+        "non-negative quantity (millimolar)"
+      ],
+      "C_mx_max": [
+        0.0,
+        null,
+        "non-negative quantity (millimolar)"
+      ]
+    },
+    "constraints": [],
+    "failures": [],
+    "n_parameter_failures": 0,
+    "n_numerical_failures": 0,
+    "version_settings": "CVODE_myokit (rtol=1e-10, atol=1e-16, MaximumStep=0.0001)",
+    "reference_settings": "CVODE_myokit (rtol=1e-10, atol=1e-16, MaximumStep=1e-05)",
+    "recommended": null,
+    "candidates": []
+  },
+  "plots": [
+    "plots/bc_sweep.png"
+  ],
+  "details": [
+    "j_H_cell: nominal value is 0; set bc_sweep.ranges to sweep it",
+    "j_O2_cell: nominal value is 0; set bc_sweep.ranges to sweep it",
+    "C_lac_init: nominal value is 0; set bc_sweep.ranges to sweep it"
+  ],
+  "timestamp": "2026-10-12 02:46 UTC"
+}

@@ -65,6 +65,7 @@ static const AodParam P1_0[] = {
     { "K_ADP_mob_mod_cytosol", 0.5 },
     { "K_ATP_gly_mod_cytosol", 1.0 },
     { "K_ATP_hyd_mod_cytosol", 0.5 },
+    { "K_ATP_mx_mod_cytosol", 1.0 },
     { "K_ATP_store_mod_cytosol", 1.0 },
     { "K_D_mod_bio", 0.1 },
     { "K_Pi_gly_mod_cytosol", 1.0 },
@@ -72,6 +73,7 @@ static const AodParam P1_0[] = {
     { "K_Pi_mob_mod_cytosol", 5.0 },
     { "K_act_H_mod_i_H_ATPase", 2.5118864315095822e-05 },
     { "K_glc_mod_cytosol", 0.1 },
+    { "K_glc_mx_mod_cytosol", 0.1 },
     { "K_glc_store_mod_cytosol", 0.1 },
     { "K_glc_t_mod_membrane_face", 4.1 },
     { "K_glyc_mob_mod_cytosol", 10.0 },
@@ -134,6 +136,7 @@ static const AodParam P1_0[] = {
     { "V_gly_mod_cytosol", 6.319127470321385 },
     { "V_hyd_mod_cytosol", 0.08367164468728808 },
     { "V_mob_mod_cytosol", 0.14428780266714164 },
+    { "V_mx_max_mod_cytosol", 0.0072143901333570825 },
     { "V_rest_approx_mod_membrane", -105.0 },
     { "V_store_max_mod_cytosol", 0.05050073093349957 },
     { "a_init_mod_i_flagellum", 0.0 },
@@ -193,6 +196,7 @@ static const AodParam P1_0[] = {
     { "dG0_ferm_mod_cytosol", -196000.0 },
     { "dG0_hyd_mod_cytosol", -30500.0 },
     { "dG0_hyd_mod_i_H_ATPase", -30500.0 },
+    { "dG0_mx_mod_cytosol", -72500.0 },
     { "dG0_store_mod_cytosol", -42000.0 },
     { "dT_Q10_mod_bio", 10.0 },
     { "dT_Q10_mod_cytosol", 10.0 },
@@ -221,6 +225,7 @@ static const AodParam P1_0[] = {
     { "h_cell_mod_membrane", 2.0 },
     { "h_glyc_poly_mod_cytosol", 0.0 },
     { "h_lac_gly_mod_cytosol", 63000.0 },
+    { "h_mx_poly_mod_cytosol", 0.0 },
     { "jmax_glc_mod_membrane_face", 1.5466948602977742e-18 },
     { "jmax_lac_mod_membrane_face", 4.32863408001425e-18 },
     { "k_bind_Ca_mod_Ca", 100000.0 },
@@ -257,6 +262,7 @@ static const AodParam P1_0[] = {
     { "m_target_mod_pool_NhaA", 1.0 },
     { "m_target_mod_pool_Trk", 1.0 },
     { "m_target_mod_pool_proteome", 1.0 },
+    { "mx_alloc_mod_cytosol", 0.0 },
     { "n_0_mod_pool_Flagellum", 1.0 },
     { "n_0_mod_pool_Glf", 11704.838040881496 },
     { "n_0_mod_pool_Glyc", 1884955.592153876 },
@@ -267,6 +273,7 @@ static const AodParam P1_0[] = {
     { "n_0_mod_pool_NhaA", 682.4493169455936 },
     { "n_0_mod_pool_Trk", 90.9932422594125 },
     { "n_0_mod_pool_proteome", 16964600.329384882 },
+    { "n_ATP_mx_mod_cytosol", 3.0 },
     { "n_H_mod_i_H_ATPase", 3.3333333333333335 },
     { "n_H_rev_mod_i_flagellum", 1200.0 },
     { "n_half_mod_i_flagellum", 2.0 },
@@ -346,6 +353,7 @@ static const AodParam P1_1[] = {
     { "K_ADP_mob_mod_cytosol", 0.5 },
     { "K_ATP_gly_mod_cytosol", 1.0 },
     { "K_ATP_hyd_mod_cytosol", 0.5 },
+    { "K_ATP_mx_mod_cytosol", 1.0 },
     { "K_ATP_store_mod_cytosol", 1.0 },
     { "K_D_mod_bio", 0.1 },
     { "K_Pi_gly_mod_cytosol", 1.0 },
@@ -353,6 +361,7 @@ static const AodParam P1_1[] = {
     { "K_Pi_mob_mod_cytosol", 5.0 },
     { "K_act_H_mod_i_H_ATPase", 2.5118864315095822e-05 },
     { "K_glc_mod_cytosol", 0.1 },
+    { "K_glc_mx_mod_cytosol", 0.1 },
     { "K_glc_store_mod_cytosol", 0.1 },
     { "K_glc_t_mod_membrane_face", 4.1 },
     { "K_glyc_mob_mod_cytosol", 10.0 },
@@ -415,6 +424,7 @@ static const AodParam P1_1[] = {
     { "V_gly_mod_cytosol", 6.319127470321385 },
     { "V_hyd_mod_cytosol", 0.08367164468728808 },
     { "V_mob_mod_cytosol", 0.14428780266714164 },
+    { "V_mx_max_mod_cytosol", 0.0072143901333570825 },
     { "V_rest_approx_mod_membrane", -105.0 },
     { "V_store_max_mod_cytosol", 0.05050073093349957 },
     { "a_init_mod_i_flagellum", 0.0 },
@@ -474,6 +484,7 @@ static const AodParam P1_1[] = {
     { "dG0_ferm_mod_cytosol", -196000.0 },
     { "dG0_hyd_mod_cytosol", -30500.0 },
     { "dG0_hyd_mod_i_H_ATPase", -30500.0 },
+    { "dG0_mx_mod_cytosol", -72500.0 },
     { "dG0_store_mod_cytosol", -42000.0 },
     { "dT_Q10_mod_bio", 10.0 },
     { "dT_Q10_mod_cytosol", 10.0 },
@@ -502,6 +513,7 @@ static const AodParam P1_1[] = {
     { "h_cell_mod_membrane", 2.0 },
     { "h_glyc_poly_mod_cytosol", 0.0 },
     { "h_lac_gly_mod_cytosol", 63000.0 },
+    { "h_mx_poly_mod_cytosol", 0.0 },
     { "jmax_glc_mod_membrane_face", 1.5466948602977742e-18 },
     { "jmax_lac_mod_membrane_face", 4.32863408001425e-18 },
     { "k_bind_Ca_mod_Ca", 100000.0 },
@@ -538,6 +550,7 @@ static const AodParam P1_1[] = {
     { "m_target_mod_pool_NhaA", 1.0 },
     { "m_target_mod_pool_Trk", 1.0 },
     { "m_target_mod_pool_proteome", 1.0 },
+    { "mx_alloc_mod_cytosol", 0.0 },
     { "n_0_mod_pool_Flagellum", 1.0 },
     { "n_0_mod_pool_Glf", 11704.838040881496 },
     { "n_0_mod_pool_Glyc", 1884955.592153876 },
@@ -548,6 +561,7 @@ static const AodParam P1_1[] = {
     { "n_0_mod_pool_NhaA", 682.4493169455936 },
     { "n_0_mod_pool_Trk", 90.9932422594125 },
     { "n_0_mod_pool_proteome", 16964600.329384882 },
+    { "n_ATP_mx_mod_cytosol", 3.0 },
     { "n_H_mod_i_H_ATPase", 3.3333333333333335 },
     { "n_H_rev_mod_i_flagellum", 1200.0 },
     { "n_half_mod_i_flagellum", 2.0 },
@@ -582,14 +596,68 @@ static const AodParam P1_1[] = {
     { "v_one_mod_i_flagellum", 1.5e-05 },
     { 0, 0.0 }
 };
-static const AodInstance I1[] = { { "default", 278, P1_0 }, { "famine", 278, P1_1 } };
+static const AodInstance I1[] = { { "default", 285, P1_0 }, { "famine", 285, P1_1 } };
+static const AodParam P2_0[] = {
+    { "C_glc_init", 0.1 },
+    { "C_lac_init", 0.0 },
+    { "C_H_init", 5.011872336272725e-05 },
+    { "C_O2_init", 0.003 },
+    { "J_glc_in", 0.0 },
+    { "J_glc_out", 0.0 },
+    { "J_lac_in", 0.0 },
+    { "J_lac_out", 0.0 },
+    { "J_H_in", 0.0 },
+    { "J_H_out", 0.0 },
+    { "J_O2_in", 0.0 },
+    { "J_O2_out", 0.0 },
+    { "j_glc_cell", 0.0 },
+    { "j_lac_cell", 0.0 },
+    { "j_H_cell", 0.0 },
+    { "j_O2_cell", 0.0 },
+    { "j_mx_cell", 0.0 },
+    { "C_mx_init", 0.0 },
+    { "V_e", 1.4396817324298869e-18 },
+    { "b_H", 2599.594240021476 },
+    { "c_std", 1000.0 },
+    { "v_mx", 9.719999999999999e-05 },
+    { "k_mx", 1e-06 },
+    { "f_mx_glc", 0.5 },
+    { "C_mx_max", 308.641975308642 },
+    { "k_ovf", 0.001 },
+    { 0, 0.0 }
+};
+static const AodInstance I2[] = { { "default", 26, P2_0 } };
+static const AodParam P3_0[] = {
+    { "C_glc_up", 0.1 },
+    { "C_glc_down", 0.1 },
+    { "C_lac_up", 0.0 },
+    { "C_lac_down", 0.0 },
+    { "C_H_up", 5.011872336272725e-05 },
+    { "C_H_down", 5.011872336272725e-05 },
+    { "C_O2_up", 0.003 },
+    { "C_O2_down", 0.003 },
+    { "D_glc", 5.9e-10 },
+    { "D_lac", 9e-10 },
+    { "D_H", 2.607594240021476e-06 },
+    { "D_O2", 1.75e-09 },
+    { "f_up", 1.0 },
+    { "f_down", 1.0 },
+    { "A_f", 6e-13 },
+    { "d_up", 6.639528095680696e-07 },
+    { "d_down", 6.639528095680696e-07 },
+    { "open_flag", 1.0 },
+    { 0, 0.0 }
+};
+static const AodInstance I3[] = { { "default", 18, P3_0 } };
 
 static const AodModule AOD_MODULES[] = {
     { "vol_0", "tissue_diffusion_volume", "nn", "CC0-1.0", "1082421495af55d12c74fd77920ad1c7704f50f9ffec93e44c5d6fe629ca6c3a", 1, I0 },
-    { "cell_0", "generic_adaptive_cell", "fermenter", "CC0-1.0", "cb212335cacd378be95ff486d2a83a31b711414190c86836cbbfc1f950f64f8d", 2, I1 },
+    { "cell_0", "generic_adaptive_cell", "fermenter", "CC0-1.0", "6f47b08b1bf22ee7e95cafb17f7363a520970f12d0b97e5184e21eea8308ab24", 2, I1 },
+    { "ecs_0", "extracellular_volume", "biofilm_ArgusUNPUBLISHED_v01", "CC0-1.0", "71eea2c3f16eaa2b29112c322359bb293fac67fb97e0bbef10a075923a04ddd5", 1, I2 },
+    { "ecs_face_0", "extracellular_face", "biofilm_ArgusUNPUBLISHED_v01", "CC0-1.0", "7f0bc62a91b37c70fbfad13a2f6db3bcc36366d3248e3a8ab8a10c9a6c734cf8", 1, I3 },
 };
 
-AOD_API int aod_module_count(void) { return 2; }
+AOD_API int aod_module_count(void) { return 4; }
 AOD_API const char *aod_module_name(int m) { return AOD_MODULES[m].name; }
 AOD_API const char *aod_module_type(int m) { return AOD_MODULES[m].type; }
 AOD_API const char *aod_module_version(int m) { return AOD_MODULES[m].version; }

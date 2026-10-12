@@ -1,0 +1,18 @@
+{
+  "module": "/extracellular_face/versions/biofilm_ArgusUNPUBLISHED_v01",
+  "instance": "default",
+  "source_sha256": "7f0bc62a91b37c70fbfad13a2f6db3bcc36366d3248e3a8ab8a10c9a6c734cf8",
+  "modules_commit": "948630794801cc388c317dda0b16ae74181d27d5",
+  "solver": "myokit 1.39.2 CVODE",
+  "rtol": 1e-10,
+  "atol": 1e-12,
+  "duration_s": 10.0,
+  "interval_s": 1.0,
+  "inputs": "externals held at instance values; unconnected port inputs = 0",
+  "replay": {
+    "integrator": "rk4",
+    "dt": 0.01,
+    "nrmse_tolerance": 1e-06,
+    "compare": "all"
+  }
+}

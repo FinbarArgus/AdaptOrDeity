@@ -23,8 +23,8 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
 ## Decided 2026-10-12 (second round)
 - Grid: nested grids (fine ~1 µm around the colony; coarser grids x4 spacing and extent out to 60x the colony
   diameter; conservative flux exchange between grids; per-cell correction J/(4 pi D a) at the membrane).
-- Level 4: extracellular space between cells as volumes, each a module; boundary and inner cell groups; matrix
-  production costs carbon and ATP (researched value).
+- Level 4 (built 2026-10-12, docs/plans/level4-extracellular-space.md): extracellular space between cells as volumes,
+  each a module; boundary and inner cell groups; matrix production costs carbon and ATP (researched value).
 - Level 1 lasts one simulated week; skill prices calibrated by bots.
 
 ## To discuss (earlier notes)

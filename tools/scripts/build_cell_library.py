@@ -27,8 +27,11 @@ MODULES_ROOT = os.path.join(REPO, 'external', 'circulatory-autogen-modules', 'mo
 SOURCES = ('model0d_core.c', 'model0d_core.h', 'batched_kernels.c', 'batched_kernels.h', 'batched_runtime.c')
 
 #: The instance name each locked module gets in the module array (its parameters are <name>_<instance>, its states
-#: and variables in component <instance>_module).
-INSTANCE_NAMES = {('generic_adaptive_cell', 'fermenter'): 'cell_0', ('tissue_diffusion_volume', 'nn'): 'vol_0'}
+#: and variables in component <instance>_module). The game makes as many copies of an instance as it needs at run time
+#: (NativeModule.CreateInstance): a cell per cell, a volume of the space between cells per gap (level 4).
+INSTANCE_NAMES = {('generic_adaptive_cell', 'fermenter'): 'cell_0', ('tissue_diffusion_volume', 'nn'): 'vol_0',
+                  ('extracellular_volume', 'biofilm_ArgusUNPUBLISHED_v01'): 'ecs_0',
+                  ('extracellular_face', 'biofilm_ArgusUNPUBLISHED_v01'): 'ecs_face_0'}
 
 
 def _locked_modules():
@@ -119,7 +122,7 @@ def regenerate():
     assert generate_with_new_architecture(False, {
         'file_prefix': 'modules', 'input_param_file': 'modules_parameters.csv', 'model_type': 'cellml',
         'solver': 'CVODE_myokit', 'resources_dir': res, 'generated_models_dir': os.path.join(work, 'gen'),
-        'module_library_dirs': [os.path.join(REPO, 'content', 'assembled')] + sorted(
+        'module_library_dirs': sorted({os.path.join(REPO, e['root']) for e, _, _ in modules if e.get('root')}) + sorted(
             {os.path.dirname(os.path.dirname(os.path.dirname(_version_dir(e)))) for e, _, _ in modules
              if not e.get('root')}),
         'use_builtin_modules': False, 'DEBUG': False})
