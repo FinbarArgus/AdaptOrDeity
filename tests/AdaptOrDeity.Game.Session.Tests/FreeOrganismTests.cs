@@ -9,8 +9,8 @@ namespace AdaptOrDeity.Game.Session.Tests
     /// <summary>
     /// Daughters released at division without multicellularity live on as free organisms: the daughter's cell as divided,
     /// a body that swims and drifts as the creature's does, eating, engulfing, dying (its body becomes food) and dividing by
-    /// the creature's rules (every daughter in the lineage earns points), carried in frames, and no longer simulated out of
-    /// range or beyond the cap.
+    /// the creature's rules (every daughter in the lineage earns points), carried in frames, and frozen out of range or
+    /// beyond the cap until the creature comes back.
     /// </summary>
     public class FreeOrganismTests
     {
@@ -342,7 +342,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
-        public void OrganismsOutOfRangeOrBeyondTheCapAreNoLongerSimulated()
+        public void OrganismsOutOfRangeOrBeyondTheCapAreFrozen()
         {
             using var world = Quiet();
             var o = Release(world);
@@ -352,26 +352,78 @@ namespace AdaptOrDeity.Game.Session.Tests
             near.Body.Body.Place(b.X + 0.99 * world.OrganismRange, b.Y - 0.99 * world.OrganismRange, 0.0);
             Run(world, 0.1);
             Assert.That(world.Organisms, Is.EquivalentTo(new[] { near }));
-            Assert.That(world.OrganismsGone, Is.EqualTo(1));
+            Assert.That(world.FrozenOrganisms, Is.EquivalentTo(new[] { o }));
+            Assert.That((o.Frozen, near.Frozen, world.OrganismsGone), Is.EqualTo((true, false, 0)), "frozen, not gone");
             Assert.That(world.OrganismRange, Is.EqualTo(2.0 * 2.0 * world.Food.HalfSize), "two view widths");
 
-            // at the cap a new daughter replaces the farthest
+            // at the cap a new daughter freezes the farthest
             while (world.OrganismsReleased < world.MaxOrganisms + 2)
                 Release(world);
             Assert.That(world.Organisms, Has.Count.EqualTo(world.MaxOrganisms));
-            Assert.That(world.Organisms, Does.Not.Contain(near), "the farthest went");
-            Assert.That(world.OrganismsGone, Is.EqualTo(2));
+            Assert.That(world.Organisms, Does.Not.Contain(near), "the farthest was frozen");
+            Assert.That(world.FrozenOrganisms, Is.EqualTo(new[] { o, near }), "in id order");
+            Assert.That(world.OrganismsGone, Is.EqualTo(0));
             // a dead one's body is food, not an organism: it makes room
             var dead = world.Organisms[5];
             var body = Kill(world, dead);
-            Assert.That(world.Organisms, Has.Count.EqualTo(world.MaxOrganisms - 1));
             Assert.That(world.Organisms, Does.Not.Contain(dead));
-            Release(world);
-            Assert.That(world.Organisms, Has.Count.EqualTo(world.MaxOrganisms));
-            Assert.That(world.OrganismsGone, Is.EqualTo(2), "nobody went for the new daughter");
             Assert.That(world.Organisms.All(x => x.Alive), Is.True);
             Assert.That(body.Active, Is.True);
-            // a body farther than the organisms' range is no longer simulated, though nearer than food would be dropped
+        }
+
+        [Test]
+        public void AFrozenOrganismIsKeptAsItWasAndResumesWhenTheCreatureComesBack()
+        {
+            using var world = Quiet(swimming: true);
+            var o = Release(world);
+            Run(world, 5.0);
+            // it holds a dead body: the body freezes and thaws with it
+            var held = world.Food.AddBody(o.X + 1.5 * world.CellRadius, o.Y, 0.0, 0.0, world.CellRadius, 1e-15, 0.0, 0);
+            Run(world, 0.1);
+            Assert.That((held.Stuck, held.Holder), Is.EqualTo((true, o.Id)));
+            var b = world.Body.Body;
+            double bx = b.X, by = b.Y;
+            // the creature leaves: the organism freezes where it is
+            b.Place(bx + 1.5 * world.OrganismRange, by, b.Angle);
+            Run(world, 0.1);
+            Assert.That(o.Frozen, Is.True);
+            double[] at = Snapshot(o);
+            var work = o.Cell.Statistics;
+            double time = o.Cell.Time;
+            Run(world, 30.0);
+            Assert.That(Snapshot(o), Is.EqualTo(at), "not moved or integrated while frozen");
+            Assert.That(o.Cell.Statistics, Is.EqualTo(work), "no integration steps: no cost");
+            Assert.That(o.Cell.Time, Is.EqualTo(time));
+            Assert.That(world.Organism(o.Id), Is.Null, "not simulated");
+            Assert.That((held.Frozen, held.Active, held.Holder), Is.EqualTo((true, false, o.Id)), "frozen with its holder");
+
+            // the creature comes back: it resumes from that state, and is simulated again
+            b.Place(o.X + 0.5 * world.OrganismRange, o.Y, b.Angle);
+            Run(world, 0.1);
+            Assert.That((o.Frozen, world.Organism(o.Id)), Is.EqualTo((false, o)));
+            Assert.That(world.FrozenOrganisms, Is.Empty);
+            Assert.That((held.Frozen, held.Active, held.Holder), Is.EqualTo((false, true, o.Id)), "back with it");
+            Run(world, 5.0);
+            Assert.That(o.Cell.Time, Is.GreaterThan(time), "integrating again");
+            Assert.That(o.Alive, Is.True);
+        }
+
+        // An organism's state: position, velocity, angle, random-run clock and its cell's states.
+        private static double[] Snapshot(FreeOrganism o)
+        {
+            var r = o.Body.Body;
+            var cells = o.Cell.Batch.States.Select(x => x[0]);
+            double untilSwitch = (double)typeof(FreeOrganism).GetProperty("UntilSwitch",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(o)!;
+            return new[] { r.X, r.Y, r.Angle, r.Vx, r.Vy, r.Omega, untilSwitch, o.Cell.Damage }.Concat(cells).ToArray();
+        }
+
+        [Test]
+        public void FrozenBodiesAreKeptUntilTheCreatureComesBackUpToTheirCap()
+        {
+            using var world = Quiet();
+            var o = Release(world);
+            var body = Kill(world, o);
             Assert.That(world.Food.BodyRange, Is.EqualTo(world.OrganismRange));
             var cb = world.Body.Body;
             typeof(FoodPacket).GetProperty("X")!.SetValue(body, cb.X + 0.99 * world.OrganismRange);
@@ -380,7 +432,45 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(body.Active, Is.True, "beyond the food window, within the organisms' range");
             typeof(FoodPacket).GetProperty("X")!.SetValue(body, cb.X + 1.01 * world.OrganismRange);
             Run(world, 0.1);
-            Assert.That((body.Active, world.Food.BodiesGone), Is.EqualTo((false, 1)));
+            Assert.That((body.Active, body.Frozen, world.Food.FrozenBodies, world.Food.BodiesGone), Is.EqualTo((false, true, 1, 0)));
+            double x = body.X, y = body.Y, glucose = body.Glucose, free = body.Free;
+            cb.Place(x - 4.0 * world.OrganismRange, y, cb.Angle);   // well away: the current does not bring it back in range
+            double released = world.Environment.PacketGlucose;
+            Run(world, 30.0);
+            Assert.That((body.X, body.Y, body.Glucose, body.Free), Is.EqualTo((x, y, glucose, free)), "no drift, no leak");
+            Assert.That(world.Environment.PacketGlucose, Is.EqualTo(released));
+            Assert.That(world.Food.Packets.Count(p => ReferenceEquals(p, body)), Is.EqualTo(1));
+            // new food does not take its slot; the creature coming back thaws it
+            var other = world.Food.AddBody(cb.X, cb.Y, 0.0, 0.0, world.CellRadius, 1e-15, 0.0, 0);
+            Assert.That((body.Frozen, ReferenceEquals(other, body)), Is.EqualTo((true, false)));
+            world.Food.Remove(other);
+            cb.Place(x - 0.5 * world.OrganismRange, y, cb.Angle);
+            Run(world, 0.1);
+            Assert.That((body.Active, body.Frozen), Is.EqualTo((true, false)));
+
+            // beyond the cap the farthest frozen body is forgotten
+            world.Food.MaxFrozenBodies = 1;
+            var near = world.Food.AddBody(cb.X - 1.2 * world.OrganismRange, cb.Y, 0.0, 0.0, world.CellRadius, 1e-15, 0.0, 0);
+            typeof(FoodPacket).GetProperty("X")!.SetValue(body, cb.X + 1.5 * world.OrganismRange);
+            Run(world, 0.1);
+            Assert.That((near.Frozen, body.Frozen, world.Food.BodiesGone), Is.EqualTo((true, false, 1)));
+            Assert.That(body.Active, Is.False, "forgotten");
+        }
+
+        [Test]
+        public void BeyondTheFrozenCapTheFarthestFrozenOrganismIsForgotten()
+        {
+            using var world = Quiet();
+            world.MaxFrozenOrganisms = 1;
+            var far = Release(world);
+            var nearer = Release(world);
+            var b = world.Body.Body;
+            far.Body.Body.Place(b.X + 3.0 * world.OrganismRange, b.Y, 0.0);
+            nearer.Body.Body.Place(b.X - 1.5 * world.OrganismRange, b.Y, 0.0);
+            Run(world, 0.1);
+            Assert.That(world.FrozenOrganisms, Is.EqualTo(new[] { nearer }));
+            Assert.That(world.OrganismsGone, Is.EqualTo(1));
+            Assert.That(world.Organisms, Is.Empty);
         }
 
         [Test]

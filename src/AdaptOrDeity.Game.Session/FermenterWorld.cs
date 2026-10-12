@@ -162,7 +162,8 @@ namespace AdaptOrDeity.Game.Session
             _body = new CreatureBody(CellRadius, first.External("eta_mod_i_flagellum"), GameParameters.Default.Body());
             AddToBody(0, _defaultAngles);
             _food.Populate(_body.Body.X, _body.Body.Y);
-            _food.BodyRange = OrganismRange;   // dead organisms' bodies stay as long as living ones would
+            _food.BodyRange = OrganismRange;   // dead organisms' bodies are simulated as far as living ones are
+            _food.MaxFrozenBodies = GameParameters.Default.Integer("organisms.frozen_bodies_max");
             _bodyTrace = BodyTrace();
             _environment = CreateEnvironment(first);
             first.StopAtMacroSteps = true;   // the field changes cells' inputs every macro step; daughters inherit it
@@ -491,6 +492,7 @@ namespace AdaptOrDeity.Game.Session
             var b = _body.Body;
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
             _prey.Step(dt, b.X, b.Y, b.CurrentVx, b.CurrentVy);   // prey swim in the same water as the creature
+            FreezeAndThaw();
             MoveOrganisms();
             _cos = Math.Cos(b.Angle);
             _sin = Math.Sin(b.Angle);

@@ -399,7 +399,21 @@
    "units": "1",
    "source": "definitional",
    "status": "design",
-   "note": "most free-living organisms (released daughters and their offspring) simulated at once; a new daughter beyond it replaces a dead one, else the one farthest from the creature (counted as gone). Measured cost: see docs/plans/free-daughters.md"
+   "note": "most free-living organisms (released daughters and their offspring) simulated at once; a new daughter beyond it replaces a dead one, else freezes the one farthest from the creature (kept as it was: organisms.frozen_max). Measured cost: see docs/plans/free-daughters.md"
+  },
+  "organisms.frozen_max": {
+   "value": 256,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "most free organisms kept frozen out of range (designer request 2026-10-13: far organisms and bodies are remembered and frozen until the creature comes back). Each holds its cell (measured ~80 kB of memory with its integrator), so 256 take ~20 MB; beyond it the frozen organism farthest from the creature is forgotten (counted as gone)"
+  },
+  "organisms.frozen_bodies_max": {
+   "value": 1024,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "most dead bodies kept frozen out of range (a few hundred bytes each); beyond it the frozen body farthest from the creature is forgotten (FoodField.BodiesGone)"
   },
   "organisms.range_view_widths": {
    "value": 2,

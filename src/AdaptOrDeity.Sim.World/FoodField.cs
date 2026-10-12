@@ -31,8 +31,9 @@ namespace AdaptOrDeity.Sim.World
         Carried,
 
         /// <summary>
-        /// A dead free organism's body (<see cref="FoodField.AddBody"/>): drifts with the water it died in, and stays while
-        /// it is within <see cref="FoodField.BodyRange"/> of the creature rather than the food window.
+        /// A dead free organism's body (<see cref="FoodField.AddBody"/>): drifts with the water it died in, and is simulated
+        /// while it is within <see cref="FoodField.BodyRange"/> of the creature rather than the food window; beyond it, it is
+        /// frozen where it is until the creature comes back (<see cref="FoodPacket.Frozen"/>).
         /// </summary>
         Body,
     }
@@ -84,6 +85,13 @@ namespace AdaptOrDeity.Sim.World
         public int MainTrace { get; internal set; }
 
         public bool Active { get; internal set; }
+
+        /// <summary>
+        /// A dead body out of range, kept as it was (not moved, leaked, digested or drawn in frames) until the creature comes
+        /// back within <see cref="FoodField.BodyRange"/> or the body is held by a frozen organism that thaws. Not
+        /// <see cref="Active"/> while frozen; its slot is not reused.
+        /// </summary>
+        public bool Frozen { get; internal set; }
 
         /// <summary>Where a stuck packet sits on the body, in the body frame [m].</summary>
         internal double LocalX { get; set; }
@@ -232,13 +240,30 @@ namespace AdaptOrDeity.Sim.World
         public double Fill(FoodPacket p) => p.Glucose / p.Amount;
 
         /// <summary>
-        /// Distance from the creature along either ground axis within which a dead body (<see cref="PacketKind.Body"/>) stays
-        /// in the field [m]; other packets stay within the window (<see cref="HalfSize"/>). Infinite unless set.
+        /// Distance from the creature along either ground axis within which a dead body (<see cref="PacketKind.Body"/>) is
+        /// simulated [m]; beyond it, it is frozen (<see cref="FoodPacket.Frozen"/>). Other packets stay within the window
+        /// (<see cref="HalfSize"/>) and leave it for good. Infinite unless set.
         /// </summary>
         public double BodyRange { get; set; } = double.PositiveInfinity;
 
-        /// <summary>Dead bodies that left <see cref="BodyRange"/> uneaten (diagnostics).</summary>
+        /// <summary>Most frozen bodies kept; beyond it the one farthest from the creature is forgotten (<see cref="BodiesGone"/>).</summary>
+        public int MaxFrozenBodies { get; set; } = int.MaxValue;
+
+        /// <summary>Frozen bodies forgotten at <see cref="MaxFrozenBodies"/> (diagnostics).</summary>
         public int BodiesGone { get; private set; }
+
+        /// <summary>Dead bodies frozen out of range now.</summary>
+        public int FrozenBodies
+        {
+            get
+            {
+                int n = 0;
+                foreach (var p in _packets)
+                    if (p.Frozen)
+                        n++;
+                return n;
+            }
+        }
 
         public int ActiveCount
         {
@@ -283,6 +308,13 @@ namespace AdaptOrDeity.Sim.World
             _angle = angle;
             double cos = Math.Cos(angle), sin = Math.Sin(angle);
             double margin = PacketRadius;
+            // bodies frozen out of range come back when the creature does (those held by a frozen organism thaw with it)
+            foreach (var p in _packets)
+                if (p.Frozen && !(p.Stuck && p.Holder != 0) && !Beyond(p, BodyRange))
+                {
+                    p.Frozen = false;
+                    p.Active = true;
+                }
             foreach (var p in _packets)
             {
                 if (!p.Active)
@@ -302,17 +334,20 @@ namespace AdaptOrDeity.Sim.World
                     p.X += p.Vx * dt;
                     p.Y += p.Vy * dt;
                 }
-                double reach = p.Kind == PacketKind.Body ? BodyRange : HalfSize + margin;
-                bool away = Math.Abs(p.X - cx) > reach || Math.Abs(p.Y - cy) > reach;
-                if (away || Fill(p) < Settings.UsedUpFraction)
-                {
+                if (Fill(p) < Settings.UsedUpFraction)
                     p.Active = false;
-                    if (away && p.Kind == PacketKind.Body)
-                        BodiesGone++;
+                else if (p.Kind == PacketKind.Body)
+                {
+                    // a body out of range is frozen where it is (one an organism holds moves and freezes with it)
+                    if (!(p.Stuck && p.Holder != 0) && Beyond(p, BodyRange))
+                        Freeze(p);
                 }
-                else
+                else if (Beyond(p, HalfSize + margin))
+                    p.Active = false;
+                if (p.Active)
                     p.Radius = p.FullRadius * Math.Pow(Fill(p), 1.0 / 3.0);   // its volume shrinks as it is eaten
             }
+            ForgetFrozenBeyondCap();
             // Food arrives at the level's rate, Poisson (exponential intervals), whatever is already in the field: carried by
             // another creature, or lying on the ground and coming into view on the sides the creature moves towards.
             _untilNext -= dt;
@@ -321,6 +356,70 @@ namespace AdaptOrDeity.Sim.World
                 Spawn(_random.NextDouble() < Settings.CarriedShare, vx, vy);
                 Arrived++;
                 _untilNext += Exponential() / Settings.ArrivalsPerSecond;
+            }
+        }
+
+        // Whether packet p is farther than reach from the window's centre (the creature) along either ground axis.
+        private bool Beyond(FoodPacket p, double reach) => Math.Abs(p.X - CentreX) > reach || Math.Abs(p.Y - CentreY) > reach;
+
+        private static void Freeze(FoodPacket p)
+        {
+            p.Active = false;
+            p.Frozen = true;
+        }
+
+        /// <summary>
+        /// The packets <paramref name="holder"/> (a free organism's id) holds freeze with it: they stay as they are, out of
+        /// the field, until <see cref="Thaw"/>. Only dead bodies are kept: other food out of the window has already left it.
+        /// </summary>
+        public void Freeze(int holder)
+        {
+            foreach (var p in _packets)
+                if (p.Active && p.Stuck && p.Holder == holder)
+                {
+                    if (p.Kind == PacketKind.Body)
+                        Freeze(p);
+                    else
+                        p.Active = false;
+                }
+            ForgetFrozenBeyondCap();
+        }
+
+        /// <summary>The frozen packets <paramref name="holder"/> holds come back with it, as they were.</summary>
+        public void Thaw(int holder)
+        {
+            foreach (var p in _packets)
+                if (p.Frozen && p.Stuck && p.Holder == holder)
+                {
+                    p.Frozen = false;
+                    p.Active = true;
+                }
+        }
+
+        // Beyond the cap, the frozen bodies farthest from the creature are forgotten (the first of equals).
+        private void ForgetFrozenBeyondCap()
+        {
+            int frozen = FrozenBodies;
+            while (frozen > MaxFrozenBodies)
+            {
+                FoodPacket? far = null;
+                double d2 = -1.0;
+                foreach (var p in _packets)
+                {
+                    if (!p.Frozen)
+                        continue;
+                    double e2 = (p.X - CentreX) * (p.X - CentreX) + (p.Y - CentreY) * (p.Y - CentreY);
+                    if (e2 > d2)
+                    {
+                        d2 = e2;
+                        far = p;
+                    }
+                }
+                far!.Frozen = false;
+                far.Stuck = false;
+                far.Holder = 0;
+                BodiesGone++;
+                frozen--;
             }
         }
 
@@ -468,13 +567,13 @@ namespace AdaptOrDeity.Sim.World
         }
 
         /// <summary>
-        /// The packets <paramref name="holder"/> held are let go where they are (its body died or left): they lie still,
-        /// and a dead body drifts with its water again.
+        /// The packets <paramref name="holder"/> held are let go where they are (its body died or was forgotten): they lie
+        /// still, and a dead body drifts with its water again (a frozen one stays frozen until the creature comes back).
         /// </summary>
         public void Release(int holder)
         {
             foreach (var p in _packets)
-                if (p.Active && p.Stuck && p.Holder == holder)
+                if ((p.Active || p.Frozen) && p.Stuck && p.Holder == holder)
                 {
                     p.Stuck = false;
                     p.Holder = 0;
@@ -490,7 +589,7 @@ namespace AdaptOrDeity.Sim.World
         /// A dead cell's body becomes food where it lies: a packet of kind <see cref="PacketKind.Body"/> at (x, y), of radius
         /// <paramref name="radius"/>, holding <paramref name="glucose"/> [mol glucose equivalents] of which
         /// <paramref name="free"/> are small molecules, drifting at (vx, vy) with the water, smelling most of trace
-        /// <paramref name="mainTrace"/>. It stays until it is eaten or leaves <see cref="BodyRange"/>. Draws no random
+        /// <paramref name="mainTrace"/>. It stays until it is eaten; out of <see cref="BodyRange"/> it is frozen. Draws no random
         /// numbers, so the food that arrives is the same with or without deaths.
         /// </summary>
         public FoodPacket AddBody(double x, double y, double vx, double vy, double radius, double glucose, double free,
@@ -559,7 +658,7 @@ namespace AdaptOrDeity.Sim.World
         private FoodPacket FreeSlot()
         {
             foreach (var p in _packets)
-                if (!p.Active)
+                if (!p.Active && !p.Frozen)
                     return p;
             var added = NewSlot();
             _packets.Add(added);
