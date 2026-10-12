@@ -39,6 +39,21 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
+        public void EveryUnreferencedParameterIsListedForReview()
+        {
+            // docs/review/unreferenced-values.md lists the values still to source: every placeholder or unreferenced entry of
+            // content/parameters.json must be in it.
+            var d = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+            while (d != null && !File.Exists(Path.Combine(d.FullName, "global.json")))
+                d = d.Parent;
+            string list = File.ReadAllText(Path.Combine(d!.FullName, "docs", "review", "unreferenced-values.md"));
+            var missing = AdaptOrDeity.Game.Content.GameParameters.Default.Entries
+                .Where(e => e.Status == "placeholder" || e.Source == "unreferenced_placeholder")
+                .Select(e => e.Key).Where(k => !list.Contains("`" + k + "`")).ToList();
+            Assert.That(missing, Is.Empty, "add these to docs/review/unreferenced-values.md");
+        }
+
+        [Test]
         public void EveryLevelSummaryIsReviewed()
         {
             using var doc = Timeline();

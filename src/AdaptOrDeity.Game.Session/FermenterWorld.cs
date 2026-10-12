@@ -108,11 +108,20 @@ namespace AdaptOrDeity.Game.Session
         /// Whether cells and food exchange with the environment field (<see cref="Environment"/>); content field.enabled
         /// when null.
         /// </param>
-        public FermenterWorld(int? cellLimit = null, bool? environmentField = null)
+        /// <param name="accuracy">
+        /// <see cref="FieldAccuracy.Reference"/>: the environment without its speed-for-accuracy trade-offs, to test the
+        /// game's settings against.
+        /// </param>
+        public FermenterWorld(int? cellLimit = null, bool? environmentField = null, FieldAccuracy accuracy = FieldAccuracy.Game)
         {
+            Accuracy = accuracy;
+            if (accuracy == FieldAccuracy.Reference)
+                _inputTolerance = 0.0;
             _cellLimit = cellLimit ?? int.MaxValue;
             _cells.Add(new FermenterCell(TraitCatalog.Fermenter));
             var first = _cells[0];
+            if (accuracy == FieldAccuracy.Reference)
+                first.RelativeTolerance = GameParameters.Default.Value("field.reference_cell_tolerance");   // daughters inherit it
             // Geometry from the kernel (upstream parameters.json); the open water and food field from content.
             CellRadius = first.External("R_cell_mod_membrane") * 1e-6;   // µm → m
             _spacing = 2.0 * CellRadius + GameParameters.Default.Value("colony.cell_gap");

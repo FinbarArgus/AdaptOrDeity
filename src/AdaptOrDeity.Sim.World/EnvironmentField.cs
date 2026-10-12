@@ -21,7 +21,7 @@ namespace AdaptOrDeity.Sim.World
     }
 
     /// <summary>
-    /// The environment field's settings: content/parameters.json (field.*, environment.*, food.packet_lifetime). Every
+    /// The environment field's settings: content/parameters.json (field.*, environment.*). Every
     /// value is SI.
     /// </summary>
     public sealed class EnvironmentSettings
@@ -39,9 +39,6 @@ namespace AdaptOrDeity.Sim.World
 
         public double BufferPk { get; set; }
 
-        /// <summary>Time a fresh food packet takes to dissolve [s].</summary>
-        public double PacketLifetime { get; set; }
-
         public IReadOnlyList<TraceSpecies> TraceSpecies { get; set; } = Array.Empty<TraceSpecies>();
     }
 
@@ -49,7 +46,7 @@ namespace AdaptOrDeity.Sim.World
     /// The chemistry around the creature (<see cref="NestedField"/>): glucose, lactate, acid, O2 and the trace species
     /// (smells). Glucose, lactate and O2 are concentrations; acid is the H+ added to the water relative to the ocean [mol/m³
     /// of H+ equivalents], diffusing with the carbonate buffer that carries it, and pH follows from it through the buffer
-    /// (<see cref="Protons"/>). Food packets dissolve into it (<see cref="Dissolve"/>); cells exchange with it at their
+    /// (<see cref="Protons"/>). Enzymes hydrolyse food packets into it (<see cref="Dissolve"/>); cells exchange with it at their
     /// position (<see cref="ICellEnvironment"/>), seeing the membrane correction.
     /// </summary>
     public sealed class EnvironmentField : ICellEnvironment
@@ -136,18 +133,19 @@ namespace AdaptOrDeity.Sim.World
         }
 
         /// <summary>
-        /// Each food packet dissolves over the step (<see cref="FoodField.Dissolve"/>): its glucose, and its traces in
-        /// proportion (the contact trace per contact glucose, times each trace's strength), enter the field where it lies.
-        /// Returns the glucose released [mol].
+        /// Each food packet releases what enzymes hydrolyse of it over the step (<paramref name="hydrolysis"/>: the rate
+        /// acting on a packet [mol glucose/s]; <see cref="FoodField.Hydrolyse"/>): its glucose, and its traces in proportion
+        /// (the contact trace per contact glucose, times each trace's strength), enter the field where it lies. A packet no
+        /// enzyme acts on stays whole. Returns the glucose released [mol].
         /// </summary>
-        public double Dissolve(FoodField food, double dt)
+        public double Dissolve(FoodField food, double dt, Func<FoodPacket, double> hydrolysis)
         {
             double released = 0.0, tracePerGlucose = food.Settings.ContactTrace / food.Settings.ContactGlucose;
             foreach (var p in food.Packets)
             {
                 if (!p.Active)
                     continue;
-                double mol = food.Dissolve(p, dt, _settings.PacketLifetime);
+                double mol = food.Hydrolyse(p, hydrolysis(p) * dt);
                 if (mol <= 0.0 || !Field.Deposit(Glucose, p.X, p.Y, mol / dt))
                 {
                     if (mol > 0.0)
