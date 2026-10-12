@@ -24,6 +24,7 @@ namespace AdaptOrDeity.UI
             ["atp_pumps"] = new Color(0.95f, 0.55f, 0.25f),
             ["atp_protein_turnover"] = new Color(0.40f, 0.70f, 0.95f),
             ["atp_protein_build"] = new Color(0.70f, 0.50f, 0.95f),
+            ["atp_protein_breakdown"] = new Color(0.85f, 0.40f, 0.85f),
             ["atp_rna"] = new Color(0.35f, 0.85f, 0.75f),
             ["atp_lipids"] = new Color(0.95f, 0.85f, 0.35f),
             ["atp_repair"] = new Color(0.95f, 0.45f, 0.55f),
@@ -109,9 +110,11 @@ namespace AdaptOrDeity.UI
                             "under ATP used) and a little each second to keep. The membrane holds only so many proteins. " +
                             "Each membrane protein shows as an arc of the cell's rim in its colour, as long as the share " +
                             "of the surface it takes. Drag a flagellum's base (on the selected cell) to move it around the " +
-                            "membrane. Changes take time: a protein rises over minutes (hours for the big ones, as fast as " +
-                            "the ribosomes and ATP allow) and falls only as it is degraded, about 1% an hour; each slider " +
-                            "shows the level now → the target.", _small);
+                            "membrane. Changes take minutes: a protein rises as fast as its mRNA, the ribosomes and ATP " +
+                            "allow (hours for the big ones), and lowering a target has proteases remove the extra copies " +
+                            "(about 1 ATP per amino acid, shown under ATP used); their amino acids go to building other " +
+                            "proteins, which then cost less (Recycled protein, under ATP made). Each slider shows the " +
+                            "level now → the target.", _small);
             for (int t = 0; t < schema.Traits.Count; t++)
                 if (schema.Traits[t].Feature == null || Unlocked(schema, frame, schema.Traits[t].Feature))
                     DrawTraitSlider(bridge, schema.Traits[t], frame, cell, group, t);
