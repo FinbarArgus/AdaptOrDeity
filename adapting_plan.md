@@ -522,6 +522,13 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   exchangers, flagellum and hydrolase by ATP avoids the ATP trap (ATP 4.2 mM, back to rest when food returns; unregulated
   ATP runs out for good); with no food it only delays the collapse, and at level 1 as tuned the unlocking dip is the
   crash itself.
+- **2026-10-13** Dead organisms are food and the lineage earns points (designer requests; docs/plans/free-daughters.md
+  "Dead bodies"): a free organism that dies becomes a food packet where it lies (a sphere of its cell at the packet
+  density, 9.6e-15 mol, with the packets' free share, plus its vacuole's content; its simulated pools are not added, as
+  the density counts all of a cell's carbon), drifting with its water, eaten by the packets' rules (contact by the
+  creature and organisms; engulfed only once eaten smaller than the cell), kept until eaten while within the organisms'
+  range; `organisms.dead_kept` is retired. Every daughter released in the lineage (any generation) counts as offspring
+  and earns `skills.points_per_offspring`; frames split the creature's own (`OwnOffspring`).
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
@@ -571,7 +578,7 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     the field and in vacuoles. Make contact eating hydrolase-limited, or turn the field on by default? (2026-10-12)
 20. libcuflynx's runtime failed after a division with hard restarts on inputs changing every step (vacuole cells): soft
     restarts avoid it; worth a minimal reproduction upstream. (2026-10-12)
-21. Free organisms (docs/plans/free-daughters.md): should a dead one become a food packet, and should a released
-    daughter's own offspring count for reproduction points? (2026-10-12)
+21. Free organisms (docs/plans/free-daughters.md): a dead body beyond the organisms' range (60 µm) is dropped; keep far
+    bodies? And should lineage points diminish by generation, since descendants may out-earn food? (2026-10-13)
 17. Communication and memory: what a signal costs, what memory stores (places, individuals, threats) and how it
     is modelled (neural cells, a game abstraction, or both). Levels and dates decided when we get there.

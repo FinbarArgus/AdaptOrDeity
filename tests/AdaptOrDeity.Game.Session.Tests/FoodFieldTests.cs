@@ -112,6 +112,39 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
+        public void ADeadBodyDriftsWithItsWaterKeepsItsSizeAndDrawsNoRandomNumbers()
+        {
+            var settings = GameParameters.Default.Food(0.1);
+            settings.LyingDensity = 0.0;
+            settings.ArrivalsPerSecond = 0.5;
+            var food = new FoodField(settings);
+            var twinSettings = GameParameters.Default.Food(0.1);
+            twinSettings.LyingDensity = 0.0;
+            twinSettings.ArrivalsPerSecond = 0.5;
+            var twin = new FoodField(twinSettings);
+            const double r = 1e-6, vx = 2e-6, vy = -1e-6;
+            double amount = settings.SphereAmount(r);
+            var body = food.AddBody(1e-6, 2e-6, vx, vy, r, amount, 0.03 * amount, 1);
+            Assert.That((body.Kind, body.Radius, food.Fill(body), body.MainTrace), Is.EqualTo((PacketKind.Body, r, 1.0, 1)));
+            food.Step(1.0);
+            twin.Step(1.0);
+            Assert.That((body.X, body.Y), Is.EqualTo((1e-6 + vx, 2e-6 + vy)), "it drifts with its water");
+            food.StickTo(body.X, body.Y, 1e-9, 7, body.X, body.Y, 0.0);
+            Assert.That((body.Stuck, body.Holder, body.Vx), Is.EqualTo((true, 7, 0.0)), "held by organism 7");
+            food.Release(7);
+            Assert.That((body.Stuck, body.Vx, body.Vy), Is.EqualTo((false, vx, vy)), "let go, it drifts again");
+            // half eaten: its radius goes as the cube root of what is left, from its own size (not a packet's)
+            food.Withdraw(body.X, body.Y, 1e-9, 0.5 * amount);
+            food.Step(0.1);
+            twin.Step(0.1);
+            Assert.That(body.Radius, Is.EqualTo(r * Math.Pow(0.5, 1.0 / 3.0)).Within(1e-15));
+            Assert.That(food.Fill(body), Is.EqualTo(0.5).Within(1e-12));
+            Assert.That(food.Arrived, Is.EqualTo(twin.Arrived), "the food that arrives is the same with a body");
+            var arrived = food.Packets.Where(p => p.Active && p != body).Select(p => (p.X, p.Y)).ToArray();
+            Assert.That(arrived, Is.EqualTo(twin.Packets.Where(p => p.Active).Select(p => (p.X, p.Y)).ToArray()));
+        }
+
+        [Test]
         public void SameSeedSameField()
         {
             var a = NewField(3);

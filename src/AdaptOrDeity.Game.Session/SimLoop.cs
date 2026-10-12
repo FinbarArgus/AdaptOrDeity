@@ -302,6 +302,7 @@ namespace AdaptOrDeity.Game.Session
                     frame.PacketFill[n] = (float)foodWorld.Food.Fill(p);
                     frame.PacketTrace[n] = p.MainTrace;
                     frame.PacketCarried[n] = p.Kind == AdaptOrDeity.Sim.World.PacketKind.Carried && !p.Stuck;
+                    frame.PacketBody[n] = p.Kind == AdaptOrDeity.Sim.World.PacketKind.Body;
                     n++;
                 }
                 frame.PacketCount = n;
@@ -344,8 +345,7 @@ namespace AdaptOrDeity.Game.Session
                 frame.OrganismX[k] = (float)(o.X - frame.CreatureX);
                 frame.OrganismY[k] = (float)(o.Y - frame.CreatureY);
                 frame.OrganismOrientation[k] = (float)o.Body.Body.Angle;
-                frame.OrganismAlive[k] = o.Alive;
-                frame.OrganismMotorOn[k] = o.Alive && o.Swims && o.MotorOn;
+                frame.OrganismMotorOn[k] = o.Swims && o.MotorOn;
                 frame.OrganismFlagella[k] = (float)world.FlagellaOf(o);
                 for (int f = 0; f < AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella; f++)
                     frame.OrganismFlagellumAngles[k][f] = (float)o.Body.FlagellumAngle(0, f);
@@ -363,6 +363,7 @@ namespace AdaptOrDeity.Game.Session
             frame.OrganismsReleased = world.OrganismsReleased;
             frame.OrganismsDied = world.OrganismsDied;
             frame.OrganismsGone = world.OrganismsGone;
+            frame.OwnOffspring = world.OwnOffspring;
         }
 
         private SnapshotFrame? _writing;

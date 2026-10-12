@@ -5,7 +5,8 @@ namespace AdaptOrDeity.Presentation
     /// <summary>
     /// Draws one food packet slot: a disc smaller than a cell, coloured by the trace species it is richest in, shrinking as
     /// its glucose is eaten. Food carried by another creature shows the carrier (a dark body in the middle); lying food has
-    /// none. Hidden while the slot is empty.
+    /// none. A dead free organism's body is drawn as a dead cell: grey with a pale outline, cell-sized when fresh and
+    /// shrinking as it is eaten. Hidden while the slot is empty.
     /// </summary>
     public sealed class PacketView : MonoBehaviour
     {
@@ -16,7 +17,10 @@ namespace AdaptOrDeity.Presentation
         };
 
         private SessionBridge _bridge;
-        private SpriteRenderer _renderer, _carrier;
+        private static readonly Color DeadColour = new Color(0.55f, 0.55f, 0.55f, 0.8f);
+        private static readonly Color DeadOutline = new Color(0.95f, 0.98f, 1f, 0.6f);
+
+        private SpriteRenderer _renderer, _carrier, _outline;
         private int _slot;
 
         public int Slot => _slot;
@@ -35,6 +39,13 @@ namespace AdaptOrDeity.Presentation
             _carrier.sprite = circle;
             _carrier.color = new Color(0.35f, 0.22f, 0.30f, 0.95f);
             _carrier.sortingOrder = 0;
+            var outline = new GameObject("Outline");
+            outline.transform.SetParent(transform, false);
+            outline.transform.localScale = new Vector3(1.1f, 1.1f, 1f);
+            _outline = outline.AddComponent<SpriteRenderer>();
+            _outline.sprite = circle;
+            _outline.color = DeadOutline;
+            _outline.sortingOrder = -2;   // behind the dead cell
         }
 
         /// <summary>Radius in world units, or 0 if the slot is empty.</summary>
@@ -49,18 +60,21 @@ namespace AdaptOrDeity.Presentation
             {
                 _renderer.enabled = false;
                 _carrier.enabled = false;
+                _outline.enabled = false;
                 Radius = 0f;
                 return;
             }
             _renderer.enabled = true;
+            bool body = f.PacketBody[_slot];
             _carrier.enabled = f.PacketCarried[_slot];
+            _outline.enabled = body;
             float u = CellView.UnitsPerMetre;
             var shift = _bridge.Shift;   // the body is drawn a little ahead of the snapshot: food is placed relative to it
             transform.localPosition = new Vector3(f.PacketX[_slot] * u + shift.x, f.PacketY[_slot] * u + shift.y, 0.1f);
             Radius = f.PacketRadius[_slot] * u;
             transform.localScale = new Vector3(2f * Radius, 2f * Radius, 1f);
             // the radius shrinks with what is left (area in proportion, from the simulation); it also pales a little
-            var c = TraceColours[f.PacketTrace[_slot] % TraceColours.Length];
+            var c = body ? DeadColour : TraceColours[f.PacketTrace[_slot] % TraceColours.Length];
             c.a = 0.45f + 0.4f * Mathf.Clamp01(f.PacketFill[_slot]);
             _renderer.color = c;
         }

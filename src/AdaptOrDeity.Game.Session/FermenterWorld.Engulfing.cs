@@ -57,8 +57,14 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Prey cells the creature's cells have engulfed since the start.</summary>
         public int Swallowed { get; private set; }
 
-        /// <summary>Daughters that left the creature (divisions without multicellularity).</summary>
+        /// <summary>
+        /// Daughters released in the creature's lineage: its own (divisions without multicellularity) and those of free
+        /// organisms, any generation. Each earns reproduction points.
+        /// </summary>
         public int Offspring { get; private set; }
+
+        /// <summary>The creature's own daughters among <see cref="Offspring"/> (generation 1); the rest are descendants.</summary>
+        public int OwnOffspring { get; private set; }
 
         /// <summary>Glucose equivalents engulfed into vacuoles so far [mol] (packets and prey).</summary>
         public double Engulfed { get; private set; }

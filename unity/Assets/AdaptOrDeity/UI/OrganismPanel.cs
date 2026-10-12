@@ -59,7 +59,8 @@ namespace AdaptOrDeity.UI
             GUILayout.EndHorizontal();
             if (slot < 0)
             {
-                GUILayout.Label("No longer simulated: it swam or drifted out of range, or was removed.", _small);
+                GUILayout.Label("No longer here: it died (its body is food, a grey dead cell), or swam or drifted out of " +
+                                "range.", _small);
                 GUILayout.EndArea();
                 return;
             }
@@ -67,8 +68,7 @@ namespace AdaptOrDeity.UI
                                 "A daughter that left your creature") +
                             ". It is not yours to control: it keeps the traits and energy controls it had when it left.",
                 _small);
-            Row("State", frame.OrganismAlive[slot] ? (frame.OrganismMotorOn[slot] ? "alive, swimming" : "alive")
-                : "dead (damage reached a lethal load)");
+            Row("State", frame.OrganismMotorOn[slot] ? "alive, swimming" : "alive");
             var overlays = bridge.Schema.Overlays;
             for (int c = 0; c < overlays.Count; c++)
                 Row(overlays[c].Name,
