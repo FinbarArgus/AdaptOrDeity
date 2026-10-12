@@ -76,4 +76,13 @@ BE_batched_c in the same C harness on the colony-bench protocol (scratch harness
 - The earlier Myokit figure (5.8 s vs 0.88 s for 64 cells) was unfair mainly because Myokit solved the colony as one
   system (dense finite-difference Jacobian), not because it ran on one thread: per-cell CVODES on 1 thread is ~11x
   faster than it.
-- Next to try: keep BE_batched_c's LU while the step size changes little (re-test with this harness).
+- Factorisation reuse, measured 2026-10-12 (scratch: ~/.cache/claude-tmp/lu-reuse, README there), at matched error:
+  - Keeping the LU across step-size changes (CVODES-style, thresholds 0.1-0.3, with or without rescaling): 0.65-0.85x,
+    slower. Newton stages converge in ~1 iteration, and the extra iterations cost more than the LUs saved.
+  - Step-size hysteresis (grow h only beyond +20%; LU kept while h is unchanged): 1.10-1.14x.
+  - Steps ending on the macro-step end, and a soft restart there (keep h, Jacobian and LU; only the rates are
+    re-evaluated) when only inputs changed: 4.3-4.6x when an input changes every 0.1 s (food from a field: 156 -> 34
+    µs per cell per simulated s); 0.93-1.02x on today's protocol, so it is an option. No Jacobian refresh is needed
+    for small input changes. A soft restart from an interpolated state fails (off the slow manifold).
+  - Not yet in libcuflynx: proposed diff to batched_runtime.c.j2 (bk_advance, bk_run_block, bk_restart,
+    bk_set_stop_at_outputs) in the scratch folder.
