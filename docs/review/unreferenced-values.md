@@ -55,6 +55,9 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
   ran out of ATP on days 1.5-4, 4e-3 never (gaps between packets decide, see the plan's decision log).
 - `levels[].arrivals.prey_per_s` (0 at level 1, see the decision log for level 2's value): calibrated for play, not sourced.
 - Feature costs: multicellularity and mitochondria (points), mitochondria's `requires_swallowed` 10 (designer's number).
+- Regulation (`features[regulation]`): unlocked when a cell's ATP first falls below `requires_atp_below` 0.5 of its resting
+  level (design, designer's "below a certain level"); free (no points). Its explanation cites Potrykus & Cashel 2008 and
+  Schneider, Gaal & Gourse 2002 (looked up, not read in full).
 
 ## Upstream (circulatory-autogen-modules homogenisation-checks a12d84a: feat/sugar-transporters and feat/extracellular-matrix merged; the game's cell since 2026-10-12)
 
@@ -72,6 +75,12 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
   75-80 kDa globular protein is ~25 nm² in cross-section; estimate, commit 0db734f), hydrolysis_capacity 10x resting need
   (design): no published copy numbers for surface glycosidases found. Its length (700 aa) is now sourced from UniProt
   (SusG 692 aa; 0db734f).
+
+- Expression regulation (homogenisation-checks ddb5c6e, cell/expression_regulation): the function f = x^n/(1 + x^n) with
+  n = 4 (`regulation_hill_n`) and K = 0.5 x the resting level (`regulation_K_fraction`; for H+ the resting H+ / 0.5, pH
+  0.3 below rest) is the designer's hardcoded choice (design), not fitted to ppGpp or rrn promoter data; experts will
+  choose others. It acts on targets only, at the pools' 10 s expression time constant, so a regulated protein is gone
+  within a minute of a famine (real degradation takes hours).
 
 ## Level 4: extracellular space (upstream homogenisation-checks a12d84a; copies in content/upstream while that branch is local)
 

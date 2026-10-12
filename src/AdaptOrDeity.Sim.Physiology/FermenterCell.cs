@@ -83,7 +83,9 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly int _aGlycAtp, _aThrust, _aFlagPower, _eMotor;
         private readonly int _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
         private readonly int _aMatrix, _aAtpMatrix;
-        private readonly int _sDamage, _sGrowth, _sGlycogen;
+        private readonly int _sDamage, _sGrowth, _sGlycogen, _sAtp;
+        private readonly int[] _regulationSwitch;   // per regulated target (traits, then growth), per species: reg_on_*
+        private readonly int[] _regulationFactor;   // per regulated target: its R_reg
 
         /// <summary>The fermenter module in the game's module library.</summary>
         public static NativeModule Module => NativeModule.Get("generic_adaptive_cell", "fermenter");
@@ -175,6 +177,20 @@ namespace AdaptOrDeity.Sim.Physiology
             player.Add(StorageParameter);
             player.Add(RepairParameter);
             player.Add(MatrixParameter);
+            // regulation switches (cell/expression_regulation): per trait's pool and growth, per species
+            _regulationSwitch = new int[(traits.Count + 1) * RegulationSpecies.Length];
+            _regulationFactor = new int[traits.Count + 1];
+            for (int target = 0; target <= traits.Count; target++)
+            {
+                string sub = target < traits.Count ? traits[target].Pool : "bio";
+                _regulationFactor[target] = Alg(sub + "__R_reg");
+                for (int s = 0; s < RegulationSpecies.Length; s++)
+                {
+                    string name = $"reg_on_{RegulationSpecies[s]}_mod_{sub}";
+                    _regulationSwitch[target * RegulationSpecies.Length + s] = Ext(name);
+                    player.Add(name);
+                }
+            }
             PlayerParameters = player;
             _jRef = Ext("J_ref_mod_protein");
             _aGly = Alg("cytosol__J_ATP_gly");
@@ -210,6 +226,8 @@ namespace AdaptOrDeity.Sim.Physiology
             _sDamage = St("bio__D");
             _sGrowth = St("bio__P_growth");
             _sGlycogen = St("cytosol__C_glyc");
+            _sAtp = St("cytosol__C_ATP");
+            RestingAtp = starting["C_ATP_init_mod_cytosol"];
             _isOutput = new bool[d.Algebraic.Count];
             foreach (var (k, _) in module.Outputs)
                 _isOutput[k] = true;
@@ -247,11 +265,54 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public KernelBatch Batch { get; }
 
+        /// <summary>
+        /// Species whose fall can lower an expression or growth target (kernel switches reg_on_&lt;species&gt;): ATP, glucose
+        /// 6-phosphate, glucose inside and H+ (a falling pH). The function is upstream's (cell/expression_regulation):
+        /// f = x^n/(1 + x^n), x = C/K (for H+: K/H), n = 4, K = half the resting level (for H+: twice the resting H+).
+        /// </summary>
+        public static readonly string[] RegulationSpecies = { "ATP", "G6P", "glc", "H" };
+
+        /// <summary>Regulated targets: each trait's (its index), then growth (<see cref="GrowthRegulation"/>).</summary>
+        public int RegulationTargets => Traits.Count + 1;
+
+        /// <summary>The regulated target that is growth (the energy put into a daughter).</summary>
+        public int GrowthRegulation => Traits.Count;
+
+        /// <summary>Whether a fall of species <paramref name="species"/> lowers target <paramref name="target"/>.</summary>
+        public bool Regulated(int target, int species) => Batch.Externals[RegulationIndex(target, species)][0] != 0.0;
+
+        /// <summary>Switches regulation of target <paramref name="target"/> by species <paramref name="species"/> on or off.</summary>
+        public void SetRegulated(int target, int species, bool on) =>
+            Batch.Externals[RegulationIndex(target, species)][0] = on ? 1.0 : 0.0;
+
+        /// <summary>The factor regulation puts on target <paramref name="target"/> now (R_reg: 1 with every switch off).</summary>
+        public double RegulationFactor(int target) => A(_regulationFactor[CheckTarget(target)]);
+
+        private int RegulationIndex(int target, int species)
+        {
+            if (species < 0 || species >= RegulationSpecies.Length)
+                throw new ArgumentOutOfRangeException(nameof(species), $"no regulating species {species}");
+            return _regulationSwitch[CheckTarget(target) * RegulationSpecies.Length + species];
+        }
+
+        private int CheckTarget(int target)
+        {
+            if (target < 0 || target > Traits.Count)
+                throw new ArgumentOutOfRangeException(nameof(target), $"no regulated target {target}");
+            return target;
+        }
+
+        /// <summary>Cytosol ATP now [mol/m³].</summary>
+        public double Atp => Batch.States[_sAtp][0];
+
+        /// <summary>Cytosol ATP of the starting cell at rest [mol/m³].</summary>
+        public double RestingAtp { get; }
+
         /// <summary>The module's parameter set the cell started from.</summary>
         public string Instance { get; }
 
         /// <summary>Module parameters the player sets: each trait's target (s_target for a membrane protein, m_target
-        /// otherwise), then the growth, storage, repair and matrix controls.</summary>
+        /// otherwise), the growth, storage, repair and matrix controls, then the regulation switches.</summary>
         public IReadOnlyList<string> PlayerParameters { get; }
 
         public IReadOnlyList<TraitDefinition> Traits { get; }

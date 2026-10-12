@@ -32,6 +32,7 @@ namespace AdaptOrDeity.Game.Session
         DevGrantPoints = 15,
         DevSpawnPrey = 16,
         InspectOrganism = 17,
+        SetRegulation = 18,
     }
 
     /// <summary>
@@ -89,6 +90,9 @@ namespace AdaptOrDeity.Game.Session
                     return;
                 case SimCommandKind.SetControl:
                     Inspectable(loop).SetControl(A, B, X);
+                    return;
+                case SimCommandKind.SetRegulation:
+                    Inspectable(loop).SetRegulation(A, B, C, X != 0.0);
                     return;
                 case SimCommandKind.ExportModel:
                     ExportModel(loop, Text1 ?? "", Text2 ?? "creature");
@@ -171,6 +175,14 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Sets an energy control (growth, storage, repair) for every cell of <paramref name="group"/>.</summary>
         public static SimCommand SetControl(int group, int control, double value) =>
             new SimCommand(SimCommandKind.SetControl, group, control, x: value);
+
+        /// <summary>
+        /// Sets whether a fall of <paramref name="species"/> (<see cref="SessionSchema.RegulationSpecies"/>) lowers
+        /// <paramref name="target"/> (a trait's index, or <see cref="SessionSchema.GrowthRegulation"/> for growth) in every
+        /// cell of <paramref name="group"/>. Needs the Regulation feature.
+        /// </summary>
+        public static SimCommand SetRegulation(int group, int target, int species, bool on) =>
+            new SimCommand(SimCommandKind.SetRegulation, group, target, species, on ? 1.0 : 0.0);
 
         /// <summary>
         /// Writes the creature as a module array (&lt;prefix&gt;_module_array.json and &lt;prefix&gt;_parameters.csv in

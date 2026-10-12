@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Game.Session
     /// </summary>
     public static class SnapshotCodec
     {
-        private const int Magic = 0x41534E33;   // "ASN3"
+        private const int Magic = 0x41534E34;   // "ASN4"
 
         // Bytes before the frame's fields: the magic number and the shape (HeaderFields integers).
         private const int HeaderFields = 12, HeaderBytes = 4 + 4 * HeaderFields;
@@ -133,6 +133,7 @@ namespace AdaptOrDeity.Game.Session
             Blocks(f.TraitValues, ref io);
             Blocks(f.TraitTargets, ref io);
             Blocks(f.Controls, ref io);
+            Blocks(f.Regulation, ref io);
             Blocks(f.FlagellumAngles, ref io);
             Blocks(f.TraitArea, ref io);
             io.Block(f.CellGroup);
