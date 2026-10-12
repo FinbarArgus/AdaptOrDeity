@@ -36,9 +36,12 @@
         "compare": "states"
       },
       "sha256": "6f47b08b1bf22ee7e95cafb17f7363a520970f12d0b97e5184e21eea8308ab24",
-      "per_cell_inputs_note": "inputs the game sets per cell (FermenterWorld, FermenterCell): glucose at the membrane (and, from level 4, lactate and H+ outside it), the motor, each trait target (clamped per cell to the membrane room) and the growth, storage, repair and matrix controls; every other input is shared by the cells of a group (docs/plans/parallel-and-gpu.md)",
+      "per_cell_inputs_note": "inputs the game sets per cell (FermenterWorld, FermenterCell): glucose, lactate and H+ at the membrane (H+ also as H_o), the motor, each trait target (clamped per cell to the membrane room) and the growth, storage, repair and matrix controls; every other input is shared by the cells of a group (docs/plans/parallel-and-gpu.md)",
       "per_cell_inputs": [
         "C_glc_e_mod_membrane_face",
+        "C_lac_e_mod_membrane_face",
+        "H_e_mod_membrane_face",
+        "H_o_mod_H",
         "a_motor_mod_i_flagellum",
         "m_target_mod_pool_Flagellum",
         "m_target_mod_pool_H_ATPase",
@@ -52,13 +55,13 @@
         "growth_level_mod_bio",
         "store_alloc_mod_cytosol",
         "repair_level_mod_bio",
-        "C_lac_e_mod_membrane_face",
-        "H_e_mod_membrane_face",
-        "H_o_mod_H",
         "mx_alloc_mod_cytosol"
       ],
       "outputs": [
         "membrane_face__J_glc",
+        "membrane_face__J_glc_e",
+        "membrane_face__J_lac_e",
+        "membrane_face__J_H_lac",
         "i_flagellum__F_one",
         "i_flagellum__P_flag",
         "bio__growth_progress",
@@ -75,9 +78,7 @@
         "pool_Glf__a_unit",
         "pool_LacT__a_unit",
         "pool_Flagellum__a_unit",
-        "cytosol__J_mx",
-        "membrane_face__J_lac",
-        "membrane_face__J_H_lac"
+        "cytosol__J_mx"
       ]
     },
     {

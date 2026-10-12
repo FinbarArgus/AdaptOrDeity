@@ -12,9 +12,10 @@ namespace AdaptOrDeity.Game.Session.Tests
     /// </summary>
     public class Level4ColonyTests
     {
-        private static SimLoop Colony(int cells, int workers, out FermenterWorld world)
+        private static SimLoop Colony(int cells, int workers, out FermenterWorld world, bool field = false)
         {
-            var loop = NewLoop(out world);
+            world = new FermenterWorld(environmentField: field);
+            var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             world.Workers = workers;
             loop.Enqueue(SimCommands.SetLevel(4));
             loop.ApplyCommands();
@@ -153,6 +154,38 @@ namespace AdaptOrDeity.Game.Session.Tests
                 }
                 Assert.That(print.Select(BitConverter.DoubleToInt64Bits), Is.EqualTo(reference.Select(BitConverter.DoubleToInt64Bits)));
             }
+        }
+
+        [Test]
+        public void WithTheEnvironmentFieldTheGapsAndCellsExchangeWithItExactly()
+        {
+            // the open sectors of the cells and the open gaps exchange with the field; what the field gained is what the
+            // packets released less what the cells' open sectors took and what came into the gaps, to 1e-12
+            var loop = Colony(19, 1, out var world, field: true);
+            loop.Enqueue(SimCommands.SetControl(FermenterWorld.InnerGroup, FermenterWorld.MatrixControl, 1.0));
+            loop.ApplyCommands();
+            var env = world.Environment!;
+            var space = world.Space!;
+            const int g = AdaptOrDeity.Sim.World.EnvironmentField.Glucose;
+            double sourced0 = env.Field.Sourced(g), packets0 = env.PacketGlucose, cells0 = world.CellGlucoseExchanged;
+            double gaps0 = space.TotalThroughOpenFaces[ExtracellularSpace.Glucose];
+            loop.StepExactly(300);
+            double sourced = env.Field.Sourced(g) - sourced0, packets = env.PacketGlucose - packets0;
+            double cells = world.CellGlucoseExchanged - cells0;
+            double gaps = space.TotalThroughOpenFaces[ExtracellularSpace.Glucose] - gaps0;
+            Assert.That(Math.Abs(gaps), Is.GreaterThan(0.0), "glucose moved through the open gaps");
+            Assert.That(sourced, Is.EqualTo(packets - cells - gaps).Within(1e-12 * (packets + Math.Abs(cells) + Math.Abs(gaps))));
+            for (int s = 0; s < ExtracellularSpace.Species.Length; s++)
+            {
+                double held = s == ExtracellularSpace.Glucose ? space.Held(s) + space.MatrixHeldAndLost() : space.Held(s);
+                double booked = space.TotalFromOutside[s] + space.TotalFromCells[s] +
+                                (s == ExtracellularSpace.Glucose ? space.TotalMatrixDelivered : 0.0);
+                double gross = Math.Abs(space.TotalFromOutside[s]) + Math.Abs(space.TotalFromCells[s]) + Math.Abs(held) +
+                               (s == ExtracellularSpace.Glucose ? space.TotalMatrixDelivered : 0.0);
+                Assert.That(held, Is.EqualTo(booked).Within(1e-12 * gross), ExtracellularSpace.Species[s]);
+            }
+            Assert.That(world.CellGroup(0), Is.EqualTo(FermenterWorld.InnerGroup));
+            world.Dispose();
         }
     }
 }

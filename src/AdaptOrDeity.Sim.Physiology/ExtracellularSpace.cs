@@ -163,6 +163,9 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public double[] TotalFromCells { get; } = new double[Species.Length];
 
+        /// <summary>Per species, in through the open faces since the start [mol] (part of <see cref="TotalFromOutside"/>).</summary>
+        public double[] TotalThroughOpenFaces { get; } = new double[Species.Length];
+
         /// <summary>Matrix delivered to the volumes since the start [mol glucose units] (see <see cref="MatrixPending"/>).</summary>
         public double TotalMatrixDelivered { get; private set; }
 
@@ -325,6 +328,7 @@ namespace AdaptOrDeity.Sim.Physiology
                 double flow = g * (Outside[i * Species.Length + s] - _x[f.Volume]) * dt;
                 OpenInflow[i * Species.Length + s] = flow;
                 TotalFromOutside[s] += flow;
+                TotalThroughOpenFaces[s] += flow;
                 _r[f.Volume] += flow;
             }
             for (int v = 0; v < n; v++)

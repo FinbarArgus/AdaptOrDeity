@@ -110,6 +110,7 @@ namespace AdaptOrDeity.Game.Session
             float vx = f.CreatureVx; io.Value(ref vx); f.CreatureVx = vx;
             float vy = f.CreatureVy; io.Value(ref vy); f.CreatureVy = vy;
             int packets = f.PacketCount; io.Value(ref packets); f.PacketCount = packets;
+            float fieldExtent = f.FieldExtent; io.Value(ref fieldExtent); f.FieldExtent = fieldExtent;
 
             Blocks(f.Channels, ref io);
             Blocks(f.Details, ref io);
@@ -132,6 +133,7 @@ namespace AdaptOrDeity.Game.Session
             io.Block(f.PacketFill);
             io.Block(f.PacketTrace);
             io.Block(f.PacketCarried);
+            io.Block(f.FieldGlucose);
             foreach (var probe in f.Probes)
             {
                 int cell = probe.Cell; io.Value(ref cell); probe.Cell = cell;

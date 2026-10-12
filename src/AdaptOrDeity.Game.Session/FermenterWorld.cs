@@ -115,7 +115,11 @@ namespace AdaptOrDeity.Game.Session
         }
 
         /// <param name="cellLimit">Most cells, for tests; no limit when null.</param>
-        public FermenterWorld(int? cellLimit = null)
+        /// <param name="environmentField">
+        /// Whether cells and food exchange with the environment field (<see cref="Environment"/>); content field.enabled
+        /// when null.
+        /// </param>
+        public FermenterWorld(int? cellLimit = null, bool? environmentField = null)
         {
             _cellLimit = cellLimit ?? int.MaxValue;
             _cells.Add(new FermenterCell(TraitCatalog.Fermenter));
@@ -141,6 +145,8 @@ namespace AdaptOrDeity.Game.Session
             _body = new CreatureBody(CellRadius, first.External("eta_mod_i_flagellum"), GameParameters.Default.Body());
             AddToBody(0, _defaultAngles);
             _food.Populate(_body.Body.X, _body.Body.Y);
+            if (environmentField ?? GameParameters.Default.Value("field.enabled") != 0.0)
+                _environment = CreateEnvironment(first);
             double avogadro = _avogadro;
             _cellGroup.Add(0);
             _groups.Add(new Group(_cells[0].Traits.Count));
@@ -275,7 +281,7 @@ namespace AdaptOrDeity.Game.Session
                 _levelStart = _time;
                 ApplyControls();
                 // what the level's world supplies per second (content/timeline.json levels[].arrivals)
-                _food.BackgroundGlucose = GameTimeline.Default.OceanGlucose(value);
+                SetOcean(GameTimeline.Default.OceanGlucose(value));
                 var arrivals = GameTimeline.Default.ArrivalsAt(value);
                 _food.SetArrivals(arrivals.FoodPerSecond, arrivals.CarriedShare);
             }
@@ -292,7 +298,7 @@ namespace AdaptOrDeity.Game.Session
             {
                 if (!(value >= 0.0))
                     throw new ArgumentOutOfRangeException(nameof(value), "must be >= 0 mol/m³");
-                _food.BackgroundGlucose = value;
+                SetOcean(value);
             }
         }
 
@@ -406,6 +412,10 @@ namespace AdaptOrDeity.Game.Session
                 Array.Resize(ref _cellX, 2 * n);
             if (_openGlucoseShare.Length < n)
                 Array.Resize(ref _openGlucoseShare, 2 * n);
+            if (_openReleaseShare.Length < n)
+                Array.Resize(ref _openReleaseShare, 2 * n);
+            if (_openGlucose.Length < n)
+                Array.Resize(ref _openGlucose, 2 * n);
             if (_cellY.Length < n)
                 Array.Resize(ref _cellY, 2 * n);
             if (_forceX.Length < n)
@@ -436,14 +446,22 @@ namespace AdaptOrDeity.Game.Session
             _cos = Math.Cos(b.Angle);
             _sin = Math.Sin(b.Angle);
             _stepDt = dt;
+            if (_environment != null)
+                BeforeCells(dt);
             _cellPass ??= CellPass;
             ForEachCell(_cellPass);
 
-            // Food stays with the cell that found it; what cells took beyond the background leaves the packets.
+            // Food stays with the cell that found it; what cells took beyond the background leaves the packets (with the
+            // environment field: the cells' exchange goes into the field and the field steps).
             for (int i = 0; i < n; i++)
                 if (_touching[i] && _cells[i].Alive)
                     _food.StickTo(_cellX[i], _cellY[i], CellRadius);
-            for (int i = 0; i < n; i++)
+            // the space between cells first (its open gaps exchange with the field before the field steps)
+            if (_gaps != null && _space != null)
+                StepSpace(dt);
+            if (_environment != null)
+                AfterCells(dt);
+            for (int i = 0; i < n && _environment == null; i++)
             {
                 if (!_touching[i])
                     continue;
@@ -452,8 +470,6 @@ namespace AdaptOrDeity.Game.Session
                 if (c > _food.BackgroundGlucose && uptake > 0.0)
                     FoodEaten += _food.Withdraw(_cellX[i], _cellY[i], CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
             }
-            if (_gaps != null && _space != null)
-                StepSpace(dt);
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))
@@ -486,16 +502,17 @@ namespace AdaptOrDeity.Game.Session
                 _cellY[i] = y;
                 _touching[i] = _food.TouchesAny(x, y, CellRadius);
                 var c = _cells[i];
-                double food = _food.GlucoseAt(x, y, CellRadius);
+                _openGlucoseShare[i] = _openReleaseShare[i] = 1.0;
                 if (_gaps != null && _space != null)
-                    SetMembraneFromColony(i, c, food);
+                    SetMembraneFromColony(i, c, x, y);
+                else if (_environment != null)
+                    ReadEnvironment(i, x, y);
                 else
                 {
-                    c.MembraneGlucose = food;
-                    _openGlucoseShare[i] = 1.0;
+                    c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
+                    for (int tr = 0; tr < nt; tr++)
+                        _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
                 }
-                for (int tr = 0; tr < nt; tr++)
-                    _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
                 c.Step(_stepDt);
             }
         }

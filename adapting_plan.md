@@ -440,6 +440,11 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   - The upstream modules sit on branch feat/extracellular-matrix (on homogenisation-checks), copied into
     `content/upstream/` until merged.
 
+- **2026-10-12** The environment field is built (docs/plans/environment-field.md "Built"), off by default
+  (content `field.enabled`): nested grids stepped coarse first with Douglas ADI (exact steady state at the exchange
+  step), finer grids taking the coarse flux through their edges (conservative by construction; explicit refluxing was
+  unstable), pH from buffered acid, packets dissolving over `food.packet_lifetime`, cell inputs passed on a 1% change.
+
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.

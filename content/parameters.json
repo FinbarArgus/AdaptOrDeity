@@ -176,6 +176,132 @@
    "source": "unreferenced_placeholder",
    "status": "design",
    "note": "glucose eaten from food packets per skill point: calibrated so a level-1 cell left alone for the week earns about 6 points (it ate 1.37e-13 mol) (one 5-point transporter) and one kept on food all week earns about 14 (two), measured 2026-10-12 at 1 µM ocean glucose and 1e-4 packets/s (SkillPointTests checks it)"
+  },
+  "field.enabled": {
+   "value": 0.0,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "1 runs the nested environment field: cells take glucose up from it and release lactate and acid into it, food packets dissolve into it; 0 keeps the contact rule (a touching cell sees food.contact_glucose)"
+  },
+  "field.fine_spacing": {
+   "value": 1e-06,
+   "units": "m",
+   "source": "definitional",
+   "status": "design",
+   "note": "cell side of the finest grid, around the colony (designer decision 2026-10-12)"
+  },
+  "field.fine_margin": {
+   "value": 8e-06,
+   "units": "m",
+   "source": "definitional",
+   "status": "design",
+   "note": "water the finest grid covers beyond the colony on each side: room for the grids to recentre by whole coarse cells (4 um) and for the coarse flux at the fine grid's edge to be away from the cells"
+  },
+  "field.extent_multiple": {
+   "value": 60.0,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "the outermost grid spans at least this multiple of the colony's diameter (designer decision 2026-10-12); grids have 4x the spacing and extent of the next finer one"
+  },
+  "field.layer_depth": {
+   "value": 1e-05,
+   "units": "m",
+   "source": "definitional",
+   "status": "design",
+   "note": "depth of the 2D water layer the field holds: about the distance diffusion mixes in one 0.1 s exchange (sqrt(2 D dt) = 12 um for glucose); the water above it is not represented yet (a 3D correction would add it)"
+  },
+  "field.diffusivity.glucose": {
+   "value": 6.7e-10,
+   "units": "m2/s",
+   "source": "longsworth1953diffusion",
+   "status": "sourced",
+   "note": "glucose in water, 6.73e-10 m2/s at 25 C (about 10% lower at 20 C)"
+  },
+  "field.diffusivity.lactate": {
+   "value": 1e-09,
+   "units": "m2/s",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "lactate anion in water: ~1.0e-9 m2/s, typical of small organic anions; needs a measured value"
+  },
+  "field.diffusivity.acid": {
+   "value": 1.05e-09,
+   "units": "m2/s",
+   "source": "zeebe2011diffusion",
+   "status": "sourced",
+   "note": "the field carries acid as buffered H+ equivalents, moved by the mobile carbonate buffer: bicarbonate's diffusivity at 20 C (1.18e-9 at 25 C). Free H+ (9.3e-9) is ~1e-4 of the acid at pH 7.3, so its own diffusion is negligible"
+  },
+  "field.diffusivity.oxygen": {
+   "value": 2.1e-09,
+   "units": "m2/s",
+   "source": "han1996oxygen",
+   "status": "sourced",
+   "note": "O2 in water at ~20-25 C (2.0e-9 at 20 C, 2.4e-9 at 25 C in Han & Bartels; 2.1e-9 used)"
+  },
+  "field.diffusivity.aspartate": {
+   "value": 8e-10,
+   "units": "m2/s",
+   "source": "longsworth1953diffusion",
+   "status": "placeholder",
+   "note": "amino acids of aspartate's size diffuse at ~0.8-0.9e-9 m2/s at 25 C (glycine 1.06e-9, alanine 0.91e-9); aspartate's own value to check"
+  },
+  "field.diffusivity.serine": {
+   "value": 8.5e-10,
+   "units": "m2/s",
+   "source": "longsworth1953diffusion",
+   "status": "placeholder",
+   "note": "near alanine's 0.91e-9 m2/s at 25 C; serine's own value to check"
+  },
+  "field.diffusivity.ribose": {
+   "value": 7.5e-10,
+   "units": "m2/s",
+   "source": "longsworth1953diffusion",
+   "status": "placeholder",
+   "note": "a pentose, a little faster than glucose (6.73e-10 at 25 C); to check"
+  },
+  "field.diffusivity.dimethylsulfide": {
+   "value": 1.1e-09,
+   "units": "m2/s",
+   "source": "saltzman1993dimethylsulfide",
+   "status": "placeholder",
+   "note": "dimethyl sulfide in water at ~20 C; value to check against the paper"
+  },
+  "environment.oxygen": {
+   "value": 0.00025,
+   "units": "mol/m3",
+   "source": "planavsky2014low",
+   "status": "placeholder",
+   "note": "O2 in the surface ocean at ~0.1% of present atmospheric O2 (mid-Proterozoic estimate); 0.25 mol/m3 today at 20 C. Nothing takes it up yet"
+  },
+  "environment.carbonate_total": {
+   "value": 3.0,
+   "units": "mol/m3",
+   "source": "sheldon2006precambrian",
+   "status": "placeholder",
+   "note": "dissolved inorganic carbon of the 2 Ga ocean: ~10 PAL CO2 (paleosols ~2.2 Ga) gives ~0.15 mM CO2 and ~3 mM HCO3- at pH 7.3. Sets the buffer that turns acid into pH"
+  },
+  "environment.carbonate_pk1": {
+   "value": 5.9,
+   "units": "1",
+   "source": "millero2010carbonate",
+   "status": "placeholder",
+   "note": "first carbonic acid dissociation constant (pK1*) in seawater at ~20 C, S 35; to check"
+  },
+  "food.packet_lifetime": {
+   "value": 600.0,
+   "units": "s",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "a fresh packet dissolves into the field over this time, its radius shrinking at a constant rate (release rate proportional to sqrt of what is left); the research note gives minutes to hours for polymer particles eroded by surface enzymes"
+  },
+  "field.input_tolerance": {
+   "value": 0.01,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "a cell's membrane concentrations from the field reach its module only when they moved by more than this share since they last did: every changed input restarts the cell's integrator, and the field moves a little every step (colony-bench 512 cells, 20 s, environment field: 4.0 s with every change passed, 3.0 s at 1e-3, 1.5 s at 1e-2; 0.6 s on the contact rule). The exchange stays exact (it uses the cell's own fluxes)"
   }
  },
  "trace_species": [
@@ -211,6 +337,13 @@
  "references": {
   "adler1975chemotaxis": "Adler, J. (1975) Chemotaxis in bacteria. Annual Review of Biochemistry 44, 341-356",
   "lynch2015bioenergetic": "Lynch, M. and Marinov, G. K. (2015) The bioenergetic costs of a gene. PNAS 112, 15690-15695",
-  "milo2010bionumbers": "Milo, R. et al. (2010) BioNumbers - the database of key numbers in molecular and cell biology. Nucleic Acids Research 38, D750-D753"
+  "milo2010bionumbers": "Milo, R. et al. (2010) BioNumbers - the database of key numbers in molecular and cell biology. Nucleic Acids Research 38, D750-D753",
+  "longsworth1953diffusion": "Longsworth, L. G. (1953) Diffusion measurements, at 25 C, of aqueous solutions of amino acids, peptides and sugars. Journal of the American Chemical Society 75, 5705-5709",
+  "zeebe2011diffusion": "Zeebe, R. E. (2011) On the molecular diffusion coefficients of dissolved CO2, HCO3- and CO3-- and their dependence on isotopic mass. Geochimica et Cosmochimica Acta 75, 2483-2498",
+  "han1996oxygen": "Han, P. and Bartels, D. M. (1996) Temperature dependence of oxygen diffusion in H2O and D2O. Journal of Physical Chemistry 100, 5597-5602",
+  "saltzman1993dimethylsulfide": "Saltzman, E. S., King, D. B., Holmen, K. and Leck, C. (1993) Experimental determination of the diffusion coefficient of dimethylsulfide in water. Journal of Geophysical Research 98(C9), 16481-16486",
+  "planavsky2014low": "Planavsky, N. J. et al. (2014) Low Mid-Proterozoic atmospheric oxygen levels and the delayed rise of animals. Science 346, 635-638",
+  "sheldon2006precambrian": "Sheldon, N. D. (2006) Precambrian paleosols and atmospheric CO2 levels. Precambrian Research 147, 148-155",
+  "millero2010carbonate": "Millero, F. J. (2010) Carbonate constants for estuarine waters. Marine and Freshwater Research 61, 139-142"
  }
 }

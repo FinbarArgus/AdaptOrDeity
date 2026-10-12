@@ -66,18 +66,20 @@ inner group starts as a copy of the boundary group's targets and controls. A cel
 grows) takes its new group's targets.
 
 **Coupling, per macro step (0.1 s).**
-1. Each cell sees the mean of what its sectors face: open water (the food field's glucose at the cell, ocean lactate and
-   pH) or a volume. That gives its membrane glucose, lactate and H+ (`C_glc_e`, `C_lac_e`, `H_e`/`H_o`, now per cell).
-   Changes below 0.1% are not passed on, because each change restarts the cell's integration.
+1. Each cell sees the mean of what its sectors face, either a volume or open water. Open water is the environment field
+   at the cell when the field is on (`ICellEnvironment.AtMembrane`, corrected for the open share's own exchange).
+   Otherwise it is the food field's glucose and the sea's lactate and pH. That gives the cell's membrane glucose, lactate
+   and H+. Changes below `field.input_tolerance` are not passed on, because each change restarts the cell's integration.
 2. The cells step.
 3. Their exchange is shared out over their sectors. Glucose uptake becomes an implicit sink on each facing volume
    (J/C_membrane/6 x the volume's new concentration), so no volume is overdrawn. Lactate, acid and matrix released are
-   sources. Open-water shares go to the sea. The open-water share of uptake beyond the background still comes out of
-   touching food packets.
+   sources. With the field, the open-water shares go into it (`Exchange`) and the field steps after the space. Without
+   it they go to the sea, and the open-water share of uptake beyond the background comes out of touching food packets.
 4. Transport (`Sim.Physiology.ExtracellularSpace`) takes one backward Euler step per species across faces and open
    gaps, solved by conjugate gradients. The gaps relax in milliseconds, so an explicit step would be unstable. The new
-   state is rebuilt from the solved fluxes, so the bookkeeping is exact. The mouth of an open gap sees the food field
-   there, and a packet touching it gives up what flows in beyond the background.
+   state is rebuilt from the solved fluxes, so the bookkeeping is exact. The mouth of an open gap sees the field
+   there, and what flows in is taken from the field at the mouth (H+ as acid). Without the field it sees the food field,
+   and a packet touching the mouth gives up what flows in beyond the background.
 5. Chemistry, every 1 s: each volume's module advances its matrix (delivered, broken down, overflowing). Volumes with no
    matrix are skipped.
 
@@ -98,6 +100,8 @@ cell panel shows "Making matrix" (ATP/s), "Matrix exported" and "Edge on open wa
   - matrix cost exactly 3 ATP and one glucose per unit;
   - exact bookkeeping in the world;
   - inner cells see less glucose;
+  - with the environment field, the field gains exactly the packets' glucose less what the cells' open sectors and the
+    gaps took (1e-12);
   - bit-identical results on 1 and 4 threads.
 - kernelgen: goldens for a module without states.
 
@@ -123,8 +127,9 @@ cell panel shows "Making matrix" (ATP/s), "Matrix exported" and "Edge on open wa
    the gaps in place.
 5. **Food packets** reach the gaps only where a packet touches a gap's mouth (radius half the gap). Should packets inside
    the colony's outline feed the volumes they cover?
-6. **The nested field** (feat/nested-field): open gaps should exchange with the fine grid around the colony instead of
-   the food field's background, with the per-cell correction. ExtracellularSpace.Outside is the hook.
+6. **The field's buffer and the volumes' buffer differ.** The field turns acid into pH with the carbonate buffer; a
+   volume uses a linear buffer (b_H) at the sea's pH. They agree near the sea's pH. Should the volume module take the
+   carbonate buffer too?
 7. **The creature as a module array** (`ToModuleArray`) does not yet include the volumes and faces. Each would be an
    extracellular_volume record and each gap an extracellular_face record.
 8. **Speed.** Changing membrane inputs restart cells' integrations every step. The 0.1% input tolerance halves the

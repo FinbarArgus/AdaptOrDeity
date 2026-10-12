@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using AdaptOrDeity.Sim.Modules;
 using AdaptOrDeity.Sim.Physiology;
+using AdaptOrDeity.Sim.World;
 
 namespace AdaptOrDeity.Game.Session
 {
@@ -26,8 +27,14 @@ namespace AdaptOrDeity.Game.Session
         private readonly Dictionary<(int, int, int), int> _volumeOf = new Dictionary<(int, int, int), int>();
         private int[] _sectorSpace = new int[0];          // cell * 6 + sector -> volume in _space, or -1 for open water
         private double[] _openGlucoseShare = new double[0];   // per cell: share of its glucose seen from open water
+        private double[] _openReleaseShare = new double[0];   // per cell: share of its edge on open water
+        private double[] _openGlucose = new double[0];        // per cell: glucose its open sectors see [mol/m³]
         private readonly List<(int CellA, int CellB)> _openFaceCells = new List<(int, int)>();
         private double[] _mouthX = new double[0], _mouthY = new double[0];
+
+        // the environment field's species for the space's glucose, lactate, H+ (as acid) and O2
+        private static readonly int[] FieldSpecies =
+            { EnvironmentField.Glucose, EnvironmentField.Lactate, EnvironmentField.Acid, EnvironmentField.Oxygen };
 
         /// <summary>The colony's gaps and volumes (null before level 4).</summary>
         public ColonyGaps? Gaps => _gaps;
@@ -129,13 +136,34 @@ namespace AdaptOrDeity.Game.Session
                 ApplyControls();
         }
 
-        // Glucose, lactate and H+ at the cell's membrane: open water on its open sectors, each volume on its own.
-        private void SetMembraneFromColony(int i, FermenterCell c, double foodGlucose)
+        // Glucose, lactate and H+ at the cell's membrane: open water on its open sectors (the environment field when
+        // there is one, else the food field and the sea), each volume on its own.
+        private void SetMembraneFromColony(int i, FermenterCell c, double x, double y)
         {
             var space = _space!;
             double w = _gaps!.OpenShare(i);
-            double glc = w * foodGlucose, lac = w * space.OpenWater[ExtracellularSpace.Lactate];
-            double h = w * space.OpenWater[ExtracellularSpace.Proton];
+            double openGlc, openLac, openH;
+            if (_environment != null)
+            {
+                var env = _environment;
+                // with the field's membrane correction for what the open share exchanged in the last step
+                double r = CellRadius;
+                openGlc = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? OpenGlucoseRelease(i) : 0.0);
+                openLac = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? w * c.LactateRelease : 0.0);
+                openH = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? w * c.ProtonRelease : 0.0));
+                for (int t = 0; t < env.TraceCount; t++)
+                    _traceAtCell[i * env.TraceCount + t] = env.Field.Sample(EnvironmentField.FirstTrace + t, x, y);
+            }
+            else
+            {
+                openGlc = _food.GlucoseAt(x, y, CellRadius);
+                openLac = space.OpenWater[ExtracellularSpace.Lactate];
+                openH = space.OpenWater[ExtracellularSpace.Proton];
+                int nt = _food.TraceSpecies.Count;
+                for (int t = 0; t < nt; t++)
+                    _traceAtCell[i * nt + t] = _food.TraceAt(t, x, y, CellRadius);
+            }
+            double glc = w * openGlc, lac = w * openLac, h = w * openH;
             for (int k = 0; k < 6; k++)
             {
                 int v = _sectorSpace[6 * i + k];
@@ -145,24 +173,26 @@ namespace AdaptOrDeity.Game.Session
                 lac += space.Concentration(v, ExtracellularSpace.Lactate) / 6.0;
                 h += space.Concentration(v, ExtracellularSpace.Proton) / 6.0;
             }
-            // a changed input restarts the cell's integration, so values that moved by less than InputTolerance are left
+            // a changed input restarts the cell's integration, so values that moved less than the tolerance are left
             if (Moved(c.MembraneGlucose, glc))
                 c.MembraneGlucose = glc;
             if (Moved(c.MembraneLactate, lac))
                 c.MembraneLactate = lac;
-            if (Moved(c.OutsideProton, h))
-                c.OutsideProton = h;
+            if (Moved(c.MembraneProtons, h))
+                c.MembraneProtons = h;
             glc = c.MembraneGlucose;
-            _openGlucoseShare[i] = glc > 0.0 ? Math.Min(1.0, w * foodGlucose / glc) : w;
+            _openGlucose[i] = openGlc;
+            _openReleaseShare[i] = w;
+            _openGlucoseShare[i] = glc > 0.0 ? Math.Min(1.0, w * openGlc / glc) : w;
         }
 
-        /// <summary>
-        /// Relative change below which the space's concentrations at a cell's membrane are not passed on (each change
-        /// restarts the cell's integration; the cell's exchange is booked at the values it used, so nothing is lost).
-        /// </summary>
-        public double InputTolerance { get; set; } = 1e-3;
-
-        private bool Moved(double old, double now) => Math.Abs(now - old) > InputTolerance * Math.Max(Math.Abs(old), Math.Abs(now));
+        // The glucose the cell exchanges with open water [mol/s] (negative: takes up): its uptake in proportion to what
+        // its open sectors offered, or a release (Glf leaking) by the share of its edge.
+        private double OpenGlucoseRelease(int i)
+        {
+            double j = _cells[i].GlucoseRelease;
+            return j * (j < 0.0 ? _openGlucoseShare[i] : _openReleaseShare[i]);
+        }
 
         // The space's step: the cells' exchange shared over their sectors, the water outside at each open gap, then
         // what came in from packets at the gaps leaves them.
@@ -181,7 +211,7 @@ namespace AdaptOrDeity.Game.Session
                 double j = c.GlucoseUptake, cm = c.MembraneGlucose;
                 double coefficient = j > 0.0 && cm > 0.0 ? j / cm / 6.0 : 0.0;
                 double leak = j < 0.0 ? -j / 6.0 : 0.0;
-                double lac = -c.LactateUptake / 6.0, h = -c.ProtonUptake / 6.0, mx = c.MatrixExport / 6.0;
+                double lac = c.LactateRelease / 6.0, h = c.ProtonRelease / 6.0, mx = c.MatrixExport / 6.0;
                 for (int k = 0; k < 6; k++)
                 {
                     int v = _sectorSpace[6 * i + k];
@@ -196,16 +226,35 @@ namespace AdaptOrDeity.Game.Session
             }
             int ns = ExtracellularSpace.Species.Length;
             double halfGap = 0.5 * (_spacing - 2.0 * CellRadius);
+            var env = _environment;
             for (int f = 0; f < _openFaceCells.Count; f++)
             {
                 var (a, b) = _openFaceCells[f];
-                _mouthX[f] = 0.5 * (_cellX[a] + _cellX[b]);
-                _mouthY[f] = 0.5 * (_cellY[a] + _cellY[b]);
+                double x = 0.5 * (_cellX[a] + _cellX[b]), y = 0.5 * (_cellY[a] + _cellY[b]);
+                _mouthX[f] = x;
+                _mouthY[f] = y;
+                if (env != null)
+                {
+                    for (int s = 0; s < ns; s++)
+                    {
+                        double c = env.AtMembrane(FieldSpecies[s], x, y, halfGap, 0.0);
+                        space.Outside[f * ns + s] = s == ExtracellularSpace.Proton ? env.Protons(c) : c;
+                    }
+                    continue;
+                }
                 for (int s = 0; s < ns; s++)
                     space.Outside[f * ns + s] = space.OpenWater[s];
-                space.Outside[f * ns + ExtracellularSpace.Glucose] = _food.GlucoseAt(_mouthX[f], _mouthY[f], halfGap);
+                space.Outside[f * ns + ExtracellularSpace.Glucose] = _food.GlucoseAt(x, y, halfGap);
             }
             space.Step(dt);
+            if (env != null)
+            {
+                // what came in through each open gap leaves the field there (H+ as acid: the buffered total)
+                for (int f = 0; f < _openFaceCells.Count; f++)
+                    for (int s = 0; s < ns; s++)
+                        env.Exchange(FieldSpecies[s], _mouthX[f], _mouthY[f], -space.OpenInflow[f * ns + s] / dt);
+                return;
+            }
             double background = _food.BackgroundGlucose;
             for (int f = 0; f < _openFaceCells.Count; f++)
             {
