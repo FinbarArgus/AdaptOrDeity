@@ -16,6 +16,20 @@
    "status": "placeholder",
    "note": "glucose in a fresh food packet: about a quarter of what a 2 um fermenter needs per daughter (1.5e-13 mol)"
   },
+  "food.free_fraction": {
+   "value": 0.03,
+   "units": "1",
+   "source": "neidhardt1990physiology",
+   "status": "placeholder",
+   "note": "share of a packet (a dead cell) already small molecules: a bacterium's pool of free metabolites is ~3-4% of its dry mass (E. coli); taken as the share of its glucose equivalents, to check"
+  },
+  "food.free_leak_rate": {
+   "value": 0.0016666666666666668,
+   "units": "1/s",
+   "source": "unreferenced_placeholder",
+   "status": "placeholder",
+   "note": "rate the free small molecules leak out of a packet (a lysed cell): first order, ~10 min time constant; no source yet"
+  },
   "food.contact_glucose": {
    "value": 50.0,
    "units": "mol/m3",

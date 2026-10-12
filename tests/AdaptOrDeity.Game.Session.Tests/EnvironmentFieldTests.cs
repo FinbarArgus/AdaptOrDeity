@@ -51,14 +51,22 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
-        public void PacketsStayWholeWithoutEnzymes()
+        public void WithoutEnzymesOnlyTheFreeFractionLeaks()
         {
+            // A packet's small molecules leak out by diffusion (first order); its polymer stays until enzymes act on it.
             var (world, loop) = Colony(1, food: true);
             var packet = PacketOnCell(world);
-            double start = packet.Glucose;
-            loop.StepExactly(300);
-            Assert.That(packet.Glucose, Is.EqualTo(start), "no surface enzyme, no hydrolysis");
-            Assert.That(world.Environment!.PacketGlucose, Is.EqualTo(0.0));
+            var s = world.Food.Settings;
+            double start = packet.Glucose, free = packet.Free;
+            Assert.That(free, Is.EqualTo(s.FreeFraction * start).Within(1e-15 * start));
+            loop.StepExactly(3000);   // 300 s
+            double leaked = free * (1.0 - Math.Exp(-s.FreeLeakRate * 300.0));
+            Assert.That(start - packet.Glucose, Is.EqualTo(leaked).Within(1e-9 * leaked), "the free part leaks, exactly");
+            Assert.That(packet.Glucose - packet.Free, Is.EqualTo(start - free).Within(1e-15 * start), "the polymer stays");
+            Assert.That(world.Environment!.PacketGlucose, Is.EqualTo(leaked).Within(1e-9 * leaked), "into the field");
+            var b = world.Body.Body;
+            Assert.That(world.Environment.Field.Sample(AdaptOrDeity.Sim.World.EnvironmentField.FirstTrace + packet.MainTrace, b.X, b.Y),
+                Is.GreaterThan(0.0), "it smells before anything digests it");
             world.Dispose();
         }
 
@@ -69,11 +77,12 @@ namespace AdaptOrDeity.Game.Session.Tests
             var packet = PacketOnCell(world);
             const double rate = 1e-17;   // mol glucose/s from cell 0's surface enzymes
             world.HydrolysisCapacity = i => i == 0 ? rate : 0.0;
-            double start = packet.Glucose;
+            double start = packet.Glucose, free = packet.Free;
             loop.StepExactly(100);
+            double leaked = free * (1.0 - Math.Exp(-world.Food.Settings.FreeLeakRate * 10.0));
             double released = start - packet.Glucose;
-            Assert.That(released, Is.EqualTo(rate * 10.0).Within(1e-9 * released), "the enzymes' rate over 10 s");
-            Assert.That(world.Environment!.PacketGlucose, Is.EqualTo(released).Within(1e-15 * released), "into the field");
+            Assert.That(released, Is.EqualTo(rate * 10.0 + leaked).Within(1e-9 * released), "the enzymes' rate over 10 s, and the free leak");
+            Assert.That(world.Environment!.PacketGlucose, Is.EqualTo(released).Within(1e-12 * released), "into the field");
             world.Dispose();
         }
 

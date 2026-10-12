@@ -51,8 +51,14 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Radius [m].</summary>
         public double Radius { get; internal set; }
 
-        /// <summary>Glucose left [mol].</summary>
+        /// <summary>Glucose left [mol], free and in polymer.</summary>
         public double Glucose { get; internal set; }
+
+        /// <summary>
+        /// The part of <see cref="Glucose"/> already small molecules [mol]: it leaks out by diffusion with no enzymes
+        /// (<see cref="FoodField.Leak"/>); the rest is polymer that only enzymes release (<see cref="FoodField.Hydrolyse"/>).
+        /// </summary>
+        public double Free { get; internal set; }
 
         /// <summary>Relative strength of each trace species (1 for the main one), in <see cref="FoodField.TraceSpecies"/> order.</summary>
         public double[] Traces { get; }
@@ -79,6 +85,12 @@ namespace AdaptOrDeity.Sim.World
     {
         /// <summary>Glucose between packets [mol/m³].</summary>
         public double BackgroundGlucose { get; set; }
+
+        /// <summary>Share of a fresh packet's glucose already small molecules (it leaks without enzymes).</summary>
+        public double FreeFraction { get; set; }
+
+        /// <summary>Rate constant of the free part leaking out of a packet [1/s].</summary>
+        public double FreeLeakRate { get; set; }
 
         /// <summary>Glucose in a fresh packet [mol].</summary>
         public double PacketAmount { get; set; }
@@ -285,24 +297,45 @@ namespace AdaptOrDeity.Sim.World
             double share = Math.Min(1.0, mol / total);
             foreach (var p in _packets)
                 if (p.Active && Touches(p, x, y, r))
+                {
                     p.Glucose -= p.Glucose * share;
+                    p.Free -= p.Free * share;
+                }
             return total * share;
         }
 
         /// <summary>
-        /// Enzymes hydrolyse up to <paramref name="mol"/> of packet <paramref name="p"/>'s glucose; below the used-up share
-        /// it gives all it has left. Returns the glucose released [mol], which leaves the packet. A packet with no enzyme
-        /// acting on it keeps its glucose.
+        /// Enzymes hydrolyse up to <paramref name="mol"/> of packet <paramref name="p"/>'s polymer; below the used-up share
+        /// the packet gives all it has left. Returns the glucose released [mol], which leaves the packet. A packet with no
+        /// enzyme acting on it keeps its polymer.
         /// </summary>
         public double Hydrolyse(FoodPacket p, double mol)
         {
             if (!p.Active || p.Glucose <= 0.0 || !(mol > 0.0))
                 return 0.0;
-            double left = Math.Max(0.0, p.Glucose - mol);
+            double polymer = p.Glucose - p.Free;
+            double left = p.Glucose - Math.Min(mol, polymer);
             if (left < Settings.UsedUpFraction * Settings.PacketAmount)
+            {
                 left = 0.0;
+                p.Free = 0.0;
+            }
             double released = p.Glucose - left;
             p.Glucose = left;
+            return released;
+        }
+
+        /// <summary>
+        /// The packet's free small molecules leak out over <paramref name="dt"/> [s] at <see cref="FoodSettings.FreeLeakRate"/>
+        /// (first order, exact over the step). Returns the glucose released [mol], which leaves the packet.
+        /// </summary>
+        public double Leak(FoodPacket p, double dt)
+        {
+            if (!p.Active || p.Free <= 0.0)
+                return 0.0;
+            double released = p.Free * (1.0 - Math.Exp(-Settings.FreeLeakRate * dt));
+            p.Free -= released;
+            p.Glucose -= released;
             return released;
         }
 
@@ -421,6 +454,7 @@ namespace AdaptOrDeity.Sim.World
             slot.Vy = vy;
             slot.Radius = PacketRadius;
             slot.Glucose = Settings.PacketAmount;
+            slot.Free = Settings.FreeFraction * Settings.PacketAmount;
             slot.MainTrace = _random.Next(TraceSpecies.Count);
             for (int i = 0; i < slot.Traces.Length; i++)
                 slot.Traces[i] = i == slot.MainTrace ? 1.0 : Settings.PacketTraceMinorShare;   // relative strengths

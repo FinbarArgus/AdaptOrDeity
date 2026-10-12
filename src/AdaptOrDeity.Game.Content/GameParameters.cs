@@ -76,6 +76,8 @@ namespace AdaptOrDeity.Game.Content
         {
             BackgroundGlucose = backgroundGlucose,
             PacketAmount = Value("food.packet_amount"),
+            FreeFraction = Value("food.free_fraction"),
+            FreeLeakRate = Value("food.free_leak_rate"),
             ContactGlucose = Value("food.contact_glucose"),
             ContactTrace = Value("food.contact_trace"),
             PacketTraceMinorShare = Value("food.packet_trace_minor_share"),

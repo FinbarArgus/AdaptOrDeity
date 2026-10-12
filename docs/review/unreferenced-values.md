@@ -10,6 +10,8 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | key | value | units | source | status | note |
 |---|---|---|---|---|---|
 | `food.packet_trace_minor_share` | 0.1 | 1 | unreferenced_placeholder | placeholder | other trace species relative to the main one |
+| `food.free_fraction` | 0.03 | 1 | neidhardt1990physiology | placeholder | share of a packet already small molecules: free metabolite pool ~3-4% of E. coli dry mass, taken as glucose equivalents (to check) |
+| `food.free_leak_rate` | 0.00167 | 1/s | unreferenced_placeholder | placeholder | first-order leak of a packet's free small molecules (~10 min); no source |
 | `food.packet_amount` | 4e-14 | mol | unreferenced_placeholder | placeholder | glucose in a fresh food packet: about a quarter of what a 2 um fermenter needs per daughter (1.5e-13 mol) |
 | `food.contact_glucose` | 50.0 | mol/m3 | unreferenced_placeholder | placeholder | glucose a cell touching a food packet sees at its membrane (the particle dissolving into the boundary layer), while the packet lasts |
 | `food.contact_trace` | 0.01 | mol/m3 | unreferenced_placeholder | placeholder | concentration of a packet's main trace species at a touching membrane |

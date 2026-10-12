@@ -133,10 +133,11 @@ namespace AdaptOrDeity.Sim.World
         }
 
         /// <summary>
-        /// Each food packet releases what enzymes hydrolyse of it over the step (<paramref name="hydrolysis"/>: the rate
-        /// acting on a packet [mol glucose/s]; <see cref="FoodField.Hydrolyse"/>): its glucose, and its traces in proportion
-        /// (the contact trace per contact glucose, times each trace's strength), enter the field where it lies. A packet no
-        /// enzyme acts on stays whole. Returns the glucose released [mol].
+        /// Each food packet releases its free small molecules (<see cref="FoodField.Leak"/>) and what enzymes hydrolyse of
+        /// its polymer over the step (<paramref name="hydrolysis"/>: the rate acting on a packet [mol glucose/s];
+        /// <see cref="FoodField.Hydrolyse"/>): its glucose, and its traces in proportion (the contact trace per contact
+        /// glucose, times each trace's strength), enter the field where it lies. With no enzyme on it, only the free part
+        /// leaves. Returns the glucose released [mol].
         /// </summary>
         public double Dissolve(FoodField food, double dt, Func<FoodPacket, double> hydrolysis)
         {
@@ -145,7 +146,7 @@ namespace AdaptOrDeity.Sim.World
             {
                 if (!p.Active)
                     continue;
-                double mol = food.Hydrolyse(p, hydrolysis(p) * dt);
+                double mol = food.Leak(p, dt) + food.Hydrolyse(p, hydrolysis(p) * dt);
                 if (mol <= 0.0 || !Field.Deposit(Glucose, p.X, p.Y, mol / dt))
                 {
                     if (mol > 0.0)
