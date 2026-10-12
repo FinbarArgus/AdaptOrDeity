@@ -7,7 +7,7 @@
   "component_type": "cell",
   "default_instance": "default",
   "licence": "CC0-1.0",
-  "assembled_from": "circulatory-autogen-modules homogenisation-checks a12d84a (merges feat/sugar-transporters and feat/extracellular-matrix), cell/generic_adaptive_cell/versions/fermenter, assembled by libcuflynx 2026-10-12",
+  "assembled_from": "",
   "entrance_ports": [],
   "exit_ports": [],
   "general_ports": [],
@@ -409,6 +409,12 @@
     "constant"
    ],
    [
+    "K_ATP_reg_mod_reg",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
     "K_ATP_store_mod_cytosol",
     "millimolar",
     "access",
@@ -433,7 +439,19 @@
     "constant"
    ],
    [
+    "K_G6P_reg_mod_reg",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
     "K_G6P_store_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_H_reg_mod_reg",
     "millimolar",
     "access",
     "constant"
@@ -470,6 +488,12 @@
    ],
    [
     "K_glc_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_glc_reg_mod_reg",
     "millimolar",
     "access",
     "constant"
@@ -1107,6 +1131,12 @@
    [
     "bio__P_growth",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_reg",
+    "dimensionless",
     "access",
     "variable"
    ],
@@ -3283,6 +3313,12 @@
     "constant"
    ],
    [
+    "n_reg_mod_reg",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "n_ribo_mod_bio",
     "dimensionless",
     "access",
@@ -3331,6 +3367,12 @@
     "variable"
    ],
    [
+    "pool_ABC__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_ABC__a_unit",
     "um2",
     "access",
@@ -3350,6 +3392,12 @@
    ],
    [
     "pool_ABC__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_ABC__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -3433,6 +3481,12 @@
     "variable"
    ],
    [
+    "pool_Flagellum__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Flagellum__a_unit",
     "um2",
     "access",
@@ -3452,6 +3506,12 @@
    ],
    [
     "pool_Flagellum__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Flagellum__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -3529,6 +3589,12 @@
     "variable"
    ],
    [
+    "pool_GalP__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_GalP__a_unit",
     "um2",
     "access",
@@ -3548,6 +3614,12 @@
    ],
    [
     "pool_GalP__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_GalP__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -3631,6 +3703,12 @@
     "variable"
    ],
    [
+    "pool_Glf__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Glf__a_unit",
     "um2",
     "access",
@@ -3650,6 +3728,12 @@
    ],
    [
     "pool_Glf__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glf__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -3733,6 +3817,12 @@
     "variable"
    ],
    [
+    "pool_Glyc__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Glyc__a_unit",
     "um2",
     "access",
@@ -3752,6 +3842,12 @@
    ],
    [
     "pool_Glyc__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glyc__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -3829,6 +3925,12 @@
     "variable"
    ],
    [
+    "pool_H_ATPase__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_H_ATPase__a_unit",
     "um2",
     "access",
@@ -3848,6 +3950,12 @@
    ],
    [
     "pool_H_ATPase__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_H_ATPase__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -3931,6 +4039,12 @@
     "variable"
    ],
    [
+    "pool_Hydrolase__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Hydrolase__a_unit",
     "um2",
     "access",
@@ -3950,6 +4064,12 @@
    ],
    [
     "pool_Hydrolase__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Hydrolase__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -4033,6 +4153,12 @@
     "variable"
    ],
    [
+    "pool_KefC__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_KefC__a_unit",
     "um2",
     "access",
@@ -4052,6 +4178,12 @@
    ],
    [
     "pool_KefC__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_KefC__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -4135,6 +4267,12 @@
     "variable"
    ],
    [
+    "pool_LacT__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_LacT__a_unit",
     "um2",
     "access",
@@ -4154,6 +4292,12 @@
    ],
    [
     "pool_LacT__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_LacT__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -4237,6 +4381,12 @@
     "variable"
    ],
    [
+    "pool_NCX__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NCX__a_unit",
     "um2",
     "access",
@@ -4256,6 +4406,12 @@
    ],
    [
     "pool_NCX__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NCX__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -4339,6 +4495,12 @@
     "variable"
    ],
    [
+    "pool_NhaA__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NhaA__a_unit",
     "um2",
     "access",
@@ -4358,6 +4520,12 @@
    ],
    [
     "pool_NhaA__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NhaA__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -4441,6 +4609,12 @@
     "variable"
    ],
    [
+    "pool_PTS__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_PTS__a_unit",
     "um2",
     "access",
@@ -4460,6 +4634,12 @@
    ],
    [
     "pool_PTS__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_PTS__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -4543,6 +4723,12 @@
     "variable"
    ],
    [
+    "pool_Trk__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Trk__a_unit",
     "um2",
     "access",
@@ -4562,6 +4748,12 @@
    ],
    [
     "pool_Trk__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Trk__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -4645,6 +4837,12 @@
     "variable"
    ],
    [
+    "pool_proteome__R_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_proteome__a_unit",
     "um2",
     "access",
@@ -4664,6 +4862,12 @@
    ],
    [
     "pool_proteome__m",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_proteome__m_goal",
     "dimensionless",
     "access",
     "variable"
@@ -4821,6 +5025,414 @@
    [
     "r_rep_max_mod_bio",
     "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "reg__f_ATP_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__f_G6P_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__f_H_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__f_glc_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__x_ATP_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__x_G6P_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__x_H_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__x_glc_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg_on_ATP_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_ABC",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_Flagellum",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_GalP",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_Glf",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_Glyc",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_H_ATPase",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_Hydrolase",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_KefC",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_LacT",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_NCX",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_NhaA",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_PTS",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_Trk",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_pool_proteome",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_ABC",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_Flagellum",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_GalP",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_Glf",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_Glyc",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_H_ATPase",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_Hydrolase",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_KefC",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_LacT",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_NCX",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_NhaA",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_PTS",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_Trk",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_pool_proteome",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_ABC",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_Flagellum",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_GalP",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_Glf",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_Glyc",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_H_ATPase",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_Hydrolase",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_KefC",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_LacT",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_NCX",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_NhaA",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_PTS",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_Trk",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_pool_proteome",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_ABC",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_Flagellum",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_GalP",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_Glf",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_Glyc",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_H_ATPase",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_Hydrolase",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_KefC",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_LacT",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_NCX",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_NhaA",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_PTS",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_Trk",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_pool_proteome",
+    "dimensionless",
     "access",
     "constant"
    ],

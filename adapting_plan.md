@@ -513,6 +513,15 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   automatic division on (its daughters earn the player nothing), dies at a lethal damage load and is removed 600 s
   later. At most 32 are simulated, none beyond 2 view widths (60 µm) from the creature; a calm organism costs ~30 µs and
   a swimming one ~80 µs per simulated second, and swimmers leave the range within a minute or two.
+- **2026-10-13** Regulation by falling metabolites (designer request; docs/plans/regulation.md). Upstream
+  cell/expression_regulation (homogenisation-checks ddb5c6e): every protein pool's target and growth times
+  prod_s (1 - on_s + on_s f_s), f = x^4/(1 + x^4), x = C/(half the resting level) for ATP, G6P and glucose inside, x =
+  (twice the resting H+)/H+ for pH; switches off by default, the cell bitwise unchanged (goldens identical). In the game a
+  free level-1 feature unlocked when a cell's ATP first falls below half its resting level; per group, a cog beside each
+  expression slider and the growth slider opens the species toggles. Measured: on half food regulating the pumps,
+  exchangers, flagellum and hydrolase by ATP avoids the ATP trap (ATP 4.2 mM, back to rest when food returns; unregulated
+  ATP runs out for good); with no food it only delays the collapse, and at level 1 as tuned the unlocking dip is the
+  crash itself.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
@@ -555,6 +564,9 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     PEP), so a gap between food packets longer than its reserve kills it slowly even when food returns. With packets of a
     real size (2.7 h of eating each) level 1 and 2's outcomes hang on the gaps, and growth at the level's food rate runs
     ATP out within a day. Keep a small ATP floor, a restart path (glycogen, basal uptake), or richer food? (2026-10-12)
+    Regulation (2026-10-13) avoids the trap only while some food remains (half the resting glucose): the unregulated
+    maintenance ATPase still drains ATP to 0 in a full famine. Should maintenance fall in a famine too, and should
+    regulation unlock before the first crash?
 19. The contact rule (field off) takes a touching packet's polymer as if dissolved, so the hydrolase slider matters only in
     the field and in vacuoles. Make contact eating hydrolase-limited, or turn the field on by default? (2026-10-12)
 20. libcuflynx's runtime failed after a division with hard restarts on inputs changing every step (vacuole cells): soft

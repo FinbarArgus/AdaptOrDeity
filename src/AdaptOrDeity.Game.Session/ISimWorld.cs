@@ -108,6 +108,15 @@ namespace AdaptOrDeity.Game.Session
 
         void SetFeature(int feature, bool enabled);
 
+        /// <summary>
+        /// Whether a fall of species <paramref name="species"/> (<see cref="SessionSchema.RegulationSpecies"/>) lowers
+        /// regulated target <paramref name="target"/> (a trait's index, or the trait count for growth) in the group's cells.
+        /// </summary>
+        bool ReadRegulation(int group, int target, int species);
+
+        /// <summary>Switches that regulation on or off for every cell of the group (needs the Regulation feature).</summary>
+        void SetRegulation(int group, int target, int species, bool on);
+
         /// <summary>Divides the cell (spending glycogen to finish the daughter if needed).</summary>
         void Divide(int cell);
     }

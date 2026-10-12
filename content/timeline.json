@@ -11,7 +11,8 @@
    "unlocks": [
     "protein_expression",
     "repair_level",
-    "swimming"
+    "swimming",
+    "regulation"
    ],
    "arrivals": {
     "food_per_s": 0.003,
@@ -373,6 +374,17 @@
    ],
    "effect": "The group holds its present number of cells: growth energy replaces dead cells instead of adding cells, and goes to repair while the group is full. Easier to maintain; no further growth.",
    "explanation": "Most animals stop growing at an adult size and from then on spend energy maintaining their body: replacing cells that die and repairing tissues. With this on, a group keeps its present number of cells. Energy that would have made new cells replaces dead ones, and goes to repair while the group is full. A fixed body is easier to keep healthy but no longer grows.",
+   "reviewed": false
+  },
+  {
+   "id": "regulation",
+   "name": "Regulation",
+   "unlock_level": 1,
+   "optional": true,
+   "default_enabled": true,
+   "requires_atp_below": 0.5,
+   "effect": "Unlocked when a cell's ATP first falls below half its resting level. A cog beside each expression slider and the growth slider chooses which falling species (ATP, G6P, glucose inside, pH) turn that protein or growth down, so a starving cell spends less.",
+   "explanation": "Real bacteria do not keep spending as if food were plentiful. When energy or carbon runs short they raise a signal molecule, (p)ppGpp, that shuts down the making of ribosomes and slows protein synthesis and growth: the stringent response (Potrykus and Cashel 2008). The genes for ribosomal RNA also read the ATP level directly, so their output falls as ATP falls (Schneider, Gaal and Gourse 2002). Spending less in a famine keeps ATP from running out. That matters because glycolysis has to invest ATP before it pays any back: a cell whose ATP reaches zero cannot restart glycolysis even when food returns. Each cog chooses which falling species turn a protein or growth down. The rule is fixed for now: the target is multiplied by f = C^4/(K^4 + C^4), with K half the species' resting level (for pH, the target falls as the pH drops, half-way 0.3 below rest), so f is 0.94 at rest, 0.5 at half the resting level and near 0 below a quarter. Choose with care: turning down the glycolytic enzymes or the glucose carriers in a famine leaves the cell unable to use food when it comes back, while turning down pumps, exchangers and flagella saves energy it can rebuild later. Experts will be able to choose the function.",
    "reviewed": false
   }
  ],
@@ -997,6 +1009,6 @@
    "notes": "Age not checked (placeholder date, no source yet)."
   }
  ],
- "features_note": "A feature with a cost is bought with skill points in the window that opens when the level goes up, once its level is reached; points come from food eaten (content/parameters.json skills.glucose_per_point). 'effect' is the short text, 'explanation' the full one; 'reviewed' is set by a human who has checked the text (adapting_plan.md, Rules for content). 'requires' lists features that must be evolved first (a later colony feature needs multicellularity); 'requires_swallowed' is the number of prey cells the creature must have engulfed before it can be bought; 'excludes' lists features it closes: buying one makes the others unavailable.",
+ "features_note": "A feature with a cost is bought with skill points in the window that opens when the level goes up, once its level is reached; points come from food eaten (content/parameters.json skills.glucose_per_point). 'effect' is the short text, 'explanation' the full one; 'reviewed' is set by a human who has checked the text (adapting_plan.md, Rules for content). 'requires' lists features that must be evolved first (a later colony feature needs multicellularity); 'requires_swallowed' is the number of prey cells the creature must have engulfed before it can be bought; 'excludes' lists features it closes: buying one makes the others unavailable. 'requires_atp_below' unlocks the feature only once a cell's ATP has fallen below that fraction of its resting level (the energy shortage it answers).",
  "ocean_note": "The open water of each level beyond the creature's surroundings, in mol/m³. Glucose 1 µM: free glucose in open water is nanomolar to low micromolar (placeholder to source); at 1 µM a level-1 cell without food starts starving within days (damage ~9% of lethal per day, measured 2026-10-12). Arrivals: see arrivals_note. Later levels copy level 1 until tuned."
 }
