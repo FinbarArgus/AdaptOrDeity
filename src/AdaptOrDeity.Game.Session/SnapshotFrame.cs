@@ -298,6 +298,12 @@ namespace AdaptOrDeity.Game.Session
         /// </summary>
         public float[] FieldGlucose { get; } = new float[FieldRasterSize * FieldRasterSize];
 
+        /// <summary>Lactate in the water around the creature [mol/m³], on the raster of <see cref="FieldGlucose"/>.</summary>
+        public float[] FieldLactate { get; } = new float[FieldRasterSize * FieldRasterSize];
+
+        /// <summary>The water's pH around the creature, on the raster of <see cref="FieldGlucose"/>.</summary>
+        public float[] FieldPh { get; } = new float[FieldRasterSize * FieldRasterSize];
+
         private static T[][] Allocate<T>(int rows, int cells)
         {
             var a = new T[rows][];

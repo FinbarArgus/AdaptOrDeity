@@ -185,7 +185,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(world.VacuoleOf(0), Is.Null, "digested within hours");
             Assert.That(vacuole.Glucose, Is.LessThan(0.01 * world.Prey.Content), "digested and taken up to the used-up share");
             Assert.That(world.EatenFromVacuoles, Is.GreaterThan(0.99 * amount), "almost all of it reached the cell");
-            Assert.That(world.FoodEaten - eaten0, Is.EqualTo(world.EatenFromVacuoles - fromVacuoles0).Within(1e-12 * amount),
+            // plus the uptake's share above the sea's glucose in the water (the cell's own leaked sugar: ~1e-9 of it)
+            Assert.That(world.FoodEaten - eaten0, Is.EqualTo(world.EatenFromVacuoles - fromVacuoles0).Within(1e-6 * amount),
                 "and counts as food eaten");
         }
 

@@ -19,13 +19,13 @@ namespace AdaptOrDeity.Game.Session.Tests
         private static int Detail(FermenterWorld world, string id) => world.Details.ToList().FindIndex(d => d.Id == id);
 
         // A world with enough points to buy the carriers at level 2, not swimming, without food.
-        private static FermenterWorld Level2(bool field = false)
+        private static FermenterWorld Level2()
         {
-            var world = new FermenterWorld(environmentField: field);
+            var world = new FermenterWorld();
             world.SetFeature(GameFeatures.IndexOf(GameFeatures.Swimming), false);
             world.Food.SetArrivals(0.0, 0.0);
             foreach (var p in world.Food.Packets.Where(p => p.Active).ToList())
-                world.Food.Withdraw(p.X, p.Y, 1e-12, p.Glucose);
+                world.Food.Remove(p);
             typeof(FermenterWorld).GetProperty(nameof(FermenterWorld.FoodEaten))!
                 .SetValue(world, 20 * GameParameters.Default.Value("skills.glucose_per_point"));
             world.Level = 2;
@@ -101,11 +101,10 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(cell.MembraneShareClaimed(), Is.LessThanOrEqualTo(1.0 + 1e-12));
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void EveryCarrierSeesTheMediumGlucose(bool field)
+        [Test]
+        public void EveryCarrierSeesTheMediumGlucose()
         {
-            using var world = Level2(field);
+            using var world = Level2();
             world.BathConcentration = 0.02;
             double t = 0.0;
             Run(world, 1.0, ref t);
@@ -118,7 +117,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         [Test]
         public void TheFieldTakesTheUptakeOfEveryCarrier()
         {
-            using var world = Level2(field: true);
+            using var world = Level2();
             world.BuyFeature(GameFeatures.IndexOf(GameFeatures.PtsTransport));
             world.SetTrait(0, Trait(world, "PTS_share"), 0.05);
             world.BathConcentration = 0.05;
@@ -167,7 +166,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         public void TheSurfaceHydrolaseDigestsATouchingPacketInTheField()
         {
             // V_hydrolysis_max S / (K_m_poly + S), with S the packet's polymer over a sphere of its radius.
-            using var world = Level2(field: true);
+            using var world = Level2();
             var food = world.Food;
             food.Settings.LyingDensity = 0.0;
             var packet = food.Packets.First();
@@ -183,17 +182,21 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(world.PolymerConcentration(packet), Is.EqualTo(s).Within(1e-12 * s));
             double rate = cell.HydrolysisMax * s / (cell.HydrolysisHalfSaturation + s);
             Assert.That(rate, Is.GreaterThan(0.99 * cell.HydrolysisMax), "a fresh packet saturates the enzyme");
-            double start = packet.Glucose, released0 = world.Environment!.PacketGlucose, t = 0.0;
+            double start = packet.Glucose, polymer0 = packet.Glucose - packet.Free;
+            double released0 = world.Environment.PacketGlucose, eaten0 = world.EatenFromPackets, t = 0.0;
             Run(world, 10.0, ref t);
-            double released = start - packet.Glucose;
-            Assert.That(released, Is.EqualTo(rate * 10.0).Within(1e-4 * released), "the hydrolase's rate over 10 s");
-            Assert.That(world.Environment.PacketGlucose - released0, Is.EqualTo(released).Within(1e-12 * released), "into the field");
+            double hydrolysed = polymer0 - (packet.Glucose - packet.Free);
+            Assert.That(hydrolysed, Is.EqualTo(rate * 10.0).Within(1e-4 * hydrolysed), "the hydrolase's rate over 10 s, into the packet's free sugar");
+            double leaked = world.Environment.PacketGlucose - released0, eaten = world.EatenFromPackets - eaten0;
+            Assert.That(leaked, Is.GreaterThan(0.0), "which leaks into the field");
+            Assert.That(eaten, Is.GreaterThan(0.0), "and the membrane facing the packet takes up");
+            Assert.That(start - packet.Glucose, Is.EqualTo(leaked + eaten).Within(1e-12 * start), "nothing else leaves the packet");
 
             // the test hook still overrides the cells' enzymes
             world.HydrolysisCapacity = _ => 0.0;
-            double held = packet.Glucose;
+            double held = packet.Glucose - packet.Free;
             Run(world, 10.0, ref t);
-            Assert.That(packet.Glucose, Is.EqualTo(held), "no enzyme, no free part: the polymer stays");
+            Assert.That(packet.Glucose - packet.Free, Is.EqualTo(held).Within(1e-12 * held), "no enzyme: the polymer stays");
         }
     }
 }

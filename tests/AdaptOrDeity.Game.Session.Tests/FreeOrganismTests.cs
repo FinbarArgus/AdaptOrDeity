@@ -17,10 +17,9 @@ namespace AdaptOrDeity.Game.Session.Tests
         private static int Feature(string id) => GameFeatures.IndexOf(id);
 
         // A level-2 world without food or prey arriving: what a test puts in is all there is.
-        private static FermenterWorld Quiet(bool swimming = false, bool engulfing = false, bool? environmentField = false,
-            int workers = 1)
+        private static FermenterWorld Quiet(bool swimming = false, bool engulfing = false, int workers = 1)
         {
-            var world = new FermenterWorld(environmentField: environmentField) { Workers = workers };
+            var world = new FermenterWorld { Workers = workers };
             world.Level = 2;
             world.SetFeature(Feature(GameFeatures.Swimming), swimming);
             world.SetFeature(Feature(GameFeatures.Engulfing), engulfing);
@@ -89,13 +88,15 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(d.RelativeTolerance, Is.EqualTo(parent.RelativeTolerance));
             Assert.That(d.StopAtMacroSteps, Is.EqualTo(parent.StopAtMacroSteps));
             Assert.That(d.Time, Is.EqualTo(parent.Time));
-            // A cell beside its parent in the same water, with the same controls: it goes on exactly as its parent does.
+            // A cell beside its parent in the same water, with the same controls: it goes on as its parent does (to 1e-5:
+            // each sees the water at its own place, with the other's depletion a little different there).
             double atp0 = d.State("cytosol__C_ATP");
             Run(world, 600.0);
             Assert.That(d.Time, Is.EqualTo(parent.Time), "it integrated from its release on");
             Assert.That(d.State("cytosol__C_ATP"), Is.Not.EqualTo(atp0), "its ATP moved on from release");
             for (int s = 0; s < d.Batch.States.Length; s++)
-                Assert.That(d.Batch.States[s][0], Is.EqualTo(parent.Batch.States[s][0]), $"state {s} after 10 min");
+                Assert.That(d.Batch.States[s][0], Is.EqualTo(parent.Batch.States[s][0])
+                    .Within(1e-5 * Math.Abs(parent.Batch.States[s][0]) + 1e-15), $"state {s} after 10 min");
             Assert.That(world.ReproductionPoints, Is.EqualTo((int)Math.Floor(perOffspring)), "still one daughter's points");
         }
 
@@ -141,14 +142,17 @@ namespace AdaptOrDeity.Game.Session.Tests
             world.CellPosition(0, out double cx, out double cy);
             // one packet larger than a cell between the two, touching both
             var shared = PacketAt(world, 0.5 * (cx + o.X), 0.5 * (cy + o.Y), 1.2 * world.CellRadius);
-            double glucose0 = shared.Glucose, eaten0 = world.FoodEaten;
+            double glucose0 = shared.Glucose, eaten0 = world.FoodEaten, leaked0 = world.Environment.PacketGlucose;
             Run(world, 60.0);
-            double creature = world.FoodEaten - eaten0, organism = o.Eaten;
+            double creature = world.EatenFromPackets, organism = world.OrganismsEatenFromPackets;
             Assert.That(creature, Is.GreaterThan(0.0));
             Assert.That(organism, Is.GreaterThan(0.0), "the organism ate from the packet too");
-            Assert.That(world.OrganismsEaten, Is.EqualTo(organism));
-            Assert.That(glucose0 - shared.Glucose, Is.EqualTo(creature + organism).Within(1e-12 * glucose0),
-                "what the packet lost is what the two ate");
+            Assert.That(world.FoodEaten - eaten0, Is.GreaterThanOrEqualTo(creature));
+            Assert.That(world.OrganismsEaten, Is.EqualTo(o.Eaten));
+            Assert.That(o.Eaten, Is.GreaterThanOrEqualTo(organism));
+            double leaked = world.Environment.PacketGlucose - leaked0;
+            Assert.That(glucose0 - shared.Glucose, Is.EqualTo(creature + organism + leaked).Within(1e-12 * glucose0),
+                "what the packet lost is what the two took from it and what leaked into the water");
             Assert.That(world.FoodPoints, Is.EqualTo((int)Math.Floor(world.FoodEaten / GameParameters.Default.Value(
                 "skills.glucose_per_point"))), "the organism's food earns the player nothing");
             Assert.That((shared.Stuck, shared.Holder), Is.EqualTo((true, 0)), "the creature's cell met it first");
@@ -247,25 +251,28 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(o.EatenFromVacuole + o.Egested + v.Glucose, Is.EqualTo(o.Engulfed).Within(1e-12 * o.Engulfed),
                 "what it engulfed was taken up or is in its body: none is lost");
 
-            // nobody touches it: it stays, whole, drifting with the water it died in
-            double glucose = body.Glucose, x0 = body.X, y0 = body.Y;
+            // nobody touches it: it stays, drifting with the water it died in; only its free part leaks into the water
+            double glucose = body.Glucose, polymer = body.Glucose - body.Free, x0 = body.X, y0 = body.Y;
             const double seconds = 1800.0;
             Run(world, seconds);
             Assert.That(body.Active, Is.True, "a dead body is not removed with time");
-            Assert.That(body.Glucose, Is.EqualTo(glucose));
+            Assert.That(body.Glucose - body.Free, Is.EqualTo(polymer).Within(1e-12 * polymer), "its polymer stays");
+            Assert.That(body.Free, Is.LessThan(0.1 * (glucose - polymer)), "its small molecules leak out");
             Assert.That(body.X - x0, Is.EqualTo(b.CurrentVx * seconds).Within(1e-9 * Math.Abs(b.CurrentVx * seconds) + 1e-15));
             Assert.That(body.Y - y0, Is.EqualTo(b.CurrentVy * seconds).Within(1e-9 * Math.Abs(b.CurrentVy * seconds) + 1e-15));
 
-            // the creature's cell eats it by the contact rule, and it shrinks
+            // the creature's cell digests it with its hydrolase and takes it up through the membrane facing it; it shrinks
             OnCreature(world, body);
-            double eaten0 = world.FoodEaten;
+            glucose = body.Glucose;
+            double eaten0 = world.EatenFromPackets, leaked0 = world.Environment.PacketGlucose;
             Run(world, 600.0);
-            double eaten = world.FoodEaten - eaten0;
+            double eaten = world.EatenFromPackets - eaten0, leaked = world.Environment.PacketGlucose - leaked0;
             Assert.That(eaten, Is.GreaterThan(0.0));
-            Assert.That(glucose - body.Glucose, Is.EqualTo(eaten).Within(1e-12 * glucose), "what it lost is what was eaten");
+            Assert.That(glucose - body.Glucose, Is.EqualTo(eaten + leaked).Within(1e-12 * glucose),
+                "what it lost was eaten or leaked into the water");
             Assert.That((body.Stuck, body.Holder), Is.EqualTo((true, 0)), "it stays with the creature that found it");
             Assert.That(body.Radius, Is.LessThan(world.CellRadius));
-            Assert.That(body.Radius, Is.EqualTo(world.CellRadius * Math.Pow(body.Glucose / glucose, 1.0 / 3.0))
+            Assert.That(body.Radius, Is.EqualTo(world.CellRadius * Math.Pow(world.Food.Fill(body), 1.0 / 3.0))
                 .Within(1e-3 * world.CellRadius), "its radius goes as the cube root of what is left");
         }
 
@@ -275,13 +282,13 @@ namespace AdaptOrDeity.Game.Session.Tests
             using var world = Quiet(engulfing: true);
             var o = Release(world);
             var body = Kill(world, o);
-            double glucose = body.Glucose;
+            double glucose = body.Glucose, leaked0 = world.Environment.PacketGlucose;
             OnCreature(world, body);
             Run(world, 1.0);
             Assert.That((body.Active, world.Engulfed), Is.EqualTo((true, 0.0)),
                 "a dead cell as large as the cell is not engulfed: it is eaten from outside");
             Assert.That(world.FoodEaten, Is.GreaterThan(0.0));
-            // eaten down by contact until it fits beside room for a prey cell, then swallowed whole
+            // eaten down from outside until it fits beside room for a prey cell, then swallowed whole
             for (int k = 0; k < 720 && body.Active; k++)
             {
                 Run(world, 10.0);
@@ -290,8 +297,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(body.Active, Is.False, "swallowed once small enough");
             Assert.That(world.Engulfed, Is.GreaterThan(0.0));
             Assert.That(world.VacuoleRadius(world.Engulfed + world.Prey.Content), Is.LessThan(world.CellRadius));
-            Assert.That(world.FoodEaten - world.EatenFromVacuoles + world.Engulfed, Is.EqualTo(glucose).Within(1e-12 * glucose),
-                "eaten from outside + engulfed = the body");
+            Assert.That(world.EatenFromPackets + world.Environment.PacketGlucose - leaked0 + world.Engulfed,
+                Is.EqualTo(glucose).Within(1e-12 * glucose), "eaten from outside + leaked + engulfed = the body");
         }
 
         [Test]
@@ -379,7 +386,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         [Test]
         public void WithTheEnvironmentFieldItExchangesWithTheFieldConservatively()
         {
-            using var world = Quiet(environmentField: true);
+            using var world = Quiet();
             var o = Release(world);
             var env = world.Environment!;
             const int g = EnvironmentField.Glucose, lac = EnvironmentField.Lactate;

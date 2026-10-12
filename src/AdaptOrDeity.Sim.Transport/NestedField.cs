@@ -17,6 +17,13 @@ namespace AdaptOrDeity.Sim.Transport
         /// </summary>
         public double ExtentMultiple { get; set; } = 60.0;
 
+        /// <summary>
+        /// Distance from the colony's centre the outermost grid covers in every direction, its edge cells and recentring
+        /// slack aside [m]: where things outside the colony (free organisms) still exchange with the field. 0: only the
+        /// extent multiple.
+        /// </summary>
+        public double Reach { get; set; }
+
         /// <summary>Depth of the water layer [m].</summary>
         public double Depth { get; set; } = 1e-5;
 
@@ -77,7 +84,11 @@ namespace AdaptOrDeity.Sim.Transport
         private readonly NestedFieldSettings _settings;
         private readonly double[] _diffusivity, _far;
         private readonly FieldEdge _outerEdge;
-        private DiffusionField[] _levels;
+        private DiffusionField[] _levels, _nextLevels = Array.Empty<DiffusionField>();
+        private long[] _nextOx = Array.Empty<long>(), _nextOy = Array.Empty<long>();
+        private bool[] _move = Array.Empty<bool>();
+        private readonly double[] _before;
+        private readonly Hierarchy _hierarchy;
         private DiffusionField?[] _spare;
         private long[] _ox, _oy;   // each level's lower-left corner, in cells of its own spacing
         private readonly bool[] _active;
@@ -87,7 +98,9 @@ namespace AdaptOrDeity.Sim.Transport
         private int[] _activeList;
         private int _activeCount;
         private Action<int, int>? _rowPass, _columnPass, _restrictPass;
-        private double _dt;
+        private double _lastDt;
+        private readonly int[] _stride, _waited;
+        private readonly double[] _speciesDt;
         private int _stepLevel, _chunks, _stepCells;
 
         /// <summary>Rows (or columns) per work item when a level's lines are shared between threads.</summary>
@@ -115,6 +128,12 @@ namespace AdaptOrDeity.Sim.Transport
             _sourced = new double[Species];
             _pending = new double[Species];
             _activeList = new int[Species];
+            _before = new double[Species];
+            _stride = new int[Species];
+            Array.Fill(_stride, 1);
+            _waited = new int[Species];
+            _speciesDt = new double[Species];
+            _hierarchy = new Hierarchy(_far);
             _levels = Array.Empty<DiffusionField>();
             _spare = Array.Empty<DiffusionField?>();
             _ox = Array.Empty<long>();
@@ -288,26 +307,26 @@ namespace AdaptOrDeity.Sim.Transport
 
         // The sizes for this diameter with at least atLeastCells per side and atLeastLevels levels (grids never shrink).
         // Nested: N covers the colony and its margins; the levels are the fewest whose outermost, of spacing h 4^(L-1),
-        // spans the extent in at most 2N cells; the outermost has that many cells, rounded up (and at least N/4 + 8, so the
+        // spans the extent (and the reach) in at most 2N cells; the outermost has that many cells, rounded up (and at least N/4 + 8, so the
         // next finer level's shadow keeps a cell to its edges as both recentre). A single grid covers the nested grids'
         // extent at the finest spacing.
         private void Layout(double diameter, int atLeastCells, int atLeastLevels, out int cells, out int levels,
             out int outerCells)
         {
-            double h = _settings.FineSpacing, target = _settings.ExtentMultiple * diameter;
+            double h = _settings.FineSpacing;
             int n = (int)Math.Ceiling((diameter + 2.0 * _settings.Margin) / (Ratio * h) - 1e-9) * Ratio;
             n = Math.Max(_settings.MinCells, n);
             int L = 1, outer = n;
-            if (n * h < target * (1.0 - 1e-12))
+            if (n < OuterFor(diameter, h, 1))
             {
                 L = 2;
-                while (OuterFor(target, h, L) > 2 * n)
+                while (OuterFor(diameter, h, L) > 2 * n)
                     L++;
             }
             if (_settings.SingleGrid)
             {
                 if (L > 1)
-                    n = Math.Max(n / Ratio + 8, OuterFor(target, h, L)) * (int)Math.Pow(Ratio, L - 1);
+                    n = Math.Max(n / Ratio + 8, OuterFor(diameter, h, L)) * (int)Math.Pow(Ratio, L - 1);
                 cells = outerCells = Math.Max(n, atLeastCells);
                 levels = 1;
                 return;
@@ -315,15 +334,21 @@ namespace AdaptOrDeity.Sim.Transport
             n = Math.Max(n, atLeastCells);
             L = Math.Max(L, atLeastLevels);
             if (L > 1)
-                outer = Math.Max(n / Ratio + 8, OuterFor(target, h, L));
+                outer = Math.Max(n / Ratio + 8, OuterFor(diameter, h, L));
             cells = n;
             levels = L;
             outerCells = L > 1 ? outer : n;
         }
 
-        // Cells of the outermost of L levels that span the target extent.
-        private static int OuterFor(double target, double h, int levels) =>
-            (int)Math.Ceiling(target / (h * Math.Pow(Ratio, levels - 1)) - 1e-9);
+        // Cells of the outermost of L levels that span the extent multiple of the diameter, and the reach each way with two
+        // of its cells to spare (its edge cell, and recentring by one cell).
+        private int OuterFor(double diameter, double h, int levels)
+        {
+            double hOuter = h * Math.Pow(Ratio, levels - 1);
+            double extent = Math.Max(_settings.ExtentMultiple * diameter,
+                _settings.Reach > 0.0 ? 2.0 * (_settings.Reach + 2.0 * hOuter) : 0.0);
+            return (int)Math.Ceiling(extent / hOuter - 1e-9);
+        }
 
         /// <summary>
         /// Fits the grids to the colony centred at (cx, cy) with this diameter [m]: regrids when it needs more cells per
@@ -335,24 +360,27 @@ namespace AdaptOrDeity.Sim.Transport
             Layout(diameter, CellsPerSide, Levels, out int n, out int levels, out int outer);
             if (n > CellsPerSide || levels > Levels || outer > OuterCells)
             {
+                CatchUp();
                 Rebuild(n, levels, levels > Levels || n > CellsPerSide ? outer : Math.Max(outer, OuterCells), cx, cy, null);
                 Diameter = diameter;
                 return;
             }
-            bool[]? move = null;
+            if (_move.Length != Levels)
+                _move = new bool[Levels];
+            bool any = false;
             for (int k = 0; k < Levels; k++)
             {
                 // a level recentres by whole cells of the next coarser level; the outermost by its own cells
                 var L = _levels[k];
                 double h = L.Spacing, half = 0.5 * L.Nx, step = k == Levels - 1 ? 1.0 : Ratio;
-                if (Math.Abs(cx / h - (_ox[k] + half)) > step || Math.Abs(cy / h - (_oy[k] + half)) > step)
-                {
-                    move ??= new bool[Levels];
-                    move[k] = true;
-                }
+                _move[k] = Math.Abs(cx / h - (_ox[k] + half)) > step || Math.Abs(cy / h - (_oy[k] + half)) > step;
+                any |= _move[k];
             }
-            if (move != null)
-                Rebuild(CellsPerSide, Levels, OuterCells, cx, cy, move);
+            if (any)
+            {
+                CatchUp();
+                Rebuild(CellsPerSide, Levels, OuterCells, cx, cy, _move);
+            }
         }
 
         /// <summary>
@@ -363,17 +391,53 @@ namespace AdaptOrDeity.Sim.Transport
         {
             if (!(dt > 0.0))
                 throw new ArgumentOutOfRangeException(nameof(dt), "the step must be positive");
-            int substeps = Math.Max(1, _settings.Substeps);
-            _dt = dt / substeps;
+            _lastDt = dt;
             _activeCount = 0;
             for (int s = 0; s < Species; s++)
             {
                 _sourced[s] += _pending[s] * dt;
                 _pending[s] = 0.0;
-                if (_active[s])
+                if (!_active[s])
+                    continue;
+                // a species with a stride steps every stride-th call, over the calls since its last step
+                if (++_waited[s] >= _stride[s])
                     _activeList[_activeCount++] = s;
             }
             _hasPending = false;
+            Advance(dt, workers);
+        }
+
+        /// <summary>
+        /// Steps species <paramref name="s"/> once every <paramref name="stride"/> calls of <see cref="Step"/>, over the
+        /// time since its last step, with the sources added meanwhile (their mean rate): for species nothing reads every
+        /// step (smells). Exact in content; the calls must have the same step.
+        /// </summary>
+        public void SetStride(int s, int stride)
+        {
+            if (stride < 1)
+                throw new ArgumentOutOfRangeException(nameof(stride), "at least 1");
+            _stride[s] = stride;
+        }
+
+        // Steps the listed species (_activeList[0.._activeCount)) over the calls each has waited: sources held as their mean
+        // rate (and over the substeps), coarse first.
+        private void Advance(double dt, ParallelWork? workers)
+        {
+            int substeps = Math.Max(1, _settings.Substeps);
+            for (int a = 0; a < _activeCount; a++)
+            {
+                int s = _activeList[a];
+                if (_waited[s] > 1)
+                    for (int k = 0; k < Levels; k++)
+                    {
+                        double[] q = _levels[k].Sources(s);
+                        double mean = 1.0 / _waited[s];
+                        for (int i = 0; i < q.Length; i++)
+                            q[i] *= mean;
+                    }
+                _speciesDt[s] = dt * _waited[s] / substeps;
+                _waited[s] = 0;
+            }
             _workers = workers;
             _rowPass ??= RowPass;
             _columnPass ??= ColumnPass;
@@ -402,7 +466,7 @@ namespace AdaptOrDeity.Sim.Transport
                         if (f > 0)
                             RestoreLevel(0, heldFine!);
                         for (int a = 0; a < _activeCount; a++)
-                            _levels[_stepLevel].Prepare(_activeList[a], _dt / fine);
+                            _levels[_stepLevel].Prepare(_activeList[a], _speciesDt[_activeList[a]] / fine);
                         Run(_activeCount * _chunks, _rowPass);
                         Run(_activeCount * _chunks, _columnPass);
                     }
@@ -421,6 +485,17 @@ namespace AdaptOrDeity.Sim.Transport
             _workers = null;
         }
 
+        // Steps every species that has waited since its last step, so no sources are pending when the grids move.
+        private void CatchUp()
+        {
+            _activeCount = 0;
+            for (int s = 0; s < Species; s++)
+                if (_active[s] && _waited[s] > 0)
+                    _activeList[_activeCount++] = s;
+            if (_activeCount > 0)
+                Advance(_lastDt, null);
+        }
+
         // Copies of the active species' sources on every level, before the first substep uses them.
         private double[][][] HoldSources()
         {
@@ -434,14 +509,23 @@ namespace AdaptOrDeity.Sim.Transport
             return held;
         }
 
-        // Level k's sources of the active species (with the coarse inflow), before its first fine substep uses them.
+        // Level k's sources of the active species (with the coarse inflow), before its first fine substep uses them; into
+        // buffers kept between steps (stepping does not allocate once warm).
         private double[][] HoldLevel(int k)
         {
-            var held = new double[_activeCount][];
+            if (_heldFine.Length < Species)
+                _heldFine = new double[Species][];
             for (int a = 0; a < _activeCount; a++)
-                held[a] = (double[])_levels[k].Sources(_activeList[a]).Clone();
-            return held;
+            {
+                var src = _levels[k].Sources(_activeList[a]);
+                if (_heldFine[a] == null || _heldFine[a].Length != src.Length)
+                    _heldFine[a] = new double[src.Length];
+                Array.Copy(src, _heldFine[a], src.Length);
+            }
+            return _heldFine;
         }
+
+        private double[][] _heldFine = Array.Empty<double[]>();
 
         private void RestoreLevel(int k, double[][] held)
         {
@@ -513,7 +597,7 @@ namespace AdaptOrDeity.Sim.Transport
             DiffusionField F = _levels[k], P = _levels[k + 1];
             int m = CellsPerSide / Ratio, n = CellsPerSide;
             double[] coarse = P.InnerOutflow(s);
-            double share = -1.0 / (Ratio * _dt);
+            double share = -1.0 / (Ratio * _speciesDt[s]);
             for (int f = 0; f < m; f++)
                 for (int r = 0; r < Ratio; r++)
                 {
@@ -574,13 +658,15 @@ namespace AdaptOrDeity.Sim.Transport
                 throw new InvalidOperationException("the grids move before the step's sources are added");
             var oldLevels = _levels;
             long[] oox = _ox, ooy = _oy;
-            double[] before = new double[Species];
+            double[] before = _before;
             for (int s = 0; s < Species && oldLevels.Length > 0; s++)
                 before[s] = Total(s);
             bool sameShape = n == CellsPerSide && levels == oldLevels.Length && outer == OuterCells;
-            var next = new DiffusionField[levels];
-            var ox = new long[levels];
-            var oy = new long[levels];
+            // recentring keeps the shape: the other buffers of the pair take the new levels (stepping does not allocate)
+            bool reuse = sameShape && move != null && _nextLevels.Length == levels;
+            var next = reuse ? _nextLevels : new DiffusionField[levels];
+            var ox = reuse ? _nextOx : new long[levels];
+            var oy = reuse ? _nextOy : new long[levels];
             double h0 = _settings.FineSpacing;
             for (int k = 0; k < levels; k++)
             {
@@ -612,7 +698,8 @@ namespace AdaptOrDeity.Sim.Transport
                 next[k] = L;
             }
             // fill every rebuilt level from the old levels before any of them is replaced
-            var old = new Hierarchy(oldLevels, oox, ooy, _far);
+            var old = _hierarchy;
+            old.Set(oldLevels, oox, ooy);
             for (int k = 0; k < levels; k++)
             {
                 if (!(move == null || move[k]))
@@ -627,11 +714,15 @@ namespace AdaptOrDeity.Sim.Transport
                             c[j * nk + i] = old.Value(k, ox[k] + i, oy[k] + j, s);
                 }
             }
-            // the old grids of moved levels become the spares
-            var spare = new DiffusionField?[levels];
-            for (int k = 0; k < levels; k++)
-                spare[k] = sameShape && move != null && move[k] ? oldLevels[k] : null;
-            _spare = spare;
+            // the old grids of moved levels become their spares (the others keep theirs)
+            if (!(sameShape && move != null) || _spare.Length != levels)
+                _spare = new DiffusionField?[levels];
+            for (int k = 0; k < levels && sameShape && move != null; k++)
+                if (move[k])
+                    _spare[k] = oldLevels[k];
+            _nextLevels = oldLevels.Length == levels ? oldLevels : Array.Empty<DiffusionField>();
+            _nextOx = oox;
+            _nextOy = ooy;
             _levels = next;
             _ox = ox;
             _oy = oy;
@@ -650,16 +741,17 @@ namespace AdaptOrDeity.Sim.Transport
         // The old levels, read as a composite: the mean of species s over a cell of any level's lattice.
         private sealed class Hierarchy
         {
-            private readonly DiffusionField[] _levels;
-            private readonly long[] _ox, _oy;
+            private DiffusionField[] _levels = Array.Empty<DiffusionField>();
+            private long[] _ox = Array.Empty<long>(), _oy = Array.Empty<long>();
             private readonly double[] _far;
 
-            public Hierarchy(DiffusionField[] levels, long[] ox, long[] oy, double[] far)
+            public Hierarchy(double[] far) => _far = far;
+
+            public void Set(DiffusionField[] levels, long[] ox, long[] oy)
             {
                 _levels = levels;
                 _ox = ox;
                 _oy = oy;
-                _far = far;
             }
 
             public double Value(int k, long gi, long gj, int s)

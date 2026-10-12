@@ -134,7 +134,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             food.Release(7);
             Assert.That((body.Stuck, body.Vx, body.Vy), Is.EqualTo((false, vx, vy)), "let go, it drifts again");
             // half eaten: its radius goes as the cube root of what is left, from its own size (not a packet's)
-            food.Withdraw(body.X, body.Y, 1e-9, 0.5 * amount);
+            typeof(FoodPacket).GetProperty("Glucose")!.SetValue(body, 0.5 * amount);
             food.Step(0.1);
             twin.Step(0.1);
             Assert.That(body.Radius, Is.EqualTo(r * Math.Pow(0.5, 1.0 / 3.0)).Within(1e-15));
@@ -158,7 +158,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
-        public void ACellTouchingAPacketSeesItsGlucoseAndDrainsIt()
+        public void ACellTouchingAPacketSeesItsFreeSugarOnTheMembraneFacingItAndDrainsIt()
         {
             var world = new FermenterWorld();
             var food = world.Food;
@@ -181,8 +181,14 @@ namespace AdaptOrDeity.Game.Session.Tests
             double Dist(double ax, double ay) { world.CellPosition(0, out double qx, out double qy); return Math.Sqrt((ax - qx) * (ax - qx) + (ay - qy) * (ay - qy)); }
             double offset = Dist(packet.X, packet.Y);   // stuck where it touched
             loop.StepExactly(599);
+            // the share of the membrane facing the packet sees its free sugar (its hydrolase keeps it near the
+            // product-inhibition level), the rest the water (the sea's 1 uM and what leaked)
+            double w = FoodField.FaceShare(packet, world.CellRadius);
+            Assert.That(w, Is.InRange(0.04, 0.06), "a fresh packet faces ~5% of the membrane");
+            Assert.That(packet.Input, Is.GreaterThan(0.5 * food.Settings.ContactGlucose));
             Assert.That(world.Cell(0).External("C_glc_e_mod_membrane_face"),
-                Is.EqualTo(food.Settings.ContactGlucose).Within(1e-12), "a touching cell sees the contact concentration");
+                Is.EqualTo(w * packet.Input).Within(0.02 * w * packet.Input + 0.01), "a touching cell sees the packet's free sugar on its face");
+            Assert.That(world.EatenFromPackets, Is.GreaterThan(0.0), "and takes it up as food");
             world.CellPosition(0, out double cx1, out double cy1);
             Assert.That(Math.Abs(cx1 - cx) + Math.Abs(cy1 - cy), Is.GreaterThan(1e-6), "the creature moved over the ground");
             Assert.That(Dist(packet.X, packet.Y), Is.EqualTo(offset).Within(1e-15), "the food it found moves rigidly with it");

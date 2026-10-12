@@ -56,14 +56,14 @@
    "units": "mol/m3",
    "source": "unreferenced_placeholder",
    "status": "placeholder",
-   "note": "glucose a cell touching a food packet sees at its membrane (the particle's free sugar, ~70 mM inside it at food.free_fraction of 2.3 M, dissolving into the boundary layer), while the packet lasts. The contact rule takes what the cell takes up from the whole packet, polymer included: the surface hydrolase limits digestion only in the environment field and in a vacuole (engulfing)"
+   "note": "free sugar in a packet (or a vacuole) at which enzymes stop cutting its polymer (product inhibition), so the most the membrane facing it sees: a fresh packet holds ~70 mM of free sugar (food.free_fraction of 2.3 M), and hydrolysis tops it up only below this level. A touching cell sees the packet's free sugar on the share of its membrane facing it (the cap the packet covers, ~5% for a fresh packet) and the environment field on the rest (2026-10-13; it was the whole membrane's glucose under the retired contact rule)"
   },
   "food.contact_trace": {
    "value": 0.01,
    "units": "mol/m3",
    "source": "unreferenced_placeholder",
    "status": "placeholder",
-   "note": "concentration of a packet's main trace species at a touching membrane"
+   "note": "a packet's main trace species per its free sugar, as concentrations (per food.contact_glucose): it releases contact_trace / contact_glucose (2e-4) mol of its main trace with each mol of glucose that leaks into the water"
   },
   "food.packet_radius": {
    "value": 8e-07,
@@ -219,13 +219,6 @@
    "status": "design",
    "note": "reproduction points: skill points per daughter released in the creature's lineage (its own daughters at division without multicellularity, and its free organisms' daughters, any generation: designer request 2026-10-13), on top of the food points (designer request 2026-10-12: offspring are fitness, so staying single-celled pays for a while). Measured 2026-10-12 (one seed): a level-2 cell kept on food (0.01 packets/s) at growth 3 left 5 daughters in the week (74 food points); at the level's own food (3e-3 packets/s) growth 2-10 runs its ATP out within a day and it leaves none. Set to 1 point per daughter (designer, 2026-10-12)"
   },
-  "field.enabled": {
-   "value": 0.0,
-   "units": "1",
-   "source": "definitional",
-   "status": "design",
-   "note": "1 runs the nested environment field: cells take glucose up from it and release lactate and acid into it, food packets dissolve into it; 0 keeps the contact rule (a touching cell sees food.contact_glucose)"
-  },
   "field.fine_spacing": {
    "value": 1e-06,
    "units": "m",
@@ -246,6 +239,13 @@
    "source": "definitional",
    "status": "design",
    "note": "steps the finest grid takes per macro step (the coarser grids take one): Douglas steps damp short modes slowly, so a moving cell's own near field lags. A sink drifting at 2 um/s (the current) sees its membrane depletion 7% short with 1, 0.7% with 4, +0.1% with 8; swimming at 20 um/s 16%, 4% and 1% short (NestedFieldTests, 2026-10-13)"
+  },
+  "field.trace_stride": {
+   "value": 10,
+   "units": "dimensionless",
+   "source": "definitional",
+   "status": "design",
+   "note": "the smells (trace species) take one field step every this many macro steps (1 s), with what packets released meanwhile: nothing reads them every step (they are for sensing at level 3), and they were 4 of the 7 species the field steps (one cell: 156 -> ~80 us a step, 2026-10-13). Content is exact; Douglas steps keep the steady state"
   },
   "field.extent_multiple": {
    "value": 60.0,
@@ -343,7 +343,7 @@
    "units": "1",
    "source": "definitional",
    "status": "design",
-   "note": "a cell's membrane concentrations from the field reach its module only when they moved by more than this share since they last did: every changed input restarts the cell's integrator, and the field moves a little every step (colony-bench 512 cells, 20 s, environment field: 4.0 s with every change passed, 3.0 s at 1e-3, 1.5 s at 1e-2; 0.6 s on the contact rule). The exchange stays exact (it uses the cell's own fluxes)"
+   "note": "a cell's membrane concentrations from the field reach its module only when they moved by more than this share of their departure from the open water (the sea's glucose, no lactate, the sea's H+) since they last did: every changed input restarts the cell's integrator. Relative to the departure, a lone cell's own 0.07% depletion reaches it (to 1% of that); the earlier rule, relative to the value, hid it (2026-10-13). colony-bench 512 cells, 20 s, 1 thread: 1.06 s before (old rule), 1.22 s now with field.fine_substeps; the reference passes every change. The exchange stays exact (it uses the cell's own fluxes)"
   },
   "field.reference_substeps": {
    "value": 64,

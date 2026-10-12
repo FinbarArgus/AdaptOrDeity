@@ -254,6 +254,10 @@ namespace AdaptOrDeity.Sim.Transport
             return sum;
         }
 
+        // A change too small to matter is 0: a field settling towards a far field of 0 would otherwise reach subnormal
+        // numbers, whose arithmetic is ~100x slower.
+        private static double Flush(double v) => Math.Abs(v) < 1e-200 ? 0.0 : v;
+
         // A cell's value, with the edge's rule beyond the grid.
         private double At(int s, int i, int j)
         {
@@ -344,7 +348,7 @@ namespace AdaptOrDeity.Sim.Transport
                     if (j > 0 && j < Ny - 1)
                         for (int k = row + 1; k < row + Nx - 1; k++)
                         {
-                            v[k] = dt * q[k] + lambda * (c[k - 1] + c[k + 1] + c[k - Nx] + c[k + Nx] - 4.0 * c[k]);
+                            v[k] = Flush(dt * q[k] + lambda * (c[k - 1] + c[k + 1] + c[k - Nx] + c[k + Nx] - 4.0 * c[k]));
                             q[k] = 0.0;
                         }
                     bool edgeRow = j == 0 || j == Ny - 1;
@@ -356,7 +360,7 @@ namespace AdaptOrDeity.Sim.Transport
                         double east = i < Nx - 1 ? c[k + 1] : open ? edge[EdgeFace(1, j)] : x;
                         double south = j > 0 ? c[k - Nx] : open ? edge[EdgeFace(2, i)] : x;
                         double north = j < Ny - 1 ? c[k + Nx] : open ? edge[EdgeFace(3, i)] : x;
-                        v[k] = dt * q[k] + lambda * (west + east + south + north - 4.0 * x);
+                        v[k] = Flush(dt * q[k] + lambda * (west + east + south + north - 4.0 * x));
                         q[k] = 0.0;
                     }
                     if (open)

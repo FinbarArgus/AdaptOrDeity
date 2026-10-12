@@ -95,6 +95,15 @@ namespace AdaptOrDeity.Sim.World
 
         /// <summary>Whose body a stuck packet moves with: 0 the creature (the window's centre), else a free organism's id.</summary>
         public int Holder { get; internal set; }
+
+        /// <summary>
+        /// Free sugar concentration the membranes touching it see this step [mol/m³] (<see cref="FoodField.Predict"/>):
+        /// implicit in what they draw over the step.
+        /// </summary>
+        public double Input { get; internal set; }
+
+        /// <summary>What touching membranes drew from it per unit of <see cref="Input"/> in the last step [m³/s].</summary>
+        internal double Coefficient { get; set; }
     }
 
     /// <summary>
@@ -127,10 +136,16 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Glucose equivalents in a sphere of radius <paramref name="radius"/> at the packet density [mol].</summary>
         public double SphereAmount(double radius) => PacketDensity * 4.0 / 3.0 * Math.PI * radius * radius * radius;
 
-        /// <summary>Glucose a cell touching a packet sees at its membrane while the packet lasts [mol/m³].</summary>
+        /// <summary>
+        /// Free sugar in a packet (or a vacuole) at which enzymes stop hydrolysing its polymer [mol/m³] (product inhibition):
+        /// the most a membrane facing it sees.
+        /// </summary>
         public double ContactGlucose { get; set; }
 
-        /// <summary>Concentration of a packet's main trace species at a touching membrane [mol/m³].</summary>
+        /// <summary>
+        /// A packet's main trace species per its free sugar, as concentrations [mol/m³ per <see cref="ContactGlucose"/>]:
+        /// what it releases with its sugar.
+        /// </summary>
         public double ContactTrace { get; set; }
 
         /// <summary>The other trace species, relative to the main one.</summary>
@@ -309,71 +324,98 @@ namespace AdaptOrDeity.Sim.World
             }
         }
 
+        /// <summary>Volume of packet <paramref name="p"/>: a sphere of its radius [m³].</summary>
+        public static double Volume(FoodPacket p) => 4.0 / 3.0 * Math.PI * p.Radius * p.Radius * p.Radius;
+
         /// <summary>
-        /// Glucose [mol/m³] a cell of radius <paramref name="r"/> at (x, y) sees at its membrane: the background, or the
-        /// contact concentration while it touches a packet (several packets do not add: the membrane is saturated).
+        /// Share of the membrane of a cell of radius <paramref name="r"/> that faces packet <paramref name="p"/> when they
+        /// touch: the cap the packet's sphere covers seen from the cell's centre, (1 - cos t)/2 with sin t = a/(r + a).
         /// </summary>
-        public double GlucoseAt(double x, double y, double r)
+        public static double FaceShare(FoodPacket p, double r)
         {
-            foreach (var p in _packets)
-                if (p.Active && Touches(p, x, y, r))
-                    return Math.Max(BackgroundGlucose, Settings.ContactGlucose);
-            return BackgroundGlucose;
-        }
-
-        /// <summary>Trace concentration [mol/m³] of species <paramref name="trace"/> at a cell's membrane.</summary>
-        public double TraceAt(int trace, double x, double y, double r)
-        {
-            double c = 0.0;
-            foreach (var p in _packets)
-                if (p.Active && Touches(p, x, y, r))
-                    c = Math.Max(c, Settings.ContactTrace * p.Traces[trace]);
-            return c;
+            double s = p.Radius / (r + p.Radius);
+            return 0.5 * (1.0 - Math.Sqrt(1.0 - s * s));
         }
 
         /// <summary>
-        /// Takes <paramref name="mol"/> of glucose that a cell at (x, y) took up beyond the background, from the packets it
-        /// touches in proportion to what each holds. Returns what they gave (no more than they held).
+        /// The packets a cell of radius <paramref name="r"/> at (x, y) touches, as its membrane sees them: the share of its
+        /// membrane facing them (<paramref name="share"/>, at most 1) and the sum of each one's share times the free sugar it
+        /// offers (<see cref="FoodPacket.Input"/>) [mol/m³]. The rest of the membrane sees the water.
         /// </summary>
-        public double Withdraw(double x, double y, double r, double mol)
+        public void Faces(double x, double y, double r, out double share, out double offered)
         {
-            if (mol <= 0.0)
-                return 0.0;
-            double total = 0.0;
-            foreach (var p in _packets)
-                if (p.Active && Touches(p, x, y, r))
-                    total += p.Glucose;
-            if (total <= 0.0)
-                return 0.0;
-            double share = Math.Min(1.0, mol / total);
-            foreach (var p in _packets)
-                if (p.Active && Touches(p, x, y, r))
-                {
-                    p.Glucose -= p.Glucose * share;
-                    p.Free -= p.Free * share;
-                }
-            return total * share;
+            share = 0.0;
+            offered = 0.0;
+            for (int k = 0; k < _packets.Count; k++)   // indexed: no enumerator to allocate
+            {
+                var p = _packets[k];
+                if (!p.Active || !Touches(p, x, y, r))
+                    continue;
+                double w = FaceShare(p, r);
+                share += w;
+                offered += w * p.Input;
+            }
+            if (share > 1.0)
+            {
+                offered /= share;
+                share = 1.0;
+            }
         }
 
         /// <summary>
-        /// Enzymes hydrolyse up to <paramref name="mol"/> of packet <paramref name="p"/>'s polymer; below the used-up share
-        /// the packet gives all it has left. Returns the glucose released [mol], which leaves the packet. A packet with no
-        /// enzyme acting on it keeps its polymer.
+        /// A cell of radius <paramref name="r"/> at (x, y) took up <paramref name="mol"/> through the membrane facing the
+        /// packets it touches: drawn from their free sugar in proportion to what each offered (no more than each holds).
+        /// Returns what they gave [mol].
+        /// </summary>
+        public double Draw(double x, double y, double r, double mol, double dt)
+        {
+            if (!(mol > 0.0))
+                return 0.0;
+            Faces(x, y, r, out _, out double offered);
+            if (!(offered > 0.0))
+                return 0.0;
+            double given = 0.0;
+            for (int k = 0; k < _packets.Count; k++)
+            {
+                var p = _packets[k];
+                if (!p.Active || !Touches(p, x, y, r) || !(p.Input > 0.0))
+                    continue;
+                double want = mol * FaceShare(p, r) * p.Input / offered;
+                double take = Math.Min(p.Free, want);
+                p.Free -= take;
+                p.Glucose -= take;
+                p.Coefficient += want / (dt * p.Input);
+                given += take;
+            }
+            return given;
+        }
+
+        /// <summary>
+        /// The free sugar packet <paramref name="p"/> offers touching membranes over the next <paramref name="dt"/> [s],
+        /// implicit in what they drew per unit concentration in the last step: Free / (V + coefficient dt). Call once per
+        /// step, after hydrolysis and before the cells read it.
+        /// </summary>
+        public void Predict(FoodPacket p, double dt)
+        {
+            double v = Volume(p);
+            p.Input = p.Active && v > 0.0 ? Math.Max(0.0, p.Free) / (v + p.Coefficient * dt) : 0.0;
+            p.Coefficient = 0.0;
+        }
+
+        /// <summary>
+        /// Enzymes hydrolyse up to <paramref name="mol"/> of packet <paramref name="p"/>'s polymer into its free sugar, held
+        /// back while that is at <see cref="FoodSettings.ContactGlucose"/> over its volume (product inhibition, as in a
+        /// vacuole). Returns the glucose hydrolysed [mol]; it stays in the packet until a membrane takes it or it leaks.
         /// </summary>
         public double Hydrolyse(FoodPacket p, double mol)
         {
             if (!p.Active || p.Glucose <= 0.0 || !(mol > 0.0))
                 return 0.0;
-            double polymer = p.Glucose - p.Free;
-            double left = p.Glucose - Math.Min(mol, polymer);
-            if (left < Settings.UsedUpFraction * p.Amount)
-            {
-                left = 0.0;
-                p.Free = 0.0;
-            }
-            double released = p.Glucose - left;
-            p.Glucose = left;
-            return released;
+            double polymer = Math.Max(0.0, p.Glucose - p.Free);
+            double room = Math.Max(0.0, Settings.ContactGlucose * Volume(p) - p.Free);
+            double hydrolysed = Math.Min(Math.Min(mol, polymer), room);
+            p.Free += hydrolysed;
+            return hydrolysed;
         }
 
         /// <summary>

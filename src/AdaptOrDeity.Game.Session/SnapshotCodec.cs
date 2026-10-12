@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Game.Session
     /// </summary>
     public static class SnapshotCodec
     {
-        private const int Magic = 0x41534E35;   // "ASN5"
+        private const int Magic = 0x41534E36;   // "ASN6"
 
         // Bytes before the frame's fields: the magic number and the shape (HeaderFields integers).
         private const int HeaderFields = 12, HeaderBytes = 4 + 4 * HeaderFields;
@@ -153,6 +153,8 @@ namespace AdaptOrDeity.Game.Session
             io.Block(f.PacketCarried);
             io.Block(f.PacketBody);
             io.Block(f.FieldGlucose);
+            io.Block(f.FieldLactate);
+            io.Block(f.FieldPh);
             io.Block(f.PreyX);
             io.Block(f.PreyY);
             io.Block(f.PreyRadius);

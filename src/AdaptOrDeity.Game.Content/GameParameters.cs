@@ -142,6 +142,7 @@ namespace AdaptOrDeity.Game.Content
                 BufferTotal = Value("environment.carbonate_total"),
                 BufferPk = Value("environment.carbonate_pk1"),
                 TraceSpecies = TraceSpecies,
+                TraceStride = Integer("field.trace_stride"),
             };
         }
 

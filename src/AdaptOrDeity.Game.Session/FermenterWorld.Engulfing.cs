@@ -196,6 +196,7 @@ namespace AdaptOrDeity.Game.Session
             _outsideGlucose[i] = c.MembraneGlucose;
             _vacuoleShare[i] = VacuoleOnMembrane(c, _vacuoles[i]);
             _openGlucoseShare[i] *= 1.0 - _vacuoleShare[i];
+            _packetShare[i] *= 1.0 - _vacuoleShare[i];
         }
 
         // A cell's membrane glucose with its vacuole: the share of its membrane lining the vacuole, (r_v / R)² as spheres,

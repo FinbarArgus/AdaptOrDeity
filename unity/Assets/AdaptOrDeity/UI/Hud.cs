@@ -42,6 +42,12 @@ namespace AdaptOrDeity.UI
             DrawTopBar(bridge, frame);
             if (bridge.ActiveOverlay >= 0)
                 DrawLegend(bridge.Schema.Overlays[bridge.ActiveOverlay]);
+            else if (bridge.ActiveField >= 0 && frame.FieldExtent > 0f && bridge.FieldView != null)
+            {
+                var info = FieldView.Overlays[bridge.ActiveField];
+                DrawLegend(new OverlayInfo(info.Id, info.Name, info.Hotkey, info.SiUnit, info.DisplayUnit, 1.0,
+                    bridge.FieldView.RangeMin, bridge.FieldView.RangeMax));
+            }
             DrawProbePlot(bridge, frame);
             DrawTooltip(bridge, frame);
             DrawUnlockNotice(bridge, frame);
@@ -95,10 +101,17 @@ namespace AdaptOrDeity.UI
                         bridge.ActiveOverlay = bridge.ActiveOverlay == i ? -1 : i;
                         e.Use();
                     }
+                for (int i = 0; i < FieldView.Overlays.Length && frame.FieldExtent > 0f; i++)
+                    if (e.keyCode.ToString() == FieldView.Overlays[i].Hotkey)
+                    {
+                        bridge.ActiveField = bridge.ActiveField == i ? -1 : i;
+                        e.Use();
+                    }
                 switch (e.keyCode)
                 {
                     case KeyCode.Escape:
                         bridge.ActiveOverlay = -1;
+                        bridge.ActiveField = -1;
                         e.Use();
                         break;
                     case KeyCode.Space:
@@ -176,8 +189,11 @@ namespace AdaptOrDeity.UI
             GUILayout.BeginArea(new Rect(8, 5, Screen.width - 16, BarHeight - 8));
             GUILayout.BeginHorizontal();
 
-            if (GUILayout.Toggle(bridge.ActiveOverlay < 0, "Plain [Esc]", GUI.skin.button, GUILayout.Width(100)))
+            if (GUILayout.Toggle(bridge.ActiveOverlay < 0 && bridge.ActiveField < 0, "Plain [Esc]", GUI.skin.button, GUILayout.Width(100)))
+            {
                 bridge.ActiveOverlay = -1;
+                bridge.ActiveField = -1;
+            }
             var overlays = bridge.Schema.Overlays;
             for (int i = 0; i < overlays.Count; i++)
             {
@@ -187,6 +203,18 @@ namespace AdaptOrDeity.UI
                     bridge.ActiveOverlay = i;
                 else if (!on && bridge.ActiveOverlay == i)
                     bridge.ActiveOverlay = -1;
+            }
+            // the water around the creature (the environment field), coloured on the range it shows now
+            for (int i = 0; i < FieldView.Overlays.Length && frame.FieldExtent > 0f; i++)
+            {
+                var info = FieldView.Overlays[i];
+                bool on = GUILayout.Toggle(bridge.ActiveField == i, new GUIContent($"{info.Name} [{info.Hotkey}]",
+                    "the water around the creature; the colours span what is in view now (see the legend)"),
+                    GUI.skin.button, GUILayout.Width(130));
+                if (on && bridge.ActiveField != i)
+                    bridge.ActiveField = i;
+                else if (!on && bridge.ActiveField == i)
+                    bridge.ActiveField = -1;
             }
 
             GUILayout.FlexibleSpace();

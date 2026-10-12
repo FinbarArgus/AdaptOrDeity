@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Game.Session.Tests
     {
         private static readonly int Pts = GameFeatures.IndexOf(GameFeatures.PtsTransport);
 
-        // A world whose only food is one packet on the first cell, holding enough glucose for many points.
+        // A world whose only food is one packet on the first cell, holding enough glucose for a few points.
         private static FermenterWorld Feeding(double packetGlucose)
         {
             var world = new FermenterWorld();
@@ -31,15 +31,19 @@ namespace AdaptOrDeity.Game.Session.Tests
         public void EatingFoodEarnsPointsThatBuyAFeatureFromItsLevel()
         {
             double perPoint = GameParameters.Default.Value("skills.glucose_per_point");
-            using var world = Feeding(10 * perPoint + 4e-14);   // enough for the points, on top of a packet's worth
+            using var world = Feeding(4 * perPoint);
             double t = 0.0;
-            while (world.SkillPoints < GameFeatures.All[Pts].Cost && t < 7 * 86_400.0)
+            // a resting cell takes up only what it uses (~5e-19 mol/s): the first point within a day
+            while (world.SkillPoints < 1 && t < 86_400.0)
             {
                 world.Step(t, world.MacroDt);
                 t += world.MacroDt;
             }
-            Assert.That(world.FoodEaten, Is.GreaterThan(0.0));
+            Assert.That(world.FoodEaten, Is.GreaterThanOrEqualTo(perPoint));
+            Assert.That(world.FoodEaten, Is.EqualTo(world.EatenFromPackets).Within(0.01 * world.FoodEaten),
+                "eaten from the packet it touches (and a little of what leaked from it, from the water)");
             Assert.That(world.SkillPoints, Is.EqualTo((int)Math.Floor(world.FoodEaten / perPoint)));
+            world.DevGrantPoints(GameFeatures.All[Pts].Cost - world.SkillPoints);
             Assert.That(world.FeatureUnlocked(Pts), Is.False);
             Assert.Throws<InvalidOperationException>(() => world.BuyFeature(Pts), "not before its level");
 
