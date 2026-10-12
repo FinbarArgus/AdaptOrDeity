@@ -23,13 +23,16 @@
     <variable name="B_Ca_total_mod_Ca" units="millimolar" public_interface="in"/>
     <variable name="C_ADP_init_mod_cytosol" units="millimolar" public_interface="in"/>
     <variable name="C_ATP_init_mod_cytosol" units="millimolar" public_interface="in"/>
+    <variable name="C_ATP_rest_mod_reg" units="millimolar" public_interface="in"/>
     <variable name="C_G6P_init_mod_cytosol" units="millimolar" public_interface="in"/>
+    <variable name="C_G6P_rest_mod_reg" units="millimolar" public_interface="in"/>
     <variable name="C_Pi_init_mod_cytosol" units="millimolar" public_interface="in"/>
     <variable name="C_glc_e_mod_glc_ABC" units="millimolar" public_interface="in"/>
     <variable name="C_glc_e_mod_glc_GalP" units="millimolar" public_interface="in"/>
     <variable name="C_glc_e_mod_glc_PTS" units="millimolar" public_interface="in"/>
     <variable name="C_glc_e_mod_membrane_face" units="millimolar" public_interface="in"/>
     <variable name="C_glc_init_mod_cytosol" units="millimolar" public_interface="in"/>
+    <variable name="C_glc_rest_mod_reg" units="millimolar" public_interface="in"/>
     <variable name="C_glyc_init_mod_cytosol" units="millimolar" public_interface="in"/>
     <variable name="C_glyc_max_mod_cytosol" units="millimolar" public_interface="in"/>
     <variable name="C_lac_e_mod_glc_ABC" units="millimolar" public_interface="in"/>
@@ -56,6 +59,7 @@
     <variable name="H_i_init_mod_H" units="millimolar" public_interface="in"/>
     <variable name="H_o_mod_H" units="millimolar" public_interface="in"/>
     <variable name="H_ref_mod_membrane_face" units="millimolar" public_interface="in"/>
+    <variable name="H_rest_mod_reg" units="millimolar" public_interface="in"/>
     <variable name="I_in_mod_membrane" units="nanoA" public_interface="in"/>
     <variable name="J_eps_mod_protein" units="mol_per_s" public_interface="in"/>
     <variable name="J_ref_mod_bio" units="mol_per_s" public_interface="in"/>
@@ -189,6 +193,8 @@
     <variable name="bio__M_daughter" units="mole" public_interface="out"/>
     <variable name="bio__P_growth" units="mole" public_interface="out" initial_value="P_init_mod_bio"/>
     <variable name="bio__R_reg" units="dimensionless" public_interface="out"/>
+    <variable name="bio__R_reg_repair" units="dimensionless" public_interface="out"/>
+    <variable name="bio__R_reg_upkeep" units="dimensionless" public_interface="out"/>
     <variable name="bio__R_repair" units="per_s" public_interface="out"/>
     <variable name="bio__f_ATP_bio" units="dimensionless" public_interface="out"/>
     <variable name="bio__f_T_dmg" units="dimensionless" public_interface="out"/>
@@ -304,6 +310,7 @@
     <variable name="cytosol__M_glyc_ATP" units="mole" public_interface="out"/>
     <variable name="cytosol__P_diss" units="watt" public_interface="out"/>
     <variable name="cytosol__Q_met" units="watt" public_interface="out"/>
+    <variable name="cytosol__R_reg" units="dimensionless" public_interface="out"/>
     <variable name="cytosol__a_glyc" units="dimensionless" public_interface="out"/>
     <variable name="cytosol__f_T" units="dimensionless" public_interface="out"/>
     <variable name="cytosol__j_H_met" units="mol_per_s" public_interface="out"/>
@@ -566,10 +573,13 @@
     <variable name="pool_ABC__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_ABC__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_ABC"/>
     <variable name="pool_ABC__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_ABC__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_ABC__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_ABC__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_ABC__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_ABC__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_ABC__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_ABC__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_ABC__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_ABC__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_ABC__share" units="dimensionless" public_interface="out"/>
@@ -585,9 +595,12 @@
     <variable name="pool_Flagellum__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_Flagellum__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_Flagellum"/>
     <variable name="pool_Flagellum__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Flagellum__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_Flagellum__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Flagellum__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_Flagellum__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_Flagellum__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_Flagellum__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_Flagellum__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_Flagellum__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_Flagellum__share" units="dimensionless" public_interface="out"/>
@@ -603,10 +616,13 @@
     <variable name="pool_GalP__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_GalP__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_GalP"/>
     <variable name="pool_GalP__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_GalP__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_GalP__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_GalP__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_GalP__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_GalP__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_GalP__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_GalP__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_GalP__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_GalP__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_GalP__share" units="dimensionless" public_interface="out"/>
@@ -622,10 +638,13 @@
     <variable name="pool_Glf__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_Glf__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_Glf"/>
     <variable name="pool_Glf__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Glf__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_Glf__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_Glf__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Glf__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_Glf__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_Glf__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_Glf__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_Glf__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_Glf__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_Glf__share" units="dimensionless" public_interface="out"/>
@@ -641,9 +660,12 @@
     <variable name="pool_Glyc__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_Glyc__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_Glyc"/>
     <variable name="pool_Glyc__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Glyc__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_Glyc__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Glyc__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_Glyc__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_Glyc__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_Glyc__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_Glyc__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_Glyc__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_Glyc__share" units="dimensionless" public_interface="out"/>
@@ -659,10 +681,13 @@
     <variable name="pool_H_ATPase__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_H_ATPase__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_H_ATPase"/>
     <variable name="pool_H_ATPase__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_H_ATPase__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_H_ATPase__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_H_ATPase__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_H_ATPase__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_H_ATPase__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_H_ATPase__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_H_ATPase__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_H_ATPase__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_H_ATPase__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_H_ATPase__share" units="dimensionless" public_interface="out"/>
@@ -678,10 +703,13 @@
     <variable name="pool_Hydrolase__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_Hydrolase__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_Hydrolase"/>
     <variable name="pool_Hydrolase__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Hydrolase__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_Hydrolase__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_Hydrolase__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Hydrolase__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_Hydrolase__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_Hydrolase__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_Hydrolase__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_Hydrolase__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_Hydrolase__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_Hydrolase__share" units="dimensionless" public_interface="out"/>
@@ -697,10 +725,13 @@
     <variable name="pool_KefC__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_KefC__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_KefC"/>
     <variable name="pool_KefC__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_KefC__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_KefC__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_KefC__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_KefC__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_KefC__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_KefC__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_KefC__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_KefC__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_KefC__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_KefC__share" units="dimensionless" public_interface="out"/>
@@ -716,10 +747,13 @@
     <variable name="pool_LacT__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_LacT__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_LacT"/>
     <variable name="pool_LacT__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_LacT__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_LacT__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_LacT__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_LacT__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_LacT__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_LacT__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_LacT__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_LacT__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_LacT__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_LacT__share" units="dimensionless" public_interface="out"/>
@@ -735,10 +769,13 @@
     <variable name="pool_NCX__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_NCX__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_NCX"/>
     <variable name="pool_NCX__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_NCX__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_NCX__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_NCX__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_NCX__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_NCX__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_NCX__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_NCX__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_NCX__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_NCX__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_NCX__share" units="dimensionless" public_interface="out"/>
@@ -754,10 +791,13 @@
     <variable name="pool_NhaA__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_NhaA__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_NhaA"/>
     <variable name="pool_NhaA__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_NhaA__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_NhaA__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_NhaA__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_NhaA__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_NhaA__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_NhaA__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_NhaA__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_NhaA__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_NhaA__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_NhaA__share" units="dimensionless" public_interface="out"/>
@@ -773,10 +813,13 @@
     <variable name="pool_PTS__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_PTS__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_PTS"/>
     <variable name="pool_PTS__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_PTS__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_PTS__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_PTS__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_PTS__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_PTS__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_PTS__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_PTS__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_PTS__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_PTS__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_PTS__share" units="dimensionless" public_interface="out"/>
@@ -792,10 +835,13 @@
     <variable name="pool_Trk__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_Trk__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_Trk"/>
     <variable name="pool_Trk__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Trk__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_Trk__m_target" units="dimensionless" public_interface="out"/>
     <variable name="pool_Trk__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_Trk__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_Trk__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_Trk__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_Trk__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_Trk__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_Trk__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_Trk__share" units="dimensionless" public_interface="out"/>
@@ -811,9 +857,12 @@
     <variable name="pool_proteome__f_build" units="dimensionless" public_interface="out"/>
     <variable name="pool_proteome__m" units="dimensionless" public_interface="out" initial_value="m_init_mod_pool_proteome"/>
     <variable name="pool_proteome__m_goal" units="dimensionless" public_interface="out"/>
+    <variable name="pool_proteome__m_kept" units="dimensionless" public_interface="out"/>
     <variable name="pool_proteome__n" units="dimensionless" public_interface="out"/>
+    <variable name="pool_proteome__r_deg" units="per_s" public_interface="out"/>
     <variable name="pool_proteome__r_down" units="per_s" public_interface="out"/>
     <variable name="pool_proteome__r_rel" units="per_s" public_interface="out"/>
+    <variable name="pool_proteome__r_rep" units="per_s" public_interface="out"/>
     <variable name="pool_proteome__r_up" units="per_s" public_interface="out"/>
     <variable name="pool_proteome__s_unit" units="dimensionless" public_interface="out"/>
     <variable name="pool_proteome__share" units="dimensionless" public_interface="out"/>
@@ -826,6 +875,7 @@
     <variable name="protein__J_demand_total" units="mol_per_s" public_interface="out"/>
     <variable name="protein__J_keep_total" units="mol_per_s" public_interface="out"/>
     <variable name="protein__M_build_protein" units="mole" public_interface="out"/>
+    <variable name="protein__R_reg" units="dimensionless" public_interface="out"/>
     <variable name="protein__f_area" units="dimensionless" public_interface="out"/>
     <variable name="protein__j_ADP_prot" units="mol_per_s" public_interface="out"/>
     <variable name="protein__j_ATP_prot" units="mol_per_s" public_interface="out"/>
@@ -841,11 +891,16 @@
     <variable name="reg__f_G6P_reg" units="dimensionless" public_interface="out"/>
     <variable name="reg__f_H_reg" units="dimensionless" public_interface="out"/>
     <variable name="reg__f_glc_reg" units="dimensionless" public_interface="out"/>
+    <variable name="reg__u_ATP_reg" units="dimensionless" public_interface="out"/>
+    <variable name="reg__u_G6P_reg" units="dimensionless" public_interface="out"/>
+    <variable name="reg__u_H_reg" units="dimensionless" public_interface="out"/>
+    <variable name="reg__u_glc_reg" units="dimensionless" public_interface="out"/>
     <variable name="reg__x_ATP_reg" units="dimensionless" public_interface="out"/>
     <variable name="reg__x_G6P_reg" units="dimensionless" public_interface="out"/>
     <variable name="reg__x_H_reg" units="dimensionless" public_interface="out"/>
     <variable name="reg__x_glc_reg" units="dimensionless" public_interface="out"/>
     <variable name="reg_on_ATP_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_ATP_mod_cytosol" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_ATP_mod_pool_ABC" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_ATP_mod_pool_Flagellum" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_ATP_mod_pool_GalP" units="dimensionless" public_interface="in"/>
@@ -860,7 +915,11 @@
     <variable name="reg_on_ATP_mod_pool_PTS" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_ATP_mod_pool_Trk" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_ATP_mod_pool_proteome" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_ATP_mod_protein" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_ATP_repair_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_ATP_upkeep_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_G6P_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_G6P_mod_cytosol" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_G6P_mod_pool_ABC" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_G6P_mod_pool_Flagellum" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_G6P_mod_pool_GalP" units="dimensionless" public_interface="in"/>
@@ -875,7 +934,11 @@
     <variable name="reg_on_G6P_mod_pool_PTS" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_G6P_mod_pool_Trk" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_G6P_mod_pool_proteome" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_G6P_mod_protein" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_G6P_repair_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_G6P_upkeep_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_H_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_H_mod_cytosol" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_H_mod_pool_ABC" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_H_mod_pool_Flagellum" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_H_mod_pool_GalP" units="dimensionless" public_interface="in"/>
@@ -890,7 +953,11 @@
     <variable name="reg_on_H_mod_pool_PTS" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_H_mod_pool_Trk" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_H_mod_pool_proteome" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_H_mod_protein" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_H_repair_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_H_upkeep_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_glc_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_glc_mod_cytosol" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_glc_mod_pool_ABC" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_glc_mod_pool_Flagellum" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_glc_mod_pool_GalP" units="dimensionless" public_interface="in"/>
@@ -905,6 +972,9 @@
     <variable name="reg_on_glc_mod_pool_PTS" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_glc_mod_pool_Trk" units="dimensionless" public_interface="in"/>
     <variable name="reg_on_glc_mod_pool_proteome" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_glc_mod_protein" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_glc_repair_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="reg_on_glc_upkeep_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="repair_level_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="rho_H_ATPase_mod_i_H_ATPase" units="per_um2" public_interface="in"/>
     <variable name="rho_NaCa_mod_i_NaCa" units="per_um2" public_interface="in"/>
@@ -1289,6 +1359,65 @@
     </math>
   
 <math xmlns="http://www.w3.org/1998/Math/MathML" xmlns:cellml="http://www.cellml.org/cellml/1.1#">
+      <apply>
+        <eq />
+        <ci>cytosol__R_reg</ci>
+        <apply>
+          <times />
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_ATP_mod_cytosol</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_ATP_mod_cytosol</ci>
+              <ci>reg__f_ATP_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_G6P_mod_cytosol</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_G6P_mod_cytosol</ci>
+              <ci>reg__f_G6P_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_glc_mod_cytosol</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_glc_mod_cytosol</ci>
+              <ci>reg__f_glc_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_H_mod_cytosol</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_H_mod_cytosol</ci>
+              <ci>reg__f_H_reg</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
       <apply>
         <eq />
         <ci>cytosol__f_T</ci>
@@ -1729,6 +1858,7 @@
           <apply>
             <times />
             <ci>V_hyd_mod_cytosol</ci>
+            <ci>cytosol__R_reg</ci>
             <ci>cytosol__f_T</ci>
             <apply>
               <divide />
@@ -2851,6 +2981,124 @@
 <math xmlns="http://www.w3.org/1998/Math/MathML" xmlns:cellml="http://www.cellml.org/cellml/1.1#">
       <apply>
         <eq />
+        <ci>bio__R_reg_upkeep</ci>
+        <apply>
+          <times />
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_ATP_upkeep_mod_bio</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_ATP_upkeep_mod_bio</ci>
+              <ci>reg__f_ATP_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_G6P_upkeep_mod_bio</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_G6P_upkeep_mod_bio</ci>
+              <ci>reg__f_G6P_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_glc_upkeep_mod_bio</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_glc_upkeep_mod_bio</ci>
+              <ci>reg__f_glc_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_H_upkeep_mod_bio</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_H_upkeep_mod_bio</ci>
+              <ci>reg__f_H_reg</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_reg_repair</ci>
+        <apply>
+          <times />
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_ATP_repair_mod_bio</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_ATP_repair_mod_bio</ci>
+              <ci>reg__f_ATP_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_G6P_repair_mod_bio</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_G6P_repair_mod_bio</ci>
+              <ci>reg__f_G6P_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_glc_repair_mod_bio</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_glc_repair_mod_bio</ci>
+              <ci>reg__f_glc_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_H_repair_mod_bio</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_H_repair_mod_bio</ci>
+              <ci>reg__f_H_reg</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
         <ci>bio__n_lipid</ci>
         <apply>
           <divide />
@@ -2929,6 +3177,7 @@
             <ci>N_A_mod_bio</ci>
           </apply>
           <ci>bio__f_ATP_bio</ci>
+          <ci>bio__R_reg_upkeep</ci>
         </apply>
       </apply>
       <apply>
@@ -2948,6 +3197,7 @@
             <ci>N_A_mod_bio</ci>
           </apply>
           <ci>bio__f_ATP_bio</ci>
+          <ci>bio__R_reg_upkeep</ci>
         </apply>
       </apply>
       <apply>
@@ -2966,6 +3216,7 @@
             <ci>N_A_mod_bio</ci>
           </apply>
           <ci>bio__f_ATP_bio</ci>
+          <ci>bio__R_reg_upkeep</ci>
         </apply>
       </apply>
       <apply>
@@ -2988,6 +3239,7 @@
             </apply>
           </apply>
           <ci>bio__f_ATP_bio</ci>
+          <ci>bio__R_reg_repair</ci>
         </apply>
       </apply>
       <apply>
@@ -3272,6 +3524,65 @@
 <math xmlns="http://www.w3.org/1998/Math/MathML" xmlns:cellml="http://www.cellml.org/cellml/1.1#">
       <apply>
         <eq />
+        <ci>protein__R_reg</ci>
+        <apply>
+          <times />
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_ATP_mod_protein</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_ATP_mod_protein</ci>
+              <ci>reg__f_ATP_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_G6P_mod_protein</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_G6P_mod_protein</ci>
+              <ci>reg__f_G6P_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_glc_mod_protein</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_glc_mod_protein</ci>
+              <ci>reg__f_glc_reg</ci>
+            </apply>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg_on_H_mod_protein</ci>
+            </apply>
+            <apply>
+              <times />
+              <ci>reg_on_H_mod_protein</ci>
+              <ci>reg__f_H_reg</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
         <ci>protein__J_demand_total</ci>
         <ci>multiport_sum_mod_protein_J_demand_in__J_demand_in</ci>
       </apply>
@@ -3371,6 +3682,7 @@
           <ci>build_capacity_mod_protein</ci>
           <ci>J_ref_mod_protein</ci>
           <ci>protein__throttle</ci>
+          <ci>protein__R_reg</ci>
         </apply>
       </apply>
       <apply>
@@ -3562,22 +3874,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_proteome__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_proteome__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_proteome__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_proteome__f_ATP</ci>
         <apply>
           <divide />
@@ -3627,26 +3923,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_proteome__J_keep</ci>
+        <ci>pool_proteome__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_proteome__m</ci>
+              <ci>pool_proteome__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_proteome__m</ci>
+                <ci>pool_proteome__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_proteome__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_proteome</ci>
+          <ci>pool_proteome__m</ci>
+          <ci>pool_proteome__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_proteome__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_proteome</ci>
+          </apply>
+          <ci>pool_proteome__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_proteome__n</ci>
-              <ci>L_mod_pool_proteome</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_proteome</ci>
-                <ci>c_deg_mod_pool_proteome</ci>
-                <ci>c_recycle_mod_pool_proteome</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_proteome__m</ci>
+                  <ci>pool_proteome__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_proteome__m</ci>
+                    <ci>pool_proteome__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_proteome</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_proteome</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_proteome__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_proteome__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_proteome__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_proteome__r_deg</ci>
+          <ci>pool_proteome__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_proteome__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_proteome</ci>
+            <ci>L_mod_pool_proteome</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_proteome</ci>
+                  <ci>c_recycle_mod_pool_proteome</ci>
+                </apply>
+                <ci>pool_proteome__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_proteome</ci>
+                <ci>pool_proteome__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_proteome</ci>
         </apply>
       </apply>
       <apply>
@@ -3873,22 +4262,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Glyc__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_Glyc__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_Glyc__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_Glyc__f_ATP</ci>
         <apply>
           <divide />
@@ -3938,26 +4311,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Glyc__J_keep</ci>
+        <ci>pool_Glyc__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_Glyc__m</ci>
+              <ci>pool_Glyc__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_Glyc__m</ci>
+                <ci>pool_Glyc__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Glyc__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_Glyc</ci>
+          <ci>pool_Glyc__m</ci>
+          <ci>pool_Glyc__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Glyc__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_Glyc</ci>
+          </apply>
+          <ci>pool_Glyc__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_Glyc__n</ci>
-              <ci>L_mod_pool_Glyc</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_Glyc</ci>
-                <ci>c_deg_mod_pool_Glyc</ci>
-                <ci>c_recycle_mod_pool_Glyc</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_Glyc__m</ci>
+                  <ci>pool_Glyc__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_Glyc__m</ci>
+                    <ci>pool_Glyc__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_Glyc</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_Glyc</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_Glyc__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_Glyc__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Glyc__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_Glyc__r_deg</ci>
+          <ci>pool_Glyc__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Glyc__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_Glyc</ci>
+            <ci>L_mod_pool_Glyc</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_Glyc</ci>
+                  <ci>c_recycle_mod_pool_Glyc</ci>
+                </apply>
+                <ci>pool_Glyc__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_Glyc</ci>
+                <ci>pool_Glyc__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_Glyc</ci>
         </apply>
       </apply>
       <apply>
@@ -4092,7 +4558,43 @@
           <apply>
             <times />
             <cn cellml:units="dimensionless">2.0</cn>
-            <ci>K_ATP_reg_mod_reg</ci>
+            <ci>C_ATP_rest_mod_reg</ci>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>reg__u_ATP_reg</ci>
+        <apply>
+          <divide />
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg__x_ATP_reg</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>reg__x_ATP_reg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <apply>
+            <times />
+            <cn cellml:units="dimensionless">2.0</cn>
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <apply>
+                <divide />
+                <ci>K_ATP_reg_mod_reg</ci>
+                <ci>C_ATP_rest_mod_reg</ci>
+              </apply>
+            </apply>
           </apply>
         </apply>
       </apply>
@@ -4101,17 +4603,13 @@
         <ci>reg__f_ATP_reg</ci>
         <apply>
           <divide />
-          <apply>
-            <power />
-            <ci>reg__x_ATP_reg</ci>
-            <ci>n_reg_mod_reg</ci>
-          </apply>
+          <cn cellml:units="dimensionless">1.0</cn>
           <apply>
             <plus />
             <cn cellml:units="dimensionless">1.0</cn>
             <apply>
               <power />
-              <ci>reg__x_ATP_reg</ci>
+              <ci>reg__u_ATP_reg</ci>
               <ci>n_reg_mod_reg</ci>
             </apply>
           </apply>
@@ -4133,7 +4631,43 @@
           <apply>
             <times />
             <cn cellml:units="dimensionless">2.0</cn>
-            <ci>K_G6P_reg_mod_reg</ci>
+            <ci>C_G6P_rest_mod_reg</ci>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>reg__u_G6P_reg</ci>
+        <apply>
+          <divide />
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg__x_G6P_reg</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>reg__x_G6P_reg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <apply>
+            <times />
+            <cn cellml:units="dimensionless">2.0</cn>
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <apply>
+                <divide />
+                <ci>K_G6P_reg_mod_reg</ci>
+                <ci>C_G6P_rest_mod_reg</ci>
+              </apply>
+            </apply>
           </apply>
         </apply>
       </apply>
@@ -4142,17 +4676,13 @@
         <ci>reg__f_G6P_reg</ci>
         <apply>
           <divide />
-          <apply>
-            <power />
-            <ci>reg__x_G6P_reg</ci>
-            <ci>n_reg_mod_reg</ci>
-          </apply>
+          <cn cellml:units="dimensionless">1.0</cn>
           <apply>
             <plus />
             <cn cellml:units="dimensionless">1.0</cn>
             <apply>
               <power />
-              <ci>reg__x_G6P_reg</ci>
+              <ci>reg__u_G6P_reg</ci>
               <ci>n_reg_mod_reg</ci>
             </apply>
           </apply>
@@ -4174,7 +4704,43 @@
           <apply>
             <times />
             <cn cellml:units="dimensionless">2.0</cn>
-            <ci>K_glc_reg_mod_reg</ci>
+            <ci>C_glc_rest_mod_reg</ci>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>reg__u_glc_reg</ci>
+        <apply>
+          <divide />
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg__x_glc_reg</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>reg__x_glc_reg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <apply>
+            <times />
+            <cn cellml:units="dimensionless">2.0</cn>
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <apply>
+                <divide />
+                <ci>K_glc_reg_mod_reg</ci>
+                <ci>C_glc_rest_mod_reg</ci>
+              </apply>
+            </apply>
           </apply>
         </apply>
       </apply>
@@ -4183,17 +4749,13 @@
         <ci>reg__f_glc_reg</ci>
         <apply>
           <divide />
-          <apply>
-            <power />
-            <ci>reg__x_glc_reg</ci>
-            <ci>n_reg_mod_reg</ci>
-          </apply>
+          <cn cellml:units="dimensionless">1.0</cn>
           <apply>
             <plus />
             <cn cellml:units="dimensionless">1.0</cn>
             <apply>
               <power />
-              <ci>reg__x_glc_reg</ci>
+              <ci>reg__u_glc_reg</ci>
               <ci>n_reg_mod_reg</ci>
             </apply>
           </apply>
@@ -4204,8 +4766,44 @@
         <ci>reg__x_H_reg</ci>
         <apply>
           <divide />
-          <ci>K_H_reg_mod_reg</ci>
+          <ci>H_rest_mod_reg</ci>
           <ci>H__H_i</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>reg__u_H_reg</ci>
+        <apply>
+          <divide />
+          <apply>
+            <plus />
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>reg__x_H_reg</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>reg__x_H_reg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <apply>
+            <times />
+            <cn cellml:units="dimensionless">2.0</cn>
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <apply>
+                <divide />
+                <ci>H_rest_mod_reg</ci>
+                <ci>K_H_reg_mod_reg</ci>
+              </apply>
+            </apply>
+          </apply>
         </apply>
       </apply>
       <apply>
@@ -4213,17 +4811,13 @@
         <ci>reg__f_H_reg</ci>
         <apply>
           <divide />
-          <apply>
-            <power />
-            <ci>reg__x_H_reg</ci>
-            <ci>n_reg_mod_reg</ci>
-          </apply>
+          <cn cellml:units="dimensionless">1.0</cn>
           <apply>
             <plus />
             <cn cellml:units="dimensionless">1.0</cn>
             <apply>
               <power />
-              <ci>reg__x_H_reg</ci>
+              <ci>reg__u_H_reg</ci>
               <ci>n_reg_mod_reg</ci>
             </apply>
           </apply>
@@ -5977,22 +6571,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_H_ATPase__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_H_ATPase__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_H_ATPase__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_H_ATPase__f_ATP</ci>
         <apply>
           <divide />
@@ -6042,26 +6620,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_H_ATPase__J_keep</ci>
+        <ci>pool_H_ATPase__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_H_ATPase__m</ci>
+              <ci>pool_H_ATPase__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_H_ATPase__m</ci>
+                <ci>pool_H_ATPase__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_H_ATPase__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_H_ATPase</ci>
+          <ci>pool_H_ATPase__m</ci>
+          <ci>pool_H_ATPase__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_H_ATPase__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_H_ATPase</ci>
+          </apply>
+          <ci>pool_H_ATPase__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_H_ATPase__n</ci>
-              <ci>L_mod_pool_H_ATPase</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_H_ATPase</ci>
-                <ci>c_deg_mod_pool_H_ATPase</ci>
-                <ci>c_recycle_mod_pool_H_ATPase</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_H_ATPase__m</ci>
+                  <ci>pool_H_ATPase__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_H_ATPase__m</ci>
+                    <ci>pool_H_ATPase__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_H_ATPase</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_H_ATPase</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_H_ATPase__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_H_ATPase__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_H_ATPase__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_H_ATPase__r_deg</ci>
+          <ci>pool_H_ATPase__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_H_ATPase__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_H_ATPase</ci>
+            <ci>L_mod_pool_H_ATPase</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_H_ATPase</ci>
+                  <ci>c_recycle_mod_pool_H_ATPase</ci>
+                </apply>
+                <ci>pool_H_ATPase__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_H_ATPase</ci>
+                <ci>pool_H_ATPase__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_H_ATPase</ci>
         </apply>
       </apply>
       <apply>
@@ -6301,22 +6972,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_NhaA__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_NhaA__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_NhaA__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_NhaA__f_ATP</ci>
         <apply>
           <divide />
@@ -6366,26 +7021,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_NhaA__J_keep</ci>
+        <ci>pool_NhaA__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_NhaA__m</ci>
+              <ci>pool_NhaA__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_NhaA__m</ci>
+                <ci>pool_NhaA__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_NhaA__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_NhaA</ci>
+          <ci>pool_NhaA__m</ci>
+          <ci>pool_NhaA__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_NhaA__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_NhaA</ci>
+          </apply>
+          <ci>pool_NhaA__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_NhaA__n</ci>
-              <ci>L_mod_pool_NhaA</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_NhaA</ci>
-                <ci>c_deg_mod_pool_NhaA</ci>
-                <ci>c_recycle_mod_pool_NhaA</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_NhaA__m</ci>
+                  <ci>pool_NhaA__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_NhaA__m</ci>
+                    <ci>pool_NhaA__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_NhaA</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_NhaA</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_NhaA__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_NhaA__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_NhaA__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_NhaA__r_deg</ci>
+          <ci>pool_NhaA__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_NhaA__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_NhaA</ci>
+            <ci>L_mod_pool_NhaA</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_NhaA</ci>
+                  <ci>c_recycle_mod_pool_NhaA</ci>
+                </apply>
+                <ci>pool_NhaA__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_NhaA</ci>
+                <ci>pool_NhaA__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_NhaA</ci>
         </apply>
       </apply>
       <apply>
@@ -6625,22 +7373,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_KefC__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_KefC__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_KefC__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_KefC__f_ATP</ci>
         <apply>
           <divide />
@@ -6690,26 +7422,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_KefC__J_keep</ci>
+        <ci>pool_KefC__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_KefC__m</ci>
+              <ci>pool_KefC__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_KefC__m</ci>
+                <ci>pool_KefC__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_KefC__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_KefC</ci>
+          <ci>pool_KefC__m</ci>
+          <ci>pool_KefC__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_KefC__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_KefC</ci>
+          </apply>
+          <ci>pool_KefC__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_KefC__n</ci>
-              <ci>L_mod_pool_KefC</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_KefC</ci>
-                <ci>c_deg_mod_pool_KefC</ci>
-                <ci>c_recycle_mod_pool_KefC</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_KefC__m</ci>
+                  <ci>pool_KefC__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_KefC__m</ci>
+                    <ci>pool_KefC__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_KefC</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_KefC</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_KefC__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_KefC__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_KefC__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_KefC__r_deg</ci>
+          <ci>pool_KefC__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_KefC__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_KefC</ci>
+            <ci>L_mod_pool_KefC</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_KefC</ci>
+                  <ci>c_recycle_mod_pool_KefC</ci>
+                </apply>
+                <ci>pool_KefC__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_KefC</ci>
+                <ci>pool_KefC__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_KefC</ci>
         </apply>
       </apply>
       <apply>
@@ -6949,22 +7774,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Trk__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_Trk__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_Trk__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_Trk__f_ATP</ci>
         <apply>
           <divide />
@@ -7014,26 +7823,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Trk__J_keep</ci>
+        <ci>pool_Trk__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_Trk__m</ci>
+              <ci>pool_Trk__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_Trk__m</ci>
+                <ci>pool_Trk__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Trk__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_Trk</ci>
+          <ci>pool_Trk__m</ci>
+          <ci>pool_Trk__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Trk__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_Trk</ci>
+          </apply>
+          <ci>pool_Trk__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_Trk__n</ci>
-              <ci>L_mod_pool_Trk</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_Trk</ci>
-                <ci>c_deg_mod_pool_Trk</ci>
-                <ci>c_recycle_mod_pool_Trk</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_Trk__m</ci>
+                  <ci>pool_Trk__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_Trk__m</ci>
+                    <ci>pool_Trk__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_Trk</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_Trk</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_Trk__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_Trk__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Trk__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_Trk__r_deg</ci>
+          <ci>pool_Trk__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Trk__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_Trk</ci>
+            <ci>L_mod_pool_Trk</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_Trk</ci>
+                  <ci>c_recycle_mod_pool_Trk</ci>
+                </apply>
+                <ci>pool_Trk__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_Trk</ci>
+                <ci>pool_Trk__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_Trk</ci>
         </apply>
       </apply>
       <apply>
@@ -7273,22 +8175,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_NCX__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_NCX__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_NCX__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_NCX__f_ATP</ci>
         <apply>
           <divide />
@@ -7338,26 +8224,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_NCX__J_keep</ci>
+        <ci>pool_NCX__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_NCX__m</ci>
+              <ci>pool_NCX__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_NCX__m</ci>
+                <ci>pool_NCX__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_NCX__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_NCX</ci>
+          <ci>pool_NCX__m</ci>
+          <ci>pool_NCX__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_NCX__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_NCX</ci>
+          </apply>
+          <ci>pool_NCX__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_NCX__n</ci>
-              <ci>L_mod_pool_NCX</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_NCX</ci>
-                <ci>c_deg_mod_pool_NCX</ci>
-                <ci>c_recycle_mod_pool_NCX</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_NCX__m</ci>
+                  <ci>pool_NCX__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_NCX__m</ci>
+                    <ci>pool_NCX__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_NCX</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_NCX</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_NCX__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_NCX__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_NCX__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_NCX__r_deg</ci>
+          <ci>pool_NCX__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_NCX__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_NCX</ci>
+            <ci>L_mod_pool_NCX</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_NCX</ci>
+                  <ci>c_recycle_mod_pool_NCX</ci>
+                </apply>
+                <ci>pool_NCX__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_NCX</ci>
+                <ci>pool_NCX__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_NCX</ci>
         </apply>
       </apply>
       <apply>
@@ -7597,22 +8576,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Glf__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_Glf__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_Glf__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_Glf__f_ATP</ci>
         <apply>
           <divide />
@@ -7662,26 +8625,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Glf__J_keep</ci>
+        <ci>pool_Glf__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_Glf__m</ci>
+              <ci>pool_Glf__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_Glf__m</ci>
+                <ci>pool_Glf__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Glf__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_Glf</ci>
+          <ci>pool_Glf__m</ci>
+          <ci>pool_Glf__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Glf__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_Glf</ci>
+          </apply>
+          <ci>pool_Glf__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_Glf__n</ci>
-              <ci>L_mod_pool_Glf</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_Glf</ci>
-                <ci>c_deg_mod_pool_Glf</ci>
-                <ci>c_recycle_mod_pool_Glf</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_Glf__m</ci>
+                  <ci>pool_Glf__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_Glf__m</ci>
+                    <ci>pool_Glf__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_Glf</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_Glf</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_Glf__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_Glf__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Glf__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_Glf__r_deg</ci>
+          <ci>pool_Glf__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Glf__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_Glf</ci>
+            <ci>L_mod_pool_Glf</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_Glf</ci>
+                  <ci>c_recycle_mod_pool_Glf</ci>
+                </apply>
+                <ci>pool_Glf__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_Glf</ci>
+                <ci>pool_Glf__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_Glf</ci>
         </apply>
       </apply>
       <apply>
@@ -7921,22 +8977,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_LacT__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_LacT__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_LacT__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_LacT__f_ATP</ci>
         <apply>
           <divide />
@@ -7986,26 +9026,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_LacT__J_keep</ci>
+        <ci>pool_LacT__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_LacT__m</ci>
+              <ci>pool_LacT__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_LacT__m</ci>
+                <ci>pool_LacT__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_LacT__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_LacT</ci>
+          <ci>pool_LacT__m</ci>
+          <ci>pool_LacT__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_LacT__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_LacT</ci>
+          </apply>
+          <ci>pool_LacT__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_LacT__n</ci>
-              <ci>L_mod_pool_LacT</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_LacT</ci>
-                <ci>c_deg_mod_pool_LacT</ci>
-                <ci>c_recycle_mod_pool_LacT</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_LacT__m</ci>
+                  <ci>pool_LacT__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_LacT__m</ci>
+                    <ci>pool_LacT__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_LacT</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_LacT</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_LacT__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_LacT__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_LacT__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_LacT__r_deg</ci>
+          <ci>pool_LacT__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_LacT__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_LacT</ci>
+            <ci>L_mod_pool_LacT</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_LacT</ci>
+                  <ci>c_recycle_mod_pool_LacT</ci>
+                </apply>
+                <ci>pool_LacT__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_LacT</ci>
+                <ci>pool_LacT__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_LacT</ci>
         </apply>
       </apply>
       <apply>
@@ -8232,22 +9365,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Flagellum__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_Flagellum__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_Flagellum__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_Flagellum__f_ATP</ci>
         <apply>
           <divide />
@@ -8297,26 +9414,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Flagellum__J_keep</ci>
+        <ci>pool_Flagellum__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_Flagellum__m</ci>
+              <ci>pool_Flagellum__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_Flagellum__m</ci>
+                <ci>pool_Flagellum__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Flagellum__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_Flagellum</ci>
+          <ci>pool_Flagellum__m</ci>
+          <ci>pool_Flagellum__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Flagellum__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_Flagellum</ci>
+          </apply>
+          <ci>pool_Flagellum__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_Flagellum__n</ci>
-              <ci>L_mod_pool_Flagellum</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_Flagellum</ci>
-                <ci>c_deg_mod_pool_Flagellum</ci>
-                <ci>c_recycle_mod_pool_Flagellum</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_Flagellum__m</ci>
+                  <ci>pool_Flagellum__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_Flagellum__m</ci>
+                    <ci>pool_Flagellum__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_Flagellum</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_Flagellum</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_Flagellum__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_Flagellum__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Flagellum__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_Flagellum__r_deg</ci>
+          <ci>pool_Flagellum__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Flagellum__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_Flagellum</ci>
+            <ci>L_mod_pool_Flagellum</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_Flagellum</ci>
+                  <ci>c_recycle_mod_pool_Flagellum</ci>
+                </apply>
+                <ci>pool_Flagellum__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_Flagellum</ci>
+                <ci>pool_Flagellum__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_Flagellum</ci>
         </apply>
       </apply>
       <apply>
@@ -8556,22 +9766,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Hydrolase__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_Hydrolase__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_Hydrolase__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_Hydrolase__f_ATP</ci>
         <apply>
           <divide />
@@ -8621,26 +9815,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_Hydrolase__J_keep</ci>
+        <ci>pool_Hydrolase__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_Hydrolase__m</ci>
+              <ci>pool_Hydrolase__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_Hydrolase__m</ci>
+                <ci>pool_Hydrolase__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Hydrolase__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_Hydrolase</ci>
+          <ci>pool_Hydrolase__m</ci>
+          <ci>pool_Hydrolase__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Hydrolase__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_Hydrolase</ci>
+          </apply>
+          <ci>pool_Hydrolase__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_Hydrolase__n</ci>
-              <ci>L_mod_pool_Hydrolase</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_Hydrolase</ci>
-                <ci>c_deg_mod_pool_Hydrolase</ci>
-                <ci>c_recycle_mod_pool_Hydrolase</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_Hydrolase__m</ci>
+                  <ci>pool_Hydrolase__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_Hydrolase__m</ci>
+                    <ci>pool_Hydrolase__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_Hydrolase</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_Hydrolase</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_Hydrolase__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_Hydrolase__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Hydrolase__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_Hydrolase__r_deg</ci>
+          <ci>pool_Hydrolase__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_Hydrolase__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_Hydrolase</ci>
+            <ci>L_mod_pool_Hydrolase</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_Hydrolase</ci>
+                  <ci>c_recycle_mod_pool_Hydrolase</ci>
+                </apply>
+                <ci>pool_Hydrolase__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_Hydrolase</ci>
+                <ci>pool_Hydrolase__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_Hydrolase</ci>
         </apply>
       </apply>
       <apply>
@@ -8880,22 +10167,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_PTS__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_PTS__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_PTS__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_PTS__f_ATP</ci>
         <apply>
           <divide />
@@ -8945,26 +10216,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_PTS__J_keep</ci>
+        <ci>pool_PTS__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_PTS__m</ci>
+              <ci>pool_PTS__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_PTS__m</ci>
+                <ci>pool_PTS__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_PTS__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_PTS</ci>
+          <ci>pool_PTS__m</ci>
+          <ci>pool_PTS__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_PTS__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_PTS</ci>
+          </apply>
+          <ci>pool_PTS__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_PTS__n</ci>
-              <ci>L_mod_pool_PTS</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_PTS</ci>
-                <ci>c_deg_mod_pool_PTS</ci>
-                <ci>c_recycle_mod_pool_PTS</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_PTS__m</ci>
+                  <ci>pool_PTS__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_PTS__m</ci>
+                    <ci>pool_PTS__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_PTS</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_PTS</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_PTS__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_PTS__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_PTS__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_PTS__r_deg</ci>
+          <ci>pool_PTS__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_PTS__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_PTS</ci>
+            <ci>L_mod_pool_PTS</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_PTS</ci>
+                  <ci>c_recycle_mod_pool_PTS</ci>
+                </apply>
+                <ci>pool_PTS__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_PTS</ci>
+                <ci>pool_PTS__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_PTS</ci>
         </apply>
       </apply>
       <apply>
@@ -9204,22 +10568,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_ABC__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_ABC__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_ABC__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_ABC__f_ATP</ci>
         <apply>
           <divide />
@@ -9269,26 +10617,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_ABC__J_keep</ci>
+        <ci>pool_ABC__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_ABC__m</ci>
+              <ci>pool_ABC__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_ABC__m</ci>
+                <ci>pool_ABC__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_ABC__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_ABC</ci>
+          <ci>pool_ABC__m</ci>
+          <ci>pool_ABC__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_ABC__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_ABC</ci>
+          </apply>
+          <ci>pool_ABC__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_ABC__n</ci>
-              <ci>L_mod_pool_ABC</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_ABC</ci>
-                <ci>c_deg_mod_pool_ABC</ci>
-                <ci>c_recycle_mod_pool_ABC</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_ABC__m</ci>
+                  <ci>pool_ABC__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_ABC__m</ci>
+                    <ci>pool_ABC__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_ABC</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_ABC</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_ABC__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_ABC__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_ABC__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_ABC__r_deg</ci>
+          <ci>pool_ABC__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_ABC__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_ABC</ci>
+            <ci>L_mod_pool_ABC</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_ABC</ci>
+                  <ci>c_recycle_mod_pool_ABC</ci>
+                </apply>
+                <ci>pool_ABC__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_ABC</ci>
+                <ci>pool_ABC__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_ABC</ci>
         </apply>
       </apply>
       <apply>
@@ -9528,22 +10969,6 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_GalP__r_down</ci>
-        <apply>
-          <divide />
-          <apply>
-            <minus />
-            <ci>pool_GalP__r_rel</ci>
-            <apply>
-              <abs />
-              <ci>pool_GalP__r_rel</ci>
-            </apply>
-          </apply>
-          <cn cellml:units="dimensionless">2.0</cn>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
         <ci>pool_GalP__f_ATP</ci>
         <apply>
           <divide />
@@ -9593,26 +11018,119 @@
       </apply>
       <apply>
         <eq />
-        <ci>pool_GalP__J_keep</ci>
+        <ci>pool_GalP__m_kept</ci>
+        <apply>
+          <divide />
+          <apply>
+            <minus />
+            <apply>
+              <plus />
+              <ci>pool_GalP__m</ci>
+              <ci>pool_GalP__m_goal</ci>
+            </apply>
+            <apply>
+              <abs />
+              <apply>
+                <minus />
+                <ci>pool_GalP__m</ci>
+                <ci>pool_GalP__m_goal</ci>
+              </apply>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_GalP__r_deg</ci>
+        <apply>
+          <times />
+          <ci>k_deg_mod_pool_GalP</ci>
+          <ci>pool_GalP__m</ci>
+          <ci>pool_GalP__f_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_GalP__r_down</ci>
         <apply>
           <times />
           <apply>
-            <divide />
+            <minus />
+            <ci>k_deg_mod_pool_GalP</ci>
+          </apply>
+          <ci>pool_GalP__f_build</ci>
+          <apply>
+            <plus />
             <apply>
-              <times />
-              <ci>pool_GalP__n</ci>
-              <ci>L_mod_pool_GalP</ci>
+              <divide />
               <apply>
                 <plus />
-                <ci>c_poly_mod_pool_GalP</ci>
-                <ci>c_deg_mod_pool_GalP</ci>
-                <ci>c_recycle_mod_pool_GalP</ci>
+                <apply>
+                  <minus />
+                  <ci>pool_GalP__m</ci>
+                  <ci>pool_GalP__m_goal</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>pool_GalP__m</ci>
+                    <ci>pool_GalP__m_goal</ci>
+                  </apply>
+                </apply>
               </apply>
-              <ci>k_deg_mod_pool_GalP</ci>
+              <cn cellml:units="dimensionless">2.0</cn>
             </apply>
-            <ci>N_A_mod_pool_GalP</ci>
+            <apply>
+              <times />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <ci>protein__R_reg</ci>
+              </apply>
+              <ci>pool_GalP__m_kept</ci>
+            </apply>
           </apply>
-          <ci>pool_GalP__f_ATP</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_GalP__r_rep</ci>
+        <apply>
+          <plus />
+          <ci>pool_GalP__r_deg</ci>
+          <ci>pool_GalP__r_down</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>pool_GalP__J_keep</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>n_0_mod_pool_GalP</ci>
+            <ci>L_mod_pool_GalP</ci>
+            <apply>
+              <plus />
+              <apply>
+                <times />
+                <apply>
+                  <plus />
+                  <ci>c_poly_mod_pool_GalP</ci>
+                  <ci>c_recycle_mod_pool_GalP</ci>
+                </apply>
+                <ci>pool_GalP__r_rep</ci>
+              </apply>
+              <apply>
+                <times />
+                <ci>c_deg_mod_pool_GalP</ci>
+                <ci>pool_GalP__r_deg</ci>
+              </apply>
+            </apply>
+          </apply>
+          <ci>N_A_mod_pool_GalP</ci>
         </apply>
       </apply>
       <apply>

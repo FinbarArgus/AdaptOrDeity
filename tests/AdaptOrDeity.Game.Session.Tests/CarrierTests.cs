@@ -57,7 +57,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(world.Cell(0).External("s_target_mod_pool_PTS"), Is.EqualTo(0.05));
             world.BathConcentration = 0.05;   // a richer sea: ATP to build the carriers
             double t = 0.0;
-            Run(world, 600.0, ref t);
+            Run(world, 4000.0, ref t);   // a protein rises with its mRNA's mean lifetime (~7 min)
             var cell = world.Cell(0);
             Assert.That(world.ReadTrait(0, pts), Is.EqualTo(0.05).Within(2e-3), "built to its share");
             Assert.That(cell.CarrierUptake(1), Is.GreaterThan(0.0), "the PTS brings glucose in");

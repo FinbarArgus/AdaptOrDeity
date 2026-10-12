@@ -35,7 +35,7 @@
         "nrmse_tolerance": 0.01,
         "compare": "states"
       },
-      "sha256": "8e779b395a093ba4812bf4862ef52d91e6d58c04efc7424a651eb62db9b6e16d",
+      "sha256": "04790821251791faabb8e84b935fbb861f72f607a5addaea1087e0251988168c",
       "per_cell_inputs_note": "inputs the game sets per cell (FermenterWorld, FermenterCell): glucose at the membrane (the same value for Glf and the PTS, ABC and GalP carriers), lactate and H+ at the membrane (H+ also as H_o), the motor, each trait target (membrane proteins as s_target, a share of the membrane ceiling, clamped per cell to the room the other proteins leave; the glycolytic enzymes and the flagella as m_target) and the growth, storage, repair and matrix controls; every other input is shared by the cells of a group (docs/plans/parallel-and-gpu.md)",
       "per_cell_inputs": [
         "C_glc_e_mod_membrane_face",

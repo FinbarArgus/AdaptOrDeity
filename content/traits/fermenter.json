@@ -121,13 +121,13 @@
    "note": "x0.25-4 of the starting share of the membrane ceiling, like the transporters. Each copy is 700 aa (SusG-sized), so building and keeping copies costs what pool_Hydrolase charges per amino acid; more copies digest the packets the cell touches and what it has engulfed proportionally faster (V_hydrolysis_max = copies x kcat)"
   }
  ],
- "expression_time_constant_s": 10.0,
- "expression_time_constant_note": "user decision 2026-10-08: changes show within seconds; building is limited by build_capacity and by ATP, so large increases take minutes",
+ "expression_time_constant_s": 432.8,
+ "expression_time_constant_note": "upstream (protein_pool tau = t_half_mRNA / ln 2, 2026-10-13; the user's 10 s of 2026-10-08 replaced by realistic turnover): a protein rises towards a higher target with its mRNA's mean lifetime (about 7 min) as far as the ribosomes and ATP allow (big pools such as the proteome or glycolysis take hours), and falls towards a lower one only as it is degraded, k_deg about 1%/h (an e-fold in about 100 h of game time). Sliders therefore take minutes to hours to take effect; the cell panel shows the level now and the target.",
  "midpoints": "Kinetic midpoints are fixed (user decision 2026-10-08): ±10% changed almost nothing.",
  "membrane_ceiling_fraction": 0.15,
  "membrane_ceiling_note": "upstream (protein_expression adaptive area_max_fraction 0.15): the membrane proteins may take 15% of the cell surface, a ceiling that scales with membrane area. At rest they take 36.8% of it (5.5% of the surface): H+-ATPase 0.1008, LacT 0.1738, Glf 0.0497, hydrolase 0.0193, NCX 0.0119, KefC 0.0064, NhaA 0.0036, Trk 0.0019, one flagellum 0.0006; PTS, ABC and GalP 0. Footprints are placeholders (F1Fo ~100 nm2, 12-TM transporters ~12-15 nm2, flagellar motor 1700 nm2).",
- "build_capacity": 5.0,
- "build_capacity_note": "placeholder: at most 5x the resting ATP turnover goes into building new protein (growing cells build protein at many times their maintenance rate)",
+ "build_capacity": 9.02,
+ "build_capacity_note": "upstream (derived, 2026-10-13): what the ribosomes can make, 44,000 ribosomes x 5 aa/s at 20 C x 0.8 translating x 28 ~P per amino acid made from glucose, is 9.0x the resting ATP turnover (Farewell & Neidhardt 1998, Dai et al. 2016; the ribosome count is a placeholder)",
  "build_atp_floor_mM": 4.0,
  "build_atp_floor_note": "placeholder control rule (stringent response): building runs at full speed at the resting ATP and stops at 4 mM, so it never starves the cell"
 }

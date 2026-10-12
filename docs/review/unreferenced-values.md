@@ -75,11 +75,22 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
   (design): no published copy numbers for surface glycosidases found. Its length (700 aa) is now sourced from UniProt
   (SusG 692 aa; 0db734f).
 
-- Expression regulation (homogenisation-checks ddb5c6e, cell/expression_regulation): the function f = x^n/(1 + x^n) with
-  n = 4 (`regulation_hill_n`) and K = 0.5 x the resting level (`regulation_K_fraction`; for H+ the resting H+ / 0.5, pH
-  0.3 below rest) is the designer's hardcoded choice (design), not fitted to ppGpp or rrn promoter data; experts will
-  choose others. It acts on targets only, at the pools' 10 s expression time constant, so a regulated protein is gone
-  within a minute of a famine (real degradation takes hours).
+- Expression regulation (homogenisation-checks, cell/expression_regulation, normalised 2026-10-13): f = 1/(1 + u^n),
+  u = max(0, 1 - C/C_rest)/(1 - 0.5), n = 4 (`regulation_hill_n`), half-way at 0.5 x the resting level
+  (`regulation_K_fraction`; for H+ the resting H+ / 0.5, pH 0.3 below rest): exactly 1 at and above rest, 1/17 at C = 0.
+  The designer's hardcoded choice (design), not fitted to ppGpp or rrn promoter data; experts will choose others.
+- Protein turnover (2026-10-13): k_deg 1%/h is sourced (Maurizi 1992, BNID 109924), but the same rate for every protein
+  is a simplification (a short-lived fraction of 1-7% has half-lives of 13 min to 1 h; starvation raises bulk degradation
+  to ~5%/h, Willetts 1967: not modelled), and dilution by growth, the main way growing bacteria lower a protein (Gupta et
+  al. 2024), is not modelled. The rise's time constant tau = t_half_mRNA / ln 2 (433 s) is a modelling choice (the mRNA's
+  mean lifetime), not a measured induction time.
+- Protein synthesis capacity (2026-10-13): build_capacity 9.0 x the resting turnover is derived from k_elong 5 aa/s at 20 C
+  (an Arrhenius extrapolation of Farewell & Neidhardt 1998's 7.5 aa/s at 28 C and 12.9 at 37 C: medium confidence),
+  ribosome_active_fraction 0.8 (Dai et al. 2016, growing cells) and ribosomes_per_um3 7,000 (placeholder), with c_syn 24
+  (placeholder). Replacement synthesis (about 2% of the capacity) is not counted against it.
+- Maintenance regulation (2026-10-13): protein synthesis, RNA and lipid upkeep, repair and the maintenance ATPase each
+  take the regulation switches (off by default). Cutting the upkeep or the maintenance ATPase has no modelled downside
+  (the mRNA, ribosome and lipid counts are fixed; the maintenance ATPase is everything not itemised): a design question.
 
 ## Level 4: extracellular space (upstream homogenisation-checks a12d84a; copies in content/upstream while that branch is local)
 

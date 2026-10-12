@@ -6,8 +6,9 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
 {
     /// <summary>
     /// The regulation switches in the game's kernel (upstream cell/expression_regulation): off they change nothing, on they
-    /// lower a starving cell's targets as its ATP falls, and regulating the pumps, exchangers, flagellum and hydrolase by
-    /// ATP keeps a cell on half food out of the ATP trap.
+    /// change nothing at rest and lower a starving cell's targets as its ATP falls; regulating the maintenance by ATP keeps
+    /// a cell on half food out of the ATP trap, where regulating its pumps' expression no longer does (their copies fall
+    /// only as they are degraded, about 1% an hour).
     /// </summary>
     public class RegulationKernelTests
     {
@@ -42,9 +43,23 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
                     Assert.That(cell.Regulated(target, s), Is.False);
                 Assert.That(cell.RegulationFactor(target), Is.EqualTo(1.0), "R_reg is exactly 1");
             }
-            // the signals are at their resting value (x = 2: rest is twice the half-way level)
+            // the signals are exactly 1 at rest: a switch has no effect there
             foreach (var s in new[] { "ATP", "G6P", "glc", "H" })
-                Assert.That(cell.AlgebraicValue($"reg__f_{s}_reg"), Is.EqualTo(16.0 / 17.0).Within(1e-9), s);
+                Assert.That(cell.AlgebraicValue($"reg__f_{s}_reg"), Is.EqualTo(1.0), s);
+        }
+
+        [Test]
+        public void EverySwitchOnChangesNothingAtRest()
+        {
+            var plain = NewCell();
+            var all = NewCell();
+            for (int target = 0; target < all.RegulationTargets; target++)
+                for (int s = 0; s < FermenterCell.RegulationSpecies.Length; s++)
+                    all.SetRegulated(target, s, true);
+            Run(plain, 600.0);
+            Run(all, 600.0);
+            foreach (var state in new[] { "cytosol__C_ATP", "membrane__V", "pool_H_ATPase__m", "pool_proteome__m", "bio__D" })
+                Assert.That(all.State(state), Is.EqualTo(plain.State(state)).Within(1e-9 * Math.Abs(plain.State(state))), state);
         }
 
         [Test]
@@ -60,8 +75,10 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             for (int k = 0; k < 12; k++)
             {
                 Run(cell, 10.0);
-                double f = cell.AlgebraicValue("reg__f_ATP_reg"), c = cell.Atp, k4 = Math.Pow(c / (0.5 * 9.6), 4);
-                Assert.That(f, Is.EqualTo(k4 / (1.0 + k4)).Within(1e-12), "f = x^4/(1 + x^4), x = ATP / (half the resting ATP)");
+                double f = cell.AlgebraicValue("reg__f_ATP_reg"), c = cell.Atp;
+                double u4 = Math.Pow(Math.Max(0.0, 1.0 - c / 9.6) / 0.5, 4);
+                Assert.That(f, Is.EqualTo(1.0 / (1.0 + u4)).Within(1e-12),
+                    "f = 1/(1 + u^4), u = the shortfall below the resting ATP over half of it");
                 Assert.That(cell.RegulationFactor(atpase), Is.EqualTo(f));
                 Assert.That(cell.AlgebraicValue("pool_H_ATPase__m_goal"),
                     Is.EqualTo(cell.AlgebraicValue("pool_H_ATPase__m_target") * f).Within(1e-12));
@@ -74,43 +91,54 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             }
             Assert.That(cell.Atp, Is.LessThan(4.8), "ATP has fallen below half its resting level");
             Assert.That(cell.RegulationFactor(atpase), Is.LessThan(0.5));
-            Assert.That(cell.TraitValue(atpase), Is.LessThan(0.8), "the H+-ATPase copies follow the lowered target down");
+            Assert.That(cell.TraitValue(atpase), Is.GreaterThan(0.99),
+                "the H+-ATPase copies fall only as they are degraded (about 1% an hour)");
         }
 
         [Test]
-        public void RegulatingThePumpsByAtpAvoidsTheAtpTrapOnHalfFood()
+        public void RegulatingTheMaintenanceByAtpAvoidsTheAtpTrapOnHalfFood()
         {
             // Half the resting medium glucose (0.05 mM) for an hour, then full food (0.1 mM) for an hour. Without
-            // regulation ATP runs out and stays out (hexokinase needs ATP to restart glycolysis); with the pumps,
-            // exchangers, flagellum and hydrolase regulated by ATP, ATP holds above 4 mM and the cell returns to rest.
-            string[] regulated = { "H_ATPase_expression", "NhaA_expression", "KefC_expression", "Trk_expression",
+            // regulation ATP runs out and stays out (hexokinase needs ATP to restart glycolysis), and regulating the pumps,
+            // exchangers, flagellum and hydrolase by ATP does not help (their copies barely fall in an hour). With the
+            // maintenance regulated by ATP (protein synthesis, RNA and lipid upkeep, repair, the maintenance ATPase), ATP
+            // holds above 4 mM; when food returns the cell rebuilds the protein it lost while synthesis was cut, so ATP
+            // rises slowly while the membrane recovers.
+            string[] pumps = { "H_ATPase_expression", "NhaA_expression", "KefC_expression", "Trk_expression",
                 "NCX_expression", "flagella", "Hydrolase_expression" };
             var plain = NewCell();
-            var regulatedCell = NewCell();
-            foreach (var id in regulated)
-                regulatedCell.SetRegulated(Trait(regulatedCell, id), Species("ATP"), true);
+            var pumped = NewCell();
+            var maintained = NewCell();
+            foreach (var id in pumps)
+                pumped.SetRegulated(Trait(pumped, id), Species("ATP"), true);
+            for (int k = 0; k < FermenterCell.MaintenanceRegulation.Length; k++)
+                maintained.SetRegulated(maintained.MaintenanceTarget(k), Species("ATP"), true);
+            var cells = new[] { plain, pumped, maintained };
             double minAtp = double.MaxValue;
-            foreach (var c in new[] { plain, regulatedCell })
+            foreach (var c in cells)
                 c.MembraneGlucose = 0.05;
             for (int k = 0; k < 360; k++)
             {
-                Run(plain, 10.0);
-                Run(regulatedCell, 10.0);
-                minAtp = Math.Min(minAtp, regulatedCell.Atp);
+                foreach (var c in cells)
+                    Run(c, 10.0);
+                minAtp = Math.Min(minAtp, maintained.Atp);
             }
-            TestContext.WriteLine($"half food, 1 h: ATP {plain.Atp:G3} mM unregulated, {regulatedCell.Atp:G3} mM regulated " +
-                                  $"(lowest {minAtp:G3}); H+-ATPase x{regulatedCell.TraitValue(Trait(regulatedCell, "H_ATPase_expression")):F2}");
+            double famineAtp = maintained.Atp;
+            TestContext.WriteLine($"half food, 1 h: ATP {plain.Atp:G3} mM unregulated, {pumped.Atp:G3} pumps regulated, " +
+                                  $"{maintained.Atp:G3} maintenance regulated (lowest {minAtp:G3})");
             Assert.That(plain.Atp, Is.LessThan(1e-3));
+            Assert.That(pumped.Atp, Is.LessThan(1e-3));
             Assert.That(minAtp, Is.GreaterThan(4.0));
-            foreach (var c in new[] { plain, regulatedCell })
+            foreach (var c in cells)
                 c.MembraneGlucose = 0.1;
-            Run(plain, 3600.0);
-            Run(regulatedCell, 3600.0);
-            TestContext.WriteLine($"full food, 1 h: ATP {plain.Atp:G3} mM unregulated, {regulatedCell.Atp:G3} mM regulated; " +
-                                  $"V {regulatedCell.State("membrane__V"):F1} mV");
+            foreach (var c in cells)
+                Run(c, 3600.0);
+            TestContext.WriteLine($"full food, 1 h: ATP {plain.Atp:G3} mM unregulated, {maintained.Atp:G3} regulated; " +
+                                  $"V {maintained.State("membrane__V"):F1} mV");
             Assert.That(plain.Atp, Is.LessThan(1e-3), "the trap: food is back but glycolysis cannot restart");
-            Assert.That(regulatedCell.Atp, Is.GreaterThan(9.0));
-            Assert.That(regulatedCell.State("membrane__V"), Is.LessThan(-100.0));
+            Assert.That(pumped.Atp, Is.LessThan(1e-3));
+            Assert.That(maintained.Atp, Is.GreaterThan(famineAtp));
+            Assert.That(maintained.State("membrane__V"), Is.LessThan(-100.0));
         }
     }
 }

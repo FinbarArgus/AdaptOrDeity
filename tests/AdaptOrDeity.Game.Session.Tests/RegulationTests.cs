@@ -107,7 +107,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             int on = c.PlayerParameters.Count(p => p.StartsWith("reg_on_", StringComparison.Ordinal) && c.External(p) != 0.0);
             Assert.That(on, Is.EqualTo(2), "nothing else switched on");
             Assert.That(c.PlayerParameters.Count(p => p.StartsWith("reg_on_", StringComparison.Ordinal)),
-                Is.EqualTo((world.Traits.Count + 1) * 4), "every slider's pool and growth, four species each (exported)");
+                Is.EqualTo((world.Traits.Count + 1 + 4) * 4),
+                "every slider's pool, growth and the four parts of the maintenance, four species each (exported)");
 
             // turning the feature off clears the kernel's switches; the group keeps the choice for when it is back on
             world.SetFeature(Feature(GameFeatures.Regulation), false);
@@ -118,7 +119,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(c.External("reg_on_ATP_mod_pool_H_ATPase"), Is.EqualTo(1.0));
             world.SetRegulation(0, atpase, atp, false);
             Assert.That(c.External("reg_on_ATP_mod_pool_H_ATPase"), Is.EqualTo(0.0));
-            Assert.Throws<ArgumentOutOfRangeException>(() => world.SetRegulation(0, world.GrowthRegulation + 1, 0, true));
+            Assert.Throws<ArgumentOutOfRangeException>(() => world.SetRegulation(0, world.RegulationTargets, 0, true));
             Assert.Throws<ArgumentOutOfRangeException>(() => world.SetRegulation(0, 0, 4, true));
         }
 
@@ -148,6 +149,53 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
+        public void TheMaintenanceHasSwitchesOfItsOwnThatDaughtersInheritAndFramesCarry()
+        {
+            // the maintenance targets follow growth: protein synthesis, RNA and lipid upkeep, repair, the maintenance ATPase
+            Assert.That(SessionSchema.MaintenanceRegulation.Select(m => m.Id),
+                Is.EqualTo(FermenterCell.MaintenanceRegulation.Select(m => m.Id)));
+            using var world = Quiet(level: 2, ocean: 0.1);
+            Assert.That(world.RegulationTargets, Is.EqualTo(world.Traits.Count + 1 + 4));
+            Unlock(world);
+            int atp = Species("ATP"), ph = Species("H");
+            string[] kernel = { "reg_on_ATP_mod_protein", "reg_on_ATP_upkeep_mod_bio", "reg_on_ATP_repair_mod_bio",
+                "reg_on_ATP_mod_cytosol" };
+            var c = world.Cell(0);
+            for (int k = 0; k < 4; k++)
+            {
+                Assert.That(world.MaintenanceRegulation(k), Is.EqualTo(world.GrowthRegulation + 1 + k));
+                Assert.That(c.External(kernel[k]), Is.EqualTo(0.0), "off by default");
+                world.SetRegulation(0, world.MaintenanceRegulation(k), atp, true);
+                Assert.That(c.External(kernel[k]), Is.EqualTo(1.0), kernel[k]);
+            }
+            Run(world, world.MacroDt);
+            for (int k = 0; k < 4; k++)
+                Assert.That(c.RegulationFactor(c.MaintenanceTarget(k)), Is.EqualTo(c.AlgebraicValue("reg__f_ATP_reg")).Within(1e-12),
+                    $"{kernel[k]}: its factor is ATP's f");
+            world.SetRegulation(0, world.MaintenanceRegulation(3), ph, true);
+            Assert.That(c.External("reg_on_H_mod_cytosol"), Is.EqualTo(1.0));
+            Assert.That(c.External("reg_on_ATP_mod_bio"), Is.EqualTo(0.0), "growth's own switch is separate");
+
+            // a released daughter keeps them
+            FermenterSessionTests.FinishDaughter(world, 0);
+            world.Divide(0);
+            var free = world.Organisms[world.Organisms.Count - 1].Cell;
+            for (int k = 0; k < 4; k++)
+                Assert.That(free.External(kernel[k]), Is.EqualTo(1.0), kernel[k]);
+
+            // and frames carry them
+            var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
+            var frame = loop.CreateFrame();
+            loop.WriteSnapshot(frame);
+            for (int k = 0; k < 4; k++)
+                Assert.That(frame.Regulation[SnapshotFrame.RegulationRow(loop.Schema.MaintenanceTarget(k), atp)][0], Is.True);
+            Assert.That(frame.Regulation[SnapshotFrame.RegulationRow(loop.Schema.MaintenanceTarget(3), ph)][0], Is.True);
+            loop.Enqueue(SimCommands.SetRegulation(0, loop.Schema.MaintenanceTarget(1), atp, false));
+            loop.ApplyCommands();
+            Assert.That(c.External(kernel[1]), Is.EqualTo(0.0), "the command reaches the kernel");
+        }
+
+        [Test]
         public void FramesCarryEachGroupsSwitches()
         {
             var world = Quiet(ocean: 0.1);
@@ -159,7 +207,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             loop.ApplyCommands();
             var frame = loop.CreateFrame();
             loop.WriteSnapshot(frame);
-            Assert.That(frame.Regulation.Length, Is.EqualTo((world.Traits.Count + 1) * 4));
+            Assert.That(frame.Regulation.Length, Is.EqualTo((world.Traits.Count + 1 + 4) * 4));
             Assert.That(frame.Regulation[SnapshotFrame.RegulationRow(atpase, glc)][0], Is.True);
             Assert.That(frame.Regulation[SnapshotFrame.RegulationRow(loop.Schema.GrowthRegulation, Species("G6P"))][0], Is.True);
             Assert.That(frame.Regulation.Sum(r => r.Count(x => x)), Is.EqualTo(2));

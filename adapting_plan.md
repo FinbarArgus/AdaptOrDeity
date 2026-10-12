@@ -546,6 +546,16 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     growth 1 with automatic division: 10 prey, 1 daughter.
   - The field covers the free organisms' range; smells step every 1 s; frames carry lactate and pH, shown in Unity as
     water overlays (F7-F9).
+- **2026-10-13** Realistic protein turnover and maintenance regulation (designer; upstream homogenisation-checks,
+  docs/plans/regulation.md):
+  - Proteins are degraded at ~1%/h and replaced up to their target; they rise with their mRNA's mean lifetime (~7 min)
+    within the ribosomes' capacity (~9x the resting turnover at 20 C), so sliders take minutes to hours to act and a
+    lowered target empties a pool over days.
+  - Regulation is normalised: f = 1 exactly at and above the resting level, so switching a species on has no effect at
+    rest.
+  - The maintenance (protein synthesis, RNA and lipid upkeep, repair, the maintenance ATPase) takes regulation switches of
+    its own, off by default, offered as a "Maintenance" block with cogs; starving bacteria cut maintenance far below its
+    resting value (Hoehler & Jorgensen 2013). Levels are recalibrated around it in a later step.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
