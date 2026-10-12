@@ -119,6 +119,9 @@ namespace AdaptOrDeity.Game.Session
 
         internal double FieldRelease { get; set; }
 
+        // glucose leaking from the packets it touches this step, entering the field at it [mol/s]
+        internal double ContactRelease { get; set; }
+
         internal double[] Traces { get; }
     }
 
@@ -463,7 +466,7 @@ namespace AdaptOrDeity.Game.Session
             o.InField = env.Field.LevelAt(x, y) >= 0;
             if (o.InField)
             {
-                glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? o.FieldRelease : 0.0);
+                glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? o.FieldRelease + o.ContactRelease : 0.0);
                 lactate = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? c.LactateRelease : 0.0);
                 protons = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? c.ProtonRelease : 0.0));
             }
