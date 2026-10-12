@@ -92,7 +92,7 @@ namespace AdaptOrDeity.Game.Content
             TraceSpecies = TraceSpecies,
         };
 
-        /// <summary>The environment field's settings (field.*, environment.*, food.packet_lifetime).</summary>
+        /// <summary>The environment field's settings (field.*, environment.*).</summary>
         public EnvironmentSettings Environment()
         {
             var diffusivity = new List<double>
@@ -115,7 +115,6 @@ namespace AdaptOrDeity.Game.Content
                 Oxygen = Value("environment.oxygen"),
                 BufferTotal = Value("environment.carbonate_total"),
                 BufferPk = Value("environment.carbonate_pk1"),
-                PacketLifetime = Value("food.packet_lifetime"),
                 TraceSpecies = TraceSpecies,
             };
         }

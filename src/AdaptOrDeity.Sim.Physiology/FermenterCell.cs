@@ -167,6 +167,8 @@ namespace AdaptOrDeity.Sim.Physiology
             else
             {
                 _native = parent._native.Copy();
+                _relativeTolerance = parent._relativeTolerance;
+                _native.SetRelativeTolerance(_relativeTolerance);
                 for (int i = 0; i < Batch.States.Length; i++)
                     Batch.States[i][0] = parent.Batch.States[i][0];
                 for (int i = 0; i < Batch.Externals.Length; i++)

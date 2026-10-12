@@ -90,6 +90,15 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
   each a module; boundary and inner cell groups; matrix production costs carbon and ATP (researched value).
 - Level 1 lasts one simulated week; skill prices calibrated by bots.
 
+## Accuracy against the reference (FieldAccuracy.Reference, 2026-10-12)
+The reference has none of the trade-offs: one 1 µm grid over the whole extent, 64 field steps per macro step, every
+input change passed to the cells, cells at rtol 1e-8. Against it, for one cell at 0.1 mM (EnvironmentFieldTests):
+- the field's depletion at the membrane is 7% too large;
+- 10 µm away (where the fine grid's 8 µm margin ends) the water is depleted ~1.6x the reference's, 11% of the membrane's
+  depletion: the coarse grid takes over the flux there. A wider margin or finer coarse levels would reduce it;
+- the 1% input tolerance hides a lone cell's depletion (0.1%) from the cell altogether.
+To improve before the field is on by default.
+
 ## To discuss (earlier notes)
 - **Food model after the research:** cells at 2 Ga absorb (external digestion), they do not engulf; packets as small
   polymer particles (0.5-2 µm, one dead-cell equivalent) eroded by cell-surface enzymes, the sugar halo diffusing out

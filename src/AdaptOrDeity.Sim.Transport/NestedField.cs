@@ -20,6 +20,15 @@ namespace AdaptOrDeity.Sim.Transport
 
         /// <summary>Fewest cells along a side of each grid (a multiple of 4, at least 24 so each grid nests in the next).</summary>
         public int MinCells { get; set; } = 24;
+
+        /// <summary>
+        /// One grid at the finest spacing over the whole extent instead of nested grids: the reference the nested grids
+        /// are compared with (costly beyond small colonies).
+        /// </summary>
+        public bool SingleGrid { get; set; }
+
+        /// <summary>Steps of the field per call of <see cref="NestedField.Step"/>, sources held over them (1 in the game).</summary>
+        public int Substeps { get; set; } = 1;
     }
 
     /// <summary>
@@ -237,6 +246,13 @@ namespace AdaptOrDeity.Sim.Transport
         public void Size(double diameter, out int cells, out int levels)
         {
             double h = _settings.FineSpacing;
+            if (_settings.SingleGrid)
+            {
+                cells = Math.Max(_settings.MinCells,
+                    (int)Math.Ceiling(_settings.ExtentMultiple * diameter / (Ratio * h) - 1e-9) * Ratio);
+                levels = 1;
+                return;
+            }
             cells = (int)Math.Ceiling((diameter + 2.0 * _settings.Margin) / (Ratio * h) - 1e-9) * Ratio;
             cells = Math.Max(_settings.MinCells, cells);
             levels = 1;
@@ -284,7 +300,8 @@ namespace AdaptOrDeity.Sim.Transport
         {
             if (!(dt > 0.0))
                 throw new ArgumentOutOfRangeException(nameof(dt), "the step must be positive");
-            _dt = dt;
+            int substeps = Math.Max(1, _settings.Substeps);
+            _dt = dt / substeps;
             _activeCount = 0;
             for (int s = 0; s < Species; s++)
             {
@@ -303,29 +320,56 @@ namespace AdaptOrDeity.Sim.Transport
                 for (int k = 0; k + 1 < Levels; k++)
                     RestrictSources(k, _activeList[a]);
             _chunks = (CellsPerSide + LinesPerItem - 1) / LinesPerItem;
-            for (_stepLevel = Levels - 1; _stepLevel >= 0; _stepLevel--)
+            // with substeps, every substep takes the same sources (held as rates over the call)
+            double[][][]? held = substeps > 1 ? HoldSources() : null;
+            for (int sub = 0; sub < substeps; sub++)
             {
+                if (sub > 0)
+                    RestoreSources(held!);
+                for (_stepLevel = Levels - 1; _stepLevel >= 0; _stepLevel--)
+                {
+                    for (int a = 0; a < _activeCount; a++)
+                    {
+                        int s = _activeList[a];
+                        if (_stepLevel + 1 < Levels)
+                            BoundaryInflow(_stepLevel, s);
+                        _levels[_stepLevel].Prepare(s, _dt);
+                    }
+                    Run(_activeCount * _chunks, _rowPass);
+                    Run(_activeCount * _chunks, _columnPass);
+                }
+                Run(_activeCount, _restrictPass);
+                var outer = _levels[Levels - 1];
                 for (int a = 0; a < _activeCount; a++)
                 {
                     int s = _activeList[a];
-                    if (_stepLevel + 1 < Levels)
-                        BoundaryInflow(_stepLevel, s);
-                    _levels[_stepLevel].Prepare(s, dt);
+                    double out_ = 0.0;
+                    foreach (double f in outer.EdgeOutflow(s))
+                        out_ += f;
+                    _ocean[s] -= out_;
                 }
-                Run(_activeCount * _chunks, _rowPass);
-                Run(_activeCount * _chunks, _columnPass);
             }
-            Run(_activeCount, _restrictPass);
             _workers = null;
-            var outer = _levels[Levels - 1];
-            for (int a = 0; a < _activeCount; a++)
+        }
+
+        // Copies of the active species' sources on every level, before the first substep uses them.
+        private double[][][] HoldSources()
+        {
+            var held = new double[Levels][][];
+            for (int k = 0; k < Levels; k++)
             {
-                int s = _activeList[a];
-                double out_ = 0.0;
-                foreach (double f in outer.EdgeOutflow(s))
-                    out_ += f;
-                _ocean[s] -= out_;
+                held[k] = new double[_activeCount][];
+                for (int a = 0; a < _activeCount; a++)
+                    held[k][a] = (double[])_levels[k].Sources(_activeList[a]).Clone();
             }
+            return held;
+        }
+
+        private void RestoreSources(double[][][] held)
+        {
+            for (int k = 0; k < Levels; k++)
+                for (int a = 0; a < _activeCount; a++)
+                    Array.Copy(held[k][a], _levels[k].Sources(_activeList[a]), held[k][a].Length);
         }
 
         private void Run(int count, Action<int, int> pass)

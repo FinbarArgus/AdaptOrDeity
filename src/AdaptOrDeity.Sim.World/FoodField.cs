@@ -290,17 +290,15 @@ namespace AdaptOrDeity.Sim.World
         }
 
         /// <summary>
-        /// Dissolves packet <paramref name="p"/> for <paramref name="dt"/> [s]: a fresh packet is gone in
-        /// <paramref name="lifetime"/> [s], its radius shrinking at a constant rate (it releases 2·amount/lifetime·√fill per
-        /// second, integrated exactly over the step); below the used-up share it releases all it has left. Returns the
-        /// glucose released [mol], which leaves the packet.
+        /// Enzymes hydrolyse up to <paramref name="mol"/> of packet <paramref name="p"/>'s glucose; below the used-up share
+        /// it gives all it has left. Returns the glucose released [mol], which leaves the packet. A packet with no enzyme
+        /// acting on it keeps its glucose.
         /// </summary>
-        public double Dissolve(FoodPacket p, double dt, double lifetime)
+        public double Hydrolyse(FoodPacket p, double mol)
         {
-            if (!p.Active || p.Glucose <= 0.0)
+            if (!p.Active || p.Glucose <= 0.0 || !(mol > 0.0))
                 return 0.0;
-            double root = Math.Sqrt(p.Glucose) - Math.Sqrt(Settings.PacketAmount) * dt / lifetime;
-            double left = root > 0.0 ? root * root : 0.0;
+            double left = Math.Max(0.0, p.Glucose - mol);
             if (left < Settings.UsedUpFraction * Settings.PacketAmount)
                 left = 0.0;
             double released = p.Glucose - left;

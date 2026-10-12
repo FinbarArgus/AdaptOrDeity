@@ -6,15 +6,36 @@ using AdaptOrDeity.Sim.World;
 
 namespace AdaptOrDeity.Game.Session
 {
-    // The coupling to the environment field: each macro step the field fits the colony, food packets dissolve into it,
-    // each cell reads glucose, lactate and pH at its membrane (with the membrane correction for its own exchange in the
-    // last step), steps, and its exchange goes back into the field in cell order; then the field steps.
+    // The coupling to the environment field: each macro step the field fits the colony, the enzymes of the cells touching a
+    // food packet hydrolyse it into the field, each cell reads glucose, lactate and pH at its membrane (with the membrane
+    // correction for its own exchange in the last step), steps, and its exchange goes back into the field in cell order;
+    // then the field steps.
+    /// <summary>How the environment field trades accuracy for speed.</summary>
+    public enum FieldAccuracy
+    {
+        /// <summary>
+        /// The game's settings: nested grids, one field step per macro step, cells' inputs passed when they move by more
+        /// than field.input_tolerance, cells at their default tolerance.
+        /// </summary>
+        Game,
+
+        /// <summary>
+        /// No trade-offs, for tests: one fine grid over the whole extent, field.reference_substeps field steps per macro
+        /// step, every change of a cell's inputs passed, cells at field.reference_cell_tolerance.
+        /// </summary>
+        Reference,
+    }
+
     public sealed partial class FermenterWorld
     {
+        /// <summary>The environment's accuracy setting.</summary>
+        public FieldAccuracy Accuracy { get; }
+
         private readonly EnvironmentField? _environment;
         private int _colonyCells;
-        private readonly double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");
+        private readonly double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");   // 0 for the reference
         private double _colonyRadius;
+        private Func<FoodPacket, double>? _hydrolysis;
 
         /// <summary>The environment field, or null when cells use the contact rule.</summary>
         public EnvironmentField? Environment => _environment;
@@ -22,10 +43,37 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Glucose the cells have taken from the environment field and released into it so far, net [mol].</summary>
         public double CellGlucoseExchanged { get; private set; }
 
+        /// <summary>
+        /// The rate at which cell <c>i</c>'s surface enzymes can hydrolyse a food packet it touches [mol glucose/s]. The
+        /// cell model has no surface hydrolase yet (being added upstream), so it is 0 and packets stay whole; tests set it.
+        /// </summary>
+        public Func<int, double> HydrolysisCapacity { get; set; } = _ => 0.0;
+
+        // Packet p is hydrolysed by every living cell touching it.
+        private double Hydrolysis(FoodPacket p)
+        {
+            double rate = 0.0;
+            for (int i = 0; i < _cells.Count; i++)
+            {
+                if (!_cells[i].Alive)
+                    continue;
+                _body.WorldPosition(i, out double x, out double y);
+                if (_food.Touches(p, x, y, CellRadius))
+                    rate += HydrolysisCapacity(i);
+            }
+            return rate;
+        }
+
         private EnvironmentField CreateEnvironment(FermenterCell first)
         {
             var b = _body.Body;
-            return new EnvironmentField(GameParameters.Default.Environment(), _food.BackgroundGlucose,
+            var settings = GameParameters.Default.Environment();
+            if (Accuracy == FieldAccuracy.Reference)
+            {
+                settings.Grid.SingleGrid = true;
+                settings.Grid.Substeps = GameParameters.Default.Integer("field.reference_substeps");
+            }
+            return new EnvironmentField(settings, _food.BackgroundGlucose,
                 first.External("H_o_mod_H"), b.X, b.Y, 2.0 * CellRadius);
         }
 
@@ -62,7 +110,8 @@ namespace AdaptOrDeity.Game.Session
         {
             var b = _body.Body;
             _environment!.Follow(b.X, b.Y, ColonyDiameter);
-            _environment.Dissolve(_food, dt);
+            _hydrolysis ??= Hydrolysis;
+            _environment.Dissolve(_food, dt, _hydrolysis);
         }
 
         // Cell i at (x, y) reads the field at its membrane, corrected for what it exchanged in the last step.
