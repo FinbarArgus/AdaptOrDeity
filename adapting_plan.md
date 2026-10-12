@@ -422,6 +422,14 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   (docs/plans/libcuflynx-solver.md). libcuflynx gets a multithreaded CVODES C option for other users; reusing the
   Newton matrix factorisation in BE_batched_c is being measured.
 
+- **2026-10-12** Designer decisions (docs/plans/environment-field.md): (1) the PTS delivers glucose 6-phosphate:
+  glycolysis gets a G6P pool (hexokinase step + the rest) upstream; (2) carrier expression is a share of the membrane's
+  transporter ceiling; (3) Glf leaking glucose out is shown with a hint; regulation (catabolite repression) becomes a
+  skill to buy; (4) level 1 lasts one simulated week (enough to start starving), skill prices calibrated by bots;
+  (5) the field is nested grids: a fine grid around the colony inside coarser ones out to 60x its diameter, with a
+  per-cell diffusion-limit correction; (6) level 4 brings extracellular space now: boundary and inner cell groups,
+  the space between cells as volumes (each a module), and a researched cost of making the matrix.
+
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.

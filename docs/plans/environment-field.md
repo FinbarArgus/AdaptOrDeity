@@ -20,7 +20,14 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
   closed box, Gaussian spreading at first order, 10^4x the explicit step, far field steady, uptake depletion, sampling,
   shifting. Not yet coupled to the cells or food, and no nesting or coarsening (waits on the grid decision).
 
-## To discuss
+## Decided 2026-10-12 (second round)
+- Grid: nested grids (fine ~1 µm around the colony; coarser grids x4 spacing and extent out to 60x the colony
+  diameter; conservative flux exchange between grids; per-cell correction J/(4 pi D a) at the membrane).
+- Level 4: extracellular space between cells as volumes, each a module; boundary and inner cell groups; matrix
+  production costs carbon and ATP (researched value).
+- Level 1 lasts one simulated week; skill prices calibrated by bots.
+
+## To discuss (earlier notes)
 - **Food model after the research:** cells at 2 Ga absorb (external digestion), they do not engulf; packets as small
   polymer particles (0.5-2 µm, one dead-cell equivalent) eroded by cell-surface enzymes, the sugar halo diffusing out
   and captured with probability ~a/r. Smaller, faster-disappearing packets. Transporters as evolvable traits (PTS,
