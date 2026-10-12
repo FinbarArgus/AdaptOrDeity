@@ -63,3 +63,17 @@ Nothing beyond the open questions below.
   protocol traces: ~5-8% per step on the cell).
 - Group inputs (`per_cell_inputs`): the kernel already reads inputs once per call; sharing them across a group's
   cells matters only for a structure-of-arrays layout, which the instance API does not use.
+
+## Parallel CVODES on the same generated C (measured 2026-10-12)
+CVODES (BDF, dense LU, exact Jacobian from the generated kernel), one instance per cell, threaded like the game, against
+BE_batched_c in the same C harness on the colony-bench protocol (scratch harness: ~/.cache/claude-tmp/cvodes-parallel):
+- At equal accuracy (CVODES rtol 3e-5 matches ours at 1e-4: worst-state error ~3e-4) the two are within -7% to +15% at
+  64-5,000 cells on 1-8 threads; both scale alike (~4x on 8 threads at 64 cells, ~2.8x from 1,024 cells, cache-bound at
+  ~30 KB per cell). At equal rtol CVODES is 12-39% faster but 3-5x less accurate.
+- CVODES takes more, cheaper steps (it reuses its LU ~4 steps); BE_batched_c factorises every step (~37% of its cost),
+  and restarts cheaply when inputs change. If inputs changed every macro step CVODES would need a restart each step
+  and fall 5-6x behind.
+- The earlier Myokit figure (5.8 s vs 0.88 s for 64 cells) was unfair mainly because Myokit solved the colony as one
+  system (dense finite-difference Jacobian), not because it ran on one thread: per-cell CVODES on 1 thread is ~11x
+  faster than it.
+- Next to try: keep BE_batched_c's LU while the step size changes little (re-test with this harness).
