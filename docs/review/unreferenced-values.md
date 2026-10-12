@@ -51,7 +51,11 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 
 - Carrier turnovers (PTS 200/s, ABC 20/s, GalP 50/s), footprints (12, 25, 12 nm²), K_m_ATP_carrier 0.1 mM: placeholders.
 - Km values (PTS 5 µM, ABC 0.5 µM, GalP 0.1 mM) taken from the research notes, not checked against the papers.
-- The surface hydrolase (being added): kcat, copies, Km, and its level-1 baseline expression.
+- Split glycolysis (commit 670ddfa): dG0_hk -16.7 kJ/mol (textbook, to cite), h_hk 23.8 kJ/mol (to cite), K_ATP_hk 0.1 mM,
+  K_G6P_lg 0.1 mM, lower_glycolysis_headroom 300 (gives G6P 0.33 µM at rest; real cells hold mM): placeholders.
+- Surface hydrolase (commit 918fab5): kcat 1000 /s (alpha-amylases ~1e3 /s; the 2e3 /s B. licheniformis value uncited),
+  K_m_poly 20 mM glucose units (from SusG's 3.1 mM maltoheptaoside, Shipman 1999, converted), length 700 aa, footprint
+  20 nm², hydrolysis_capacity 10x resting need (design): no published copy numbers for surface glycosidases found.
 
 ## Level 4: extracellular space (upstream branch feat/extracellular-matrix; copies in content/upstream)
 
