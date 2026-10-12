@@ -31,6 +31,13 @@ namespace AdaptOrDeity.Sim.Transport
 
         /// <summary>Steps of the field per call of <see cref="NestedField.Step"/>, sources held over them (1 in the game).</summary>
         public int Substeps { get; set; } = 1;
+
+        /// <summary>
+        /// Steps the finest level takes per step of the others, sources and the coarse inflow held over them: its short
+        /// modes (a moving cell's own near field) decay over a few Douglas steps, so a cell drifting at 2 um/s would see
+        /// ~7% less of its own depletion with one.
+        /// </summary>
+        public int FineSubsteps { get; set; } = 1;
     }
 
     /// <summary>
@@ -386,14 +393,19 @@ namespace AdaptOrDeity.Sim.Transport
                     _stepCells = _levels[_stepLevel].Nx;
                     _chunks = (_stepCells + LinesPerItem - 1) / LinesPerItem;
                     for (int a = 0; a < _activeCount; a++)
-                    {
-                        int s = _activeList[a];
                         if (_stepLevel + 1 < Levels)
-                            BoundaryInflow(_stepLevel, s);
-                        _levels[_stepLevel].Prepare(s, _dt);
+                            BoundaryInflow(_stepLevel, _activeList[a]);
+                    int fine = _stepLevel == 0 && Levels > 1 ? Math.Max(1, _settings.FineSubsteps) : 1;
+                    double[][]? heldFine = fine > 1 ? HoldLevel(0) : null;
+                    for (int f = 0; f < fine; f++)
+                    {
+                        if (f > 0)
+                            RestoreLevel(0, heldFine!);
+                        for (int a = 0; a < _activeCount; a++)
+                            _levels[_stepLevel].Prepare(_activeList[a], _dt / fine);
+                        Run(_activeCount * _chunks, _rowPass);
+                        Run(_activeCount * _chunks, _columnPass);
                     }
-                    Run(_activeCount * _chunks, _rowPass);
-                    Run(_activeCount * _chunks, _columnPass);
                 }
                 Run(_activeCount, _restrictPass);
                 var outer = _levels[Levels - 1];
@@ -420,6 +432,21 @@ namespace AdaptOrDeity.Sim.Transport
                     held[k][a] = (double[])_levels[k].Sources(_activeList[a]).Clone();
             }
             return held;
+        }
+
+        // Level k's sources of the active species (with the coarse inflow), before its first fine substep uses them.
+        private double[][] HoldLevel(int k)
+        {
+            var held = new double[_activeCount][];
+            for (int a = 0; a < _activeCount; a++)
+                held[a] = (double[])_levels[k].Sources(_activeList[a]).Clone();
+            return held;
+        }
+
+        private void RestoreLevel(int k, double[][] held)
+        {
+            for (int a = 0; a < _activeCount; a++)
+                Array.Copy(held[a], _levels[k].Sources(_activeList[a]), held[a].Length);
         }
 
         private void RestoreSources(double[][][] held)

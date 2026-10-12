@@ -135,6 +135,7 @@ namespace AdaptOrDeity.Game.Content
                     Margin = Value("field.fine_margin"),
                     ExtentMultiple = Value("field.extent_multiple"),
                     Depth = Value("field.layer_depth"),
+                    FineSubsteps = Integer("field.fine_substeps"),
                 },
                 Diffusivity = diffusivity.ToArray(),
                 Oxygen = Value("environment.oxygen"),

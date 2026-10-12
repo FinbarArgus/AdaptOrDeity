@@ -174,11 +174,11 @@ namespace AdaptOrDeity.Game.Session
                 h += space.Concentration(v, ExtracellularSpace.Proton) / 6.0;
             }
             // a changed input restarts the cell's integration, so values that moved less than the tolerance are left
-            if (Moved(c.MembraneGlucose, glc))
+            if (Moved(c.MembraneGlucose, glc, _food.BackgroundGlucose))
                 c.MembraneGlucose = glc;
-            if (Moved(c.MembraneLactate, lac))
+            if (Moved(c.MembraneLactate, lac, 0.0))
                 c.MembraneLactate = lac;
-            if (Moved(c.MembraneProtons, h))
+            if (Moved(c.MembraneProtons, h, _oceanProtons))
                 c.MembraneProtons = h;
             glc = c.MembraneGlucose;
             _openGlucose[i] = openGlc;

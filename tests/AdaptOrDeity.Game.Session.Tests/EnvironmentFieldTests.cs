@@ -156,51 +156,76 @@ namespace AdaptOrDeity.Game.Session.Tests
             world.Dispose();
         }
 
-        [Test]
-        public void TheGameSettingsMatchTheReferenceForOneCell()
+        // The game's settings (nested grids, one coarse step and field.fine_substeps fine steps per macro step, the input
+        // tolerance) against the reference (one 1 um grid over the same extent, 64 steps per macro step, every input change
+        // passed, cells at 1e-8), for a colony of this many cells in a 0.1 mM sea drifting with the current. Measured
+        // 2026-10-13: within 0.6% for 1 and 7 cells everywhere below. Bounds: 2% at the membrane and for the cell's input
+        // (the input moves on a change of 1% of its departure from the sea, and the drift adds ~0.5%); the water 5-40 um
+        // away within 2% of the membrane's depletion; uptake within 0.1%.
+        private static void MatchTheReference(int cells, double seconds)
         {
-            // Nested grids, one field step per macro step and the 1% input tolerance against one fine grid over the whole
-            // extent, 64 field steps per macro step, every input change passed and cells at 1e-8: the field around the cell
-            // agrees; the cell's input agrees within the input tolerance (a lone cell's 0.1% depletion stays below it).
             (FermenterWorld World, SimLoop Loop) Run(FieldAccuracy accuracy)
             {
                 var world = new FermenterWorld(environmentField: true, accuracy: accuracy);
                 var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
+                if (cells > 1)
+                {
+                    world.Level = 2;
+                    Colonies.Multicellular(world);
+                    world.SetFeature(GameFeatures.IndexOf(GameFeatures.Engulfing), false);
+                    while (world.CellCount < cells)
+                    {
+                        var parent = world.Cell(world.CellCount - 1);
+                        parent.SetState("bio__P_growth", parent.DaughterCost);
+                        world.Divide(world.CellCount - 1);
+                    }
+                }
                 world.SetFeature(GameFeatures.IndexOf(GameFeatures.Swimming), false);
                 world.Food.SetArrivals(0.0, 0.0);
                 foreach (var p in world.Food.Packets.Where(p => p.Active).ToList())
                     world.Food.Withdraw(p.X, p.Y, 1e-12, p.Glucose);
-                world.BathConcentration = 0.1;   // a sea where the cell's uptake draws the water down
-                loop.StepExactly(600);
+                world.BathConcentration = 0.1;   // a sea where the cells' uptake draws the water down
+                loop.StepExactly((long)Math.Round(seconds / world.MacroDt));
                 return (world, loop);
             }
             var (game, _) = Run(FieldAccuracy.Game);
             var (reference, _) = Run(FieldAccuracy.Reference);
             Assert.That(reference.Environment!.Field.Levels, Is.EqualTo(1), "the reference is one grid");
+            var outer = game.Environment!.Field.Level(game.Environment.Field.Levels - 1);
+            Assert.That(reference.Environment.Field.Level(0).Nx * reference.Environment.Field.Level(0).Spacing,
+                Is.EqualTo(outer.Nx * outer.Spacing).Within(1e-12), "over the same extent");
             const int g = AdaptOrDeity.Sim.World.EnvironmentField.Glucose;
-            double Membrane(FermenterWorld w)
+            const double ocean = 0.1;
+            double Membrane(FermenterWorld w, int i)
             {
-                w.CellPosition(0, out double x, out double y);
-                return w.Environment!.AtMembrane(g, x, y, w.CellRadius, w.Cell(0).GlucoseRelease);
+                w.CellPosition(i, out double x, out double y);
+                return w.Environment!.AtMembrane(g, x, y, w.CellRadius, w.Cell(i).GlucoseRelease);
             }
-            double depletionGame = game.Environment!.OceanGlucose - Membrane(game);
-            double depletionRef = reference.Environment!.OceanGlucose - Membrane(reference);
-            Assert.That(depletionRef, Is.GreaterThan(0.0));
-            // measured 2026-10-12: the game's field depletes 7% more at the membrane than the reference
-            Assert.That(depletionGame, Is.EqualTo(depletionRef).Within(0.10 * depletionRef), "the field's depletion at the membrane");
-            // the cell's input moves only by more than the input tolerance: within it of the reference's
-            double tolerance = GameParameters.Default.Value("field.input_tolerance");
-            Assert.That(game.Cell(0).MembraneGlucose, Is.EqualTo(reference.Cell(0).MembraneGlucose)
-                .Within(tolerance * reference.Cell(0).MembraneGlucose), "the cell's input");
-            Assert.That(game.Cell(0).GlucoseRelease, Is.EqualTo(reference.Cell(0).GlucoseRelease)
-                .Within(0.01 * Math.Abs(reference.Cell(0).GlucoseRelease)), "uptake");
+            double membrane0 = ocean - Membrane(reference, 0);
+            for (int i = 0; i < cells; i++)
+            {
+                double depletionRef = ocean - Membrane(reference, i);
+                Assert.That(depletionRef, Is.GreaterThan(0.0));
+                Assert.That(ocean - Membrane(game, i), Is.EqualTo(depletionRef).Within(0.02 * depletionRef), $"cell {i}: depletion at the membrane");
+                double inputRef = ocean - reference.Cell(i).MembraneGlucose;
+                Assert.That(ocean - game.Cell(i).MembraneGlucose, Is.EqualTo(inputRef).Within(0.02 * inputRef), $"cell {i}: the depletion it sees");
+                Assert.That(game.Cell(i).GlucoseRelease, Is.EqualTo(reference.Cell(i).GlucoseRelease)
+                    .Within(1e-3 * Math.Abs(reference.Cell(i).GlucoseRelease)), $"cell {i}: uptake");
+            }
             var b = game.Body.Body;
             var rb = reference.Body.Body;
-            Assert.That(game.Environment.Field.Sample(g, b.X + 10e-6, b.Y), Is.EqualTo(reference.Environment.Field.Sample(g, rb.X + 10e-6, rb.Y))
-                .Within(0.15 * depletionRef), "the water 10 um away");   // measured: 11% of the membrane's depletion (the fine grid's 8 um margin ends there)
+            foreach (double r in new[] { 5e-6, 10e-6, 20e-6, 40e-6 })
+                Assert.That(game.Environment.Field.Sample(g, b.X + r, b.Y), Is.EqualTo(reference.Environment.Field.Sample(g, rb.X + r, rb.Y))
+                    .Within(0.02 * membrane0), $"the water {r * 1e6} um away");
             game.Dispose();
             reference.Dispose();
         }
+
+        [Test]
+        public void TheGameSettingsMatchTheReferenceForOneCell() => MatchTheReference(1, 600.0);
+
+        [Test]
+        public void TheGameSettingsMatchTheReferenceForASmallColony() => MatchTheReference(7, 60.0);
 
         [Test]
         public void TheFieldGrowsWithTheColony()
@@ -270,8 +295,8 @@ namespace AdaptOrDeity.Game.Session.Tests
         [Test]
         public void ACellsInputsChangeOnlyWhenTheFieldMovesBeyondTheTolerance()
         {
-            // Each changed input restarts the cell's integrator, so inputs are passed on a change above
-            // field.input_tolerance; what the cell sees stays within it of the field's value at its membrane.
+            // Each changed input restarts the cell's integrator, so inputs are passed on a change above field.input_tolerance
+            // of their departure from the sea; what the cell sees stays within it of the field's value at its membrane.
             var (world, loop) = Colony(8);
             world.BathConcentration = 0.1;
             loop.StepExactly(300);
@@ -290,7 +315,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(changes, Is.LessThan(25), "near steady, most steps keep the input");
             world.CellPosition(3, out double cx, out double cy);
             double field = env.AtMembrane(AdaptOrDeity.Sim.World.EnvironmentField.Glucose, cx, cy, world.CellRadius, c.GlucoseRelease);
-            Assert.That(c.MembraneGlucose, Is.EqualTo(field).Within(2 * tolerance * field));
+            Assert.That(c.MembraneGlucose, Is.EqualTo(field).Within(2 * tolerance * (0.1 - field)));
+            Assert.That(0.1 - field, Is.GreaterThan(1e-4 * 0.1), "a departure the cell sees");
             world.Dispose();
         }
     }

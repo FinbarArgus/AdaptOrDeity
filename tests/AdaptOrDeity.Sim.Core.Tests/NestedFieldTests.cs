@@ -159,6 +159,35 @@ namespace AdaptOrDeity.Sim.Core.Tests
         }
 
         [Test]
+        public void ACellDriftingWithTheCurrentSeesItsOwnDepletionWithFineSubsteps()
+        {
+            // A sink drifting at 2 um/s (the current) for 60 s: Douglas steps damp the short modes of its moving near field
+            // slowly, so with one fine step per step its membrane sees 7% too little depletion; field.fine_substeps (4)
+            // brings it within 1% of the converged value (64 fine substeps).
+            const double far = 0.1, J = -2e-18, a = 1e-6, v = 2e-6;
+            double Membrane(int fineSubsteps)
+            {
+                var settings = Settings();
+                settings.FineSubsteps = fineSubsteps;
+                var f = new NestedField(settings, new[] { Dglc }, new[] { far }, 0.0, 0.0, 2e-6);
+                double x = 0.0;
+                for (int n = 0; n < 600; n++)
+                {
+                    x = v * n * 0.1;
+                    f.Follow(x, 0.0, 2e-6);
+                    f.Deposit(0, x, 0.0, J);
+                    f.Step(0.1);
+                }
+                Assert.That(f.Total(0) - f.OceanInflow(0) - f.Sourced(0), Is.EqualTo(far * Math.Pow(120e-6, 2) * Depth)
+                    .Within(1e-12 * far * Math.Pow(120e-6, 2) * Depth), "substeps conserve");
+                return far - f.AtMembrane(0, x, 0.0, a, J);
+            }
+            double converged = Membrane(64);
+            Assert.That(Membrane(1), Is.LessThan(0.95 * converged), "one fine step lags");
+            Assert.That(Membrane(4), Is.EqualTo(converged).Within(0.01 * converged));
+        }
+
+        [Test]
         public void RecentringFollowsTheColonyAndConservesContent()
         {
             var f = Field(4e-6);

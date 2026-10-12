@@ -240,6 +240,13 @@
    "status": "design",
    "note": "water the finest grid covers beyond the colony on each side: room for the grids to recentre by whole coarse cells (4 um) and for the coarse flux at the fine grid's edge to be away from the cells"
   },
+  "field.fine_substeps": {
+   "value": 4,
+   "units": "dimensionless",
+   "source": "definitional",
+   "status": "design",
+   "note": "steps the finest grid takes per macro step (the coarser grids take one): Douglas steps damp short modes slowly, so a moving cell's own near field lags. A sink drifting at 2 um/s (the current) sees its membrane depletion 7% short with 1, 0.7% with 4, +0.1% with 8; swimming at 20 um/s 16%, 4% and 1% short (NestedFieldTests, 2026-10-13)"
+  },
   "field.extent_multiple": {
    "value": 60.0,
    "units": "1",

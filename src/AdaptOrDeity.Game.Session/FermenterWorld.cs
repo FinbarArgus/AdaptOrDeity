@@ -144,6 +144,7 @@ namespace AdaptOrDeity.Game.Session
                 first.RelativeTolerance = GameParameters.Default.Value("field.reference_cell_tolerance");   // daughters inherit it
             // Geometry from the kernel (upstream parameters.json); the open water and food field from content.
             CellRadius = first.External("R_cell_mod_membrane") * 1e-6;   // µm → m
+            _oceanProtons = first.External("H_o_mod_H");
             _spacing = 2.0 * CellRadius + GameParameters.Default.Value("colony.cell_gap");
             _food = new FoodField(GameParameters.Default.Food(GameTimeline.Default.OceanGlucose(1)));
             _prey = CreatePrey();

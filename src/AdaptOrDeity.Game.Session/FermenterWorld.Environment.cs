@@ -33,7 +33,17 @@ namespace AdaptOrDeity.Game.Session
 
         private readonly EnvironmentField? _environment;
         private int _colonyCells;
-        private readonly double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");   // 0 for the reference
+        private double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");   // 0 for the reference
+
+        /// <summary>
+        /// Share of an input's departure from the open water by which it must move before a cell sees the change (content
+        /// field.input_tolerance; 0 in the reference): each change restarts the cell's integrator.
+        /// </summary>
+        public double InputTolerance
+        {
+            get => _inputTolerance;
+            set => _inputTolerance = value >= 0.0 ? value : throw new ArgumentOutOfRangeException(nameof(value));
+        }
         private double _colonyRadius;
         private Func<FoodPacket, double>? _hydrolysis;
 
@@ -156,20 +166,25 @@ namespace AdaptOrDeity.Game.Session
             double glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? c.GlucoseRelease : 0.0);
             double lactate = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? c.LactateRelease : 0.0);
             double protons = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? c.ProtonRelease : 0.0));
-            // an input that moved less than the tolerance keeps its value: each change restarts the cell's integrator
-            if (Moved(c.MembraneGlucose, glucose))
+            // an input that moved less than the tolerance keeps its value: each change restarts the cell's integrator (Moved)
+            if (Moved(c.MembraneGlucose, glucose, _food.BackgroundGlucose))
                 c.MembraneGlucose = glucose;
-            if (Moved(c.MembraneLactate, lactate))
+            if (Moved(c.MembraneLactate, lactate, 0.0))
                 c.MembraneLactate = lactate;
-            if (Moved(c.MembraneProtons, protons))
+            if (Moved(c.MembraneProtons, protons, _oceanProtons))
                 c.MembraneProtons = protons;
             int nt = env.TraceCount;
             for (int t = 0; t < nt; t++)
                 _traceAtCell[i * nt + t] = env.Field.Sample(EnvironmentField.FirstTrace + t, x, y);
         }
 
-        private bool Moved(double current, double next) =>
-            Math.Abs(next - current) > _inputTolerance * Math.Max(Math.Abs(current), Math.Abs(next));
+        // A membrane input is passed on when it moved by more than field.input_tolerance of its departure from the open
+        // water (ocean): so what a cell does to its own water, however small, reaches it to that share, and a cell in
+        // unchanging water keeps its input.
+        private bool Moved(double current, double next, double ocean) =>
+            Math.Abs(next - current) > _inputTolerance * Math.Abs(next - ocean);
+
+        private double _oceanProtons;
 
         // Each living cell's exchange over the step goes into the field, in cell order; then the field steps.
         private void AfterCells(double dt)

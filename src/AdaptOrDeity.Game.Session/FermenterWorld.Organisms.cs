@@ -402,11 +402,11 @@ namespace AdaptOrDeity.Game.Session
                 lactate = Math.Max(0.0, env.Field.Sample(EnvironmentField.Lactate, x, y));
                 protons = env.Protons(env.Field.Sample(EnvironmentField.Acid, x, y));
             }
-            if (Moved(c.MembraneGlucose, glucose))
+            if (Moved(c.MembraneGlucose, glucose, _food.BackgroundGlucose))
                 c.MembraneGlucose = glucose;
-            if (Moved(c.MembraneLactate, lactate))
+            if (Moved(c.MembraneLactate, lactate, 0.0))
                 c.MembraneLactate = lactate;
-            if (Moved(c.MembraneProtons, protons))
+            if (Moved(c.MembraneProtons, protons, _oceanProtons))
                 c.MembraneProtons = protons;
             for (int t = 0; t < o.Traces.Length; t++)
                 o.Traces[t] = env.Field.Sample(EnvironmentField.FirstTrace + t, x, y);
