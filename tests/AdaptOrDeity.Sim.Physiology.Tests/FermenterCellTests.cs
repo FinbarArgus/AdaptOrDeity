@@ -75,7 +75,8 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             Assert.That(b.AtpRna / b.AtpConsumed, Is.InRange(0.03, 0.15), "mRNA turnover and ribosome upkeep");
             Assert.That(b.AtpLipids / b.AtpConsumed, Is.InRange(0.01, 0.10));
             Assert.That(b.AtpRepair / b.AtpConsumed, Is.InRange(0.01, 0.10));
-            Assert.That(b.AtpProteinBuild + b.AtpGrowth + b.AtpStorage + b.AtpFromGlycogen, Is.EqualTo(0.0));
+            // nothing built or stored at rest (to round-off: the integrator's first step probes the rates once)
+            Assert.That(b.AtpProteinBuild + b.AtpGrowth + b.AtpStorage + b.AtpFromGlycogen, Is.EqualTo(0.0).Within(1e-10 * b.AtpConsumed));
             // A daughter costs about Lynch & Marinov's growth cost, 2.66e10 V^0.97 ATP (V in um3)
             double growthCost = 26.6e9 * Math.Pow(2 * Math.PI, 0.97) / na;
             Assert.That(cell.DaughterCost / growthCost, Is.InRange(0.9, 1.3));
