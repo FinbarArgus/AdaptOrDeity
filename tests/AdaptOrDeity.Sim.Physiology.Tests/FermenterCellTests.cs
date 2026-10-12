@@ -86,7 +86,8 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         public void RaisingExpressionPaysTheBuildCostOnceWithinTheBuildCapacity()
         {
             // Doubling the H+-ATPase (its protein_pool, in the kernel) spends exactly the ATP to build the extra copies,
-            // never faster than the cell's protein synthesis allows.
+            // never faster than the cell's protein synthesis allows. It rises with its mRNA's mean lifetime (~7 min), slowed
+            // on the lean background by the ATP it has to spare: two hours.
             var cell = NewCell();
             int trait = cell.Traits.ToList().FindIndex(t => t.Id == "H_ATPase_expression");
             double n = cell.External("n_0_mod_pool_H_ATPase"), l = cell.External("L_mod_pool_H_ATPase");
@@ -94,10 +95,10 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             double cap = cell.External("build_capacity_mod_protein") * cell.RestingTurnover;
             cell.Step(GameDt);
             // upkeep per unit of the ATP factor (synthesis slows a little as ATP moves)
-            double upkeep0 = cell.AlgebraicValue("pool_H_ATPase__J_keep") / cell.AlgebraicValue("pool_H_ATPase__f_ATP");
+            double upkeep0 = cell.AlgebraicValue("pool_H_ATPase__J_keep") / Math.Min(cell.AlgebraicValue("pool_H_ATPase__f_ATP"), 1.0);
             cell.SetTrait(trait, 2.0);
             double built = 0.0, peak = 0.0;
-            for (int i = 0; i < (int)(3600 / GameDt); i++)
+            for (int i = 0; i < (int)(7200 / GameDt); i++)
             {
                 cell.Step(GameDt);
                 built += cell.Budget().AtpProteinBuild * GameDt;
@@ -109,7 +110,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             // the cell integrates with 1% adaptive steps
             Assert.That(built, Is.EqualTo((m - 1.0) * n * l * cBuild / Na(cell)).Within(1e-2 * built));
             Assert.That(peak, Is.LessThanOrEqualTo(cap * (1 + 1e-9)));
-            Assert.That(cell.AlgebraicValue("pool_H_ATPase__J_keep") / cell.AlgebraicValue("pool_H_ATPase__f_ATP"),
+            Assert.That(cell.AlgebraicValue("pool_H_ATPase__J_keep") / Math.Min(cell.AlgebraicValue("pool_H_ATPase__f_ATP"), 1.0),
                 Is.EqualTo(m * upkeep0).Within(1e-9 * m * upkeep0));
             Assert.That(cell.State("membrane__V"), Is.LessThan(-105.0), "more pumps hyperpolarise the cell");
         }
@@ -149,7 +150,8 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             cell.SetTrait(pts, 0.05);
             Assert.That(cell.External("s_target_mod_pool_PTS"), Is.EqualTo(0.05));
             Assert.That(cell.TraitTarget(pts), Is.EqualTo(0.05));
-            Run(cell, 600.0);
+            // a protein rises with its mRNA's mean lifetime (tau ~7 min): within 1e-3 of the share after ~9 tau
+            Run(cell, 4000.0);
             Assert.That(cell.TraitValue(pts), Is.EqualTo(0.05).Within(1e-3));
             Assert.That(cell.AlgebraicValue("pool_PTS__share"), Is.EqualTo(cell.TraitValue(pts)).Within(1e-12));
             Assert.That(cell.MembraneShareUsed(), Is.EqualTo(0.3681 + 0.05).Within(1e-3));
@@ -306,7 +308,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         public void EveryTraitIsAPoolOfTheKernel()
         {
             // content/traits/fermenter.json names each trait's protein_pool; the kernel must have it, and a cell with a new
-            // target moves its expression there with the pool's time constant.
+            // target lower than its copies loses them as they are degraded (about 1% an hour).
             var cell = NewCell();
             for (int i = 0; i < cell.Traits.Count; i++)
             {
@@ -330,9 +332,11 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             cell.RelativeTolerance = 1e-5;   // this checks the model's time constant, not the game's 1% integration
             int k = cell.Traits.ToList().FindIndex(t => t.Id == "KefC_expression");
             cell.SetTrait(k, 0.5);
-            double tau = cell.External("tau_mod_pool_KefC");
-            Run(cell, tau);
-            Assert.That(cell.TraitValue(k), Is.EqualTo(0.5 + 0.5 * Math.Exp(-1.0)).Within(0.01), "falling needs no ATP: e-fold in tau");
+            double kDeg = cell.External("k_deg_mod_pool_KefC");
+            Assert.That(kDeg, Is.EqualTo(0.01 / 3600.0).Within(1e-12 * kDeg), "about 1% of the protein degraded per hour");
+            Run(cell, 3600.0);
+            Assert.That(cell.TraitValue(k), Is.EqualTo(0.5 + 0.5 * Math.Exp(-kDeg * 3600.0)).Within(1e-4),
+                "above its target a protein falls only as it is degraded, not replaced");
         }
 
         [Test]

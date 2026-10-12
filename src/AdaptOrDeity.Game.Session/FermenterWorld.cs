@@ -100,7 +100,8 @@ namespace AdaptOrDeity.Game.Session
                     Targets[i] = traits[i].Default;
                 for (int c = 0; c < ControlList.Length; c++)
                     Controls[c] = ControlList[c].DefaultValue;
-                Regulation = new bool[(traits.Count + 1) * FermenterCell.RegulationSpecies.Length];
+                Regulation = new bool[(traits.Count + 1 + FermenterCell.MaintenanceRegulation.Length)
+                                      * FermenterCell.RegulationSpecies.Length];
             }
 
             /// <summary>A group with another's trait targets and controls.</summary>
@@ -115,7 +116,7 @@ namespace AdaptOrDeity.Game.Session
 
             public double[] Controls { get; } = new double[ControlList.Length];
 
-            /// <summary>Per regulated target (traits, then growth), per species: whether its fall lowers the target.</summary>
+            /// <summary>Per regulated target (traits, growth, maintenance), per species: whether its fall lowers it.</summary>
             public bool[] Regulation { get; }
 
             /// <summary>Cells the group holds with a fixed body size (set when the feature is turned on).</summary>

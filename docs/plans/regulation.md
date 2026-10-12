@@ -5,42 +5,44 @@ player turn protein expression or growth down when ATP is low; a cog beside each
 species' drop lowers it; the function is hardcoded for now, experts will choose it later.
 
 ## How it works
-- **Upstream** (circulatory-autogen-modules homogenisation-checks ddb5c6e): cell/expression_regulation
-  ArgusUNPUBLISHED_v01 gives f_s = x^4/(1 + x^4) per species: x = C/K for ATP, G6P and glucose inside, x = K_H/H_i for
-  H+ (f falls as pH falls); K = half the resting level (H+: twice the resting H+). Every protein_pool's target and
-  biosynthesis's growth are multiplied by R_reg = prod_s (1 - reg_on_s + reg_on_s f_s); the switches reg_on_s are 0 by
-  default, so the cell is bitwise unchanged until the player turns one on. Only targets change, never a flux or a cost.
+- **Upstream** (circulatory-autogen-modules homogenisation-checks): cell/expression_regulation ArgusUNPUBLISHED_v01
+  gives f_s = 1/(1 + u^4), u = max(0, 1 - x)/(1 - 1/2), x = C/C_rest for ATP, G6P and glucose inside and x = H_rest/H_i
+  for H+: f = 1 exactly at and above the resting level (no effect at rest), 1/2 at half of it (H+: twice the resting H+,
+  0.3 pH below), 1/17 at zero, smooth (C^3) at rest. Every protein_pool's target, biosynthesis's growth, and four parts
+  of the maintenance are each multiplied by R = prod_s (1 - reg_on_s + reg_on_s f_s), each with switches of its own:
+  protein synthesis (protein_expression: its capacity and every pool's replacement of degraded copies), RNA and lipid
+  upkeep and repair (biosynthesis, `reg_on_<s>_upkeep`, `reg_on_<s>_repair`), and the maintenance ATPase (cytosol). All
+  switches are 0 by default, so the cell is unchanged until the player turns one on.
+- **Protein turnover is realistic** (2026-10-13): a protein is degraded at k_deg about 1%/h and replaced up to its target;
+  it rises towards a higher target with its mRNA's mean lifetime (~7 min) within the ribosomes' capacity (~9x the
+  resting turnover at 20 C, throttled as ATP falls). So a lowered target, by the player or by regulation, takes days to
+  empty a pool (an e-fold in ~100 h): regulating a protein's target stops it being made but saves little in a famine of
+  minutes. Regulating the maintenance acts at once.
 - **Game**: feature `regulation` (level 1, free, optional, on by default once unlocked), unlocked after the first gap
   without food (designer, 2026-10-13: "Unlock after the first gap of not contacting food"): the first time the creature
-  goes `requires_food_gap_s` (30 s, content/timeline.json) without a living cell touching a packet, holding one, or with
-  food in its vacuole (`TimeWithoutFood`, `FoodGapMet`, FermenterWorld.Regulation.cs). The gap counts from the start of
-  play. From rest in a full famine a cell's ATP falls below half its resting level at 57 s and below 0.1 mM at 126 s
-  (measured), so half a minute unlocks it about 95 s before the crash. Each
-  group keeps a switch per regulated target (each trait, then growth) and species; ApplyControls pushes them to the
-  group's cells as `reg_on_<species>_mod_<pool|bio>` (all 0 while the feature is locked or off). Daughters and released
-  organisms copy their parent's kernel inputs, switches included. Command `SetRegulation(group, target, species, on)`;
-  frames carry `Regulation[RegulationRow(target, species)][group]`; the module-array export includes the switches.
-- **UI**: a cog (⚙, with the number of species on) beside every expression slider and the growth slider in the cell
-  panel opens a popup with a toggle per species ("Dropping ATP lowers this", G6P, glucose inside, pH) and the function,
-  read-only, with a note that experts will choose it. The HUD announces a feature the frame it unlocks.
+  goes `requires_food_gap_s` (content/timeline.json) without a living cell touching a packet, holding one, or with food
+  in its vacuole (`TimeWithoutFood`, `FoodGapMet`, FermenterWorld.Regulation.cs). The gap counts from the start of play;
+  its value is set against the famine reserve (docs/plans/scoring.md). Each group keeps a switch per regulated target (each trait, growth, then the maintenance: `FermenterCell.MaintenanceRegulation`)
+  and species; ApplyControls pushes them to the group's cells as `reg_on_<species><suffix>_mod_<submodule>` (all 0 while
+  the feature is locked or off). Daughters and released organisms copy their parent's kernel inputs, switches included.
+  Command `SetRegulation(group, target, species, on)`; frames carry `Regulation[RegulationRow(target, species)][group]`;
+  the module-array export includes the switches.
+- **UI**: a cog (⚙, with the number of species on) beside every expression slider, the growth slider and each part of a
+  "Maintenance" block (texts reviewed: false) opens a popup with a toggle per species ("Dropping ATP lowers this", G6P,
+  glucose inside, pH) and the function, read-only, with a note that experts will choose it. The HUD announces a feature
+  the frame it unlocks.
 
-## What it does (measured)
+## What it does (measured, 2026-10-13)
 - Half food (0.05 mM) for an hour, then full food (0.1 mM): unregulated, ATP runs out (< 1e-3 mM) and stays out when
-  food returns (the ATP trap: hexokinase needs ATP). With the pumps, exchangers, flagellum and hydrolase regulated by
-  ATP, they fall to ~0.38, ATP holds at 4.2 mM and V at -66 mV, and the cell is back at rest within the hour of food
-  (ATP 9.53 mM, V -105 mV). Upstream test and RegulationKernelTests.
-- No food at all: regulation only delays the collapse (ATP < 0.1 mM at 160 s instead of 130 s with those pools; 220 s
-  with every pool, the proteome included, which then cannot be rebuilt). The maintenance ATPase is not regulated.
-- Level 1 as tuned (contact rule, field off, ocean 1 µM): a cell left alone eats its packets until day 2.2, then its ATP
-  falls from rest to 0 within minutes. Regulation unlocks in that same minute (52.45 h), too late to save that cell, and
-  with the pumps regulated from then on the outcome is the same (damage 0.49 by day 7 either way): between packets the
-  water holds almost no glucose, which is the no-food case above. Regulation pays off where food is short but not gone.
-- Regulating glycolysis or the glucose carriers in a famine removes them within a minute (10 s expression time
-  constant), so the cell cannot use food when it returns: the popup and the explanation say so.
+  food returns (the ATP trap: hexokinase needs ATP). Regulating the pumps, exchangers, flagellum and hydrolase by ATP no
+  longer helps (their copies fall ~0.1% in the hour). With the maintenance regulated by ATP, ATP holds at 4.2 mM and V at
+  -100 mV; when food returns the cell first rebuilds the ~0.5% of its proteome lost while synthesis was cut (throttled as
+  ATP is low), so after an hour ATP is 4.7 mM and V -101 mV. Upstream test and RegulationKernelTests.
+- No food at all: ATP < 0.1 mM at ~100 s unregulated, ~170 s with the maintenance (and pumps and growth) regulated.
 
 ## Still to do
 - Experts choose the function (n, K, or another form): a new version of cell/expression_regulation per function, and a
   game setting to pick it.
 - Show each target's present factor (R_reg) in the popup, and the cell's f per species.
-- Whether the maintenance ATPase should also fall in a famine (real cells' maintenance drops); see the plan's open
-  question on starvation.
+- Cutting the RNA/lipid upkeep or the maintenance ATPase has no modelled downside (design question); starvation-raised
+  degradation (~5%/h) and dilution by growth are not modelled.

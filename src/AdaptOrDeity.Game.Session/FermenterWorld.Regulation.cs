@@ -5,9 +5,10 @@ namespace AdaptOrDeity.Game.Session
 {
     /// <summary>
     /// Regulation by falling metabolites (feature <see cref="GameFeatures.Regulation"/>): per group, per regulated target
-    /// (each trait's protein, then growth) and per species (<see cref="FermenterCell.RegulationSpecies"/>), whether the
-    /// species' fall lowers that target. The cells' kernel does the regulating (upstream cell/expression_regulation: the
-    /// target times f = x^4/(1 + x^4) for each species switched on); the world keeps each group's switches and pushes them
+    /// (each trait's protein, then growth, then the maintenance: <see cref="FermenterCell.MaintenanceRegulation"/>) and per
+    /// species (<see cref="FermenterCell.RegulationSpecies"/>), whether the species' fall lowers that target. The cells'
+    /// kernel does the regulating (upstream cell/expression_regulation: the target times f for each species switched on, f
+    /// = 1 at and above the species' resting level); the world keeps each group's switches and pushes them
     /// to its cells, all off while the feature is locked or turned off. Daughters and released organisms copy their
     /// parent's switches with its other settings. The feature unlocks when the creature first goes
     /// <see cref="FeatureInfo.RequiresFoodGap"/> without food: no living cell touching a packet, holding one, or with food in
@@ -29,11 +30,17 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>When <see cref="FoodGapMet"/> became true [s of simulated time], or NaN before.</summary>
         public double FoodGapMetAt { get; private set; } = double.NaN;
 
-        /// <summary>Regulated targets: each trait (its index), then growth (<see cref="GrowthRegulation"/>).</summary>
-        public int RegulationTargets => _traits.Length + 1;
+        /// <summary>
+        /// Regulated targets: each trait (its index), then growth (<see cref="GrowthRegulation"/>), then the maintenance
+        /// (<see cref="MaintenanceRegulation"/>).
+        /// </summary>
+        public int RegulationTargets => _traits.Length + 1 + FermenterCell.MaintenanceRegulation.Length;
 
         /// <summary>The regulated target that is growth.</summary>
         public int GrowthRegulation => _traits.Length;
+
+        /// <summary>The regulated target that is maintenance entry <paramref name="k"/> (<see cref="FermenterCell.MaintenanceRegulation"/>).</summary>
+        public int MaintenanceRegulation(int k) => _traits.Length + 1 + k;
 
         /// <summary>Whether a fall of <paramref name="species"/> lowers <paramref name="target"/> in the group's cells.</summary>
         public bool ReadRegulation(int group, int target, int species) =>
@@ -57,7 +64,7 @@ namespace AdaptOrDeity.Game.Session
 
         private int RegulationSlot(int target, int species)
         {
-            if (target < 0 || target > _traits.Length)
+            if (target < 0 || target >= RegulationTargets)
                 throw new ArgumentOutOfRangeException(nameof(target), $"no regulated target {target}");
             if (species < 0 || species >= FermenterCell.RegulationSpecies.Length)
                 throw new ArgumentOutOfRangeException(nameof(species), $"no regulating species {species}");

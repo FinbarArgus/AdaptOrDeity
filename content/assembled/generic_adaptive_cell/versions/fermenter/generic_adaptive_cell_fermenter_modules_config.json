@@ -145,7 +145,19 @@
     "constant"
    ],
    [
+    "C_ATP_rest_mod_reg",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
     "C_G6P_init_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "C_G6P_rest_mod_reg",
     "millimolar",
     "access",
     "constant"
@@ -182,6 +194,12 @@
    ],
    [
     "C_glc_init_mod_cytosol",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "C_glc_rest_mod_reg",
     "millimolar",
     "access",
     "constant"
@@ -338,6 +356,12 @@
    ],
    [
     "H_ref_mod_membrane_face",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "H_rest_mod_reg",
     "millimolar",
     "access",
     "constant"
@@ -1141,6 +1165,18 @@
     "variable"
    ],
    [
+    "bio__R_reg_repair",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_reg_upkeep",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "bio__R_repair",
     "per_s",
     "access",
@@ -1827,6 +1863,12 @@
    [
     "cytosol__Q_met",
     "watt",
+    "access",
+    "variable"
+   ],
+   [
+    "cytosol__R_reg",
+    "dimensionless",
     "access",
     "variable"
    ],
@@ -3403,6 +3445,12 @@
     "variable"
    ],
    [
+    "pool_ABC__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_ABC__m_target",
     "dimensionless",
     "access",
@@ -3415,6 +3463,12 @@
     "variable"
    ],
    [
+    "pool_ABC__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_ABC__r_down",
     "per_s",
     "access",
@@ -3422,6 +3476,12 @@
    ],
    [
     "pool_ABC__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_ABC__r_rep",
     "per_s",
     "access",
     "variable"
@@ -3517,8 +3577,20 @@
     "variable"
    ],
    [
+    "pool_Flagellum__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Flagellum__n",
     "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Flagellum__r_deg",
+    "per_s",
     "access",
     "variable"
    ],
@@ -3530,6 +3602,12 @@
    ],
    [
     "pool_Flagellum__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Flagellum__r_rep",
     "per_s",
     "access",
     "variable"
@@ -3625,6 +3703,12 @@
     "variable"
    ],
    [
+    "pool_GalP__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_GalP__m_target",
     "dimensionless",
     "access",
@@ -3637,6 +3721,12 @@
     "variable"
    ],
    [
+    "pool_GalP__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_GalP__r_down",
     "per_s",
     "access",
@@ -3644,6 +3734,12 @@
    ],
    [
     "pool_GalP__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_GalP__r_rep",
     "per_s",
     "access",
     "variable"
@@ -3739,6 +3835,12 @@
     "variable"
    ],
    [
+    "pool_Glf__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Glf__m_target",
     "dimensionless",
     "access",
@@ -3751,6 +3853,12 @@
     "variable"
    ],
    [
+    "pool_Glf__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Glf__r_down",
     "per_s",
     "access",
@@ -3758,6 +3866,12 @@
    ],
    [
     "pool_Glf__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glf__r_rep",
     "per_s",
     "access",
     "variable"
@@ -3853,8 +3967,20 @@
     "variable"
    ],
    [
+    "pool_Glyc__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Glyc__n",
     "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glyc__r_deg",
+    "per_s",
     "access",
     "variable"
    ],
@@ -3866,6 +3992,12 @@
    ],
    [
     "pool_Glyc__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glyc__r_rep",
     "per_s",
     "access",
     "variable"
@@ -3961,6 +4093,12 @@
     "variable"
    ],
    [
+    "pool_H_ATPase__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_H_ATPase__m_target",
     "dimensionless",
     "access",
@@ -3973,6 +4111,12 @@
     "variable"
    ],
    [
+    "pool_H_ATPase__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_H_ATPase__r_down",
     "per_s",
     "access",
@@ -3980,6 +4124,12 @@
    ],
    [
     "pool_H_ATPase__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_H_ATPase__r_rep",
     "per_s",
     "access",
     "variable"
@@ -4075,6 +4225,12 @@
     "variable"
    ],
    [
+    "pool_Hydrolase__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Hydrolase__m_target",
     "dimensionless",
     "access",
@@ -4087,6 +4243,12 @@
     "variable"
    ],
    [
+    "pool_Hydrolase__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Hydrolase__r_down",
     "per_s",
     "access",
@@ -4094,6 +4256,12 @@
    ],
    [
     "pool_Hydrolase__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Hydrolase__r_rep",
     "per_s",
     "access",
     "variable"
@@ -4189,6 +4357,12 @@
     "variable"
    ],
    [
+    "pool_KefC__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_KefC__m_target",
     "dimensionless",
     "access",
@@ -4201,6 +4375,12 @@
     "variable"
    ],
    [
+    "pool_KefC__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_KefC__r_down",
     "per_s",
     "access",
@@ -4208,6 +4388,12 @@
    ],
    [
     "pool_KefC__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_KefC__r_rep",
     "per_s",
     "access",
     "variable"
@@ -4303,6 +4489,12 @@
     "variable"
    ],
    [
+    "pool_LacT__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_LacT__m_target",
     "dimensionless",
     "access",
@@ -4315,6 +4507,12 @@
     "variable"
    ],
    [
+    "pool_LacT__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_LacT__r_down",
     "per_s",
     "access",
@@ -4322,6 +4520,12 @@
    ],
    [
     "pool_LacT__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_LacT__r_rep",
     "per_s",
     "access",
     "variable"
@@ -4417,6 +4621,12 @@
     "variable"
    ],
    [
+    "pool_NCX__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NCX__m_target",
     "dimensionless",
     "access",
@@ -4429,6 +4639,12 @@
     "variable"
    ],
    [
+    "pool_NCX__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NCX__r_down",
     "per_s",
     "access",
@@ -4436,6 +4652,12 @@
    ],
    [
     "pool_NCX__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NCX__r_rep",
     "per_s",
     "access",
     "variable"
@@ -4531,6 +4753,12 @@
     "variable"
    ],
    [
+    "pool_NhaA__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NhaA__m_target",
     "dimensionless",
     "access",
@@ -4543,6 +4771,12 @@
     "variable"
    ],
    [
+    "pool_NhaA__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NhaA__r_down",
     "per_s",
     "access",
@@ -4550,6 +4784,12 @@
    ],
    [
     "pool_NhaA__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NhaA__r_rep",
     "per_s",
     "access",
     "variable"
@@ -4645,6 +4885,12 @@
     "variable"
    ],
    [
+    "pool_PTS__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_PTS__m_target",
     "dimensionless",
     "access",
@@ -4657,6 +4903,12 @@
     "variable"
    ],
    [
+    "pool_PTS__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_PTS__r_down",
     "per_s",
     "access",
@@ -4664,6 +4916,12 @@
    ],
    [
     "pool_PTS__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_PTS__r_rep",
     "per_s",
     "access",
     "variable"
@@ -4759,6 +5017,12 @@
     "variable"
    ],
    [
+    "pool_Trk__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Trk__m_target",
     "dimensionless",
     "access",
@@ -4771,6 +5035,12 @@
     "variable"
    ],
    [
+    "pool_Trk__r_deg",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Trk__r_down",
     "per_s",
     "access",
@@ -4778,6 +5048,12 @@
    ],
    [
     "pool_Trk__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Trk__r_rep",
     "per_s",
     "access",
     "variable"
@@ -4873,8 +5149,20 @@
     "variable"
    ],
    [
+    "pool_proteome__m_kept",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "pool_proteome__n",
     "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_proteome__r_deg",
+    "per_s",
     "access",
     "variable"
    ],
@@ -4886,6 +5174,12 @@
    ],
    [
     "pool_proteome__r_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_proteome__r_rep",
     "per_s",
     "access",
     "variable"
@@ -4959,6 +5253,12 @@
    [
     "protein__M_build_protein",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__R_reg",
+    "dimensionless",
     "access",
     "variable"
    ],
@@ -5053,6 +5353,30 @@
     "variable"
    ],
    [
+    "reg__u_ATP_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__u_G6P_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__u_H_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "reg__u_glc_reg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "reg__x_ATP_reg",
     "dimensionless",
     "access",
@@ -5078,6 +5402,12 @@
    ],
    [
     "reg_on_ATP_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_mod_cytosol",
     "dimensionless",
     "access",
     "constant"
@@ -5167,7 +5497,31 @@
     "constant"
    ],
    [
+    "reg_on_ATP_mod_protein",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_repair_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_ATP_upkeep_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "reg_on_G6P_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_mod_cytosol",
     "dimensionless",
     "access",
     "constant"
@@ -5257,7 +5611,31 @@
     "constant"
    ],
    [
+    "reg_on_G6P_mod_protein",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_repair_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_G6P_upkeep_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "reg_on_H_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_mod_cytosol",
     "dimensionless",
     "access",
     "constant"
@@ -5347,7 +5725,31 @@
     "constant"
    ],
    [
+    "reg_on_H_mod_protein",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_repair_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_H_upkeep_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "reg_on_glc_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_cytosol",
     "dimensionless",
     "access",
     "constant"
@@ -5432,6 +5834,24 @@
    ],
    [
     "reg_on_glc_mod_pool_proteome",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_mod_protein",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_repair_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "reg_on_glc_upkeep_mod_bio",
     "dimensionless",
     "access",
     "constant"

@@ -75,11 +75,8 @@ namespace AdaptOrDeity.Game.Session
             {
                 _regulated = true;
                 foreach (var (target, species) in Regulation)
-                {
-                    int t = RegulationTarget(world, target);
-                    if (t >= 0)
+                    foreach (int t in RegulationTargets(world, target))
                         world.SetRegulation(0, t, Array.IndexOf(AdaptOrDeity.Sim.Physiology.FermenterCell.RegulationSpecies, species), true);
-                }
             }
             int swimming = GameFeatures.IndexOf(GameFeatures.Swimming);
             bool swim = Swim == SwimPolicy.Always || (Swim == SwimPolicy.WithoutFood && world.TimeWithoutFood > 0.0)
@@ -107,9 +104,23 @@ namespace AdaptOrDeity.Game.Session
             return t >= 0 ? t : throw new ArgumentException($"no trait {id}");
         }
 
-        /// <summary>The regulated target with this id (a trait's, or "growth"), or -1.</summary>
-        public static int RegulationTarget(FermenterWorld world, string id) =>
-            id == "growth" ? world.GrowthRegulation : world.Traits.ToList().FindIndex(x => x.Id == id);
+        /// <summary>
+        /// The regulated targets an id names: a trait's, "growth", a part of the maintenance
+        /// (<see cref="AdaptOrDeity.Sim.Physiology.FermenterCell.MaintenanceRegulation"/>), or "maintenance" for all its
+        /// parts; none for an unknown id.
+        /// </summary>
+        public static IEnumerable<int> RegulationTargets(FermenterWorld world, string id)
+        {
+            var parts = AdaptOrDeity.Sim.Physiology.FermenterCell.MaintenanceRegulation;
+            if (id == "growth")
+                yield return world.GrowthRegulation;
+            for (int k = 0; k < parts.Length; k++)
+                if (id == "maintenance" || id == parts[k].Id)
+                    yield return world.GrowthRegulation + 1 + k;
+            int trait = world.Traits.ToList().FindIndex(x => x.Id == id);
+            if (trait >= 0)
+                yield return trait;
+        }
 
         /// <summary>The strategy in one line (for logs and notes).</summary>
         public override string ToString() =>

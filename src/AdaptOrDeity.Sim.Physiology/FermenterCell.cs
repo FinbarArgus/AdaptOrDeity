@@ -84,7 +84,7 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly int _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
         private readonly int _aMatrix, _aAtpMatrix;
         private readonly int _sDamage, _sGrowth, _sGlycogen, _sAtp;
-        private readonly int[] _regulationSwitch;   // per regulated target (traits, then growth), per species: reg_on_*
+        private readonly int[] _regulationSwitch;   // per regulated target (traits, growth, maintenance), per species
         private readonly int[] _regulationFactor;   // per regulated target: its R_reg
 
         /// <summary>The fermenter module in the game's module library.</summary>
@@ -177,16 +177,20 @@ namespace AdaptOrDeity.Sim.Physiology
             player.Add(StorageParameter);
             player.Add(RepairParameter);
             player.Add(MatrixParameter);
-            // regulation switches (cell/expression_regulation): per trait's pool and growth, per species
-            _regulationSwitch = new int[(traits.Count + 1) * RegulationSpecies.Length];
-            _regulationFactor = new int[traits.Count + 1];
-            for (int target = 0; target <= traits.Count; target++)
+            // regulation switches (cell/expression_regulation): per trait's pool, growth and each maintenance target, per
+            // species
+            int targets = traits.Count + 1 + MaintenanceRegulation.Length;
+            _regulationSwitch = new int[targets * RegulationSpecies.Length];
+            _regulationFactor = new int[targets];
+            for (int target = 0; target < targets; target++)
             {
-                string sub = target < traits.Count ? traits[target].Pool : "bio";
-                _regulationFactor[target] = Alg(sub + "__R_reg");
+                string sub = target < traits.Count ? traits[target].Pool : "bio", suffix = "";
+                if (target > traits.Count)
+                    (_, sub, suffix) = MaintenanceRegulation[target - traits.Count - 1];
+                _regulationFactor[target] = Alg($"{sub}__R_reg{suffix}");
                 for (int s = 0; s < RegulationSpecies.Length; s++)
                 {
-                    string name = $"reg_on_{RegulationSpecies[s]}_mod_{sub}";
+                    string name = $"reg_on_{RegulationSpecies[s]}{suffix}_mod_{sub}";
                     _regulationSwitch[target * RegulationSpecies.Length + s] = Ext(name);
                     player.Add(name);
                 }
@@ -266,17 +270,37 @@ namespace AdaptOrDeity.Sim.Physiology
         public KernelBatch Batch { get; }
 
         /// <summary>
-        /// Species whose fall can lower an expression or growth target (kernel switches reg_on_&lt;species&gt;): ATP, glucose
-        /// 6-phosphate, glucose inside and H+ (a falling pH). The function is upstream's (cell/expression_regulation):
-        /// f = x^n/(1 + x^n), x = C/K (for H+: K/H), n = 4, K = half the resting level (for H+: twice the resting H+).
+        /// Species whose fall can lower an expression, growth or maintenance target (kernel switches reg_on_&lt;species&gt;):
+        /// ATP, glucose 6-phosphate, glucose inside and H+ (a falling pH). The function is upstream's
+        /// (cell/expression_regulation): f = 1/(1 + u^n), u = max(0, 1 - x)/(1 - x_half), x = C/C_rest (for H+: H_rest/H),
+        /// x_half = 1/2, n = 4: exactly 1 at and above rest, 1/2 at half the resting level (for H+: twice the resting H+).
         /// </summary>
         public static readonly string[] RegulationSpecies = { "ATP", "G6P", "glc", "H" };
 
-        /// <summary>Regulated targets: each trait's (its index), then growth (<see cref="GrowthRegulation"/>).</summary>
-        public int RegulationTargets => Traits.Count + 1;
+        /// <summary>
+        /// Maintenance the cell can turn down as species fall (upstream's switches, 0 by default), in the order of the
+        /// regulated targets after growth: the id, the submodule and the suffix of its switches (reg_on_&lt;species&gt;&lt;suffix&gt;)
+        /// and factor (R_reg&lt;suffix&gt;). Protein synthesis (replacing degraded copies and building new ones; cut, the
+        /// cell's proteins are slowly lost), RNA and lipid upkeep, repair (cut, damage builds up) and the maintenance ATPase
+        /// (everything else the cell spends at rest).
+        /// </summary>
+        public static readonly (string Id, string Submodule, string Suffix)[] MaintenanceRegulation =
+        {
+            ("protein_synthesis", "protein", ""), ("upkeep", "bio", "_upkeep"), ("repair", "bio", "_repair"),
+            ("maintenance_atpase", "cytosol", ""),
+        };
+
+        /// <summary>
+        /// Regulated targets: each trait's (its index), then growth (<see cref="GrowthRegulation"/>), then the maintenance
+        /// (<see cref="MaintenanceTarget"/>).
+        /// </summary>
+        public int RegulationTargets => Traits.Count + 1 + MaintenanceRegulation.Length;
 
         /// <summary>The regulated target that is growth (the energy put into a daughter).</summary>
         public int GrowthRegulation => Traits.Count;
+
+        /// <summary>The regulated target that is maintenance entry <paramref name="k"/> of <see cref="MaintenanceRegulation"/>.</summary>
+        public int MaintenanceTarget(int k) => Traits.Count + 1 + k;
 
         /// <summary>Whether a fall of species <paramref name="species"/> lowers target <paramref name="target"/>.</summary>
         public bool Regulated(int target, int species) => Batch.Externals[RegulationIndex(target, species)][0] != 0.0;
@@ -297,7 +321,7 @@ namespace AdaptOrDeity.Sim.Physiology
 
         private int CheckTarget(int target)
         {
-            if (target < 0 || target > Traits.Count)
+            if (target < 0 || target >= RegulationTargets)
                 throw new ArgumentOutOfRangeException(nameof(target), $"no regulated target {target}");
             return target;
         }

@@ -83,15 +83,16 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(world.Traits[trait].Max, Is.EqualTo(4.0));
             var cell = world.Cell(0);
             Run(world, 1.0);
-            double capacity = cell.HydrolysisMax, upkeep = cell.AlgebraicValue("pool_Hydrolase__J_ATP");
+            double capacity = cell.HydrolysisMax, upkeep = cell.AlgebraicValue("pool_Hydrolase__J_keep");
             Assert.That(upkeep, Is.GreaterThan(0.0), "keeping the copies costs ATP");
             world.SetTrait(0, trait, 4.0);
             Run(world, 5.0);
             Assert.That(cell.Budget().AtpProteinBuild, Is.GreaterThan(0.0), "building the new copies costs ATP");
-            Run(world, 1800.0);
+            Run(world, 3600.0);   // a protein rises with its mRNA's mean lifetime (~7 min): ~8 of them
             Assert.That(world.ReadTrait(0, trait), Is.EqualTo(4.0).Within(0.02), "expression reached the target");
             Assert.That(cell.HydrolysisMax / capacity, Is.EqualTo(4.0).Within(0.02 * 4.0), "capacity = copies x kcat");
-            Assert.That(cell.AlgebraicValue("pool_Hydrolase__J_ATP") / upkeep, Is.EqualTo(4.0).Within(0.1),
+            // (the last of the rise is still being built: its build cost, J_ATP - J_keep, is not turnover)
+            Assert.That(cell.AlgebraicValue("pool_Hydrolase__J_keep") / upkeep, Is.EqualTo(4.0).Within(0.1),
                 "turnover of four times the copies");
         }
 

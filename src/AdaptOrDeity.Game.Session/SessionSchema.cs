@@ -253,6 +253,27 @@ namespace AdaptOrDeity.Game.Session
         /// </summary>
         public int GrowthRegulation => Traits.Count;
 
+        /// <summary>
+        /// Maintenance the cell can turn down as species fall (feature Regulation), the regulated targets after growth in
+        /// this order: ids (as <c>FermenterCell.MaintenanceRegulation</c>), names and what turning each down does.
+        /// </summary>
+        public static readonly IReadOnlyList<(string Id, string Name, string Effect)> MaintenanceRegulation = new[]
+        {
+            ("protein_synthesis", "Protein synthesis",
+                "replacing degraded proteins and building new ones: turned down, the cell saves their turnover but loses " +
+                "its proteins slowly (about 1% an hour) and builds nothing"),
+            ("upkeep", "RNA and lipid upkeep", "remaking mRNA, ribosomal RNA and membrane lipids as they turn over"),
+            ("repair", "Repair", "turned down, damage builds up"),
+            ("maintenance_atpase", "Other maintenance",
+                "everything else a resting cell spends (the maintenance ATPase): starving bacteria cut it far down"),
+        };
+
+        /// <summary>The regulated target that is maintenance entry <paramref name="k"/> of <see cref="MaintenanceRegulation"/>.</summary>
+        public int MaintenanceTarget(int k) => Traits.Count + 1 + k;
+
+        /// <summary>All regulated targets: the traits, growth and the maintenance.</summary>
+        public int RegulationTargets => Traits.Count + 1 + MaintenanceRegulation.Count;
+
         /// <summary>Game features by level; an entry's index is its index in <see cref="SnapshotFrame.FeatureEnabled"/>.</summary>
         public IReadOnlyList<FeatureInfo> Features { get; }
 

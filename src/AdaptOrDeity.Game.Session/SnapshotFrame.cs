@@ -47,7 +47,8 @@ namespace AdaptOrDeity.Game.Session
             CellAlive = new bool[cellCapacity];
             CellCanDivide = new bool[cellCapacity];
             Controls = Allocate<float>(controlCount, groupCapacity);
-            Regulation = Allocate<bool>(traitCount > 0 ? (traitCount + 1) * SessionSchema.RegulationSpecies.Count : 0,
+            Regulation = Allocate<bool>(traitCount > 0
+                    ? (traitCount + 1 + SessionSchema.MaintenanceRegulation.Count) * SessionSchema.RegulationSpecies.Count : 0,
                 groupCapacity);
             FeatureUnlocked = new bool[featureCount];
             FeatureEnabled = new bool[featureCount];
@@ -113,7 +114,8 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>
         /// Per regulated target and species (row <see cref="RegulationRow"/>), per group: whether the species' fall lowers
-        /// the target (feature Regulation). Targets are the traits, then growth (<see cref="SessionSchema.GrowthRegulation"/>).
+        /// the target (feature Regulation). Targets are the traits, then growth (<see cref="SessionSchema.GrowthRegulation"/>),
+        /// then the maintenance (<see cref="SessionSchema.MaintenanceRegulation"/>).
         /// </summary>
         public bool[][] Regulation { get; }
 
