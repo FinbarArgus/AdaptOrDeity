@@ -13,6 +13,13 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
 - **Arrivals:** what appears per second (food now; prey, enemies and friends later) is constant for each level and
   region, set in content/timeline.json to make food scarce or abundant. Done for food.
 
+## Built
+- `Sim.Transport.DiffusionField` (2026-10-12): species on a square grid in a thin water layer, locally one-dimensional
+  backward Euler (stable and non-negative at any step, first order in time), far-field or closed edges, point sources
+  from cells, interpolated sampling, and shifting by whole grid cells to follow the creature. Tests: conservation in a
+  closed box, Gaussian spreading at first order, 10^4x the explicit step, far field steady, uptake depletion, sampling,
+  shifting. Not yet coupled to the cells or food, and no nesting or coarsening (waits on the grid decision).
+
 ## To discuss
 - **Food model after the research:** cells at 2 Ga absorb (external digestion), they do not engulf; packets as small
   polymer particles (0.5-2 µm, one dead-cell equivalent) eroded by cell-surface enzymes, the sugar halo diffusing out

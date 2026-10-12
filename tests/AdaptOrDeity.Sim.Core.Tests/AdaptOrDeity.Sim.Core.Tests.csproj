@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../../src/AdaptOrDeity.Sim.Core/AdaptOrDeity.Sim.Core.csproj" />
+    <ProjectReference Include="../../src/AdaptOrDeity.Sim.Transport/AdaptOrDeity.Sim.Transport.csproj" />
   </ItemGroup>
 </Project>
