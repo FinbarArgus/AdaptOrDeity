@@ -188,6 +188,57 @@ namespace AdaptOrDeity.Sim.Core.Tests
         }
 
         [Test]
+        public void ASpeciesWithAStrideConservesAndReachesTheSameSteadyState()
+        {
+            // Species 1 steps every 10th call over the time since, with the mean of its sources. Drifting with the colony
+            // (the grids recentre, catching it up first) its content is exact; still, its steady state is that of
+            // every-step stepping (a few µm out: its long steps leave the short modes of a source's near field slow).
+            const double far = 0.1, J = -2e-18;
+            double[] Run(int stride, double speed, bool varying)
+            {
+                var f = new NestedField(Settings(), new[] { Dglc, Dglc }, new[] { far, far }, 0.0, 0.0, 2e-6);
+                f.SetStride(1, stride);
+                double x = 0.0;
+                for (int n = 0; n < 3000; n++)
+                {
+                    x = speed * n * 0.1;
+                    f.Follow(x, 0.0, 2e-6);
+                    f.Deposit(0, x, 0.0, J);
+                    f.Deposit(1, x, 0.0, varying ? J * (1 + n % 3) : J);   // varying: the stride takes their mean
+                    f.Step(0.1);
+                }
+                f.CatchUp();   // the sources since its last step
+                Assert.That(f.Total(1) - f.OceanInflow(1) - f.Sourced(1), Is.EqualTo(far * Math.Pow(120e-6, 2) * Depth)
+                    .Within(1e-12 * far * Math.Pow(120e-6, 2) * Depth), $"stride {stride}: content");
+                return new[] { f.Sample(1, x + 4e-6, 0.0), f.Sample(1, x + 10e-6, 0.0), f.Sample(1, x, 20e-6) };
+            }
+            Run(10, 2e-6, true);
+            double[] every = Run(1, 0.0, false), strided = Run(10, 0.0, false);
+            for (int k = 0; k < every.Length; k++)
+                Assert.That(strided[k], Is.EqualTo(every[k]).Within(0.01 * (far - every[k])), "the same depleted water");
+        }
+
+        [Test]
+        public void FineSubstepsPerSpeciesConserveContent()
+        {
+            var settings = Settings();
+            settings.FineSubsteps = 4;
+            var f = new NestedField(settings, new[] { Dglc, 1e-9 }, new[] { 1.0, 0.0 }, 0.0, 0.0, 4e-6, FieldEdge.Closed);
+            f.SetFineSubsteps(1, 1);
+            double start0 = f.Total(0), start1 = f.Total(1);
+            for (int n = 0; n < 200; n++)
+            {
+                f.Deposit(0, 1e-6, -2e-6, -1e-18);
+                f.Deposit(1, -3e-6, 1e-6, 2e-18);
+                f.Deposit(1, 40e-6, 10e-6, 1e-18);   // on a coarser level
+                f.Step(0.1);
+            }
+            Assert.That(f.Total(0), Is.EqualTo(start0 + f.Sourced(0)).Within(1e-12 * start0));
+            Assert.That(f.Total(1), Is.EqualTo(start1 + f.Sourced(1)).Within(1e-12 * f.Sourced(1)));
+            Assert.That(f.Sourced(1), Is.EqualTo(200 * 0.1 * 3e-18).Within(1e-12 * f.Sourced(1)));
+        }
+
+        [Test]
         public void RecentringFollowsTheColonyAndConservesContent()
         {
             var f = Field(4e-6);

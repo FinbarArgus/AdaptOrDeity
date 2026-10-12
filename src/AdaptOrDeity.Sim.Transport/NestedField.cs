@@ -529,8 +529,11 @@ namespace AdaptOrDeity.Sim.Transport
 
         private int FineSubstepsOf(int s) => _fineSubsteps[s] > 0 ? _fineSubsteps[s] : Math.Max(1, _settings.FineSubsteps);
 
-        // Steps every species that has waited since its last step, so no sources are pending when the grids move.
-        private void CatchUp()
+        /// <summary>
+        /// Steps every species that has waited since its last step (a stride), over the time since: then every source added
+        /// is in the field. The grids do this before they move.
+        /// </summary>
+        public void CatchUp()
         {
             _activeCount = 0;
             for (int s = 0; s < Species; s++)
