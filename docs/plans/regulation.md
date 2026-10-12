@@ -12,10 +12,10 @@ species' drop lowers it; the function is hardcoded for now, experts will choose 
   default, so the cell is bitwise unchanged until the player turns one on. Only targets change, never a flux or a cost.
 - **Game**: feature `regulation` (level 1, free, optional, on by default once unlocked), unlocked after the first gap
   without food (designer, 2026-10-13: "Unlock after the first gap of not contacting food"): the first time the creature
-  goes `requires_food_gap_s` (60 s, content/timeline.json) without a living cell touching a packet, holding one, or with
+  goes `requires_food_gap_s` (30 s, content/timeline.json) without a living cell touching a packet, holding one, or with
   food in its vacuole (`TimeWithoutFood`, `FoodGapMet`, FermenterWorld.Regulation.cs). The gap counts from the start of
-  play. A minute is about half the time a cell's ATP takes to run out in a full famine (~2 min, see below), so the
-  player can act before the crash. Each
+  play. From rest in a full famine a cell's ATP falls below half its resting level at 57 s and below 0.1 mM at 126 s
+  (measured), so half a minute unlocks it about 95 s before the crash. Each
   group keeps a switch per regulated target (each trait, then growth) and species; ApplyControls pushes them to the
   group's cells as `reg_on_<species>_mod_<pool|bio>` (all 0 while the feature is locked or off). Daughters and released
   organisms copy their parent's kernel inputs, switches included. Command `SetRegulation(group, target, species, on)`;

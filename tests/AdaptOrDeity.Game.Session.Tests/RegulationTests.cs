@@ -71,7 +71,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             var info = GameFeatures.All[Feature(GameFeatures.Regulation)];
             Assert.That(info.UnlockLevel, Is.EqualTo(1));
             Assert.That(info.Cost, Is.EqualTo(0), "free: unlocked by the energy shortage itself");
-            Assert.That(info.RequiresFoodGap, Is.EqualTo(60.0), "s: a minute without food");
+            Assert.That(info.RequiresFoodGap, Is.EqualTo(30.0), "s: half a minute without food");
             Assert.That(SessionSchema.RegulationSpecies.Select(s => s.Id), Is.EqualTo(FermenterCell.RegulationSpecies));
         }
 

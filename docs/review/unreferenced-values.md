@@ -60,8 +60,9 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
   ran out of ATP on days 1.5-4, 4e-3 never (gaps between packets decide, see the plan's decision log).
 - `levels[].arrivals.prey_per_s` (0 at level 1, see the decision log for level 2's value): calibrated for play, not sourced.
 - Feature costs: multicellularity and mitochondria (points), mitochondria's `requires_swallowed` 10 (designer's number).
-- Regulation (`features[regulation]`): unlocked after the first gap of `requires_food_gap_s` (60 s) without food (design,
-  designer's "after the first gap of not contacting food"; a minute is about half a cell's ATP reserve in a full famine);
+- Regulation (`features[regulation]`): unlocked after the first gap of `requires_food_gap_s` (30 s) without food (design,
+  designer's "after the first gap of not contacting food"; ATP falls below half at 57 s and to 0.1 mM at 126 s of a full
+  famine);
   free (no points). Its explanation cites Potrykus & Cashel 2008 and
   Schneider, Gaal & Gourse 2002 (looked up, not read in full).
 

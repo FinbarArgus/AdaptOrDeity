@@ -382,8 +382,8 @@
    "unlock_level": 1,
    "optional": true,
    "default_enabled": true,
-   "requires_food_gap_s": 60,
-   "effect": "Unlocked when your creature first goes a minute without touching or holding food. A cog beside each expression slider and the growth slider chooses which falling species (ATP, G6P, glucose inside, pH) turn that protein or growth down, so a starving cell spends less.",
+   "requires_food_gap_s": 30,
+   "effect": "Unlocked when your creature first goes half a minute without touching or holding food. A cog beside each expression slider and the growth slider chooses which falling species (ATP, G6P, glucose inside, pH) turn that protein or growth down, so a starving cell spends less.",
    "explanation": "Real bacteria do not keep spending as if food were plentiful. When energy or carbon runs short they raise a signal molecule, (p)ppGpp, that shuts down the making of ribosomes and slows protein synthesis and growth: the stringent response (Potrykus and Cashel 2008). The genes for ribosomal RNA also read the ATP level directly, so their output falls as ATP falls (Schneider, Gaal and Gourse 2002). Spending less in a famine keeps ATP from running out. That matters because glycolysis has to invest ATP before it pays any back: a cell whose ATP reaches zero cannot restart glycolysis even when food returns. Each cog chooses which falling species turn a protein or growth down. The rule is fixed for now: the target is multiplied by f = C^4/(K^4 + C^4), with K half the species' resting level (for pH, the target falls as the pH drops, half-way 0.3 below rest), so f is 0.94 at rest, 0.5 at half the resting level and near 0 below a quarter. Choose with care: turning down the glycolytic enzymes or the glucose carriers in a famine leaves the cell unable to use food when it comes back, while turning down pumps, exchangers and flagella saves energy it can rebuild later. Experts will be able to choose the function.",
    "reviewed": false
   }
