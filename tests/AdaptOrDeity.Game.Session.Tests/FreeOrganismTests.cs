@@ -8,8 +8,9 @@ namespace AdaptOrDeity.Game.Session.Tests
 {
     /// <summary>
     /// Daughters released at division without multicellularity live on as free organisms: the daughter's cell as divided,
-    /// a body that swims and drifts as the creature's does, eating, engulfing, dying and dividing by the creature's rules,
-    /// carried in frames, and no longer simulated out of range or beyond the cap.
+    /// a body that swims and drifts as the creature's does, eating, engulfing, dying (its body becomes food) and dividing by
+    /// the creature's rules (every daughter in the lineage earns points), carried in frames, and no longer simulated out of
+    /// range or beyond the cap.
     /// </summary>
     public class FreeOrganismTests
     {
@@ -188,32 +189,116 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(world.EatenFromVacuoles, Is.EqualTo(0.0));
         }
 
-        [Test]
-        public void ItCanDieAndIsRemovedAfterAWhile()
+        // Kills the organism (a lethal damage load) and steps once: its body becomes food. Returns the body.
+        private static FoodPacket Kill(FermenterWorld world, FreeOrganism o)
         {
-            using var world = Quiet();
-            var o = Release(world);
-            var packet = PacketAt(world, o.X, o.Y, 0.5 * world.CellRadius);
-            Run(world, 0.2);
-            Assert.That((packet.Stuck, packet.Holder), Is.EqualTo((true, o.Id)));
-            o.Cell.SetState("bio__D", 1.1);   // a lethal damage load
+            o.Cell.SetState("bio__D", 1.1);
             Run(world, 0.1);
             Assert.That(o.Alive, Is.False);
-            Assert.That(world.OrganismsDied, Is.EqualTo(1));
-            Assert.That(packet.Stuck, Is.False, "what it held lies where it is");
-            Assert.That(world.Organisms, Does.Contain(o), "a dead organism stays a while");
-            double kept = GameParameters.Default.Value("organisms.dead_kept");
-            Run(world, kept - 1.0);
-            Assert.That(world.Organisms, Does.Contain(o));
-            Run(world, 1.5);
-            Assert.That(world.Organisms, Is.Empty, "then it is removed");
-            Assert.That(world.OrganismsGone, Is.EqualTo(0), "removed as dead, not gone out of range");
+            return o.Remains!;
+        }
+
+        // Puts the body on the creature's cell 0, overlapping it by a fifth of a cell.
+        private static void OnCreature(FermenterWorld world, FoodPacket body)
+        {
+            world.CellPosition(0, out double x, out double y);
+            typeof(FoodPacket).GetProperty("X")!.SetValue(body, x + 1.8 * world.CellRadius);
+            typeof(FoodPacket).GetProperty("Y")!.SetValue(body, y);
         }
 
         [Test]
-        public void ItDividesWhenItsInheritedSettingsAllowAndItsDaughtersEarnNothing()
+        public void ADeadOrganismsBodyIsFoodWhereItLiesAndStaysUntilEaten()
+        {
+            using var world = Quiet(engulfing: true);
+            var o = Release(world);
+            world.SetFeature(Feature(GameFeatures.Engulfing), false);   // only the organism engulfs
+            var swallowed = PacketAt(world, o.X, o.Y, 0.5 * world.CellRadius);
+            var b = o.Body.Body;
+            double ax = Math.Cos(b.Angle + Math.PI), ay = Math.Sin(b.Angle + Math.PI);
+            var held = PacketAt(world, o.X + 1.5 * world.CellRadius * ax, o.Y + 1.5 * world.CellRadius * ay,
+                1.2 * world.CellRadius, slot: 1);   // too large to engulf: it holds it
+            Run(world, 60.0);
+            Assert.That(swallowed.Active, Is.False);
+            Assert.That((held.Stuck, held.Holder), Is.EqualTo((true, o.Id)));
+            var v = o.Vacuole!;
+            int organisms = world.Organisms.Count;
+
+            var body = Kill(world, o);
+            Assert.That(world.Organisms, Does.Not.Contain(o), "a dead organism is no longer an organism");
+            Assert.That(world.Organisms, Has.Count.EqualTo(organisms - 1));
+            Assert.That(world.OrganismsDied, Is.EqualTo(1));
+            Assert.That(world.OrganismsGone, Is.EqualTo(0));
+            Assert.That(held.Stuck, Is.False, "what it held lies where it is");
+            Assert.That(o.Vacuole, Is.Null);
+            Assert.That((body.Active, body.Kind, body.Stuck), Is.EqualTo((true, PacketKind.Body, false)));
+            Assert.That((body.X, body.Y), Is.EqualTo((o.X, o.Y)), "where it died");
+            Assert.That(body.Radius, Is.EqualTo(world.CellRadius), "a dead cell, as large as the cell");
+            Assert.That(world.Food.Fill(body), Is.EqualTo(1.0));
+            Assert.That(world.Food.TraceSpecies[body.MainTrace].Id, Is.EqualTo("serine"), "it smells of lysed cells");
+            // its carbon: the cell at the packet density (with the packets' free share), plus what its vacuole held
+            var s = world.Food.Settings;
+            double cell = s.SphereAmount(world.CellRadius);
+            Assert.That(world.DeadCellAmount, Is.EqualTo(cell));
+            Assert.That(cell, Is.EqualTo(GameParameters.Default.PacketDensity * 4.0 / 3.0 * Math.PI
+                * Math.Pow(world.CellRadius, 3)).Within(1e-12 * cell));
+            Assert.That(v.Glucose, Is.GreaterThan(0.0));
+            Assert.That(body.Glucose, Is.EqualTo(cell + v.Glucose).Within(1e-12 * cell));
+            Assert.That(body.Free, Is.EqualTo(s.FreeFraction * cell + v.Free).Within(1e-12 * cell));
+            Assert.That(o.EatenFromVacuole + o.Egested + v.Glucose, Is.EqualTo(o.Engulfed).Within(1e-12 * o.Engulfed),
+                "what it engulfed was taken up or is in its body: none is lost");
+
+            // nobody touches it: it stays, whole, drifting with the water it died in
+            double glucose = body.Glucose, x0 = body.X, y0 = body.Y;
+            const double seconds = 1800.0;
+            Run(world, seconds);
+            Assert.That(body.Active, Is.True, "a dead body is not removed with time");
+            Assert.That(body.Glucose, Is.EqualTo(glucose));
+            Assert.That(body.X - x0, Is.EqualTo(b.CurrentVx * seconds).Within(1e-9 * Math.Abs(b.CurrentVx * seconds) + 1e-15));
+            Assert.That(body.Y - y0, Is.EqualTo(b.CurrentVy * seconds).Within(1e-9 * Math.Abs(b.CurrentVy * seconds) + 1e-15));
+
+            // the creature's cell eats it by the contact rule, and it shrinks
+            OnCreature(world, body);
+            double eaten0 = world.FoodEaten;
+            Run(world, 600.0);
+            double eaten = world.FoodEaten - eaten0;
+            Assert.That(eaten, Is.GreaterThan(0.0));
+            Assert.That(glucose - body.Glucose, Is.EqualTo(eaten).Within(1e-12 * glucose), "what it lost is what was eaten");
+            Assert.That((body.Stuck, body.Holder), Is.EqualTo((true, 0)), "it stays with the creature that found it");
+            Assert.That(body.Radius, Is.LessThan(world.CellRadius));
+            Assert.That(body.Radius, Is.EqualTo(world.CellRadius * Math.Pow(body.Glucose / glucose, 1.0 / 3.0))
+                .Within(1e-3 * world.CellRadius), "its radius goes as the cube root of what is left");
+        }
+
+        [Test]
+        public void ADeadCellIsEngulfedOnlyOnceItIsSmallerThanTheCell()
+        {
+            using var world = Quiet(engulfing: true);
+            var o = Release(world);
+            var body = Kill(world, o);
+            double glucose = body.Glucose;
+            OnCreature(world, body);
+            Run(world, 1.0);
+            Assert.That((body.Active, world.Engulfed), Is.EqualTo((true, 0.0)),
+                "a dead cell as large as the cell is not engulfed: it is eaten from outside");
+            Assert.That(world.FoodEaten, Is.GreaterThan(0.0));
+            // eaten down by contact until it fits beside room for a prey cell, then swallowed whole
+            for (int k = 0; k < 720 && body.Active; k++)
+            {
+                Run(world, 10.0);
+                Assert.That(!body.Active || body.Radius <= world.CellRadius, Is.True);
+            }
+            Assert.That(body.Active, Is.False, "swallowed once small enough");
+            Assert.That(world.Engulfed, Is.GreaterThan(0.0));
+            Assert.That(world.VacuoleRadius(world.Engulfed + world.Prey.Content), Is.LessThan(world.CellRadius));
+            Assert.That(world.FoodEaten - world.EatenFromVacuoles + world.Engulfed, Is.EqualTo(glucose).Within(1e-12 * glucose),
+                "eaten from outside + engulfed = the body");
+        }
+
+        [Test]
+        public void ItDividesWhenItsInheritedSettingsAllowAndItsDaughtersEarnPointsToo()
         {
             using var world = Quiet();
+            double perOffspring = GameParameters.Default.Value("skills.points_per_offspring");
             int points = world.ReproductionPoints;
             var plain = Release(world);   // released without automatic division
             world.SetFeature(Feature(GameFeatures.AutoDivide), true);
@@ -236,9 +321,17 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(dividing.Daughters, Is.EqualTo(1));
             Assert.That(plain.Daughters, Is.EqualTo(0), "released without automatic division: it never divides by itself");
             Assert.That(grandchild.AutoDivides, Is.True, "its daughter divides as it does");
-            Assert.That(world.Offspring, Is.EqualTo(2), "offspring counts the creature's own daughters");
-            Assert.That(world.ReproductionPoints, Is.EqualTo(reproduction), "and only they earn points");
+            Assert.That((world.Offspring, world.OwnOffspring), Is.EqualTo((3, 2)), "offspring counts the whole lineage");
+            Assert.That(world.ReproductionPoints, Is.EqualTo((int)Math.Floor(3 * perOffspring)),
+                "a granddaughter earns points as a daughter does");
+            Assert.That(world.ReproductionPoints, Is.GreaterThan(reproduction));
             Assert.That(world.OrganismsReleased, Is.EqualTo(3));
+            // and so on down the generations
+            grandchild.Cell.SetState("bio__P_growth", grandchild.Cell.DaughterCost);
+            Run(world, 0.1);
+            Assert.That(world.Organisms[3].Generation, Is.EqualTo(3));
+            Assert.That((world.Offspring, world.OwnOffspring), Is.EqualTo((4, 2)));
+            Assert.That(world.ReproductionPoints, Is.EqualTo((int)Math.Floor(4 * perOffspring)));
         }
 
         [Test]
@@ -261,14 +354,26 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(world.Organisms, Has.Count.EqualTo(world.MaxOrganisms));
             Assert.That(world.Organisms, Does.Not.Contain(near), "the farthest went");
             Assert.That(world.OrganismsGone, Is.EqualTo(2));
-            // and a dead one before any living one
-            world.Organisms[5].Cell.SetState("bio__D", 1.1);
-            Run(world, 0.1);
+            // a dead one's body is food, not an organism: it makes room
             var dead = world.Organisms[5];
-            Assert.That(dead.Alive, Is.False);
-            Release(world);
+            var body = Kill(world, dead);
+            Assert.That(world.Organisms, Has.Count.EqualTo(world.MaxOrganisms - 1));
             Assert.That(world.Organisms, Does.Not.Contain(dead));
+            Release(world);
+            Assert.That(world.Organisms, Has.Count.EqualTo(world.MaxOrganisms));
+            Assert.That(world.OrganismsGone, Is.EqualTo(2), "nobody went for the new daughter");
             Assert.That(world.Organisms.All(x => x.Alive), Is.True);
+            Assert.That(body.Active, Is.True);
+            // a body farther than the organisms' range is no longer simulated, though nearer than food would be dropped
+            Assert.That(world.Food.BodyRange, Is.EqualTo(world.OrganismRange));
+            var cb = world.Body.Body;
+            typeof(FoodPacket).GetProperty("X")!.SetValue(body, cb.X + 0.99 * world.OrganismRange);
+            typeof(FoodPacket).GetProperty("Y")!.SetValue(body, cb.Y);
+            Run(world, 0.1);
+            Assert.That(body.Active, Is.True, "beyond the food window, within the organisms' range");
+            typeof(FoodPacket).GetProperty("X")!.SetValue(body, cb.X + 1.01 * world.OrganismRange);
+            Run(world, 0.1);
+            Assert.That((body.Active, world.Food.BodiesGone), Is.EqualTo((false, 1)));
         }
 
         [Test]
@@ -288,6 +393,19 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(env.Field.Sample(lac, o.X, o.Y), Is.GreaterThan(0.0), "its lactate is in the water around it");
             Assert.That(env.Field.LevelAt(o.X + world.OrganismRange, o.Y + world.OrganismRange), Is.GreaterThanOrEqualTo(0),
                 "the field covers every organism in range");
+
+            // dead, its body's free sugar leaks into the field: what the body loses, the field gains
+            var body = Kill(world, o);
+            double glucose = body.Glucose;
+            sourced0 = env.Field.Sourced(g);
+            packets0 = env.PacketGlucose;
+            cells0 = world.CellGlucoseExchanged;
+            Run(world, 60.0);
+            packets = env.PacketGlucose - packets0;
+            cells = world.CellGlucoseExchanged - cells0;
+            Assert.That(packets, Is.GreaterThan(0.0));
+            Assert.That(glucose - body.Glucose, Is.EqualTo(packets).Within(1e-12 * glucose));
+            Assert.That(env.Field.Sourced(g) - sourced0, Is.EqualTo(packets - cells).Within(1e-12 * (packets + Math.Abs(cells))));
         }
 
         [Test]
@@ -309,19 +427,22 @@ namespace AdaptOrDeity.Game.Session.Tests
                     Release(world);
                 }
                 world.Organisms[2].Cell.SetState("bio__P_growth", world.Organisms[2].Cell.DaughterCost);
+                world.Organisms[4].Cell.SetState("bio__D", 1.1);   // its body is food among them
                 Run(world, 120.0);
                 var print = world.Organisms.SelectMany(o => new[]
                 {
                     o.Id, o.X, o.Y, o.Body.Body.Angle, o.Cell.State("cytosol__C_ATP"), o.Cell.MembraneGlucose, o.Eaten,
                     o.Engulfed, o.Vacuole?.Glucose ?? -1.0,
-                }).Concat(new[]
+                }).Concat(world.Food.Packets.Where(p => p.Active && p.Kind == PacketKind.Body)
+                    .SelectMany(p => new[] { p.X, p.Y, p.Glucose, p.Free })).Concat(new[]
                 {
-                    world.OrganismsReleased, world.OrganismsEaten, world.OrganismsEngulfed, world.FoodEaten,
+                    world.OrganismsReleased, world.OrganismsDied, world.Offspring, world.Food.BodiesGone, world.OrganismsEaten, world.OrganismsEngulfed, world.FoodEaten,
                     world.Cell(0).State("cytosol__C_ATP"), world.Body.Body.X,
                 }).ToArray();
                 if (reference == null)
                 {
                     Assert.That(world.Organisms.Any(o => o.Generation == 2), Is.True, "an organism divided");
+                    Assert.That(world.OrganismsDied, Is.EqualTo(1), "one died: its body is food among them");
                     reference = print;
                     continue;
                 }
@@ -343,27 +464,35 @@ namespace AdaptOrDeity.Game.Session.Tests
             var o = Release(world);
             loop.StepExactly(50);
             o.Cell.SetState("bio__D", 1.1);
+            loop.StepExactly(1);
+            var body = o.Remains!;
             while (world.Organisms.Count <= capacity)
                 Release(world);
             loop.StepExactly(1);
             Assert.That(loop.Outgrown(frame), Is.True, "more organisms than the frame has room for");
             frame = loop.CreateFrame();
-            var second = world.Organisms[1];
+            var second = world.Organisms[0];
             loop.Enqueue(SimCommands.InspectOrganism(second.Id));
             loop.ApplyCommands();
             loop.WriteSnapshot(frame);
             Assert.That(frame.OrganismCount, Is.EqualTo(world.Organisms.Count));
-            Assert.That(frame.OrganismId[0], Is.EqualTo(o.Id));
-            Assert.That(frame.OrganismAlive[0], Is.False);
-            Assert.That(frame.OrganismAlive[1], Is.True);
-            Assert.That(frame.OrganismX[1], Is.EqualTo((float)(second.X - world.Body.Body.X)));
-            Assert.That(frame.OrganismY[1], Is.EqualTo((float)(second.Y - world.Body.Body.Y)));
-            Assert.That(frame.OrganismOrientation[1], Is.EqualTo((float)second.Body.Body.Angle));
-            Assert.That(frame.OrganismGeneration[1], Is.EqualTo(1));
-            Assert.That(frame.OrganismFlagella[1], Is.EqualTo((float)world.FlagellaOf(second)));
-            Assert.That(frame.OrganismFlagellumAngles[1][0], Is.EqualTo((float)second.Body.FlagellumAngle(0, 0)));
+            Assert.That(frame.OrganismId[0], Is.EqualTo(o.Id + 1), "the dead one is food, not an organism");
+            Assert.That(frame.OrganismX[0], Is.EqualTo((float)(second.X - world.Body.Body.X)));
+            Assert.That(frame.OrganismY[0], Is.EqualTo((float)(second.Y - world.Body.Body.Y)));
+            Assert.That(frame.OrganismOrientation[0], Is.EqualTo((float)second.Body.Body.Angle));
+            Assert.That(frame.OrganismGeneration[0], Is.EqualTo(1));
+            Assert.That(frame.OrganismFlagella[0], Is.EqualTo((float)world.FlagellaOf(second)));
+            Assert.That(frame.OrganismFlagellumAngles[0][0], Is.EqualTo((float)second.Body.FlagellumAngle(0, 0)));
             int atp = world.Overlays.ToList().FindIndex(c => c.Id == "atp");
-            Assert.That(frame.OrganismChannels[atp][1], Is.EqualTo((float)second.Cell.State("cytosol__C_ATP")));
+            Assert.That(frame.OrganismChannels[atp][0], Is.EqualTo((float)second.Cell.State("cytosol__C_ATP")));
+            // its body, among the packets: marked as a body, with its radius and fill
+            Assert.That(frame.PacketCount, Is.EqualTo(1));
+            Assert.That(frame.PacketBody[0], Is.True);
+            Assert.That(frame.PacketCarried[0], Is.False);
+            Assert.That(frame.PacketRadius[0], Is.EqualTo((float)body.Radius));
+            Assert.That(frame.PacketFill[0], Is.EqualTo((float)world.Food.Fill(body)));
+            Assert.That(frame.PacketX[0], Is.EqualTo((float)(body.X - world.Body.Body.X)));
+            Assert.That((frame.Offspring, frame.OwnOffspring), Is.EqualTo((world.Offspring, world.Offspring)));
             Assert.That(frame.InspectedOrganism, Is.EqualTo(second.Id));
             int atpDetail = loop.Schema.Details.ToList().FindIndex(d => d.Id == "atp");
             Assert.That(frame.OrganismDetails[atpDetail], Is.EqualTo(second.Cell.State("cytosol__C_ATP")));
@@ -383,7 +512,9 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(back.OrganismX, Is.EqualTo(frame.OrganismX));
             Assert.That(back.OrganismY, Is.EqualTo(frame.OrganismY));
             Assert.That(back.OrganismOrientation, Is.EqualTo(frame.OrganismOrientation));
-            Assert.That(back.OrganismAlive, Is.EqualTo(frame.OrganismAlive));
+            Assert.That(back.PacketBody, Is.EqualTo(frame.PacketBody));
+            Assert.That(back.PacketRadius, Is.EqualTo(frame.PacketRadius));
+            Assert.That((back.Offspring, back.OwnOffspring), Is.EqualTo((frame.Offspring, frame.OwnOffspring)));
             Assert.That(back.OrganismMotorOn, Is.EqualTo(frame.OrganismMotorOn));
             Assert.That(back.OrganismFlagella, Is.EqualTo(frame.OrganismFlagella));
             Assert.That(back.OrganismVacuoleRadius, Is.EqualTo(frame.OrganismVacuoleRadius));

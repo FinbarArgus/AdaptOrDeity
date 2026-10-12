@@ -21,14 +21,20 @@ namespace AdaptOrDeity.Sim.World
         public string Source { get; }
     }
 
-    /// <summary>How a food packet moves: lying still on the ground, or carried by another creature.</summary>
+    /// <summary>What a food packet is and how it moves until a cell meets it.</summary>
     public enum PacketKind
     {
-        /// <summary>Food lying in the environment (or a dead creature): still over the ground.</summary>
+        /// <summary>Food lying in the environment: still over the ground.</summary>
         Lying,
 
         /// <summary>Food carried by another creature (prey, or an ally bringing it): moves with its carrier.</summary>
         Carried,
+
+        /// <summary>
+        /// A dead free organism's body (<see cref="FoodField.AddBody"/>): drifts with the water it died in, and stays while
+        /// it is within <see cref="FoodField.BodyRange"/> of the creature rather than the food window.
+        /// </summary>
+        Body,
     }
 
     /// <summary>A patch of food: glucose plus traces of other species, in a disc of the 2D sheet.</summary>
@@ -43,16 +49,27 @@ namespace AdaptOrDeity.Sim.World
 
         public double Y { get; internal set; }
 
-        /// <summary>Velocity over the ground [m/s] (0 for lying food).</summary>
+        /// <summary>Velocity over the ground [m/s] (0 for lying food and while held).</summary>
         public double Vx { get; internal set; }
 
         public double Vy { get; internal set; }
+
+        /// <summary>A body's velocity with its water [m/s]: it drifts so again when its holder lets it go.</summary>
+        internal double DriftVx { get; set; }
+
+        internal double DriftVy { get; set; }
 
         /// <summary>Radius [m].</summary>
         public double Radius { get; internal set; }
 
         /// <summary>Glucose left [mol], free and in polymer.</summary>
         public double Glucose { get; internal set; }
+
+        /// <summary>Glucose equivalents it held when it came into the field [mol], and its radius then [m]: its radius goes as
+        /// the cube root of the share left, and it is used up below food.used_up_fraction of this amount.</summary>
+        public double Amount { get; internal set; }
+
+        public double FullRadius { get; internal set; }
 
         /// <summary>
         /// The part of <see cref="Glucose"/> already small molecules [mol]: it leaks out by diffusion with no enzymes
@@ -178,7 +195,7 @@ namespace AdaptOrDeity.Sim.World
             TraceSpecies = settings.TraceSpecies;
             BackgroundGlucose = settings.BackgroundGlucose;
             for (int i = 0; i < settings.InitialPacketCapacity; i++)
-                _packets.Add(new FoodPacket(TraceSpecies.Count));
+                _packets.Add(NewSlot());
             _untilNext = Exponential() / Math.Max(settings.ArrivalsPerSecond, 1e-300);
         }
 
@@ -197,7 +214,16 @@ namespace AdaptOrDeity.Sim.World
         public double PacketRadius => Settings.PacketRadius;
 
         /// <summary>Share of a packet's glucose left (0-1).</summary>
-        public double Fill(FoodPacket p) => p.Glucose / Settings.PacketAmount;
+        public double Fill(FoodPacket p) => p.Glucose / p.Amount;
+
+        /// <summary>
+        /// Distance from the creature along either ground axis within which a dead body (<see cref="PacketKind.Body"/>) stays
+        /// in the field [m]; other packets stay within the window (<see cref="HalfSize"/>). Infinite unless set.
+        /// </summary>
+        public double BodyRange { get; set; } = double.PositiveInfinity;
+
+        /// <summary>Dead bodies that left <see cref="BodyRange"/> uneaten (diagnostics).</summary>
+        public int BodiesGone { get; private set; }
 
         public int ActiveCount
         {
@@ -261,11 +287,16 @@ namespace AdaptOrDeity.Sim.World
                     p.X += p.Vx * dt;
                     p.Y += p.Vy * dt;
                 }
-                if (Math.Abs(p.X - cx) > HalfSize + margin || Math.Abs(p.Y - cy) > HalfSize + margin
-                    || Fill(p) < Settings.UsedUpFraction)
+                double reach = p.Kind == PacketKind.Body ? BodyRange : HalfSize + margin;
+                bool away = Math.Abs(p.X - cx) > reach || Math.Abs(p.Y - cy) > reach;
+                if (away || Fill(p) < Settings.UsedUpFraction)
+                {
                     p.Active = false;
+                    if (away && p.Kind == PacketKind.Body)
+                        BodiesGone++;
+                }
                 else
-                    p.Radius = PacketRadius * Math.Pow(Fill(p), 1.0 / 3.0);   // its volume shrinks as it is eaten
+                    p.Radius = p.FullRadius * Math.Pow(Fill(p), 1.0 / 3.0);   // its volume shrinks as it is eaten
             }
             // Food arrives at the level's rate, Poisson (exponential intervals), whatever is already in the field: carried by
             // another creature, or lying on the ground and coming into view on the sides the creature moves towards.
@@ -335,7 +366,7 @@ namespace AdaptOrDeity.Sim.World
                 return 0.0;
             double polymer = p.Glucose - p.Free;
             double left = p.Glucose - Math.Min(mol, polymer);
-            if (left < Settings.UsedUpFraction * Settings.PacketAmount)
+            if (left < Settings.UsedUpFraction * p.Amount)
             {
                 left = 0.0;
                 p.Free = 0.0;
@@ -394,7 +425,10 @@ namespace AdaptOrDeity.Sim.World
                 }
         }
 
-        /// <summary>The packets <paramref name="holder"/> held lie still where they are (its body died or left).</summary>
+        /// <summary>
+        /// The packets <paramref name="holder"/> held are let go where they are (its body died or left): they lie still,
+        /// and a dead body drifts with its water again.
+        /// </summary>
         public void Release(int holder)
         {
             foreach (var p in _packets)
@@ -402,7 +436,40 @@ namespace AdaptOrDeity.Sim.World
                 {
                     p.Stuck = false;
                     p.Holder = 0;
+                    if (p.Kind == PacketKind.Body)
+                    {
+                        p.Vx = p.DriftVx;
+                        p.Vy = p.DriftVy;
+                    }
                 }
+        }
+
+        /// <summary>
+        /// A dead cell's body becomes food where it lies: a packet of kind <see cref="PacketKind.Body"/> at (x, y), of radius
+        /// <paramref name="radius"/>, holding <paramref name="glucose"/> [mol glucose equivalents] of which
+        /// <paramref name="free"/> are small molecules, drifting at (vx, vy) with the water, smelling most of trace
+        /// <paramref name="mainTrace"/>. It stays until it is eaten or leaves <see cref="BodyRange"/>. Draws no random
+        /// numbers, so the food that arrives is the same with or without deaths.
+        /// </summary>
+        public FoodPacket AddBody(double x, double y, double vx, double vy, double radius, double glucose, double free,
+            int mainTrace)
+        {
+            var slot = FreeSlot();
+            slot.Kind = PacketKind.Body;
+            slot.X = x;
+            slot.Y = y;
+            slot.Vx = slot.DriftVx = vx;
+            slot.Vy = slot.DriftVy = vy;
+            slot.Radius = slot.FullRadius = radius;
+            slot.Glucose = slot.Amount = glucose;
+            slot.Free = free;
+            slot.MainTrace = mainTrace;
+            for (int i = 0; i < slot.Traces.Length; i++)
+                slot.Traces[i] = i == mainTrace ? 1.0 : Settings.PacketTraceMinorShare;
+            slot.Stuck = false;
+            slot.Holder = 0;
+            slot.Active = true;
+            return slot;
         }
 
         /// <summary>Takes packet <paramref name="p"/> out of the field (a cell engulfed it): its content leaves with it.</summary>
@@ -440,10 +507,17 @@ namespace AdaptOrDeity.Sim.World
             foreach (var p in _packets)
                 if (!p.Active)
                     return p;
-            var added = new FoodPacket(TraceSpecies.Count);
+            var added = NewSlot();
             _packets.Add(added);
             return added;
         }
+
+        // An empty slot, sized as a fresh packet.
+        private FoodPacket NewSlot() => new FoodPacket(TraceSpecies.Count)
+        {
+            Amount = Settings.PacketAmount,
+            FullRadius = Settings.PacketRadius,
+        };
 
         // Inward normals of the window's sides: left, right, bottom, top.
         private static readonly double[] SideNx = { 1.0, -1.0, 0.0, 0.0 }, SideNy = { 0.0, 0.0, 1.0, -1.0 };
@@ -507,8 +581,8 @@ namespace AdaptOrDeity.Sim.World
             slot.Y = y;
             slot.Vx = vx;
             slot.Vy = vy;
-            slot.Radius = PacketRadius;
-            slot.Glucose = Settings.PacketAmount;
+            slot.Radius = slot.FullRadius = PacketRadius;
+            slot.Glucose = slot.Amount = Settings.PacketAmount;
             slot.Free = Settings.FreeFraction * Settings.PacketAmount;
             slot.MainTrace = _random.Next(TraceSpecies.Count);
             for (int i = 0; i < slot.Traces.Length; i++)

@@ -217,7 +217,7 @@
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "reproduction points: skill points per daughter that leaves the creature at division (no multicellularity), on top of the food points (designer request 2026-10-12: offspring are fitness, so staying single-celled pays for a while). Measured 2026-10-12 (one seed): a level-2 cell kept on food (0.01 packets/s) at growth 3 left 5 daughters in the week (74 food points); at the level's own food (3e-3 packets/s) growth 2-10 runs its ATP out within a day and it leaves none. Set to 1 point per daughter (designer, 2026-10-12)"
+   "note": "reproduction points: skill points per daughter released in the creature's lineage (its own daughters at division without multicellularity, and its free organisms' daughters, any generation: designer request 2026-10-13), on top of the food points (designer request 2026-10-12: offspring are fitness, so staying single-celled pays for a while). Measured 2026-10-12 (one seed): a level-2 cell kept on food (0.01 packets/s) at growth 3 left 5 daughters in the week (74 food points); at the level's own food (3e-3 packets/s) growth 2-10 runs its ATP out within a day and it leaves none. Set to 1 point per daughter (designer, 2026-10-12)"
   },
   "field.enabled": {
    "value": 0.0,
@@ -399,14 +399,7 @@
    "units": "1",
    "source": "definitional",
    "status": "design",
-   "note": "a free organism farther than this many view widths (2 x food.field_half_size) from the creature, along either ground axis, is no longer simulated (gone out of range); beyond the view it sees only the open water, with no food packets"
-  },
-  "organisms.dead_kept": {
-   "value": 600.0,
-   "units": "s",
-   "source": "unreferenced_placeholder",
-   "status": "design",
-   "note": "how long a dead free organism stays in the water (drifting, drawn grey) before it is removed; it does not become food yet"
+   "note": "a free organism farther than this many view widths (2 x food.field_half_size) from the creature, along either ground axis, is no longer simulated (gone out of range); beyond the view it sees only the open water, with no food packets. A dead organism's body (food) stays within the same range, though other food stays within the view"
   },
   "organisms.initial_capacity": {
    "value": 8,

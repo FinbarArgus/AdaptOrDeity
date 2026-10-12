@@ -34,12 +34,41 @@ as ours when it was released." Built on branch feat/free-daughters (from m0-skel
   simulated organism is inside it.
 - **Its food earns the player nothing**: `Eaten` per organism and `OrganismsEaten` in all; `FoodEaten` and the food
   points are the creature's only. `Swallowed` likewise counts only the creature's prey.
-- **Death**: at a lethal damage load. A dead organism drifts with the water, drawn grey, for `organisms.dead_kept`
-  (600 s), then is removed. It does not become food (open question).
+- **Death**: at a lethal damage load. At the end of the step it dies in, it leaves `Organisms` and **its body becomes
+  food where it lies** (designer request 2026-10-13, "dead daughters should not be removed, they should be able to be
+  eaten"; `FermenterWorld.Die`, `FoodField.AddBody`, `FreeOrganism.Remains`). See "Dead bodies" below.
 - **Division**: if it was released with growth and automatic division on, it divides by itself when its daughter is
-  built, and the daughter is released the same way, behind it, with what it had. **Its daughters are its offspring, not
-  the player's**: `Offspring` and the reproduction points count only the creature's own daughters (`Daughters` per
-  organism, `OrganismsReleased` in all). Counting the lineage is an open question.
+  built, and the daughter is released the same way, behind it, with what it had. **Every daughter in the lineage is
+  offspring** (designer request 2026-10-13, "we should get points from daughters daughters as well"): `Offspring`
+  counts the creature's own daughters and every free organism's, any generation, and each earns
+  `skills.points_per_offspring`; `OwnOffspring` is the creature's own (generation 1) among them. `Daughters` per
+  organism; `OrganismsReleased` (equal to `Offspring`) in all.
+
+### Dead bodies
+- A dead organism's body is a food packet of kind `PacketKind.Body`: a sphere of the cell's radius (1 µm) at the
+  packets' density (`food.*`: 2.29 M glucose equivalents, all of a cell's carbon), **9.6e-15 mol**, about twice a
+  fresh packet (4.9e-15 mol), with the packets' free share (`food.free_fraction`, 3%), **plus what its vacuole held**
+  (polymer and free sugar as they were: engulfed food is not lost at death). The cell's simulated pools (glucose,
+  glycogen, ATP) are not added: the packet density already counts all of a cell's carbon, its small molecules
+  included, so adding them would count them twice. `DeadCellAmount` is the cell's part.
+- It smells of serine (lysed cells). It drifts with the water it died in (the current at its death); held by a cell
+  it moves with that cell's body like other food, and let go (its holder died or left) it drifts again. Packets the
+  organism held lie where they are.
+- **It stays until it is eaten**: no timed removal (`organisms.dead_kept` is retired). Its radius goes as the cube root
+  of what is left, from its own size (`FoodPacket.Amount`, `FullRadius`), and it is used up below
+  `food.used_up_fraction` of its own amount.
+- **Who eats it, by the packets' rules**: the creature's cells and living organisms by contact (in turn: the creature's
+  cells first, then organisms by id); with the environment field its free sugar leaks into the field and touching
+  cells' hydrolase digests it. **Engulfing** needs an item smaller than the cell: a fresh body is as large as a cell, so
+  no cell (all are the same size) engulfs it whole. Eaten from outside to ~87% (radius ~0.96 of a cell), it fits in an
+  empty vacuole with room left for a prey cell and an engulfing cell swallows the rest (`FreeOrganismTests`).
+- **Range**: a body stays while it is within the organisms' range (`organisms.range_view_widths`, 2 view widths, 60 µm
+  along either ground axis) of the creature, though other food leaves the field at the edge of the 30 µm window.
+  Beyond it the body is no longer simulated (`FoodField.BodiesGone`); that is not a timed removal but it is a removal
+  (open question). With the creature drifting in the same water a body it does not swim away from stays in range.
+- At the cap a daughter replaces the farthest living organism: dead ones are food, not organisms. Frames carry only
+  living organisms (`OrganismAlive` is gone) and mark bodies among the packets (`PacketBody`); Unity draws a body as a
+  grey dead cell with a pale outline, shrinking as it is eaten; its tooltip says "Dead cell".
 
 ### Bounds and cost
 - **Range**: an organism farther than `organisms.range_view_widths` = **2 view widths** (60 µm, the view being the
@@ -67,14 +96,17 @@ as ours when it was released." Built on branch feat/free-daughters (from m0-skel
   `OrganismId`, `OrganismGeneration`, `OrganismX/Y` (relative to the creature, ground axes), `OrganismOrientation`,
   `OrganismAlive`, `OrganismMotorOn`, `OrganismFlagella` and `OrganismFlagellumAngles`, `OrganismVacuoleRadius`, every
   overlay channel (`OrganismChannels`), the counters, and the details of one inspected organism
-  (`SimCommands.InspectOrganism(id)`, `OrganismDetails`). The codec's header has the organism capacity (magic "ASN3").
+  (`SimCommands.InspectOrganism(id)`, `OrganismDetails`). The codec's header has the organism capacity (magic "ASN5"; `PacketBody`, `OwnOffspring`).
 - Unity: `OrganismView` draws each like the creature's cells but paler with a white outline (grey when dead), growing
   as it builds a daughter, coloured by the overlay shown, with its flagella beating while its motors run.
   Clicking one opens `OrganismPanel` (read-only, top left: its state, overlay values and every cell-panel detail by
-  group); hovering shows what it is; the HUD's "Free n" counts the living ones (tooltip: released, died, gone).
+  group); hovering shows what it is; the HUD's "Free n" counts them (tooltip: released, died, gone) and "Offspring n"'s
+  tooltip splits the creature's own daughters from their descendants (as does the skill window's points line).
 
 ## Open questions
-- Should a dead organism become a food packet (it is one: a dead cell)? Then death conserves its carbon.
-- Should the lineage's daughters count for reproduction points (fitness is the lineage's), or only the creature's own?
+- A dead body beyond the organisms' range (60 µm) is dropped like an organism that leaves: should far bodies be kept
+  (unsimulated) for when the creature comes back, or is dropping them out of sight acceptable?
+- The lineage earns points without bound: a large free population of auto-dividing descendants may out-earn food.
+  Diminishing points per generation, or a cap? (Not measured yet.)
 - Free organisms cannot meet or engulf one another or the creature (no contact between bodies); should a larger
   organism engulf a smaller one later?

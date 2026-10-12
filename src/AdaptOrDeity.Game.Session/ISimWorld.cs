@@ -86,13 +86,14 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Points earned by eating so far (spent or not).</summary>
         int FoodPoints { get; }
 
-        /// <summary>Points earned by daughters that left the creature so far (spent or not).</summary>
+        /// <summary>Points earned by daughters released in the creature's lineage so far (spent or not).</summary>
         int ReproductionPoints { get; }
 
         /// <summary>Prey cells the creature has engulfed since the start (some features need a number of them).</summary>
         int Swallowed { get; }
 
-        /// <summary>Daughters that left the creature (divisions without multicellularity).</summary>
+        /// <summary>Daughters released in the creature's lineage: its own (divisions without multicellularity) and its free
+        /// descendants', any generation.</summary>
         int Offspring { get; }
 
         /// <summary>Buys a feature that has a cost (<see cref="FeatureInfo.Cost"/>) once its level is reached.</summary>

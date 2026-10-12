@@ -221,16 +221,13 @@ namespace AdaptOrDeity.UI
                     GUILayout.Label(new GUIContent($"Swallowed {frame.Swallowed}",
                         "prey cells your cells have engulfed; 10 make mitochondria available"), GUILayout.Width(95));
                     GUILayout.Label(new GUIContent($"Offspring {frame.Offspring}",
-                        "daughters that swam off on their own (without multicellularity); each earns reproduction points"),
-                        GUILayout.Width(85));
-                    int living = 0;
-                    for (int k = 0; k < frame.OrganismCount; k++)
-                        if (frame.OrganismAlive[k])
-                            living++;
-                    GUILayout.Label(new GUIContent($"Free {living}",
+                        $"daughters that swam off on their own (without multicellularity), and their daughters in turn; " +
+                        $"each earns reproduction points. Your creature's own: {frame.OwnOffspring}; their descendants: " +
+                        $"{frame.Offspring - frame.OwnOffspring}"), GUILayout.Width(85));
+                    GUILayout.Label(new GUIContent($"Free {frame.OrganismCount}",
                         $"daughters and their offspring living nearby on their own (pale, white outline; click one to see " +
-                        $"its state). Released {frame.OrganismsReleased}, died {frame.OrganismsDied}, " +
-                        $"gone out of range {frame.OrganismsGone}"), GUILayout.Width(60));
+                        $"its state). Released {frame.OrganismsReleased}, died {frame.OrganismsDied} (their bodies are " +
+                        $"food, grey), gone out of range {frame.OrganismsGone}"), GUILayout.Width(60));
                     // development aids until play-testing is done: points and a prey cell swimming at the creature
                     if (GUILayout.Button(new GUIContent("+5", "development: 5 skill points"), GUILayout.Width(30)))
                         bridge.Send(SimCommands.DevGrantPoints(5));
@@ -368,8 +365,7 @@ namespace AdaptOrDeity.UI
                 ShowTooltip(mouse, $"Free organism {frame.OrganismId[k]} (generation {frame.OrganismGeneration[k]})\n" +
                     (frame.OrganismGeneration[k] > 1 ? "Offspring of a daughter that left your creature" :
                         "A daughter that left your creature") + "\n" +
-                    (frame.OrganismAlive[k] ? "Lives on its own: not yours to control" : "<b>Dead</b>") +
-                    "\n<i>Click to see its state</i>");
+                    "Lives on its own: not yours to control\n<i>Click to see its state</i>");
                 return;
             }
             var prey = bridge.PreyAt(world);
@@ -385,7 +381,10 @@ namespace AdaptOrDeity.UI
                 return;
             var traces = bridge.Schema.TraceSpecies;
             int t = frame.PacketTrace[packet.Slot];
-            string text = $"Food packet\nGlucose left: {100f * frame.PacketFill[packet.Slot]:F0}%\n" +
+            string text = (frame.PacketBody[packet.Slot]
+                              ? "Dead cell\nA free organism that died: food for whoever finds it\n"
+                              : "Food packet\n") +
+                          $"Glucose left: {100f * frame.PacketFill[packet.Slot]:F0}%\n" +
                           $"Smells of {(t < traces.Count ? traces[t] : "?")} (needs a receptor to sense)";
             _tooltipStyle ??= new GUIStyle(GUI.skin.box) { alignment = TextAnchor.UpperLeft, richText = true, padding = new RectOffset(8, 8, 6, 6) };
             var content = new GUIContent(text);

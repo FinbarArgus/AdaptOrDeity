@@ -62,7 +62,7 @@ namespace AdaptOrDeity.Game.Session
             new FeatureInfo(Engulfing, "Engulfing", 2, true, true,
                 "A cell that touches a food packet or a prey cell smaller than itself takes it inside, in a vacuole. The cell's surface hydrolase digests it there and the cell's own sugar carriers take the sugar up from the vacuole, so none is lost or shared. What a cell swallows shares one vacuole, which must stay smaller than the cell (food packets always leave room for a prey cell). Prey cells swallowed are counted."),
             new FeatureInfo(Multicellularity, "Multicellularity", 2, false, true,
-                "Daughters stay attached to the cell that made them, so the creature grows as a colony. Without it each daughter leaves when its parent divides: it counts as offspring, earns reproduction points, and the creature stays one cell. Later colony features (boundary and inner cells, several groups, a fixed body size) need it.",
+                "Daughters stay attached to the cell that made them, so the creature grows as a colony. Without it each daughter leaves when its parent divides: it counts as offspring and earns reproduction points, as do its own daughters and theirs, and the creature stays one cell. Later colony features (boundary and inner cells, several groups, a fixed body size) need it.",
                 5),
             new FeatureInfo(Mitochondria, "Mitochondria", 2, false, true,
                 "Available once your cells have swallowed 10 prey cells. A swallowed bacterium that is kept alive inside the cell becomes a partner that later breathes for it. Planned: respiration inside the cell is not modelled yet, so evolving it changes nothing in the cell for now.",
