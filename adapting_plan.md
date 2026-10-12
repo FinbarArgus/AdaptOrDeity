@@ -192,8 +192,11 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   and the glycolytic enzymes ([`content/traits/fermenter.json`](content/traits/fermenter.json)): each trait is the
   target of a `protein_pool` in the kernel, whose expression approaches it with a 10 s time constant; building is
   limited to 5× the resting ATP use and, like growth, throttled as ATP falls below rest (stopping at 4 mM, the
-  stringent response), all in CellML, so large changes take minutes. Proteins may take at most 8% of the membrane
-  (baseline 2.3%), a ceiling that scales with membrane area; the game keeps targets within it. Kinetic midpoints are
+  stringent response), all in CellML, so large changes take minutes. Membrane proteins take shares of a ceiling of 15%
+  of the surface that scales with membrane area (`s_target`, a share of it): at rest they use 36.8% of it (5.5% of the
+  surface), the surface hydrolase and the flagellum included; a multiplier sets the share to that multiple of the
+  starting share. The carriers bought as skills (PTS, ABC, H+ symport) start at 0 and their sliders set a share
+  directly, from 0 to the room left. The game keeps the shares' sum within the ceiling. Kinetic midpoints are
   fixed (±10% changed almost nothing). Energy controls: growth (0–20× resting ATP use), glycogen storage (0–1), repair
   (0–1; below ~0.1 damage outruns repair). The whole-cell upstream sweep covers every trait and control over its
   range, temperature 0–40 °C and glucose 0–2 mM.
@@ -209,7 +212,8 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
   of a daughter's glucose; placeholders), with traces of other species (aspartate, serine, ribose, dimethyl sulfide);
   a packet shrinks as it is eaten (area in proportion to what is left) and is removed below 1%. A cell touching one
   sees the contact concentration (50 mM) at its membrane while it lasts and takes glucose up through its own carriers
-  (Glf); what it takes beyond the background comes out of the packet, which then travels with the creature. Traces are recorded at the membrane for smell (level 3); nothing
+  (Glf, and the PTS, ABC and H+ symport once bought, all seeing the same membrane glucose); what it takes beyond the
+  background comes out of the packet, which then travels with the creature. Traces are recorded at the membrane for smell (level 3); nothing
   takes them up yet. `Sim.World.FoodField` stands in for the environment field of the transport graph.
   Since 2026-10-09 a packet either **lies on the ground** (still; a dead creature will be one too) or is **carried by
   another creature** (prey, or an ally bringing food); nothing drifts freely. Lying food has a density per area
@@ -437,13 +441,30 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   - Transport is the game's backward Euler step, with exact bookkeeping. The matrix chemistry runs in the modules.
   - The automatic groups are boundary and inner.
   - Matrix costs 1 glucose + 3 ATP per glucose unit (pathway accounting, 2-4), with an allocation slider per group.
-  - The upstream modules sit on branch feat/extracellular-matrix (on homogenisation-checks), copied into
-    `content/upstream/` until merged.
+  - The upstream modules sit on branch feat/extracellular-matrix, merged into homogenisation-checks; copied into
+    `content/upstream/` until that branch is pushed.
 
 - **2026-10-12** The environment field is built (docs/plans/environment-field.md "Built"), off by default
   (content `field.enabled`): nested grids stepped coarse first with Douglas ADI (exact steady state at the exchange
   step), finer grids taking the coarse flux through their edges (conservative by construction; explicit refluxing was
   unstable), pH from buffered acid, packets dissolving over `food.packet_lifetime`, cell inputs passed on a 1% change.
+
+- **2026-10-12** The game's cell is upstream homogenisation-checks a12d84a (feat/sugar-transporters and
+  feat/extracellular-matrix merged): glycolysis split at a 1 mM G6P pool, the PTS delivering G6P, the ABC and H+ symport
+  carriers, membrane-share protein pools (the flagellum's included) and the surface hydrolase.
+  - Membrane traits set `s_target`: the expression sliders stay multipliers (×0.25–4) of the starting share, so play and
+    saves keep their meaning; the PTS, ABC and H+ symport carriers become share sliders (0 to the room left) once their
+    skill is bought. Every membrane pool counts towards the ceiling (shares sum ≤ 1).
+  - The medium glucose goes to all four carriers; uptake, food eaten, the field exchange and the space between cells use
+    their sum (the PTS's glucose arrives as G6P); the budget lists the carriers' ATP (a PEP per PTS glucose, 2 ATP per
+    ABC glucose). The Glf leak hint reads Glf's own flux.
+  - With the field on, packets are digested by touching cells' hydrolase, V_max S/(K_m_poly + S), S the packet's polymer
+    over a disc of its radius as deep as the cells (always saturated at the placeholder packet density).
+  - Level 4's matrix control sets `mx_alloc` on this cell (matrix now made from G6P); the extracellular modules stay
+    copied in `content/upstream/` (identical to upstream) until homogenisation-checks is pushed and the submodule follows.
+  - Level 1 re-measured (contact rule, field off): left alone a cell eats 1.55e-13 mol (7 points, one transporter) and
+    starves from day 4 (damage 0.35 by day 7); kept on food 2.98e-13 mol (14 points, two). No content value changed.
+  - The famine golden moved by design (realistic G6P pool): against the old one V NRMSE 0.12, ATP 0.05, Na+ 0.03.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
@@ -457,7 +478,7 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 8. Unfilled copyright line in `circulatory-autogen-modules/LICENSE`, and the NOTICE text.
 9. Undated and placeholder entries in the protein timeline still need sources.
 10. Expression range (×0.25–4), the build capacity (5× resting ATP use), the build ATP floor (4 mM) and the membrane
-    ceiling (8%, transporter footprints) are placeholders; transporter copy numbers rest on placeholder turnover
+    ceiling (15% of the surface, protein footprints) are placeholders; transporter copy numbers rest on placeholder turnover
     numbers (100–1,000/s).
 12. Growth pace (recalibrated 2026-10-09): the cell rests on a lean background (0.1 mM glucose, placeholder) where
     its uptake just meets maintenance; touching food (50 mM at the membrane) its carriers give ~40× and glycolysis

@@ -189,7 +189,7 @@
    "units": "mol",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "glucose eaten from food packets per skill point: calibrated so a level-1 cell left alone for the week earns about 6 points (it ate 1.37e-13 mol) (one 5-point transporter) and one kept on food all week earns about 14 (two), measured 2026-10-12 at 1 µM ocean glucose and 1e-4 packets/s (SkillPointTests checks it)"
+   "note": "glucose eaten from food packets per skill point: calibrated so a level-1 cell left alone for the week earns about 6 points (it ate 1.37e-13 mol) (one 5-point transporter) and one kept on food all week earns about 14 (two), measured 2026-10-12 at 1 µM ocean glucose and 1e-4 packets/s (SkillPointTests checks it). Re-measured with the cell from upstream homogenisation-checks a12d84a (1 mM G6P pool, surface hydrolase, membrane shares), field off (contact rule), unchanged value: left alone it ate 1.55e-13 mol (7 points; 4.3e-14 mol a day while on a packet, food gone during day 4, ATP 0 and damage 0.05 -> 0.35 by day 7), kept on food 2.98e-13 mol (14 points) (LevelTests)"
   },
   "field.enabled": {
    "value": 0.0,

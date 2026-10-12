@@ -11,7 +11,7 @@ making the matrix (EPS)".
 ## Built (2026-10-12)
 
 ### Upstream modules
-These live in circulatory-autogen-modules, branch `feat/extracellular-matrix`, based on `homogenisation-checks`.
+These live in circulatory-autogen-modules, branch `feat/extracellular-matrix`, merged into `homogenisation-checks` (a12d84a).
 - `transport/extracellular_volume/biofilm_ArgusUNPUBLISHED_v01` (`tools/build_extracellular_space.py`). One volume of the
   water between cells. It holds glucose, lactate, H+ and O2, and the matrix as mM of glucose units. Na+, K+ and Ca2+ stay
   at seawater values.
@@ -46,8 +46,9 @@ These live in circulatory-autogen-modules, branch `feat/extracellular-matrix`, b
   The cell's carbon, first-law and second-law invariants include the matrix.
 
 ### In the game
-The game holds copies of the upstream modules in `content/upstream/` (lock `root`) until the branch is merged and the
-submodule follows. The cell is re-assembled into `content/assembled/` from the same branch.
+The game holds copies of the upstream modules in `content/upstream/` (lock `root`), identical to homogenisation-checks
+a12d84a: that branch is local, and the submodule must point at a pushed commit (CI checks it out). The cell is assembled
+into `content/assembled/` from a12d84a, where matrix is made from glucose 6-phosphate (the split glycolysis).
 
 **Tiling.** Cells sit on the triangular lattice of `ColonyLayout`, so the volumes are the lattice triangles whose three
 slots all hold cells: the Delaunay triangles of the cell centres (`ColonyGaps`). On a lattice this needs no general
@@ -136,5 +137,5 @@ cell panel shows "Making matrix" (ATP/s), "Matrix exported" and "Edge on open wa
    cost. Soft restarts in BE_batched_c (docs/plans/libcuflynx-solver.md) would remove most of the rest.
 9. **Groups beyond level 6.** How the automatic boundary and inner groups combine with player-made groups ("several cell
    groups") and with a fixed body size (counts per group change as cells move between groups).
-10. **The upstream branch** must be merged (homogenisation-checks first). Then point the submodule at it and drop
-    `content/upstream/`. The sugar-transporters branch edits the same cytosol, so expect a merge there.
+10. **The upstream branch** is merged into homogenisation-checks (a12d84a, with the sugar carriers). Once that is pushed,
+    point the submodule at it and drop `content/upstream/`.

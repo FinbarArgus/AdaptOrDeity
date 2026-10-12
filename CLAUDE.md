@@ -18,8 +18,12 @@ tools/scripts/build_sim_for_unity.sh                     # copy sim DLLs into un
 #   (libcuflynx's C for every module of content/modules.lock.json) and build it; then:
 CLANG=<clang> tools/scripts/build_native_sim.sh         # the NativeAOT simulation library (aod_sim) for Unity
 tools/kernelgen/.venv/bin/aod-kernelgen [--goldens|--check|--update-lock]   # module checks, Myokit goldens
+PYTHONPATH=<modules checkout> <libcuflynx venv>/bin/python -c "from cam_testing import checks, library; checks.ComponentModel(library.load_version('generic_adaptive_cell', 'fermenter'), work_dir='<dir>').model_path"
+#   libcuflynx's flat model of the cell: <dir>/generated_models/*/*_flat.cellml, for:
 tools/kernelgen/.venv/bin/aod-kernelgen-flatten <flat.cellml> content/assembled <type> <version> \
-    --modules-root <modules> --supermodule-config <config.json>   # whole cell -> one kernel (ADR 0007)
+    --modules-root <modules> --supermodule-config <config.json> \
+    --variant famine:C_glc_e_mod_membrane_face=0,C_glc_e_mod_glc_PTS=0,C_glc_e_mod_glc_ABC=0,C_glc_e_mod_glc_GalP=0
+#   whole cell -> one kernel (ADR 0007)
 dotnet run --project src/AdaptOrDeity.Headless -- fermenter 600 H_ATPase_expression=2   # cell panel, headless
 dotnet run -c Release --project src/AdaptOrDeity.Headless -- bench 600   # the cells' integrator: speed, accuracy
 dotnet run -c Release --project src/AdaptOrDeity.Headless -- colony-bench 64 60  # a colony on 1..8 worker threads
