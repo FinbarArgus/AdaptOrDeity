@@ -116,5 +116,50 @@ namespace AdaptOrDeity.Sim.Core.Tests
             Assert.That(f[0, 9, 5], Is.EqualTo(0.5), "new cells take the far field");
             Assert.That(f[0, 2, 0], Is.EqualTo(0.5));
         }
+    
+        [Test]
+        public void DouglasStepsReachTheExactSteadyStateAtAnyStep()
+        {
+            // A sink in a far-field box: Douglas steps of 0.5 s (lambda 335) and 5 ms end at the same steady state (the large
+            // steps get there over many steps: modes a few cells long decay by ~0.6% a step); locally one-dimensional steps
+            // of 0.5 s end with the gradient near the sink far too shallow.
+            double Centre(DiffusionScheme scheme, double dt, int steps)
+            {
+                var f = new DiffusionField(41, 41, Dx, Depth, new[] { Dglc }, new[] { 1.0 }) { Scheme = scheme };
+                for (int k = 0; k < steps; k++)
+                {
+                    f.AddSource(0, 20.5e-6, 20.5e-6, -1e-19);
+                    f.Step(dt);
+                }
+                return 1.0 - f[0, 20, 20];
+            }
+            double exact = Centre(DiffusionScheme.Douglas, 0.005, 10000);
+            Assert.That(Centre(DiffusionScheme.Douglas, 0.5, 2000), Is.EqualTo(exact).Within(0.01 * exact));
+            Assert.That(Centre(DiffusionScheme.LocallyOneDimensional, 0.5, 2000), Is.LessThan(0.7 * exact));
+        }
+
+        [Test]
+        public void DouglasStepsConserveAClosedBoxAndStayBoundedAtHugeSteps()
+        {
+            // Each mode decays without changing sign, but the scheme is not positivity-preserving and barely damps modes
+            // short in both directions at huge steps: a checkerboard at 10^4x the explicit limit overshoots by up to ~9% of
+            // its range (then decays over thousands of steps).
+            var f = new DiffusionField(32, 32, Dx, Depth, new[] { Dglc }, new[] { 0.0 }, FieldEdge.Closed)
+            {
+                Scheme = DiffusionScheme.Douglas,
+            };
+            for (int j = 0; j < 32; j++)
+                for (int i = 0; i < 32; i++)
+                    f[0, i, j] = (i + j) % 2 == 0 ? 0.0 : 5.0;
+            double total = f.Total(0), dt = 1e4 * Dx * Dx / (4 * Dglc);
+            for (int k = 0; k < 50; k++)
+            {
+                f.Step(dt);
+                for (int j = 0; j < 32; j++)
+                    for (int i = 0; i < 32; i++)
+                        Assert.That(f[0, i, j], Is.InRange(-0.5, 5.5), "within 10% of the start's range");
+            }
+            Assert.That(f.Total(0), Is.EqualTo(total).Within(1e-12 * total));
+        }
     }
 }

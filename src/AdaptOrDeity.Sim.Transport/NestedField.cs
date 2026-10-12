@@ -29,12 +29,15 @@ namespace AdaptOrDeity.Sim.Transport
     /// (the epoch's ocean). Level k's corner sits on level k+1's grid lines, so every coarse cell under a finer grid (its
     /// shadow) holds exactly 4x4 fine cells.
     ///
-    /// <para>A step (<see cref="Step"/>): each finer grid takes its edge values from the next coarser one (interpolated at
-    /// the old time); every level and species then steps implicitly on its own (in parallel); then, finest first, the coarse
-    /// cells around each shadow take the fine grid's boundary flux in place of their own (refluxing) and the shadow takes
-    /// the mean of the fine cells over it (restriction). The content over all levels (each region counted once at its
-    /// finest level, which is the outermost level's total) changes only by the sources and what crosses the outermost
-    /// edges, to rounding.</para>
+    /// <para>A step (<see cref="Step"/>), coarsest level first: each level takes a Douglas step (species in parallel;
+    /// <see cref="DiffusionScheme.Douglas"/>, whose steady state is exact at any step, where locally one-dimensional steps
+    /// at the exchange interval halve the gradients near a cell). Sources act on their finest level and on the cell
+    /// holding them on every coarser level. A finer level's edges are closed but for what the coarser level's step carried
+    /// into its shadow through each coarse face, which enters the finer level through the edge cells along that face. Then,
+    /// finest first, each shadow takes the mean of the finer cells over it (restriction). So the finer grid's boundary flux
+    /// is the coarse one, and the content over all levels (each region counted once at its finest level: the outermost
+    /// level's total) changes only by the sources and what crosses the outermost edges, to rounding. The coarse level
+    /// resolves the flux at its own spacing, so the finest grid's margin keeps the colony a few coarse cells inside it.</para>
     ///
     /// <para>The grids recentre by whole cells of the next coarser level as the colony moves, and regrid as it grows (the
     /// finest grid's extent tracks the colony and margin, the outermost the extent multiple); both refill each level from
@@ -64,8 +67,9 @@ namespace AdaptOrDeity.Sim.Transport
         private ParallelWork? _workers;
         private int[] _activeList;
         private int _activeCount;
-        private Action<int, int>? _ghostPass, _solvePass, _restrictPass;
+        private Action<int, int>? _solvePass, _restrictPass;
         private double _dt;
+        private int _stepLevel;
 
         /// <summary>
         /// Grids for a colony of diameter <paramref name="diameter"/> [m] centred at (<paramref name="cx"/>,
@@ -80,8 +84,6 @@ namespace AdaptOrDeity.Sim.Transport
                 throw new ArgumentException("one diffusivity and one far-field value per species");
             if (settings.MinCells < 24 || settings.MinCells % Ratio != 0)
                 throw new ArgumentOutOfRangeException(nameof(settings), "at least 24 cells a side, a multiple of 4");
-            if (outerEdge == FieldEdge.Given)
-                throw new ArgumentException("the outermost edge is the far field or closed", nameof(outerEdge));
             _diffusivity = (double[])diffusivity.Clone();
             _far = (double[])farField.Clone();
             _outerEdge = outerEdge;
@@ -173,17 +175,32 @@ namespace AdaptOrDeity.Sim.Transport
             Sample(s, x, y) + release / MembraneConductance(s, radius);
 
         /// <summary>
-        /// Adds a source of species <paramref name="s"/> at (x, y) [mol/s] for the next step, on the finest level there
-        /// (shared bilinearly between four cells). Returns false (and adds nothing) beyond the outermost level.
+        /// Adds a source of species <paramref name="s"/> at (x, y) [mol/s] for the next step, on the finest level whose
+        /// region holds it: shared bilinearly between four cells on the finest grid (weight beyond its edge on the edge
+        /// cell), into the cell holding it on a coarser grid (a coarse cell lies wholly inside or outside a finer grid's
+        /// shadow, so nothing lands where restriction would replace it). Returns false (and adds nothing) beyond the
+        /// outermost level.
         /// </summary>
         public bool Deposit(int s, double x, double y, double molPerSecond)
         {
-            int k = LevelAt(x, y);
+            int k = -1;
+            for (int q = 0; q < _levels.Length && k < 0; q++)
+            {
+                var L = _levels[q];
+                double fx = (x - L.OriginX) / L.Spacing, fy = (y - L.OriginY) / L.Spacing;
+                if (fx >= 0.0 && fy >= 0.0 && fx < L.Nx && fy < L.Ny)
+                    k = q;
+            }
             if (k < 0)
                 return false;
             if (molPerSecond == 0.0)
                 return true;
-            _levels[k].Deposit(s, x, y, molPerSecond);
+            if (k == 0)
+                _levels[0].Deposit(s, x, y, molPerSecond);
+            else
+                _levels[k].AddSource(s, x, y, molPerSecond);
+            for (int p = k + 1; p < _levels.Length; p++)
+                _levels[p].AddSource(s, x, y, molPerSecond);   // the coarser levels see it too; restriction replaces them
             _pending[s] += molPerSecond;
             _active[s] = true;
             _hasPending = true;
@@ -199,10 +216,20 @@ namespace AdaptOrDeity.Sim.Transport
             {
                 L.FarField[s] = value;
                 Array.Fill(L.Values(s), value);
-                Array.Fill(L.EdgeValues(s), value);
             }
             _ocean[s] += Total(s) - before;
             _active[s] = true;
+        }
+
+        /// <summary>
+        /// Makes every shadow the mean of the finer cells over it, finest first: after values were set on the levels
+        /// directly, so the levels agree.
+        /// </summary>
+        public void Restrict()
+        {
+            for (int k = 0; k + 1 < Levels; k++)
+                for (int s = 0; s < Species; s++)
+                    Restrict(k, s);
         }
 
         /// <summary>Grid sizes for a colony of this diameter: cells per side and number of levels.</summary>
@@ -267,11 +294,10 @@ namespace AdaptOrDeity.Sim.Transport
             }
             _hasPending = false;
             _workers = workers;
-            _ghostPass ??= GhostPass;
             _solvePass ??= SolvePass;
             _restrictPass ??= RestrictPass;
-            Run(_activeCount, _ghostPass);
-            Run(_activeCount * Levels, _solvePass);
+            for (_stepLevel = Levels - 1; _stepLevel >= 0; _stepLevel--)
+                Run(_activeCount, _solvePass);
             Run(_activeCount, _restrictPass);
             _workers = null;
             var outer = _levels[Levels - 1];
@@ -293,51 +319,28 @@ namespace AdaptOrDeity.Sim.Transport
                 _workers.Run(count, 1, pass);
         }
 
-        // Each finer level's edge values from the next coarser level, per active species.
-        private void GhostPass(int start, int end)
+        // Level _stepLevel steps each active species; a finer level takes in, through its edges, what the next coarser
+        // level's step carried into its shadow.
+        private void SolvePass(int start, int end)
         {
+            int k = _stepLevel;
             for (int a = start; a < end; a++)
             {
                 int s = _activeList[a];
-                for (int k = 0; k + 1 < Levels; k++)
-                {
-                    DiffusionField L = _levels[k], P = _levels[k + 1];
-                    double[] edge = L.EdgeValues(s);
-                    double h = L.Spacing, x0 = L.OriginX, y0 = L.OriginY, x1 = x0 + L.Nx * h, y1 = y0 + L.Ny * h;
-                    for (int j = 0; j < L.Ny; j++)
-                    {
-                        double y = y0 + (j + 0.5) * h;
-                        edge[L.EdgeFace(0, j)] = P.Sample(s, x0 - 0.5 * h, y);
-                        edge[L.EdgeFace(1, j)] = P.Sample(s, x1 + 0.5 * h, y);
-                    }
-                    for (int i = 0; i < L.Nx; i++)
-                    {
-                        double x = x0 + (i + 0.5) * h;
-                        edge[L.EdgeFace(2, i)] = P.Sample(s, x, y0 - 0.5 * h);
-                        edge[L.EdgeFace(3, i)] = P.Sample(s, x, y1 + 0.5 * h);
-                    }
-                }
+                if (k + 1 < Levels)
+                    BoundaryInflow(k, s);
+                _levels[k].StepSpecies(s, _dt);
             }
         }
 
-        // One (level, species) implicit step per item.
-        private void SolvePass(int start, int end)
-        {
-            for (int item = start; item < end; item++)
-                _levels[item / _activeCount].StepSpecies(_activeList[item % _activeCount], _dt);
-        }
-
-        // Per active species, finest first: reflux the coarse cells around each shadow, then restrict into the shadow.
+        // Per active species, finest first: each shadow takes the mean of the finer cells over it.
         private void RestrictPass(int start, int end)
         {
             for (int a = start; a < end; a++)
             {
                 int s = _activeList[a];
                 for (int k = 0; k + 1 < Levels; k++)
-                {
-                    Reflux(k, s);
                     Restrict(k, s);
-                }
             }
         }
 
@@ -349,30 +352,23 @@ namespace AdaptOrDeity.Sim.Transport
             side = CellsPerSide / Ratio;
         }
 
-        // The coarse cells just outside level k's shadow take the fine grid's flux through each shadow face in place of the
-        // coarse solve's.
-        private void Reflux(int k, int s)
+        // What the coarser level's step carried into level k's shadow through each coarse face enters level k through the
+        // four fine edge cells along that face, shared equally, as a source over the step.
+        private void BoundaryInflow(int k, int s)
         {
             DiffusionField F = _levels[k], P = _levels[k + 1];
-            Shadow(k, out int i0, out int j0, out int m);
-            double[] fine = F.EdgeOutflow(s), coarse = P.InnerOutflow(s), c = P.Values(s);
-            int nx = P.Nx;
-            double perVolume = 1.0 / P.CellVolume;
+            int m = CellsPerSide / Ratio, n = CellsPerSide;
+            double[] coarse = P.InnerOutflow(s);
+            double share = -1.0 / (Ratio * _dt);
             for (int f = 0; f < m; f++)
-            {
-                double w = 0.0, e = 0.0, so = 0.0, no = 0.0;
                 for (int r = 0; r < Ratio; r++)
                 {
-                    w += fine[F.EdgeFace(0, Ratio * f + r)];
-                    e += fine[F.EdgeFace(1, Ratio * f + r)];
-                    so += fine[F.EdgeFace(2, Ratio * f + r)];
-                    no += fine[F.EdgeFace(3, Ratio * f + r)];
+                    int t = Ratio * f + r;
+                    F.AddCellSource(s, 0, t, coarse[f] * share);
+                    F.AddCellSource(s, n - 1, t, coarse[m + f] * share);
+                    F.AddCellSource(s, t, 0, coarse[2 * m + f] * share);
+                    F.AddCellSource(s, t, n - 1, coarse[3 * m + f] * share);
                 }
-                c[(j0 + f) * nx + i0 - 1] += (w - coarse[f]) * perVolume;
-                c[(j0 + f) * nx + i0 + m] += (e - coarse[m + f]) * perVolume;
-                c[(j0 - 1) * nx + i0 + f] += (so - coarse[2 * m + f]) * perVolume;
-                c[(j0 + m) * nx + i0 + f] += (no - coarse[3 * m + f]) * perVolume;
-            }
         }
 
         // Each cell of level k's shadow on level k+1 takes the mean of the 4x4 fine cells over it.
@@ -427,10 +423,13 @@ namespace AdaptOrDeity.Sim.Transport
                 // the corner on the next coarser level's grid lines, nearest to centring the colony
                 ox[k] = (long)Math.Round((cx / h - 0.5 * n) / Ratio) * Ratio;
                 oy[k] = (long)Math.Round((cy / h - 0.5 * n) / Ratio) * Ratio;
-                var edge = k == levels - 1 ? _outerEdge : FieldEdge.Given;
+                var edge = k == levels - 1 ? _outerEdge : FieldEdge.Closed;   // finer levels: inflow from the coarser one
                 DiffusionField? L = sameShape ? _spare.Length > k ? _spare[k] : null : null;
                 if (L == null || L.Edge != edge)
-                    L = new DiffusionField(n, n, h, _settings.Depth, _diffusivity, _far, edge);
+                    L = new DiffusionField(n, n, h, _settings.Depth, _diffusivity, _far, edge)
+                    {
+                        Scheme = DiffusionScheme.Douglas,   // the right steady state near sources at the exchange step
+                    };
                 for (int s = 0; s < Species; s++)
                     L.FarField[s] = _far[s];
                 L.OriginX = ox[k] * h;
@@ -465,9 +464,8 @@ namespace AdaptOrDeity.Sim.Transport
             {
                 Shadow(k, out int i0, out int j0, out int m);
                 _levels[k + 1].SetInnerRegion(i0, j0, i0 + m, j0 + m);
-                for (int s = 0; s < Species; s++)
-                    Restrict(k, s);
             }
+            Restrict();
             for (int s = 0; s < Species && oldLevels.Length > 0; s++)
                 _ocean[s] += Total(s) - before[s];
         }

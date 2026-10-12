@@ -18,12 +18,28 @@ namespace AdaptOrDeity.Sim.Transport
         Given,
     }
 
+    /// <summary>How a <see cref="DiffusionField"/> steps.</summary>
+    public enum DiffusionScheme
+    {
+        /// <summary>
+        /// Locally one-dimensional backward Euler: L-stable and non-negative at any step, but at steps far beyond the
+        /// explicit limit (dx²/4D) its splitting error (λ² Lx Ly c) shrinks the gradients near sources, even at steady state.
+        /// </summary>
+        LocallyOneDimensional,
+
+        /// <summary>
+        /// Douglas ADI in delta form: (1 − λLx)(1 − λLy)(c' − c) = λ(Lx + Ly)c + dt q. Unconditionally stable, and its
+        /// steady state is the exact discrete one at any step; first order in time. Modes short in both directions decay
+        /// over several steps (by (1 + λ²ax·ay)/((1 + λax)(1 + λay)) each) rather than at once.
+        /// </summary>
+        Douglas,
+    }
+
     /// <summary>
     /// Species diffusing in a thin layer of water over the ground: a square grid of nx x ny cells of side
     /// <see cref="Spacing"/> and depth <see cref="Depth"/>, with concentrations at the cell centres [mol/m³].
-    /// Each step is locally one-dimensional backward Euler: sources added, then an implicit diffusion solve along every
-    /// row and then every column. It is stable and keeps concentrations non-negative at any step length, so the field
-    /// steps at the cells' exchange interval; it is first-order accurate in time. Each step records what crossed each
+    /// Each step is implicit, one row and then one column at a time (<see cref="DiffusionScheme"/>), so the field steps at
+    /// the cells' exchange interval; it is first-order accurate in time. Each step records what crossed each
     /// edge face and, optionally, the faces of an inner rectangle (<see cref="SetInnerRegion"/>), so nested grids can
     /// exchange content exactly (<see cref="NestedField"/>).
     /// </summary>
@@ -31,7 +47,8 @@ namespace AdaptOrDeity.Sim.Transport
     {
         private readonly double[][] _c, _source, _edge, _edgeOut;
         private double[][] _innerOut;
-        private readonly double[][][] _scratch;   // per species: a, b, r, work (species step independently)
+        private readonly double[][][] _scratch;
+        private readonly double[]?[] _delta;   // per species, the Douglas step's change   // per species: a, b, r, work (species step independently)
         private int _i0, _j0, _i1, _j1;
         private bool _hasInner;
 
@@ -57,6 +74,7 @@ namespace AdaptOrDeity.Sim.Transport
             _edgeOut = new double[Species][];
             _innerOut = new double[Species][];
             _scratch = new double[Species][][];
+            _delta = new double[Species][];
             int n = Math.Max(nx, ny);
             for (int s = 0; s < Species; s++)
             {
@@ -87,6 +105,9 @@ namespace AdaptOrDeity.Sim.Transport
         public double CellVolume => Spacing * Spacing * Depth;
 
         public FieldEdge Edge { get; }
+
+        /// <summary>How each step is taken (locally one-dimensional by default).</summary>
+        public DiffusionScheme Scheme { get; set; } = DiffusionScheme.LocallyOneDimensional;
 
         /// <summary>Per species [m²/s].</summary>
         public double[] Diffusivity { get; }
@@ -194,6 +215,10 @@ namespace AdaptOrDeity.Sim.Transport
             src[Clamp(j + 1, Ny) * Nx + Clamp(i + 1, Nx)] += u * v * q;
         }
 
+        /// <summary>Adds a source to grid cell (i, j) [mol/s] for the next step.</summary>
+        public void AddCellSource(int s, int i, int j, double molPerSecond) =>
+            _source[s][j * Nx + i] += molPerSecond / CellVolume;
+
         private static int Clamp(int k, int n) => k < 0 ? 0 : k >= n ? n - 1 : k;
 
         /// <summary>True if the sources added since the last step hold anything for species <paramref name="s"/>.</summary>
@@ -254,53 +279,112 @@ namespace AdaptOrDeity.Sim.Transport
             if (!(dt > 0.0))
                 throw new ArgumentOutOfRangeException(nameof(dt), "the step must be positive");
             double[] c = _c[s], q = _source[s], edge = _edge[s], edgeOut = _edgeOut[s], innerOut = _innerOut[s];
-            for (int k = 0; k < c.Length; k++)
-            {
-                c[k] += dt * q[k];
-                q[k] = 0.0;
-            }
             Array.Clear(edgeOut, 0, edgeOut.Length);
             Array.Clear(innerOut, 0, innerOut.Length);
-            double lambda = Diffusivity[s] * dt / (Spacing * Spacing);
-            if (lambda == 0.0)
-                return;
-            bool open = Edge != FieldEdge.Closed;
-            double flux = lambda * CellVolume;   // amount per unit concentration difference across a face
             if (Edge == FieldEdge.FarField)
                 Array.Fill(edge, FarField[s]);
+            double lambda = Diffusivity[s] * dt / (Spacing * Spacing);
+            if (Scheme == DiffusionScheme.LocallyOneDimensional || lambda == 0.0)
+            {
+                for (int k = 0; k < c.Length; k++)
+                {
+                    c[k] += dt * q[k];
+                    q[k] = 0.0;
+                }
+                if (lambda != 0.0)
+                    Sweeps(s, c, lambda, false);
+                return;
+            }
+            // Douglas: (1 - λLx)(1 - λLy) Δ = dt q + λ(Lx + Ly) c, then c += Δ. The explicit part's face fluxes are recorded
+            // here, the sweeps' (with zero beyond open edges: Δ of a given value is in the explicit part) in Sweeps.
+            double[] d = _delta[s] ??= new double[Nx * Ny];
+            bool open = Edge != FieldEdge.Closed;
+            double flux = lambda * CellVolume;
+            int h = _j1 - _j0, w = _i1 - _i0;
+            for (int j = 0; j < Ny; j++)
+                for (int i = 0; i < Nx; i++)
+                {
+                    int k = j * Nx + i;
+                    double v = c[k];
+                    double west = i > 0 ? c[k - 1] : open ? edge[EdgeFace(0, j)] : v;
+                    double east = i < Nx - 1 ? c[k + 1] : open ? edge[EdgeFace(1, j)] : v;
+                    double south = j > 0 ? c[k - Nx] : open ? edge[EdgeFace(2, i)] : v;
+                    double north = j < Ny - 1 ? c[k + Nx] : open ? edge[EdgeFace(3, i)] : v;
+                    d[k] = dt * q[k] + lambda * (west + east + south + north - 4.0 * v);
+                    q[k] = 0.0;
+                }
+            if (open)
+            {
+                for (int j = 0; j < Ny; j++)
+                {
+                    edgeOut[EdgeFace(0, j)] += flux * (c[j * Nx] - edge[EdgeFace(0, j)]);
+                    edgeOut[EdgeFace(1, j)] += flux * (c[j * Nx + Nx - 1] - edge[EdgeFace(1, j)]);
+                }
+                for (int i = 0; i < Nx; i++)
+                {
+                    edgeOut[EdgeFace(2, i)] += flux * (c[i] - edge[EdgeFace(2, i)]);
+                    edgeOut[EdgeFace(3, i)] += flux * (c[(Ny - 1) * Nx + i] - edge[EdgeFace(3, i)]);
+                }
+            }
+            if (_hasInner)
+                InnerFluxes(c, innerOut, flux, h, w, true, true);
+            Sweeps(s, d, lambda, true);
+            for (int k = 0; k < c.Length; k++)
+                c[k] += d[k];
+        }
+
+        // Implicit solves along every row, then every column, of v; records what crosses the edge and inner faces. With
+        // homogeneous set, the value beyond an open edge is zero (v is a change), else the given or far-field value.
+        private void Sweeps(int s, double[] v, double lambda, bool homogeneous)
+        {
+            double[] edge = _edge[s], edgeOut = _edgeOut[s], innerOut = _innerOut[s];
+            bool open = Edge != FieldEdge.Closed;
+            double flux = lambda * CellVolume;   // amount per unit concentration difference across a face
             var scratch = _scratch[s];
             int h = _j1 - _j0, w = _i1 - _i0;
             for (int j = 0; j < Ny; j++)
             {
                 int row = j * Nx;
-                double west = edge[EdgeFace(0, j)], east = edge[EdgeFace(1, j)];
-                SolveLine(c, row, 1, Nx, lambda, open, west, east, scratch);
+                double west = homogeneous ? 0.0 : edge[EdgeFace(0, j)], east = homogeneous ? 0.0 : edge[EdgeFace(1, j)];
+                SolveLine(v, row, 1, Nx, lambda, open, west, east, scratch);
                 if (open)
                 {
-                    edgeOut[EdgeFace(0, j)] = flux * (c[row] - west);
-                    edgeOut[EdgeFace(1, j)] = flux * (c[row + Nx - 1] - east);
-                }
-                if (_hasInner && j >= _j0 && j < _j1)
-                {
-                    innerOut[j - _j0] += flux * (c[row + _i0] - c[row + _i0 - 1]);
-                    innerOut[h + j - _j0] += flux * (c[row + _i1 - 1] - c[row + _i1]);
+                    edgeOut[EdgeFace(0, j)] += flux * (v[row] - west);
+                    edgeOut[EdgeFace(1, j)] += flux * (v[row + Nx - 1] - east);
                 }
             }
+            if (_hasInner)
+                InnerFluxes(v, innerOut, flux, h, w, true, false);
             for (int i = 0; i < Nx; i++)
             {
-                double south = edge[EdgeFace(2, i)], north = edge[EdgeFace(3, i)];
-                SolveLine(c, i, Nx, Ny, lambda, open, south, north, scratch);
+                double south = homogeneous ? 0.0 : edge[EdgeFace(2, i)], north = homogeneous ? 0.0 : edge[EdgeFace(3, i)];
+                SolveLine(v, i, Nx, Ny, lambda, open, south, north, scratch);
                 if (open)
                 {
-                    edgeOut[EdgeFace(2, i)] = flux * (c[i] - south);
-                    edgeOut[EdgeFace(3, i)] = flux * (c[(Ny - 1) * Nx + i] - north);
-                }
-                if (_hasInner && i >= _i0 && i < _i1)
-                {
-                    innerOut[2 * h + i - _i0] += flux * (c[_j0 * Nx + i] - c[(_j0 - 1) * Nx + i]);
-                    innerOut[2 * h + w + i - _i0] += flux * (c[(_j1 - 1) * Nx + i] - c[_j1 * Nx + i]);
+                    edgeOut[EdgeFace(2, i)] += flux * (v[i] - south);
+                    edgeOut[EdgeFace(3, i)] += flux * (v[(Ny - 1) * Nx + i] - north);
                 }
             }
+            if (_hasInner)
+                InnerFluxes(v, innerOut, flux, h, w, false, true);
+        }
+
+        // What crosses the inner region's west and east faces (rows) and south and north faces (columns) for values v.
+        private void InnerFluxes(double[] v, double[] innerOut, double flux, int h, int w, bool rows, bool columns)
+        {
+            if (rows)
+                for (int j = _j0; j < _j1; j++)
+                {
+                    int row = j * Nx;
+                    innerOut[j - _j0] += flux * (v[row + _i0] - v[row + _i0 - 1]);
+                    innerOut[h + j - _j0] += flux * (v[row + _i1 - 1] - v[row + _i1]);
+                }
+            if (columns)
+                for (int i = _i0; i < _i1; i++)
+                {
+                    innerOut[2 * h + i - _i0] += flux * (v[_j0 * Nx + i] - v[(_j0 - 1) * Nx + i]);
+                    innerOut[2 * h + w + i - _i0] += flux * (v[(_j1 - 1) * Nx + i] - v[_j1 * Nx + i]);
+                }
         }
 
         // (1 + 2λ) c_k − λ (c_{k−1} + c_{k+1}) = c_k(old) along one line, by the Thomas algorithm. Beyond an open edge the
