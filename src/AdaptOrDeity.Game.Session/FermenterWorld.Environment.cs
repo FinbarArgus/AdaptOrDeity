@@ -36,6 +36,7 @@ namespace AdaptOrDeity.Game.Session
         private readonly double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");   // 0 for the reference
         private double _colonyRadius;
         private Func<FoodPacket, double>? _hydrolysis;
+        private double _cellDepth;   // [m]
 
         /// <summary>The environment field, or null when cells use the contact rule.</summary>
         public EnvironmentField? Environment => _environment;
@@ -44,22 +45,42 @@ namespace AdaptOrDeity.Game.Session
         public double CellGlucoseExchanged { get; private set; }
 
         /// <summary>
-        /// The rate at which cell <c>i</c>'s surface enzymes can hydrolyse a food packet it touches [mol glucose/s]. The
-        /// cell model has no surface hydrolase yet (being added upstream), so it is 0 and packets stay whole; tests set it.
+        /// Test hook: the rate at which cell <c>i</c>'s surface enzymes hydrolyse a food packet it touches [mol glucose/s],
+        /// whatever the packet. Null (the default): each cell's surface hydrolase,
+        /// V_hydrolysis_max S / (K_m_poly + S) (<see cref="FermenterCell.Hydrolysis"/>), with S the packet's polymer
+        /// concentration (<see cref="PolymerConcentration"/>).
         /// </summary>
-        public Func<int, double> HydrolysisCapacity { get; set; } = _ => 0.0;
+        public Func<int, double>? HydrolysisCapacity { get; set; }
+
+        /// <summary>
+        /// Polymer in packet <paramref name="p"/> [mol glucose units/m³]: its polymer glucose over its volume, a disc of the
+        /// packet's radius as deep as the cells (the kernel's h_cell), as everything in the game's sheet is.
+        /// </summary>
+        public double PolymerConcentration(FoodPacket p)
+        {
+            double volume = Math.PI * p.Radius * p.Radius * _cellDepth;
+            return volume > 0.0 ? Math.Max(0.0, p.Glucose - p.Free) / volume : 0.0;
+        }
 
         // Packet p is hydrolysed by every living cell touching it.
         private double Hydrolysis(FoodPacket p)
         {
-            double rate = 0.0;
+            double rate = 0.0, polymer = -1.0;
             for (int i = 0; i < _cells.Count; i++)
             {
                 if (!_cells[i].Alive)
                     continue;
                 _body.WorldPosition(i, out double x, out double y);
-                if (_food.Touches(p, x, y, CellRadius))
+                if (!_food.Touches(p, x, y, CellRadius))
+                    continue;
+                if (HydrolysisCapacity != null)
                     rate += HydrolysisCapacity(i);
+                else
+                {
+                    if (polymer < 0.0)
+                        polymer = PolymerConcentration(p);
+                    rate += _cells[i].Hydrolysis(polymer);
+                }
             }
             return rate;
         }

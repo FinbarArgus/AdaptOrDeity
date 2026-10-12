@@ -1,7 +1,7 @@
 {
   "module": "/generic_adaptive_cell/versions/fermenter",
   "instance": "default",
-  "source_sha256": "cd393e7e033f39ae3d25bf1060159490729a340af80d7b51f8b78bf5dd4d9333",
+  "source_sha256": "26eaa0c5e1567bda8e0ea3a82f7de567196f0875a7a9d5858c3ae2df9b8ca0a9",
   "modules_commit": "948630794801cc388c317dda0b16ae74181d27d5",
   "solver": "myokit 1.39.2 CVODE",
   "rtol": 1e-10,

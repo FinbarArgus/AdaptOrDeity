@@ -145,13 +145,18 @@ namespace AdaptOrDeity.Game.Session
         public string Description { get; }
     }
 
-    /// <summary>An adaptable trait the panel offers as a slider: a multiplier on the cell's baseline.</summary>
+    /// <summary>
+    /// An adaptable trait the panel offers as a slider: a multiplier on the cell's baseline (log scale), a count, or (for a
+    /// carrier the starting cell lacks) a share of the membrane ceiling.
+    /// </summary>
     public sealed class TraitInfo
     {
-        public TraitInfo(string id, string label, string protein, bool isExpression, double min, double max, bool logScale,
-            double step = 0.0)
+        public TraitInfo(string id, string label, string? protein, bool isExpression, double min, double max, bool logScale,
+            double step = 0.0, bool isShare = false, string? feature = null)
         {
             Step = step;
+            IsShare = isShare;
+            Feature = feature;
             Id = id;
             Label = label;
             Protein = protein;
@@ -165,8 +170,14 @@ namespace AdaptOrDeity.Game.Session
 
         public string Label { get; }
 
-        /// <summary>Protein id in content/timeline.json.</summary>
-        public string Protein { get; }
+        /// <summary>Protein id in content/timeline.json, or null for a carrier bought as a feature.</summary>
+        public string? Protein { get; }
+
+        /// <summary>True if the value is a share of the membrane ceiling (0 to the room the other proteins leave).</summary>
+        public bool IsShare { get; }
+
+        /// <summary>Feature id that must be unlocked (bought) before the slider is offered, or null.</summary>
+        public string? Feature { get; }
 
         /// <summary>True for protein expression; false for a kinetic midpoint.</summary>
         public bool IsExpression { get; }

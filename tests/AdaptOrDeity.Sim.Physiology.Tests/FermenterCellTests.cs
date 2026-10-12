@@ -116,19 +116,85 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         [Test]
         public void TransportersCannotOutgrowTheMembrane()
         {
-            // Asking for x4 of every transporter hits the membrane ceiling (a share of the surface): later traits are clamped.
+            // The membrane proteins take shares of a ceiling (15% of the surface): 36.8% of it at rest, the hydrolase and
+            // the flagellum included. Asking for x4 of every protein and all of the ceiling for each new carrier hits it:
+            // later traits are clamped, and the shares the targets claim sum to at most 1.
             var cell = NewCell();
-            Assert.That(cell.TransporterArea() / cell.SurfaceArea, Is.InRange(0.02, 0.08), "baseline share");
+            Assert.That(cell.TransporterAreaMax / cell.SurfaceArea, Is.EqualTo(0.15).Within(1e-12), "the ceiling");
+            Assert.That(cell.MembraneShareUsed(), Is.EqualTo(0.3681).Within(5e-4), "at rest");
+            Assert.That(cell.MembraneShareUsed() * cell.TransporterAreaMax / cell.SurfaceArea, Is.EqualTo(0.055).Within(5e-4),
+                "5.5% of the surface");
             for (int t = 0; t < cell.Traits.Count; t++)
-                cell.SetTrait(t, 4.0);
+                cell.SetTrait(t, cell.Traits[t].Kind == TraitKind.Share ? 1.0 : 4.0);
             Assert.That(cell.TraitTarget(0), Is.EqualTo(4.0), "the first request fits");
-            double requested = 0.0;
-            for (int t = 0; t < cell.Traits.Count; t++)
-                requested += cell.AlgebraicValue(cell.Traits[t].AreaPerUnit) * cell.TraitTarget(t);
-            Assert.That(requested, Is.LessThanOrEqualTo(cell.TransporterAreaMax * (1 + 1e-12)));
-            Assert.That(cell.Traits.Select((_, t) => cell.TraitTarget(t)).Min(), Is.LessThan(4.0), "something was clamped");
+            Assert.That(cell.MembraneShareClaimed(), Is.LessThanOrEqualTo(1.0 + 1e-12));
+            Assert.That(cell.MembraneShareClaimed(), Is.EqualTo(1.0).Within(1e-9), "the ceiling is used up");
+            Assert.That(Enumerable.Range(0, cell.Traits.Count).Count(t => cell.Traits[t].Kind == TraitKind.Expression
+                && cell.TraitTarget(t) < 4.0), Is.GreaterThan(0), "something was clamped");
             Assert.That(cell.TraitTarget(cell.Traits.ToList().FindIndex(t => t.Id == "glycolysis_expression")), Is.EqualTo(4.0),
                 "cytosolic enzymes take no membrane");
+            int gal = cell.Traits.ToList().FindIndex(t => t.Id == "GalP_share");
+            Assert.That(cell.TraitTarget(gal), Is.EqualTo(0.0), "no room left for the last new carrier");
+        }
+
+        [Test]
+        public void ANewCarrierTakesTheShareOfTheCeilingAsked()
+        {
+            // A share trait's target is its share of the ceiling (s_target); the pool builds copies until they take it.
+            var cell = NewCell();
+            cell.MembraneGlucose = 50.0;   // food: ATP to spare for building
+            int pts = cell.Traits.ToList().FindIndex(t => t.Id == "PTS_share");
+            Assert.That(cell.TraitValue(pts), Is.EqualTo(0.0));
+            cell.SetTrait(pts, 0.05);
+            Assert.That(cell.External("s_target_mod_pool_PTS"), Is.EqualTo(0.05));
+            Assert.That(cell.TraitTarget(pts), Is.EqualTo(0.05));
+            Run(cell, 600.0);
+            Assert.That(cell.TraitValue(pts), Is.EqualTo(0.05).Within(1e-3));
+            Assert.That(cell.AlgebraicValue("pool_PTS__share"), Is.EqualTo(cell.TraitValue(pts)).Within(1e-12));
+            Assert.That(cell.MembraneShareUsed(), Is.EqualTo(0.3681 + 0.05).Within(1e-3));
+            Assert.That(cell.CarrierUptake(1), Is.GreaterThan(0.0), "the PTS brings glucose in");
+            // more than the room left is clamped to it
+            cell.SetTrait(pts, 1.0);
+            Assert.That(cell.MembraneShareClaimed(), Is.EqualTo(1.0).Within(1e-9));
+            Assert.That(cell.TraitTarget(pts), Is.EqualTo(1.0 - cell.MembraneShareClaimed(pts)).Within(1e-12));
+        }
+
+        [Test]
+        public void EveryGlucoseCarrierSeesTheMediumAndUptakeIsTheirSum()
+        {
+            var cell = NewCell();
+            cell.MembraneGlucose = 0.3;
+            foreach (var carrier in FermenterCell.Carriers)
+                Assert.That(cell.External("C_glc_e_mod_" + carrier), Is.EqualTo(0.3), carrier);
+            int pts = cell.Traits.ToList().FindIndex(t => t.Id == "PTS_share");
+            int abc = cell.Traits.ToList().FindIndex(t => t.Id == "ABC_share");
+            int gal = cell.Traits.ToList().FindIndex(t => t.Id == "GalP_share");
+            cell.SetTrait(pts, 0.02);
+            cell.SetTrait(abc, 0.02);
+            cell.SetTrait(gal, 0.02);
+            Run(cell, 300.0);
+            double sum = cell.AlgebraicValue("membrane_face__J_glc") + cell.AlgebraicValue("glc_PTS__J_glc")
+                         + cell.AlgebraicValue("glc_ABC__J_glc") + cell.AlgebraicValue("glc_GalP__J_glc");
+            for (int k = 1; k < FermenterCell.Carriers.Length; k++)
+                Assert.That(cell.CarrierUptake(k), Is.Not.EqualTo(0.0), FermenterCell.Carriers[k]);
+            Assert.That(cell.GlucoseUptake, Is.EqualTo(sum).Within(1e-15 * Math.Abs(sum)));
+            Assert.That(cell.AlgebraicValue("glc_PTS__J_G6P"), Is.EqualTo(cell.CarrierUptake(1)), "the PTS delivers it as G6P");
+            Assert.That(cell.GlucoseRelease, Is.EqualTo(-sum).Within(1e-15 * Math.Abs(sum)));
+            var b = cell.Budget();
+            Assert.That(b.AtpCarriers, Is.EqualTo(cell.AlgebraicValue("glc_PTS__J_glc") + 2.0 * cell.AlgebraicValue("glc_ABC__J_glc"))
+                .Within(1e-12 * b.AtpCarriers), "a PEP per PTS glucose, 2 ATP per ABC glucose");
+        }
+
+        [Test]
+        public void TheSurfaceHydrolaseSaturatesWithPolymer()
+        {
+            var cell = NewCell();
+            double vmax = cell.HydrolysisMax, km = cell.HydrolysisHalfSaturation;
+            Assert.That(vmax, Is.EqualTo(cell.External("kcat_mod_hydrolase") * cell.External("n_0_mod_hydrolase")
+                                         * cell.State("pool_Hydrolase__m") / Na(cell)).Within(1e-12 * vmax));
+            Assert.That(km, Is.EqualTo(20.0), "K_m_poly, mM of glucose units");
+            Assert.That(cell.Hydrolysis(km), Is.EqualTo(0.5 * vmax).Within(1e-15 * vmax));
+            Assert.That(cell.Hydrolysis(0.0), Is.EqualTo(0.0));
         }
 
         [Test]
@@ -194,7 +260,13 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             string dir = Path.Combine(GoldenDir(), "generic_adaptive_cell", "fermenter");
             var lines = File.ReadAllLines(Path.Combine(dir, "famine.csv"));
             var header = lines[0].Split(',');
-            var rows = lines.Skip(1).Select(l => l.Split(',').Select(double.Parse).ToArray()).ToArray();
+            // Myokit writes inf where a quantity divides by a zero (the PTS's mass-action ratio over no glucose outside)
+            var rows = lines.Skip(1).Select(l => l.Split(',').Select(x => x switch
+            {
+                "inf" => double.PositiveInfinity,
+                "-inf" => double.NegativeInfinity,
+                _ => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture),
+            }).ToArray()).ToArray();
             var cell = NewCell("famine");
             foreach (var name in new[] { "membrane__V", "cytosol__C_ATP", "cytosol__C_glc", "H__H_i" })
             {
@@ -235,10 +307,22 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             // content/traits/fermenter.json names each trait's protein_pool; the kernel must have it, and a cell with a new
             // target moves its expression there with the pool's time constant.
             var cell = NewCell();
-            foreach (var t in cell.Traits)
+            for (int i = 0; i < cell.Traits.Count; i++)
             {
-                Assert.That(cell.External(t.TargetParameter), Is.EqualTo(1.0), t.Id);
-                Assert.That(cell.State(t.ExpressionState), Is.EqualTo(1.0), t.Id);
+                var t = cell.Traits[i];
+                Assert.That(cell.TraitTarget(i), Is.EqualTo(t.Default), t.Id);
+                Assert.That(cell.State(t.ExpressionState), Is.EqualTo(t.Default), t.Id);
+                // a membrane protein's target is its share of the ceiling; at rest that is its share now
+                bool share = cell.TargetParameter(i).StartsWith("s_target_mod_");
+                Assert.That(share, Is.EqualTo(t.Kind == TraitKind.Share || t.Pool != "pool_Glyc" && t.Kind != TraitKind.Count), t.Id);
+                if (share)
+                    Assert.That(cell.External(cell.TargetParameter(i)), Is.EqualTo(cell.TraitShare(i)).Within(1e-9), t.Id);
+                if (t.Kind == TraitKind.Share)
+                {
+                    Assert.That((t.Min, t.Max), Is.EqualTo((0.0, 1.0)), t.Id);
+                    Assert.That(t.Feature, Is.Not.Null, t.Id);
+                    continue;
+                }
                 Assert.That(t.Min, t.Step > 0 ? Is.LessThanOrEqualTo(1.0) : Is.LessThan(1.0), t.Id);
                 Assert.That(t.Max, Is.GreaterThan(1.0), t.Id);
             }
@@ -275,7 +359,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             cell.SetTrait(f, 4.0);
             Run(cell, 600.0);
             Assert.That(cell.TraitValue(f), Is.LessThan(3.0), "little spare ATP off food");
-            cell.SetExternal("C_glc_e_mod_membrane_face", 50.0);
+            cell.MembraneGlucose = 50.0;
             Run(cell, 1800.0);
             Assert.That(cell.TraitValue(f), Is.EqualTo(4.0).Within(0.05), "built within half an hour on food");
             double v4 = cell.AlgebraicValue("i_flagellum__v_swim");
@@ -291,7 +375,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             // carriers and glycolysis have the headroom of a growing fermenter (~40x maintenance), so growth asked at the
             // maximum builds a daughter in a few hours at 20 C.
             var cell = NewCell();
-            cell.SetExternal("C_glc_e_mod_membrane_face", 50.0);
+            cell.MembraneGlucose = 50.0;
             cell.GrowthFraction = 50.0;
             Run(cell, 3600.0);
             double perHour = cell.GrowthProgress;

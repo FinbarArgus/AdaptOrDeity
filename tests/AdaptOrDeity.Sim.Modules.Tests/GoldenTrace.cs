@@ -27,12 +27,22 @@ namespace AdaptOrDeity.Sim.Modules.Tests
             return Rows.Select(r => r[c]).ToArray();
         }
 
+        /// <summary>A value as Myokit writes it: inf where a quantity divides by a zero (e.g. a mass-action ratio over no
+        /// glucose outside).</summary>
+        public static double Value(string x) => x switch
+        {
+            "inf" => double.PositiveInfinity,
+            "-inf" => double.NegativeInfinity,
+            "nan" => double.NaN,
+            _ => double.Parse(x, CultureInfo.InvariantCulture),
+        };
+
         public static GoldenTrace Load(string path)
         {
             var lines = File.ReadAllLines(path).Where(l => l.Length > 0).ToArray();
             var columns = lines[0].Split(',');
             var rows = lines.Skip(1)
-                .Select(l => l.Split(',').Select(x => double.Parse(x, CultureInfo.InvariantCulture)).ToArray())
+                .Select(l => l.Split(',').Select(Value).ToArray())
                 .ToArray();
             return new GoldenTrace(columns, rows);
         }
@@ -50,7 +60,10 @@ namespace AdaptOrDeity.Sim.Modules.Tests
         /// <summary>Root-mean-square error normalised by the golden's range (or max |value| if flat).</summary>
         /// <param name="floor">Smallest scale: the golden's absolute tolerance, so a quantity that stays at zero compares
         /// round-off with round-off instead of dividing by nothing.</param>
-        public static double Nrmse(IReadOnlyList<double> expected, IReadOnlyList<double> actual, double floor = 1e-300)
+        /// <param name="flat">A golden whose range is below this share of its max |value| is flat: the replay's relative
+        /// tolerance, below which a resting state's drift is the solvers' round-off, not the module.</param>
+        public static double Nrmse(IReadOnlyList<double> expected, IReadOnlyList<double> actual, double floor = 1e-300,
+            double flat = 1e-12)
         {
             double sum = 0.0, min = double.MaxValue, max = double.MinValue, maxAbs = 0.0;
             for (int i = 0; i < expected.Count; i++)
@@ -61,7 +74,7 @@ namespace AdaptOrDeity.Sim.Modules.Tests
                 max = Math.Max(max, expected[i]);
                 maxAbs = Math.Max(maxAbs, Math.Abs(expected[i]));
             }
-            double scale = Math.Max(max - min > 1e-12 * maxAbs ? max - min : maxAbs, floor);
+            double scale = Math.Max(max - min > flat * maxAbs ? max - min : maxAbs, floor);
             return Math.Sqrt(sum / expected.Count) / scale;
         }
     }

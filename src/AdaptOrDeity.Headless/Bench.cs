@@ -48,7 +48,7 @@ namespace AdaptOrDeity.Headless
         private static Result Simulate(double rtol, double seconds, bool swimming)
         {
             var cell = new FermenterCell(TraitCatalog.Fermenter) { RelativeTolerance = rtol };
-            cell.SetExternal("C_glc_e_mod_membrane_face", 50.0);
+            cell.MembraneGlucose = 50.0;
             cell.GrowthFraction = 50.0;
             int steps = (int)Math.Round(seconds / 0.1), n = cell.Batch.States.Length;
             var trace = new double[steps][];

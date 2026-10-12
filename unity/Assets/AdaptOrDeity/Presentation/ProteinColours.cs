@@ -16,6 +16,9 @@ namespace AdaptOrDeity.Presentation
             new Color(0.98f, 0.75f, 0.30f),   // Glf
             new Color(0.70f, 0.85f, 0.40f),   // lactate exporter
             new Color(0.80f, 0.80f, 0.80f),   // glycolytic enzymes (cytosolic)
+            new Color(0.35f, 0.55f, 0.95f),   // PTS
+            new Color(0.95f, 0.30f, 0.65f),   // ABC importer
+            new Color(0.45f, 0.95f, 0.45f),   // H+ glucose symporter
         };
 
         public static Color For(int trait) => Palette[trait % Palette.Length];

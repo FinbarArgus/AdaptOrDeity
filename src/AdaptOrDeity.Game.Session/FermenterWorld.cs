@@ -90,11 +90,11 @@ namespace AdaptOrDeity.Game.Session
 
         private sealed class Group
         {
-            public Group(int traits)
+            public Group(IReadOnlyList<TraitDefinition> traits)
             {
-                Targets = new double[traits];
-                for (int i = 0; i < traits; i++)
-                    Targets[i] = 1.0;
+                Targets = new double[traits.Count];
+                for (int i = 0; i < traits.Count; i++)
+                    Targets[i] = traits[i].Default;
                 for (int c = 0; c < ControlList.Length; c++)
                     Controls[c] = ControlList[c].DefaultValue;
             }
@@ -135,6 +135,7 @@ namespace AdaptOrDeity.Game.Session
                 first.RelativeTolerance = GameParameters.Default.Value("field.reference_cell_tolerance");   // daughters inherit it
             // Geometry from the kernel (upstream parameters.json); the open water and food field from content.
             CellRadius = first.External("R_cell_mod_membrane") * 1e-6;   // µm → m
+            _cellDepth = first.External("h_cell_mod_membrane") * 1e-6;
             _spacing = 2.0 * CellRadius + GameParameters.Default.Value("colony.cell_gap");
             _food = new FoodField(GameParameters.Default.Food(GameTimeline.Default.OceanGlucose(1)));
             _motilityRandom = new Random(GameParameters.Default.Integer("motility.seed"));
@@ -161,7 +162,7 @@ namespace AdaptOrDeity.Game.Session
             }
             double avogadro = _avogadro;
             _cellGroup.Add(0);
-            _groups.Add(new Group(_cells[0].Traits.Count));
+            _groups.Add(new Group(_cells[0].Traits));
             _featureEnabled = new bool[GameFeatures.All.Count];
             for (int f = 0; f < _featureEnabled.Length; f++)
                 _featureEnabled[f] = GameFeatures.All[f].DefaultEnabled;
@@ -174,7 +175,7 @@ namespace AdaptOrDeity.Game.Session
                 read.Add(i => f(_cells[i]));
             }
             Add(new DetailInfo("medium_glucose", "Food", "Glucose at the membrane", "mol/m³", "mM", 1.0,
-                "background plus any food packet the cell touches"), c => c.External("C_glc_e_mod_membrane_face"));
+                "background plus any food packet the cell touches"), c => c.MembraneGlucose);
             for (int tr = 0; tr < _food.TraceSpecies.Count; tr++)
             {
                 int t = tr;
@@ -192,8 +193,10 @@ namespace AdaptOrDeity.Game.Session
             Add(new DetailInfo("heat", rate, "Heat", "W", "fW", 1e15, "reaction enthalpy released"), c => c.Budget().Heat);
             Add(new DetailInfo("specific_heat", rate, "Specific metabolic rate", "W/kg", "W/kg", 1.0,
                 $"heat per kg of cell (density {_cellDensity:F0} kg/m³)"), c => c.Budget().Heat / (c.Volume * _cellDensity));
-            Add(new DetailInfo("glucose_in", rate, "Glucose taken up", "mol/s", "molecules/s", avogadro),
-                c => c.AlgebraicValue("membrane_face__J_glc"));
+            Add(new DetailInfo("glucose_in", rate, "Glucose taken up", "mol/s", "molecules/s", avogadro,
+                "by all the cell's glucose carriers"), c => c.GlucoseUptake);
+            Add(new DetailInfo("glucose_glf", rate, "Through Glf", "mol/s", "molecules/s", avogadro,
+                "the glucose facilitator; negative while it leaks glucose out"), c => c.GlfUptake);
             Add(new DetailInfo("lactate_out", rate, "Lactate exported", "mol/s", "molecules/s", avogadro),
                 c => -c.AlgebraicValue("membrane_face__J_lac"));
             Add(new DetailInfo("atp_glycolysis", made, "Glycolysis (2 per glucose)", "mol/s", "ATP/s", avogadro),
@@ -215,6 +218,8 @@ namespace AdaptOrDeity.Game.Session
             Add(new DetailInfo("atp_growth", used, "Growth (building a daughter)", "mol/s", "ATP/s", avogadro),
                 c => c.Budget().AtpGrowth);
             Add(new DetailInfo("atp_storage", used, "Storing glycogen", "mol/s", "ATP/s", avogadro), c => c.Budget().AtpStorage);
+            Add(new DetailInfo("atp_carriers", used, "Sugar carriers (PTS, ABC)", "mol/s", "ATP/s", avogadro,
+                "a PEP per glucose for the PTS, about 2 ATP per glucose for the ABC importer"), c => c.Budget().AtpCarriers);
             Add(new DetailInfo("atp_matrix", used, "Making matrix", "mol/s", "ATP/s", avogadro,
                 "about 3 ATP per glucose unit of matrix exported, besides the glucose"), c => c.Budget().AtpMatrix);
             Add(new DetailInfo("atp_other", used, "Other maintenance", "mol/s", "ATP/s", avogadro,
@@ -222,7 +227,8 @@ namespace AdaptOrDeity.Game.Session
                 c => c.Budget().AtpOtherMaintenance);
             Add(new DetailInfo("atp_net", used, "Net (made - used)", "mol/s", "ATP/s", avogadro),
                 c => c.Budget().AtpProduced - c.Budget().AtpConsumed);
-            foreach (var key in new[] { "H_ATPase", "NhaA", "KefC", "Trk", "NCX", "Glf", "LacT", "Glyc", "proteome" })
+            foreach (var key in new[] { "H_ATPase", "NhaA", "KefC", "Trk", "NCX", "Glf", "LacT", "Hydrolase", "PTS", "ABC", "GalP",
+                         "Flagellum", "Glyc", "proteome" })
             {
                 string k = key;
                 Add(new DetailInfo("turnover_" + k, upkeep, ProteinLabel(k), "mol/s", "ATP/s", avogadro),
@@ -238,10 +244,10 @@ namespace AdaptOrDeity.Game.Session
                 c => c.GlycogenProgress);
             Add(new DetailInfo("glycogen", growth, "Glycogen", "mol/m³", "mM glucose", 1.0), c => c.Glycogen);
             Add(new DetailInfo("daughter_cost", growth, "Cost of a daughter", "mol", "ATP", avogadro), c => c.DaughterCost);
-            Add(new DetailInfo("membrane_used", growth, "Membrane space used by transporters", "", "% of limit", 100.0,
-                $"the proteins may take {100 * first.External("area_max_fraction_mod_protein"):F0}% of the membrane; the " +
-                "limit grows with the cell's surface"),
-                c => c.TransporterArea() / c.TransporterAreaMax);
+            Add(new DetailInfo("membrane_used", growth, "Membrane space used by proteins", "", "% of limit", 100.0,
+                $"the membrane proteins may take {100 * first.External("area_max_fraction_mod_protein"):F0}% of the membrane; " +
+                "the limit grows with the cell's surface"),
+                c => c.MembraneShareUsed());
             Add(new DetailInfo("v", state, "Membrane potential", "V", "mV", 1e3), c => 1e-3 * c.State("membrane__V"));
             Add(new DetailInfo("ph", state, "Cytosol pH", "pH", "", 1.0), c => c.AlgebraicValue("H__pH_i"));
             Add(new DetailInfo("atp", state, "ATP", "mol/m³", "mM", 1.0), c => c.State("cytosol__C_ATP"));
@@ -258,7 +264,8 @@ namespace AdaptOrDeity.Game.Session
             _traits = new TraitInfo[traits.Count];
             for (int i = 0; i < _traits.Length; i++)
                 _traits[i] = new TraitInfo(traits[i].Id, traits[i].Label, traits[i].Protein, true, traits[i].Min,
-                    traits[i].Max, traits[i].Step <= 0.0, traits[i].Step);
+                    traits[i].Max, traits[i].Kind == TraitKind.Expression, traits[i].Step, traits[i].Kind == TraitKind.Share,
+                    traits[i].Feature);
         }
 
         public IReadOnlyList<OverlayInfo> Overlays => OverlayList;
@@ -415,7 +422,8 @@ namespace AdaptOrDeity.Game.Session
         {
             // The creature moves over the ground and the food window follows it. Each cell sees the background plus the
             // packets it touches; what it takes beyond the background comes out of those packets. Glucose crosses the
-            // membrane through the cell's own carriers (Glf) in the kernel. Per-cell work runs on the workers; what cells
+            // membrane through the cell's own carriers (Glf, and the PTS, ABC and H+ symport once evolved) in the kernel,
+            // each seeing the same membrane glucose. Per-cell work runs on the workers; what cells
             // share (the body's force, the packets) is summed or settled afterwards in cell order, so results do not
             // depend on the number of workers.
             UpdateColony();
@@ -598,17 +606,20 @@ namespace AdaptOrDeity.Game.Session
 
         public bool FeatureEnabled(int feature) => _featureEnabled[feature];
 
-        public void SetTrait(int group, int trait, double multiplier)
+        public void SetTrait(int group, int trait, double value)
         {
             CheckGroup(group);
             if (trait < 0 || trait >= _traits.Length)
                 throw new ArgumentOutOfRangeException(nameof(trait), $"no trait {trait}");
+            string? feature = _traits[trait].Feature;
+            if (feature != null && !FeatureUnlocked(GameFeatures.IndexOf(feature)))
+                throw new InvalidOperationException($"{_traits[trait].Label} needs {GameFeatures.All[GameFeatures.IndexOf(feature)].Name}");
             for (int i = 0; i < _cells.Count; i++)
                 if (_cellGroup[i] == group)
-                    _cells[i].SetTrait(trait, multiplier);
+                    _cells[i].SetTrait(trait, value);
             // The group's target is what its cells accepted (the membrane ceiling may clamp it).
             int first = _cellGroup.IndexOf(group);
-            _groups[group].Targets[trait] = first >= 0 ? _cells[first].TraitTarget(trait) : multiplier;
+            _groups[group].Targets[trait] = first >= 0 ? _cells[first].TraitTarget(trait) : value;
         }
 
         public void SetControl(int group, int control, double value)
@@ -807,6 +818,11 @@ namespace AdaptOrDeity.Game.Session
                 case "NCX": return "Na⁺/Ca²⁺ exchanger";
                 case "Glf": return "Glf glucose facilitator";
                 case "LacT": return "Lactate exporter";
+                case "Hydrolase": return "Surface hydrolase";
+                case "PTS": return "PTS glucose carrier";
+                case "ABC": return "ABC glucose importer";
+                case "GalP": return "H⁺ glucose symporter";
+                case "Flagellum": return "Flagella";
                 case "Glyc": return "Glycolytic enzymes";
                 default: return "Other proteins (ribosomal, nucleoid, enzymes)";
             }

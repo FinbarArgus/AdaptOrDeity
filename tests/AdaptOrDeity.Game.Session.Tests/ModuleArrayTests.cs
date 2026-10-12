@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using AdaptOrDeity.Game.Content;
+using AdaptOrDeity.Sim.Physiology;
 using NUnit.Framework;
 using static AdaptOrDeity.Game.Session.Tests.FermenterSessionTests;
 
@@ -39,8 +40,10 @@ namespace AdaptOrDeity.Game.Session.Tests
             var player = world.Cell(0).PlayerParameters;
             Assert.That(array.Parameters.Select(p => p.Name),
                 Is.EqualTo(player.Select(p => p + "_cell_0").Concat(player.Select(p => p + "_cell_1"))));
-            var h = array.Parameters.Single(p => p.Name == "m_target_mod_pool_H_ATPase_cell_1");
-            Assert.That((h.Value, h.Units), Is.EqualTo((2.0, "dimensionless")));
+            // a membrane protein's target is its share of the membrane ceiling: twice the starting share
+            var h = array.Parameters.Single(p => p.Name == "s_target_mod_pool_H_ATPase_cell_1");
+            double start = FermenterCell.Module.Descriptor.Instances["default"]["s_target_mod_pool_H_ATPase"];
+            Assert.That((h.Value, h.Units), Is.EqualTo((2.0 * start, "dimensionless")));
         }
 
         [Test]

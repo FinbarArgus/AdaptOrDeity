@@ -151,9 +151,10 @@ namespace AdaptOrDeity.Game.Session
         public static SimCommand SetBathConcentration(double concentration) =>
             new SimCommand(SimCommandKind.SetBathConcentration, x: concentration);
 
-        /// <summary>Sets the target multiplier of trait <paramref name="trait"/> for every cell of <paramref name="group"/>.</summary>
-        public static SimCommand SetTrait(int group, int trait, double multiplier) =>
-            new SimCommand(SimCommandKind.SetTrait, group, trait, x: multiplier);
+        /// <summary>Sets the target of trait <paramref name="trait"/> (a multiplier, count or membrane share) for every cell of
+        /// <paramref name="group"/>.</summary>
+        public static SimCommand SetTrait(int group, int trait, double value) =>
+            new SimCommand(SimCommandKind.SetTrait, group, trait, x: value);
 
         /// <summary>Sets an energy control (growth, storage, repair) for every cell of <paramref name="group"/>.</summary>
         public static SimCommand SetControl(int group, int control, double value) =>

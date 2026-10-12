@@ -56,6 +56,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             // A packet's small molecules leak out by diffusion (first order); its polymer stays until enzymes act on it.
             var (world, loop) = Colony(1, food: true);
             var packet = PacketOnCell(world);
+            world.HydrolysisCapacity = _ => 0.0;   // a cell without its surface hydrolase
             var s = world.Food.Settings;
             double start = packet.Glucose, free = packet.Free;
             Assert.That(free, Is.EqualTo(s.FreeFraction * start).Within(1e-15 * start));

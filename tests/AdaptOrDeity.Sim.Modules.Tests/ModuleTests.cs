@@ -39,7 +39,8 @@ namespace AdaptOrDeity.Sim.Modules.Tests
             bool statesOnly = replay.TryGetProperty("compare", out var cmp) && cmp.GetString() == "states";
 
             var batch = NewBatch(module, instance, out var native);
-            native.SetRelativeTolerance(1e-9);   // the module, not the tolerance, is under test
+            const double rtol = 1e-9;
+            native.SetRelativeTolerance(rtol);   // the module, not the tolerance, is under test
             var actual = golden.Columns.Skip(1).ToDictionary(c => c, _ => new double[times.Length]);
             double t = 0.0;
             for (int row = 0; row < times.Length; row++)
@@ -60,7 +61,9 @@ namespace AdaptOrDeity.Sim.Modules.Tests
                 if (statesOnly && d.StateIndex(pair.Key) < 0)
                     continue;
                 double atol = meta.RootElement.TryGetProperty("atol", out var at) ? at.GetDouble() : 1e-300;
-                double nrmse = GoldenTrace.Nrmse(golden.Column(pair.Key), pair.Value, statesOnly ? atol : 1e-300);
+                double nrmse = statesOnly
+                    ? GoldenTrace.Nrmse(golden.Column(pair.Key), pair.Value, atol, rtol)
+                    : GoldenTrace.Nrmse(golden.Column(pair.Key), pair.Value);
                 TestContext.WriteLine($"{d.Key} {instance} {pair.Key}: NRMSE {nrmse:E2}");
                 Assert.That(nrmse, Is.LessThan(tolerance), $"{d.Key} {pair.Key}");
             }
