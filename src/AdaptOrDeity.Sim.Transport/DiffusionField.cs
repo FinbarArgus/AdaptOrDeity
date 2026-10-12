@@ -10,12 +10,6 @@ namespace AdaptOrDeity.Sim.Transport
 
         /// <summary>No flux through the edges (a closed box: the field's content is conserved).</summary>
         Closed,
-
-        /// <summary>
-        /// Values just outside each edge cell given per species (<see cref="DiffusionField.EdgeValues"/>): a grid nested in
-        /// a coarser one takes its edge values from it.
-        /// </summary>
-        Given,
     }
 
     /// <summary>How a <see cref="DiffusionField"/> steps.</summary>
@@ -130,12 +124,6 @@ namespace AdaptOrDeity.Sim.Transport
         /// <summary>Species <paramref name="s"/>'s concentrations, row by row (cell (i, j) at j·Nx + i).</summary>
         internal double[] Values(int s) => _c[s];
 
-        /// <summary>
-        /// With <see cref="FieldEdge.Given"/>: species <paramref name="s"/>'s values just outside the edges [mol/m³], in face
-        /// order (<see cref="EdgeFace"/>). Set before each step.
-        /// </summary>
-        public double[] EdgeValues(int s) => _edge[s];
-
         /// <summary>What left through each edge face in the last step [mol] (negative: came in), in face order.</summary>
         public double[] EdgeOutflow(int s) => _edgeOut[s];
 
@@ -248,15 +236,6 @@ namespace AdaptOrDeity.Sim.Transport
             if (Edge == FieldEdge.FarField)
                 return FarField[s];
             int ci = Clamp(i, Nx), cj = Clamp(j, Ny);
-            if (Edge == FieldEdge.Given)
-            {
-                // the given value beyond the nearest edge face (a corner takes the west or east one)
-                if (i < 0)
-                    return _edge[s][EdgeFace(0, cj)];
-                if (i >= Nx)
-                    return _edge[s][EdgeFace(1, cj)];
-                return _edge[s][EdgeFace(j < 0 ? 2 : 3, ci)];
-            }
             return _c[s][cj * Nx + ci];
         }
 

@@ -92,6 +92,34 @@ namespace AdaptOrDeity.Game.Content
             TraceSpecies = TraceSpecies,
         };
 
+        /// <summary>The environment field's settings (field.*, environment.*, food.packet_lifetime).</summary>
+        public EnvironmentSettings Environment()
+        {
+            var diffusivity = new List<double>
+            {
+                Value("field.diffusivity.glucose"), Value("field.diffusivity.lactate"), Value("field.diffusivity.acid"),
+                Value("field.diffusivity.oxygen"),
+            };
+            foreach (var t in TraceSpecies)
+                diffusivity.Add(Value("field.diffusivity." + t.Id));
+            return new EnvironmentSettings
+            {
+                Grid = new AdaptOrDeity.Sim.Transport.NestedFieldSettings
+                {
+                    FineSpacing = Value("field.fine_spacing"),
+                    Margin = Value("field.fine_margin"),
+                    ExtentMultiple = Value("field.extent_multiple"),
+                    Depth = Value("field.layer_depth"),
+                },
+                Diffusivity = diffusivity.ToArray(),
+                Oxygen = Value("environment.oxygen"),
+                BufferTotal = Value("environment.carbonate_total"),
+                BufferPk = Value("environment.carbonate_pk1"),
+                PacketLifetime = Value("food.packet_lifetime"),
+                TraceSpecies = TraceSpecies,
+            };
+        }
+
         /// <summary>A rigid body in water flowing over the ground at the current (content environment.current_*).</summary>
         public RigidBody2D Body()
         {

@@ -69,6 +69,7 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aRna, _aRibo, _aLipid, _aRepair;
         private readonly int _aGrowthUsed, _aHeat, _aVol, _aSurface, _aAreaMax, _aDaughter, _aProgress, _aGlycProgress;
         private readonly int _aGlycAtp, _aUptake, _aThrust, _aFlagPower, _eGlucose, _eMotor;
+        private readonly int _aGlcOut, _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
         private readonly int _sDamage, _sGrowth, _sGlycogen;
 
         /// <summary>The fermenter module in the game's module library.</summary>
@@ -137,6 +138,12 @@ namespace AdaptOrDeity.Sim.Physiology
             _aFlagPower = Alg("i_flagellum__P_flag");
             _eGlucose = Ext("C_glc_e_mod_membrane_face");
             _eMotor = Ext("a_motor_mod_i_flagellum");
+            _aGlcOut = Alg("membrane_face__J_glc_e");
+            _aLacOut = Alg("membrane_face__J_lac_e");
+            _aHLac = Alg("membrane_face__J_H_lac");
+            _eLactate = Ext("C_lac_e_mod_membrane_face");
+            _eHe = Ext("H_e_mod_membrane_face");
+            _eHo = Ext("H_o_mod_H");
             _sDamage = St("bio__D");
             _sGrowth = St("bio__P_growth");
             _sGlycogen = St("cytosol__C_glyc");
@@ -197,6 +204,33 @@ namespace AdaptOrDeity.Sim.Physiology
             get => Batch.Externals[_eGlucose][0];
             set => Batch.Externals[_eGlucose][0] = value;
         }
+
+        /// <summary>Lactate at the membrane [mol/m³] (input).</summary>
+        public double MembraneLactate
+        {
+            get => Batch.Externals[_eLactate][0];
+            set => Batch.Externals[_eLactate][0] = value;
+        }
+
+        /// <summary>Free H+ outside the membrane [mol/m³] (input: the lactate carrier's H_e and the proton balance's H_o).</summary>
+        public double MembraneProtons
+        {
+            get => Batch.Externals[_eHe][0];
+            set
+            {
+                Batch.Externals[_eHe][0] = value;
+                Batch.Externals[_eHo][0] = value;
+            }
+        }
+
+        /// <summary>Glucose the cell puts into the water [mol/s] (negative: takes up; the module's J_glc_e).</summary>
+        public double GlucoseRelease => A(_aGlcOut);
+
+        /// <summary>Lactate the cell puts into the water [mol/s] (J_lac_e).</summary>
+        public double LactateRelease => A(_aLacOut);
+
+        /// <summary>H+ the cell puts into the water with lactate [mol/s] (minus J_H_lac, which counts H+ into the cell).</summary>
+        public double ProtonRelease => -A(_aHLac);
 
         /// <summary>Flagellar motor activation, 0 or 1 (input).</summary>
         public double MotorActivation

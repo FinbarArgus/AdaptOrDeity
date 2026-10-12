@@ -289,6 +289,25 @@ namespace AdaptOrDeity.Sim.World
             return total * share;
         }
 
+        /// <summary>
+        /// Dissolves packet <paramref name="p"/> for <paramref name="dt"/> [s]: a fresh packet is gone in
+        /// <paramref name="lifetime"/> [s], its radius shrinking at a constant rate (it releases 2·amount/lifetime·√fill per
+        /// second, integrated exactly over the step); below the used-up share it releases all it has left. Returns the
+        /// glucose released [mol], which leaves the packet.
+        /// </summary>
+        public double Dissolve(FoodPacket p, double dt, double lifetime)
+        {
+            if (!p.Active || p.Glucose <= 0.0)
+                return 0.0;
+            double root = Math.Sqrt(p.Glucose) - Math.Sqrt(Settings.PacketAmount) * dt / lifetime;
+            double left = root > 0.0 ? root * root : 0.0;
+            if (left < Settings.UsedUpFraction * Settings.PacketAmount)
+                left = 0.0;
+            double released = p.Glucose - left;
+            p.Glucose = left;
+            return released;
+        }
+
         /// <summary>Stops every packet that touches a cell at (x, y) of radius r: food stays with the cell that found it.</summary>
         public void StickTo(double x, double y, double r)
         {
