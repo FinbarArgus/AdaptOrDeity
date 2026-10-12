@@ -78,7 +78,6 @@ namespace AdaptOrDeity.Game.Session
         private readonly TraitInfo[] _traits;
         private int _level = 1;
         private readonly bool[] _bought = new bool[GameFeatures.All.Count];
-        private readonly double _glucosePerPoint = GameParameters.Default.Value("skills.glucose_per_point");
         private int _pointsSpent;
         private double _time, _levelStart;
         private readonly FoodField _food;
@@ -315,6 +314,7 @@ namespace AdaptOrDeity.Game.Session
             {
                 _level = value;
                 _levelStart = _time;
+                ResetMeters();
                 ApplyControls();
                 // what the level's world supplies per second (content/timeline.json levels[].arrivals)
                 SetOcean(GameTimeline.Default.OceanGlucose(value));
@@ -428,9 +428,13 @@ namespace AdaptOrDeity.Game.Session
         {
             _time = t + dt;
             StepWorld(t, dt);
-            // A level lasts its simulated time (content/timeline.json levels[].duration_s); then the next begins.
+            // A level lasts its simulated time (content/timeline.json levels[].duration_s): its meters convert to skill
+            // points and the next begins.
             if (LevelTimeLeft <= 0.0 && GameTimeline.Default.HasLevel(_level + 1))
+            {
+                ScoreLevel();
                 Level = _level + 1;
+            }
         }
 
         /// <summary>Simulated time left in the current level [s].</summary>
@@ -487,6 +491,7 @@ namespace AdaptOrDeity.Game.Session
                 fy += _forceY[i];
                 torque += _torque[i];
             }
+            LoadCreature();   // the food it holds weighs on it
             _body.Step(dt, fx, fy, torque);
 
             var b = _body.Body;
@@ -522,6 +527,7 @@ namespace AdaptOrDeity.Game.Session
                         DivideCell(i);
             ApplyFixedSize();
             OrganismLives();
+            UpdateMeters(dt);
         }
 
         // Each cell's motors, and its flagella's force on the body from the last step's state (the motors' response to
@@ -612,14 +618,15 @@ namespace AdaptOrDeity.Game.Session
             return true;
         }
 
-        /// <summary>Glucose the creature has eaten from food packets since the start [mol].</summary>
+        /// <summary>
+        /// Glucose the creature has eaten since the start [mol]: from packets, vacuoles, and its field uptake's share above
+        /// the open water's glucose. A statistic: points come from surviving (FermenterWorld.Scoring.cs) and reproducing.
+        /// </summary>
         public double FoodEaten { get; private set; }
 
-        /// <summary>Skill points to spend: food points and reproduction points, less those spent.</summary>
-        public int SkillPoints => FoodPoints + ReproductionPoints + _pointsGranted - _pointsSpent;
-
-        /// <summary>Points earned by eating: one per content skills.glucose_per_point of food eaten.</summary>
-        public int FoodPoints => (int)Math.Floor(FoodEaten / _glucosePerPoint);
+        /// <summary>Skill points to spend: the finished levels' survival and damage points and the reproduction points, less
+        /// those spent.</summary>
+        public int SkillPoints => SurvivalPoints + DamagePoints + ReproductionPoints + _pointsGranted - _pointsSpent;
 
         /// <summary>
         /// Points earned by reproducing: content skills.points_per_offspring for each daughter released in the creature's
@@ -632,7 +639,19 @@ namespace AdaptOrDeity.Game.Session
 
         private int _pointsGranted;
 
-        /// <summary>Development aid: adds skill points without food (to try features quickly; tests). Not for play.</summary>
+        /// <summary>
+        /// Development aid: ends the level now, as if its time had run out (its meters convert to points and the next level
+        /// begins). Not for play.
+        /// </summary>
+        public void DevEndLevel()
+        {
+            if (!GameTimeline.Default.HasLevel(_level + 1))
+                throw new InvalidOperationException($"level {_level} is the last");
+            ScoreLevel();
+            Level = _level + 1;
+        }
+
+        /// <summary>Development aid: adds skill points (to try features quickly; tests). Not for play.</summary>
         public void DevGrantPoints(int points)
         {
             if (points < 0)

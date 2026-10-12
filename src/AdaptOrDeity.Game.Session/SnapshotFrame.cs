@@ -119,15 +119,47 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Level of the evolutionary time bar being played.</summary>
         public int Level { get; internal set; }
 
-        /// <summary>Glucose eaten from food since the start [mol], and the skill points it has earned not yet spent.</summary>
+        /// <summary>Glucose eaten from food since the start [mol] (a statistic), and the skill points not yet spent.</summary>
         public double FoodEaten { get; internal set; }
 
         public int SkillPoints { get; internal set; }
 
-        /// <summary>Points earned so far by eating and by daughters that left (reproduction), spent or not.</summary>
-        public int FoodPoints { get; internal set; }
+        /// <summary>
+        /// Points earned so far (spent or not): by the survival and damage meters of finished levels, and by daughters
+        /// released in the lineage (reproduction).
+        /// </summary>
+        public int SurvivalPoints { get; internal set; }
+
+        public int DamagePoints { get; internal set; }
 
         public int ReproductionPoints { get; internal set; }
+
+        /// <summary>This level's survival and damage meters (0-100), and the points each would convert to now.</summary>
+        public float SurvivalMeter { get; internal set; }
+
+        public float DamageMeter { get; internal set; }
+
+        public int SurvivalPointsNow { get; internal set; }
+
+        public int DamagePointsNow { get; internal set; }
+
+        /// <summary>Share of the creature's living cells starving now (0-1), and its time since it last had food [s].</summary>
+        public float StarvingShare { get; internal set; }
+
+        public float TimeWithoutFood { get; internal set; }
+
+        /// <summary>
+        /// The last finished level (0 before one ends): its meters at the end and the points they converted to.
+        /// </summary>
+        public int ScoredLevel { get; internal set; }
+
+        public float ScoredSurvival { get; internal set; }
+
+        public float ScoredDamage { get; internal set; }
+
+        public int ScoredSurvivalPoints { get; internal set; }
+
+        public int ScoredDamagePoints { get; internal set; }
 
         /// <summary>Simulated time left in the current level [s].</summary>
         public double LevelTimeLeft { get; internal set; }
@@ -264,13 +296,18 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Per cell-panel detail (schema order): the inspected organism's value in SI.</summary>
         public double[] OrganismDetails { get; }
 
-        /// <summary>Free organisms released so far, that died (their bodies became food), and that went out of range (or were
-        /// replaced at the cap).</summary>
+        /// <summary>Free organisms released so far, that died (their bodies became food), and that were forgotten (frozen
+        /// beyond the frozen cap).</summary>
         public int OrganismsReleased { get; internal set; }
 
         public int OrganismsDied { get; internal set; }
 
         public int OrganismsGone { get; internal set; }
+
+        /// <summary>Free organisms and dead bodies frozen out of range now (kept until the creature comes back).</summary>
+        public int OrganismsFrozen { get; internal set; }
+
+        public int BodiesFrozen { get; internal set; }
 
         /// <summary>Per cell: radius of what it has engulfed (its vacuole) [m], 0 for none.</summary>
         public float[] VacuoleRadius { get; }

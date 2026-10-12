@@ -26,8 +26,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             world.Food.SetArrivals(0.0, 0.0);
             foreach (var p in world.Food.Packets.Where(p => p.Active).ToList())
                 world.Food.Remove(p);
-            typeof(FermenterWorld).GetProperty(nameof(FermenterWorld.FoodEaten))!
-                .SetValue(world, 20 * GameParameters.Default.Value("skills.glucose_per_point"));
+            world.DevGrantPoints(20);
             world.Level = 2;
             world.SetFeature(GameFeatures.IndexOf(GameFeatures.Engulfing), false);   // packets on the cell stay outside it
             return world;

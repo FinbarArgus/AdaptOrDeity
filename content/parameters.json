@@ -205,12 +205,33 @@
    "status": "design",
    "note": "where new flagella are placed by default: around the back of the cell, this far apart"
   },
-  "skills.glucose_per_point": {
-   "value": 1.2e-14,
-   "units": "mol",
+  "scoring.survival_points": {
+   "value": 5,
+   "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "glucose eaten per skill point: calibrated so a level-1 cell left alone for the week earns one 5-point transporter and one kept on food all week two (LevelTests). Re-measured 2026-10-13 with the environment field always on (touching packets feed the membrane facing them) and level-1 food at 5e-3 packets/s: left alone it ate 7.23e-14 mol (6 points; ATP gone at day 1.66, damage 0.55 by day 7); kept on food (1.5e-2 packets/s) 3.12e-13 mol (26 points). Was 2e-14 (field off: 1.69e-13 mol and 8 points left alone). The left-alone outcome hangs on the gaps between packets: on the same random draws, 3e-3 packets/s gave 1 point (ATP gone at 0.43 d), 4e-3 6 (1.91 d), 6e-3 3 (0.79 d), 7e-3 21 (6.1 d)"
+   "note": "skill points the survival meter converts to at 100/100 when a level ends (designer request 2026-10-13: no food points; survival and reproduction points). In proportion below, rounded. Calibration: see docs/plans/scoring.md"
+  },
+  "scoring.damage_points": {
+   "value": 5,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "skill points the damage meter converts to at 100/100 when a level ends; in proportion below, rounded. The damage meter is 100 x (1 - the worst mean damage load of the creature in the level), a dead cell counting as a lethal load"
+  },
+  "scoring.starving_atp_fraction": {
+   "value": 0.5,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "a living cell is starving while its ATP is below this fraction of its resting level; the survival meter falls in proportion to the share of the creature's living cells starving (all of it once none lives)"
+  },
+  "scoring.starvation_to_empty": {
+   "value": 1.0,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "starvation of the whole creature that empties the survival meter, in level durations: 1 empties it over a whole level of starving, so the meter at the end is the share of the level not spent starving"
   },
   "skills.points_per_offspring": {
    "value": 1,

@@ -74,7 +74,7 @@ namespace AdaptOrDeity.Game.Session
 
         bool FeatureEnabled(int feature);
 
-        /// <summary>Glucose eaten from food since the start [mol]: it earns skill points.</summary>
+        /// <summary>Glucose eaten from food since the start [mol] (a statistic).</summary>
         double FoodEaten { get; }
 
         /// <summary>Simulated time left in the current level [s]; the next level begins when it runs out.</summary>
@@ -83,8 +83,24 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Skill points not yet spent.</summary>
         int SkillPoints { get; }
 
-        /// <summary>Points earned by eating so far (spent or not).</summary>
-        int FoodPoints { get; }
+        /// <summary>This level's survival meter (0-100): it falls while the creature starves.</summary>
+        double SurvivalMeter { get; }
+
+        /// <summary>This level's damage meter (0-100): 100 x (1 - the worst mean damage load so far).</summary>
+        double DamageMeter { get; }
+
+        /// <summary>Points the meters would convert to if the level ended now.</summary>
+        int SurvivalPointsNow { get; }
+
+        int DamagePointsNow { get; }
+
+        /// <summary>Points the survival and damage meters earned in finished levels (spent or not).</summary>
+        int SurvivalPoints { get; }
+
+        int DamagePoints { get; }
+
+        /// <summary>The last finished level's meters and points, or null before the first level ends.</summary>
+        LevelScore? LastScore { get; }
 
         /// <summary>Points earned by daughters released in the creature's lineage so far (spent or not).</summary>
         int ReproductionPoints { get; }

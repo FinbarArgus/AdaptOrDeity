@@ -153,8 +153,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             double leaked = world.Environment.PacketGlucose - leaked0;
             Assert.That(glucose0 - shared.Glucose, Is.EqualTo(creature + organism + leaked).Within(1e-12 * glucose0),
                 "what the packet lost is what the two took from it and what leaked into the water");
-            Assert.That(world.FoodPoints, Is.EqualTo((int)Math.Floor(world.FoodEaten / GameParameters.Default.Value(
-                "skills.glucose_per_point"))), "the organism's food earns the player nothing");
+            Assert.That(world.FoodEaten - eaten0, Is.LessThanOrEqualTo(creature + leaked),
+                "the creature ate what it took from the packet and some of what leaked: the organism's food is its own");
             Assert.That((shared.Stuck, shared.Holder), Is.EqualTo((true, 0)), "the creature's cell met it first");
 
             // a packet only the organism touches stays with the organism

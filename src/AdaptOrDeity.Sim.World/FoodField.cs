@@ -93,10 +93,10 @@ namespace AdaptOrDeity.Sim.World
         /// </summary>
         public bool Frozen { get; internal set; }
 
-        /// <summary>Where a stuck packet sits on the body, in the body frame [m].</summary>
-        internal double LocalX { get; set; }
+        /// <summary>Where a stuck packet sits on its holder's body, from the body's centre in the body frame [m].</summary>
+        public double LocalX { get; internal set; }
 
-        internal double LocalY { get; set; }
+        public double LocalY { get; internal set; }
 
         /// <summary>True once the packet has met a cell: it stays with that cell's body until it is eaten.</summary>
         public bool Stuck { get; internal set; }

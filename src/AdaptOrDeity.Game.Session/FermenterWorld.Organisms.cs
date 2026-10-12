@@ -402,6 +402,7 @@ namespace AdaptOrDeity.Game.Session
                 double flagella = _flagellaTrait >= 0 ? c.TraitValue(_flagellaTrait) : 0.0;
                 double thrust = c.Alive ? Math.Max(0.0, c.FlagellumThrust) : 0.0;
                 o.Body.CellForce(0, flagella, thrust, out double fx, out double fy, out double torque);
+                LoadOrganism(o);
                 o.Body.Step(dt, fx, fy, torque);
             }
         }

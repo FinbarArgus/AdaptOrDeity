@@ -10,7 +10,8 @@ namespace AdaptOrDeity.Sim.World
     /// through the centre of mass turns the body. Forces come from the cell kernels (each flagellum's thrust); mass from
     /// the cells' volume and density; drag is Stokes drag of each cell in the water (translation 6 pi eta R, rotation
     /// 8 pi eta R^3 about its own centre plus 6 pi eta R r^2 for its distance r from the centre of mass), neglecting
-    /// hydrodynamic interaction between cells.
+    /// hydrodynamic interaction between cells. What the body holds (food stuck to it, what its cells have engulfed) is a
+    /// load on top (<see cref="SetLoad"/>).
     /// </summary>
     public sealed class CreatureBody
     {
@@ -22,6 +23,8 @@ namespace AdaptOrDeity.Sim.World
         private readonly List<double[]> _noise = new List<double[]>();                      // thrust angle errors, this run
         private readonly List<double> _mass = new List<double>();
         private double _cx, _cy;   // centre of mass in layout coordinates
+        private double _cellsMass, _inertia, _drag, _rotDrag;                    // of the cells
+        private double _loadMass, _loadInertia, _loadDrag, _loadRotDrag;         // of what the body holds
 
         public CreatureBody(double cellRadius, double eta, RigidBody2D body)
         {
@@ -47,6 +50,31 @@ namespace AdaptOrDeity.Sim.World
         public double ForceY { get; private set; }
 
         public double Torque { get; private set; }
+
+        /// <summary>Mass [kg] and drag [N s/m] of what the body holds (<see cref="SetLoad"/>), on top of its cells'.</summary>
+        public double LoadMass => _loadMass;
+
+        public double LoadDrag => _loadDrag;
+
+        /// <summary>
+        /// What the body holds, as a load on its cells' rigid body: its mass [kg], its moment of inertia about the centre of
+        /// mass [kg m²], and its translational [N s/m] and rotational [N m s] drag, each added to the cells'. The centre of
+        /// mass stays the cells' (the load's pull on it and the coupling of its drag between moving and turning are
+        /// neglected). In Stokes flow the speed is the force over the drag: a held meal's drag slows the body; its mass
+        /// changes only the ~1e-7 s it takes to reach that speed.
+        /// </summary>
+        public void SetLoad(double mass, double inertia, double drag, double rotationalDrag)
+        {
+            if (!(mass >= 0.0 && inertia >= 0.0 && drag >= 0.0 && rotationalDrag >= 0.0))
+                throw new ArgumentOutOfRangeException(nameof(mass), "a load's mass, inertia and drags must be >= 0");
+            if (mass == _loadMass && inertia == _loadInertia && drag == _loadDrag && rotationalDrag == _loadRotDrag)
+                return;
+            _loadMass = mass;
+            _loadInertia = inertia;
+            _loadDrag = drag;
+            _loadRotDrag = rotationalDrag;
+            Body.SetProperties(_cellsMass + mass, _inertia + inertia, _drag + drag, _rotDrag + rotationalDrag);
+        }
 
         /// <summary>Adds a cell at layout position (x, y) [m] with mass [kg] and its flagella's base angles (copied).</summary>
         public void AddCell(double x, double y, double mass, IReadOnlyList<double> flagellumAngles)
@@ -208,7 +236,11 @@ namespace AdaptOrDeity.Sim.World
                 drag += xi;
                 rotDrag += xiRot + xi * r2;
             }
-            Body.SetProperties(m, inertia, drag, rotDrag);
+            _cellsMass = m;
+            _inertia = inertia;
+            _drag = drag;
+            _rotDrag = rotDrag;
+            Body.SetProperties(m + _loadMass, inertia + _loadInertia, drag + _loadDrag, rotDrag + _loadRotDrag);
         }
 
         private static double Gaussian(Random random)

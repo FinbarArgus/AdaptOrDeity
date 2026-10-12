@@ -270,8 +270,19 @@ namespace AdaptOrDeity.Game.Session
                 frame.SkillPoints = inspect.SkillPoints;
                 frame.Swallowed = inspect.Swallowed;
                 frame.Offspring = inspect.Offspring;
-                frame.FoodPoints = inspect.FoodPoints;
+                frame.SurvivalPoints = inspect.SurvivalPoints;
+                frame.DamagePoints = inspect.DamagePoints;
                 frame.ReproductionPoints = inspect.ReproductionPoints;
+                frame.SurvivalMeter = (float)inspect.SurvivalMeter;
+                frame.DamageMeter = (float)inspect.DamageMeter;
+                frame.SurvivalPointsNow = inspect.SurvivalPointsNow;
+                frame.DamagePointsNow = inspect.DamagePointsNow;
+                var score = inspect.LastScore;
+                frame.ScoredLevel = score?.Level ?? 0;
+                frame.ScoredSurvival = (float)(score?.Survival ?? 0.0);
+                frame.ScoredDamage = (float)(score?.Damage ?? 0.0);
+                frame.ScoredSurvivalPoints = score?.SurvivalPoints ?? 0;
+                frame.ScoredDamagePoints = score?.DamagePoints ?? 0;
                 frame.LevelTimeLeft = inspect.LevelTimeLeft;
                 for (int f = 0; f < frame.FeatureEnabled.Length; f++)
                 {
@@ -369,6 +380,10 @@ namespace AdaptOrDeity.Game.Session
             frame.OrganismsReleased = world.OrganismsReleased;
             frame.OrganismsDied = world.OrganismsDied;
             frame.OrganismsGone = world.OrganismsGone;
+            frame.OrganismsFrozen = world.FrozenOrganisms.Count;
+            frame.BodiesFrozen = world.Food.FrozenBodies;
+            frame.StarvingShare = (float)world.StarvingShare;
+            frame.TimeWithoutFood = (float)world.TimeWithoutFood;
             frame.OwnOffspring = world.OwnOffspring;
         }
 
