@@ -47,6 +47,8 @@ namespace AdaptOrDeity.Game.Session
             CellAlive = new bool[cellCapacity];
             CellCanDivide = new bool[cellCapacity];
             Controls = Allocate<float>(controlCount, groupCapacity);
+            Regulation = Allocate<bool>(traitCount > 0 ? (traitCount + 1) * SessionSchema.RegulationSpecies.Count : 0,
+                groupCapacity);
             FeatureUnlocked = new bool[featureCount];
             FeatureEnabled = new bool[featureCount];
             Details = Allocate<double>(detailCount, cellCapacity);
@@ -104,6 +106,15 @@ namespace AdaptOrDeity.Game.Session
         public float[][] Controls { get; }
 
         public int GroupCount { get; internal set; }
+
+        /// <summary>
+        /// Per regulated target and species (row <see cref="RegulationRow"/>), per group: whether the species' fall lowers
+        /// the target (feature Regulation). Targets are the traits, then growth (<see cref="SessionSchema.GrowthRegulation"/>).
+        /// </summary>
+        public bool[][] Regulation { get; }
+
+        /// <summary>The row of <see cref="Regulation"/> for a target and a species.</summary>
+        public static int RegulationRow(int target, int species) => target * SessionSchema.RegulationSpecies.Count + species;
 
         /// <summary>Level of the evolutionary time bar being played.</summary>
         public int Level { get; internal set; }

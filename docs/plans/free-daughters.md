@@ -96,7 +96,7 @@ as ours when it was released." Built on branch feat/free-daughters (from m0-skel
   `OrganismId`, `OrganismGeneration`, `OrganismX/Y` (relative to the creature, ground axes), `OrganismOrientation`,
   `OrganismAlive`, `OrganismMotorOn`, `OrganismFlagella` and `OrganismFlagellumAngles`, `OrganismVacuoleRadius`, every
   overlay channel (`OrganismChannels`), the counters, and the details of one inspected organism
-  (`SimCommands.InspectOrganism(id)`, `OrganismDetails`). The codec's header has the organism capacity (magic "ASN4"; `PacketBody`, `OwnOffspring`).
+  (`SimCommands.InspectOrganism(id)`, `OrganismDetails`). The codec's header has the organism capacity (magic "ASN5"; `PacketBody`, `OwnOffspring`).
 - Unity: `OrganismView` draws each like the creature's cells but paler with a white outline (grey when dead), growing
   as it builds a daughter, coloured by the overlay shown, with its flagella beating while its motors run.
   Clicking one opens `OrganismPanel` (read-only, top left: its state, overlay values and every cell-panel detail by

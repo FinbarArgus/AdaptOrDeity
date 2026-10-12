@@ -255,6 +255,10 @@ namespace AdaptOrDeity.Game.Session
                 for (int c = 0; c < frame.Controls.Length; c++)
                     for (int g = 0; g < inspect.GroupCount; g++)
                         frame.Controls[c][g] = (float)inspect.ReadControl(g, c);
+                for (int r = 0; r < frame.Regulation.Length; r++)
+                    for (int g = 0; g < inspect.GroupCount; g++)
+                        frame.Regulation[r][g] = inspect.ReadRegulation(g, r / SessionSchema.RegulationSpecies.Count,
+                            r % SessionSchema.RegulationSpecies.Count);
                 frame.Level = inspect.Level;
                 frame.FoodEaten = inspect.FoodEaten;
                 frame.SkillPoints = inspect.SkillPoints;
