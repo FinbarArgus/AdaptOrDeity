@@ -53,6 +53,18 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 - Km values (PTS 5 µM, ABC 0.5 µM, GalP 0.1 mM) taken from the research notes, not checked against the papers.
 - The surface hydrolase (being added): kcat, copies, Km, and its level-1 baseline expression.
 
+## Level 4: extracellular space (upstream branch feat/extracellular-matrix; copies in content/upstream)
+
+- Matrix cost 3 ATP per glucose unit (range 2-4): accounted from the pathway (sugar activation, carrier recycling,
+  export); no measured cost per gram of EPS found.
+- Maximum matrix production 0.1 x the resting glycolytic flux: placeholder (lactic acid bacteria divert 0.5-3% of sugar).
+- Matrix breakdown 1e-6 /s (half-life ~8 days), half returned as glucose: placeholder.
+- Densest gel 50 g/L (309 mM glucose units): biofilm EPS 10-100 g/L, low-medium confidence.
+- Polymer volume 9.7e-5 m3 per mol glucose units (Mackie-Meares hindrance): medium.
+- Diffusivities in the gaps at 20 C (glucose 5.9e-10, lactate 9e-10, free H+ 8e-9, O2 1.75e-9 m2/s): Stewart 2003 scaled,
+  medium; they differ from the field's values (see the field rows above): to reconcile.
+- Seawater buffer in the volumes 0.3 mM per pH unit (linear): placeholder; the field uses the carbonate buffer.
+
 ## Game design values without a physical source
 
 - Skill points per glucose (2.0e-14 mol) and skill costs: calibrated by tests, design values.
