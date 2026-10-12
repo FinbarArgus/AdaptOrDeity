@@ -16,6 +16,12 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Off while the creature touches or holds food, on while it has none (it stays on food, looks for more).</summary>
         WithoutFood,
+
+        /// <summary>
+        /// On while the food the creature holds is below <see cref="ScriptedPlayer.HoldTarget"/> (it gathers a store before
+        /// it runs out), off once it holds that much.
+        /// </summary>
+        Gather,
     }
 
     /// <summary>
@@ -46,6 +52,9 @@ namespace AdaptOrDeity.Game.Session
 
         public SwimPolicy Swim { get; set; } = SwimPolicy.Always;
 
+        /// <summary>Glucose held [mol] below which <see cref="SwimPolicy.Gather"/> swims (default: two fresh packets).</summary>
+        public double HoldTarget { get; set; } = 1e-14;
+
         private bool _started, _regulated;
 
         /// <summary>Applies the strategy before the world's next step.</summary>
@@ -73,9 +82,23 @@ namespace AdaptOrDeity.Game.Session
                 }
             }
             int swimming = GameFeatures.IndexOf(GameFeatures.Swimming);
-            bool swim = Swim == SwimPolicy.Always || (Swim == SwimPolicy.WithoutFood && world.TimeWithoutFood > 0.0);
+            bool swim = Swim == SwimPolicy.Always || (Swim == SwimPolicy.WithoutFood && world.TimeWithoutFood > 0.0)
+                || (Swim == SwimPolicy.Gather && Held(world) < HoldTarget);
             if (world.FeatureUnlocked(swimming) && world.FeatureEnabled(swimming) != swim)
                 world.SetFeature(swimming, swim);
+        }
+
+        // Glucose in the packets the creature holds and in its vacuoles [mol].
+        private static double Held(FermenterWorld world)
+        {
+            double held = 0.0;
+            var packets = world.Food.Packets;
+            for (int k = 0; k < packets.Count; k++)
+                if (packets[k].Active && packets[k].Stuck && packets[k].Holder == 0)
+                    held += packets[k].Glucose;
+            for (int i = 0; i < world.CellCount; i++)
+                held += world.VacuoleOf(i)?.Glucose ?? 0.0;
+            return held;
         }
 
         private static int TraitIndex(FermenterWorld world, string id)
@@ -90,7 +113,7 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>The strategy in one line (for logs and notes).</summary>
         public override string ToString() =>
-            string.Join(" ", new[] { Name, "swim=" + Swim }
+            string.Join(" ", new[] { Name, "swim=" + Swim + (Swim == SwimPolicy.Gather ? FormattableString.Invariant($" hold={HoldTarget:G3}") : "") }
                 .Concat(Traits.Select(p => FormattableString.Invariant($"{p.Key}={p.Value:G3}")))
                 .Concat(Features.Select(p => $"f:{p.Key}={(p.Value ? "on" : "off")}"))
                 .Concat(Controls.Select(p => FormattableString.Invariant($"{p.Key}={p.Value:G3}")))
@@ -107,6 +130,8 @@ namespace AdaptOrDeity.Game.Session
                 var kv = s.Split('=');
                 if (kv[0].StartsWith("f:", StringComparison.Ordinal))
                     p.Features[kv[0].Substring(2)] = kv[1] == "1" || kv[1] == "on";
+                else if (kv[0] == "hold")
+                    p.HoldTarget = double.Parse(kv[1], CultureInfo.InvariantCulture);
                 else if (kv[0] == "swim")
                     p.Swim = (SwimPolicy)Enum.Parse(typeof(SwimPolicy), kv[1]);
                 else if (kv[0] == "reg")
