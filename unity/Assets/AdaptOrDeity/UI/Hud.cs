@@ -151,7 +151,8 @@ namespace AdaptOrDeity.UI
             if (bridge.Schema.Features.Count > 0)
             {
                 // Development control until the evolutionary time bar sets the level: features unlock by level.
-                GUILayout.Label($"Level {frame.Level}", GUILayout.Width(56));
+                GUILayout.Label(new GUIContent($"Level {frame.Level} · {FormatTime(System.Math.Max(0.0, frame.LevelTimeLeft))} left",
+                    "the next level begins when this level's time runs out"), GUILayout.Width(170));
                 if (GUILayout.Button("−", GUILayout.Width(24)) && frame.Level > 1)
                     bridge.Send(SimCommands.SetLevel(frame.Level - 1));
                 if (GUILayout.Button("+", GUILayout.Width(24)))

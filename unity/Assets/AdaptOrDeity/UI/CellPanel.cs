@@ -95,6 +95,7 @@ namespace AdaptOrDeity.UI
             if (Unlocked(schema, frame, GameFeatures.GrowthAndDivision))
                 DrawGrowth(bridge, schema, frame, cell);
             DrawGroup(schema, frame, cell, "Cell state");
+            DrawLeakHint(schema, frame, cell);
             DrawSwimming(frame);
 
             GUILayout.Space(10);
@@ -132,6 +133,22 @@ namespace AdaptOrDeity.UI
         /// The creature's swimming and where its energy goes: the motors' proton-motive power, the mechanical power of the
         /// thrust (only a fraction: flagella are inefficient) and the heat the body's motion has put into the water.
         /// </summary>
+        // Glucose leaving through the facilitator: the cell is paying to bring in glucose that runs back out.
+        private void DrawLeakHint(SessionSchema schema, SnapshotFrame frame, int cell)
+        {
+            int d = -1;
+            for (int k = 0; k < schema.Details.Count; k++)
+                if (schema.Details[k].Id == "glucose_in")
+                    d = k;
+            if (d < 0 || frame.Details[d][cell] >= 0.0)
+                return;
+            var old = GUI.color;
+            GUI.color = new Color(1f, 0.8f, 0.4f);
+            GUILayout.Label("Glucose is leaking out through Glf: there is more sugar inside the cell than outside. " +
+                            "Turn Glf down, or evolve Carbon regulation to do it automatically.", _small);
+            GUI.color = old;
+        }
+
         private void DrawSwimming(SnapshotFrame frame)
         {
             GUILayout.Space(6);

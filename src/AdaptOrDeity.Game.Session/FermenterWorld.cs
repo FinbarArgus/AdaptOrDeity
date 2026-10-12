@@ -72,6 +72,7 @@ namespace AdaptOrDeity.Game.Session
         private readonly bool[] _bought = new bool[GameFeatures.All.Count];
         private readonly double _glucosePerPoint = GameParameters.Default.Value("skills.glucose_per_point");
         private int _pointsSpent;
+        private double _time, _levelStart;
         private readonly FoodField _food;
         private readonly CreatureBody _body;
         private readonly int _flagellaTrait;
@@ -108,10 +109,10 @@ namespace AdaptOrDeity.Game.Session
             _cellLimit = cellLimit ?? int.MaxValue;
             _cells.Add(new FermenterCell(TraitCatalog.Fermenter));
             var first = _cells[0];
-            // Geometry and the medium from the kernel (upstream parameters.json); the rest of the food field from content.
+            // Geometry from the kernel (upstream parameters.json); the open water and food field from content.
             CellRadius = first.External("R_cell_mod_membrane") * 1e-6;   // µm → m
             _spacing = 2.0 * CellRadius + GameParameters.Default.Value("colony.cell_gap");
-            _food = new FoodField(GameParameters.Default.Food(first.External("C_glc_e_mod_membrane_face")));
+            _food = new FoodField(GameParameters.Default.Food(GameTimeline.Default.OceanGlucose(1)));
             _motilityRandom = new Random(GameParameters.Default.Integer("motility.seed"));
             _meanRun = GameParameters.Default.Value("motility.mean_run");
             _meanPause = GameParameters.Default.Value("motility.mean_pause");
@@ -253,8 +254,10 @@ namespace AdaptOrDeity.Game.Session
             set
             {
                 _level = value;
+                _levelStart = _time;
                 ApplyControls();
                 // what the level's world supplies per second (content/timeline.json levels[].arrivals)
+                _food.BackgroundGlucose = GameTimeline.Default.OceanGlucose(value);
                 var arrivals = GameTimeline.Default.ArrivalsAt(value);
                 _food.SetArrivals(arrivals.FoodPerSecond, arrivals.CarriedShare);
             }
@@ -359,6 +362,18 @@ namespace AdaptOrDeity.Game.Session
         }
 
         public void Step(double t, double dt)
+        {
+            _time = t + dt;
+            StepWorld(t, dt);
+            // A level lasts its simulated time (content/timeline.json levels[].duration_s); then the next begins.
+            if (LevelTimeLeft <= 0.0 && GameTimeline.Default.HasLevel(_level + 1))
+                Level = _level + 1;
+        }
+
+        /// <summary>Simulated time left in the current level [s].</summary>
+        public double LevelTimeLeft => GameTimeline.Default.DurationOf(_level) - (_time - _levelStart);
+
+        private void StepWorld(double t, double dt)
         {
             // The creature moves over the ground and the food window follows it. Each cell sees the background plus the
             // packets it touches; what it takes beyond the background comes out of those packets. Glucose crosses the

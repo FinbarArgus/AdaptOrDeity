@@ -58,6 +58,17 @@ namespace AdaptOrDeity.Game.Content
             return new Arrivals(Number(arrivals["food_per_s"]), Number(arrivals["carried_share"]));
         }
 
+        /// <summary>Simulated time a level lasts [s] (levels[].duration_s); the next level then begins.</summary>
+        public double DurationOf(int level) =>
+            _levels.TryGetValue(level, out var entry) ? Number(entry["duration_s"]) : double.PositiveInfinity;
+
+        /// <summary>Glucose in the open water at this level [mol/m³] (levels[].ocean.glucose).</summary>
+        public double OceanGlucose(int level) =>
+            Number(((Dictionary<string, object?>)_levels[level]["ocean"]!)["glucose"]);
+
+        /// <summary>True when the timeline has this level.</summary>
+        public bool HasLevel(int level) => _levels.ContainsKey(level);
+
         /// <summary>The feature's full explanation for the player ("" if it has none).</summary>
         public string Explanation(string feature) => _explanations.TryGetValue(feature, out var e) ? e : "";
 

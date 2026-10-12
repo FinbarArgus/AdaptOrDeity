@@ -77,6 +77,9 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Glucose eaten from food since the start [mol]: it earns skill points.</summary>
         double FoodEaten { get; }
 
+        /// <summary>Simulated time left in the current level [s]; the next level begins when it runs out.</summary>
+        double LevelTimeLeft { get; }
+
         /// <summary>Skill points not yet spent.</summary>
         int SkillPoints { get; }
 

@@ -92,6 +92,9 @@ namespace AdaptOrDeity.Game.Session
 
         public int SkillPoints { get; internal set; }
 
+        /// <summary>Simulated time left in the current level [s].</summary>
+        public double LevelTimeLeft { get; internal set; }
+
         /// <summary>Per feature (schema order).</summary>
         public bool[] FeatureUnlocked { get; }
 

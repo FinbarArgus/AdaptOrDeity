@@ -224,6 +224,7 @@ namespace AdaptOrDeity.Game.Session
                 frame.Level = inspect.Level;
                 frame.FoodEaten = inspect.FoodEaten;
                 frame.SkillPoints = inspect.SkillPoints;
+                frame.LevelTimeLeft = inspect.LevelTimeLeft;
                 for (int f = 0; f < frame.FeatureEnabled.Length; f++)
                 {
                     frame.FeatureUnlocked[f] = inspect.FeatureUnlocked(f);

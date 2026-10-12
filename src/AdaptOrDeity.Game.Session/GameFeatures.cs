@@ -25,6 +25,7 @@ namespace AdaptOrDeity.Game.Session
         public const string PtsTransport = "pts_transport";
         public const string AbcTransport = "abc_transport";
         public const string ProtonSymport = "proton_symport";
+        public const string CarbonRegulation = "carbon_regulation";
 
         public static readonly IReadOnlyList<FeatureInfo> All = WithExplanations(new[]
         {
@@ -48,6 +49,8 @@ namespace AdaptOrDeity.Game.Session
                 "The highest-affinity glucose importer, powered by ATP: about 2 ATP per glucose.", 5),
             new FeatureInfo(ProtonSymport, "Proton-coupled sugar symporter", 2, true, true,
                 "Brings glucose in with a proton, driven by the proton gradient the H+-ATPase builds.", 5),
+            new FeatureInfo(CarbonRegulation, "Carbon regulation", 2, true, true,
+                "Cells turn the glucose facilitator down by themselves while other carriers bring glucose in, so it stops leaking glucose back out. Planned.", 3),
             new FeatureInfo(Chemosensing, "Smell (chemoreceptors)", 3, true, true,
                 "Sense the trace species food packets carry, to swim towards them. Planned."),
             new FeatureInfo(MembraneRespiration, "Membrane respiration", 4, true, false, "Planned."),

@@ -40,7 +40,8 @@ namespace AdaptOrDeity.Game.Session.Tests
         [Test]
         public void SnapshotCarriesTheEnergyBudget()
         {
-            var loop = NewLoop(out _);
+            var loop = NewLoop(out var world);
+            world.BathConcentration = 0.1;   // the medium the cell's resting budget is calibrated in (0.1 mM)
             loop.InspectedCell = 0;
             var frame = loop.CreateFrame();
             loop.StepExactly(10);

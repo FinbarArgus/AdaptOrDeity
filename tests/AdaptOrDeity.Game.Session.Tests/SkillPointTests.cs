@@ -33,7 +33,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             double perPoint = GameParameters.Default.Value("skills.glucose_per_point");
             using var world = Feeding(10 * perPoint + 4e-14);   // enough for the points, on top of a packet's worth
             double t = 0.0;
-            while (world.SkillPoints < GameFeatures.All[Pts].Cost && t < 36_000.0)
+            while (world.SkillPoints < GameFeatures.All[Pts].Cost && t < 7 * 86_400.0)
             {
                 world.Step(t, world.MacroDt);
                 t += world.MacroDt;
