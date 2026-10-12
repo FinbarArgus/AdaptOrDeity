@@ -31,6 +31,7 @@ namespace AdaptOrDeity.Game.Session
         BuyFeature = 14,
         DevGrantPoints = 15,
         DevSpawnPrey = 16,
+        InspectOrganism = 17,
     }
 
     /// <summary>
@@ -114,6 +115,9 @@ namespace AdaptOrDeity.Game.Session
                     return;
                 case SimCommandKind.Inspect:
                     loop.InspectedCell = A;
+                    return;
+                case SimCommandKind.InspectOrganism:
+                    loop.InspectedOrganism = A;
                     return;
                 case SimCommandKind.DevGrantPoints:
                     Fermenter(loop, "this world has no skill points").DevGrantPoints(A);
@@ -204,6 +208,9 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Development aid: a prey cell swimming straight at the creature (not for play).</summary>
         public static SimCommand DevSpawnPrey() => new SimCommand(SimCommandKind.DevSpawnPrey);
+
+        /// <summary>Frames carry the details of the free organism with this id (-1: none). It cannot be controlled.</summary>
+        public static SimCommand InspectOrganism(int id) => new SimCommand(SimCommandKind.InspectOrganism, id);
     }
 
     /// <summary>Something that happened in the simulation, delivered to the front end in order.</summary>

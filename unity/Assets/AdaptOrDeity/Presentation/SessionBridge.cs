@@ -16,6 +16,7 @@ namespace AdaptOrDeity.Presentation
         private readonly List<CellView> _views = new List<CellView>();
         private readonly List<PacketView> _packets = new List<PacketView>();
         private readonly List<PreyView> _prey = new List<PreyView>();
+        private readonly List<OrganismView> _organisms = new List<OrganismView>();
         private Camera _camera;
         private float _zoom = 1f;   // multiplies the size that frames the colony
 
@@ -44,6 +45,23 @@ namespace AdaptOrDeity.Presentation
         }
 
         private int _selectedCell = -1;
+
+        /// <summary>
+        /// Id of the free organism shown in the organism panel (read-only), or -1 for none. Frames carry its details only.
+        /// </summary>
+        public int SelectedOrganism
+        {
+            get => _selectedOrganism;
+            set
+            {
+                if (value == _selectedOrganism)
+                    return;
+                _selectedOrganism = value;
+                _session?.Enqueue(SimCommands.InspectOrganism(value));
+            }
+        }
+
+        private int _selectedOrganism = -1;
 
         public static SessionBridge Instance { get; private set; }
 
@@ -152,7 +170,24 @@ namespace AdaptOrDeity.Presentation
                 view.Initialise(this, _prey.Count, CellView.CircleSprite());
                 _prey.Add(view);
             }
+            while (_organisms.Count < Frame.OrganismX.Length)
+            {
+                var go = new GameObject($"Free organism {_organisms.Count}");
+                go.transform.SetParent(transform, false);
+                var view = go.AddComponent<OrganismView>();
+                view.Initialise(this, _organisms.Count, CellDiameterMetres, CellView.CircleSprite());
+                _organisms.Add(view);
+            }
             FrameCamera();
+        }
+
+        /// <summary>The free organism under a world point, or null.</summary>
+        public OrganismView OrganismAt(Vector2 world)
+        {
+            foreach (var o in _organisms)
+                if (o.Contains(world))
+                    return o;
+            return null;
         }
 
         /// <summary>The food packet under a world point, or null.</summary>

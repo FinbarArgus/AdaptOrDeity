@@ -13,8 +13,8 @@ namespace AdaptOrDeity.Game.Session
     /// The stage-1 world: fermenter cells (circulatory-autogen-modules cell/generic_adaptive_cell fermenter) in a Proterozoic
     /// sea. Cell physiology comes from the kernel; game-side values (food, colony, control ranges) from content/parameters.json.
     /// Cells belong to groups; traits and energy controls are set per group and apply to every cell in it. From level 2 a
-    /// cell can put energy into a daughter and divide (the daughter stays only with multicellularity; otherwise it leaves
-    /// and earns reproduction points), and cells engulf prey and small food packets (FermenterWorld.Engulfing.cs); at a
+    /// cell can put energy into a daughter and divide (the daughter stays only with multicellularity; otherwise it leaves,
+    /// lives on its own in the same water (FermenterWorld.Organisms.cs) and earns reproduction points), and cells engulf prey and small food packets (FermenterWorld.Engulfing.cs); at a
     /// lethal damage load a cell dies. With a fixed body size a group
     /// keeps its number of cells: growth energy replaces dead cells, and goes to repair while the group is full. From level 4
     /// the water between the cells is a space of its own and the cells fall into boundary and inner groups
@@ -73,6 +73,8 @@ namespace AdaptOrDeity.Game.Session
         private readonly bool[] _featureEnabled;
         private readonly DetailInfo[] _details;
         private readonly Func<int, double>[] _read;
+        private readonly Func<FermenterCell, double>[] _readCell;   // per detail, of any cell (a free organism's too)
+        private readonly int[] _detailTrace;                         // per detail: its trace species, or -1
         private readonly TraitInfo[] _traits;
         private int _level = 1;
         private readonly bool[] _bought = new bool[GameFeatures.All.Count];
@@ -172,10 +174,14 @@ namespace AdaptOrDeity.Game.Session
 
             var details = new List<DetailInfo>();
             var read = new List<Func<int, double>>();   // by cell index
+            var readCell = new List<Func<FermenterCell, double>>();
+            var detailTrace = new List<int>();
             void Add(DetailInfo info, Func<FermenterCell, double> f)
             {
                 details.Add(info);
                 read.Add(i => f(_cells[i]));
+                readCell.Add(f);
+                detailTrace.Add(-1);
             }
             Add(new DetailInfo("medium_glucose", "Food", "Glucose at the membrane", "mol/m³", "mM", 1.0,
                 "background plus any food packet the cell touches"), c => c.MembraneGlucose);
@@ -185,6 +191,8 @@ namespace AdaptOrDeity.Game.Session
                 details.Add(new DetailInfo("trace_" + _food.TraceSpecies[t].Id, "Food", _food.TraceSpecies[t].Name + " (smell, needs a receptor)",
                     "mol/m³", "µM", 1e3, "a trace from " + _food.TraceSpecies[t].Source));
                 read.Add(i => _traceAtCell.Length > 0 ? _traceAtCell[i * _food.TraceSpecies.Count + t] : 0.0);
+                readCell.Add(c => 0.0);
+                detailTrace.Add(t);
             }
             const string rate = "Metabolic rate", made = "ATP made", used = "ATP used", upkeep = "Protein turnover",
                 state = "Cell state", growth = "Growth and storage";
@@ -243,6 +251,8 @@ namespace AdaptOrDeity.Game.Session
             details.Add(new DetailInfo("open_share", growth, "Edge on open water", "", "%", 100.0,
                 "the rest of the edge faces the space between cells (level 4)"));
             read.Add(OpenShare);
+            readCell.Add(c => 1.0);   // a free organism's whole edge is on open water
+            detailTrace.Add(-1);
             Add(new DetailInfo("glycogen_progress", growth, "Glycogen (share of a daughter)", "", "%", 100.0),
                 c => c.GlycogenProgress);
             Add(new DetailInfo("glycogen", growth, "Glycogen", "mol/m³", "mM glucose", 1.0), c => c.Glycogen);
@@ -262,6 +272,8 @@ namespace AdaptOrDeity.Game.Session
             Add(new DetailInfo("damage", state, "Damage", "", "% of lethal", 100.0), c => c.Damage);
             _details = details.ToArray();
             _read = read.ToArray();
+            _readCell = readCell.ToArray();
+            _detailTrace = detailTrace.ToArray();
 
             var traits = _cells[0].Traits;
             _traits = new TraitInfo[traits.Count];
@@ -430,6 +442,7 @@ namespace AdaptOrDeity.Game.Session
             // each seeing the same membrane glucose. Per-cell work runs on the workers; what cells
             // share (the body's force, the packets) is summed or settled afterwards in cell order, so results do not
             // depend on the number of workers.
+            _stepDt = dt;
             UpdateColony();
             int n = _cells.Count;
             if (_cellX.Length < n)
@@ -473,20 +486,23 @@ namespace AdaptOrDeity.Game.Session
             var b = _body.Body;
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
             _prey.Step(dt, b.X, b.Y, b.CurrentVx, b.CurrentVy);   // prey swim in the same water as the creature
+            MoveOrganisms();
             _cos = Math.Cos(b.Angle);
             _sin = Math.Sin(b.Angle);
-            _stepDt = dt;
             EngulfAndDigest(dt);
+            EngulfAndDigestOrganisms(dt);
             if (_environment != null)
                 BeforeCells(dt);
             _cellPass ??= CellPass;
             ForEachCell(_cellPass);
+            StepOrganismCells();
 
             // Food stays with the cell that found it; what cells took beyond the background leaves the packets (with the
             // environment field: the cells' exchange goes into the field and the field steps).
             for (int i = 0; i < n; i++)
                 if (_touching[i] && _cells[i].Alive)
                     _food.StickTo(_cellX[i], _cellY[i], CellRadius);
+            OrganismsStick();
             // the space between cells first (its open gaps exchange with the field before the field steps)
             if (_gaps != null && _space != null)
                 StepSpace(dt);
@@ -502,11 +518,13 @@ namespace AdaptOrDeity.Game.Session
                     FoodEaten += _food.Withdraw(_cellX[i], _cellY[i], CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
             }
             TakeUpFromVacuoles(dt);
+            OrganismsEat(dt);
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))
                         DivideCell(i);
             ApplyFixedSize();
+            OrganismLives();
         }
 
         // Each cell's motors, and its flagella's force on the body from the last step's state (the motors' response to
@@ -562,9 +580,10 @@ namespace AdaptOrDeity.Game.Session
             _workers.Run(_cells.Count, CellChunk, pass);
         }
 
-        public double Read(int cell, int channel)
+        public double Read(int cell, int channel) => ReadChannel(_cells[Check(cell)], channel);
+
+        private static double ReadChannel(FermenterCell c, int channel)
         {
-            var c = _cells[Check(cell)];
             switch (channel)
             {
                 case 0: return 1e-3 * c.State("membrane__V");
@@ -751,7 +770,8 @@ namespace AdaptOrDeity.Game.Session
                 return;
             if (!Active(GameFeatures.Multicellularity))
             {
-                Offspring++;   // without multicellularity the daughter swims off on its own
+                Offspring++;   // without multicellularity the daughter swims off on its own (FermenterWorld.Organisms.cs)
+                ReleaseFromCreature(cell, daughter);
                 return;
             }
             int group = _cellGroup[cell];

@@ -36,6 +36,7 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `prey.radius` | 5e-07 | m | unreferenced_placeholder | design | radius of a prey cell: half the creature's 1 um cell, so a cell can engulf it (marine bacteria are often 0.2-1 um across). Its content is a sphere of  |
 | `prey.run_speed` | 3e-06 | m/s | unreferenced_placeholder | design | swimming speed of prey over the ground during a run: 3 um/s, slower than swimming bacteria (20-30 um/s) so the creature can meet them |
 | `prey.mean_run` | 2 | s | unreferenced_placeholder | placeholder | mean run before a tumble (exponential); each tumble sets a new heading at random. E. coli runs ~1 s |
+| `organisms.dead_kept` | 600 | s | unreferenced_placeholder | design | how long a dead free organism stays in the water (drifting, drawn grey) before it is removed; it does not become food yet |
 
 ## Cited from memory, to check (marked "sourced" but not looked up)
 

@@ -10,7 +10,10 @@ namespace AdaptOrDeity.Game.Session
     /// </summary>
     public static class SnapshotCodec
     {
-        private const int Magic = 0x41534E32;   // "ASN2"
+        private const int Magic = 0x41534E33;   // "ASN3"
+
+        // Bytes before the frame's fields: the magic number and the shape (HeaderFields integers).
+        private const int HeaderFields = 12, HeaderBytes = 4 + 4 * HeaderFields;
 
         /// <summary>Bytes <see cref="Write"/> needs for frames shaped like <paramref name="frame"/>.</summary>
         public static unsafe int Size(SnapshotFrame frame)
@@ -46,7 +49,7 @@ namespace AdaptOrDeity.Game.Session
         {
             CheckMagic(bytes);
             return new SnapshotFrame(H(bytes, 0), H(bytes, 1), H(bytes, 2), H(bytes, 3), H(bytes, 4), H(bytes, 5), H(bytes, 6),
-                H(bytes, 7), H(bytes, 8), H(bytes, 9), H(bytes, 10));
+                H(bytes, 7), H(bytes, 8), H(bytes, 9), H(bytes, 10), H(bytes, 11));
         }
 
         /// <summary>Whether <paramref name="frame"/> has the shape of the frame in <paramref name="bytes"/> (no allocation).</summary>
@@ -58,12 +61,12 @@ namespace AdaptOrDeity.Game.Session
                 && H(bytes, 5) == frame.TraitValues.Length && H(bytes, 6) == frame.Controls.Length
                 && H(bytes, 7) == (frame.Controls.Length > 0 ? frame.Controls[0].Length : 0)
                 && H(bytes, 8) == frame.FeatureUnlocked.Length && H(bytes, 9) == frame.PacketX.Length
-                && H(bytes, 10) == frame.PreyX.Length;
+                && H(bytes, 10) == frame.PreyX.Length && H(bytes, 11) == frame.OrganismX.Length;
         }
 
         private static void CheckMagic(ReadOnlySpan<byte> bytes)
         {
-            if (bytes.Length < 48 || BinaryPrimitives.ReadInt32LittleEndian(bytes) != Magic)
+            if (bytes.Length < HeaderBytes || BinaryPrimitives.ReadInt32LittleEndian(bytes) != Magic)
                 throw new FormatException("not a snapshot frame");
         }
 
@@ -88,6 +91,7 @@ namespace AdaptOrDeity.Game.Session
             Shape(f.FeatureUnlocked.Length, ref io);
             Shape(f.PacketX.Length, ref io);
             Shape(f.PreyX.Length, ref io);
+            Shape(f.OrganismX.Length, ref io);
 
             long sequence = f.Sequence; io.Value(ref sequence); f.Sequence = sequence;
             double simTime = f.SimTime; io.Value(ref simTime); f.SimTime = simTime;
@@ -118,6 +122,11 @@ namespace AdaptOrDeity.Game.Session
             int offspring = f.Offspring; io.Value(ref offspring); f.Offspring = offspring;
             int foodPoints = f.FoodPoints; io.Value(ref foodPoints); f.FoodPoints = foodPoints;
             int reproduction = f.ReproductionPoints; io.Value(ref reproduction); f.ReproductionPoints = reproduction;
+            int organisms = f.OrganismCount; io.Value(ref organisms); f.OrganismCount = organisms;
+            int inspected = f.InspectedOrganism; io.Value(ref inspected); f.InspectedOrganism = inspected;
+            int released = f.OrganismsReleased; io.Value(ref released); f.OrganismsReleased = released;
+            int died = f.OrganismsDied; io.Value(ref died); f.OrganismsDied = died;
+            int gone = f.OrganismsGone; io.Value(ref gone); f.OrganismsGone = gone;
 
             Blocks(f.Channels, ref io);
             Blocks(f.Details, ref io);
@@ -149,6 +158,18 @@ namespace AdaptOrDeity.Game.Session
             io.Block(f.VacuoleX);
             io.Block(f.VacuoleY);
             io.Block(f.VacuolePrey);
+            io.Block(f.OrganismId);
+            io.Block(f.OrganismGeneration);
+            io.Block(f.OrganismX);
+            io.Block(f.OrganismY);
+            io.Block(f.OrganismOrientation);
+            io.Block(f.OrganismAlive);
+            io.Block(f.OrganismMotorOn);
+            io.Block(f.OrganismFlagella);
+            io.Block(f.OrganismVacuoleRadius);
+            io.Block(f.OrganismDetails);
+            Blocks(f.OrganismFlagellumAngles, ref io);
+            Blocks(f.OrganismChannels, ref io);
             foreach (var probe in f.Probes)
             {
                 int cell = probe.Cell; io.Value(ref cell); probe.Cell = cell;

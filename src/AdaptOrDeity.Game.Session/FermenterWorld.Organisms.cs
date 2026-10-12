@@ -1,0 +1,510 @@
+using System;
+using System.Collections.Generic;
+using AdaptOrDeity.Game.Content;
+using AdaptOrDeity.Sim.Core;
+using AdaptOrDeity.Sim.Physiology;
+using AdaptOrDeity.Sim.World;
+
+namespace AdaptOrDeity.Game.Session
+{
+    /// <summary>
+    /// A daughter released at division without multicellularity: a free-living one-cell organism in the creature's water.
+    /// Its cell is the daughter as divided (its parent's physiology, trait targets, controls and solver settings at
+    /// release); its body is a one-cell <see cref="CreatureBody"/> that swims by the creature's run-and-tumble motility
+    /// with its own flagella and random numbers, and drifts with the current. Nobody controls it: its controls, and
+    /// whether it swims, engulfs and divides by itself, stay as they were when it was released. SI.
+    /// </summary>
+    public sealed class FreeOrganism
+    {
+        internal FreeOrganism(int id, int parent, int generation, FermenterCell cell, CreatureBody body, Random random,
+            bool swims, bool engulfs, bool autoDivides, double releasedAt, int traceCount)
+        {
+            Id = id;
+            Parent = parent;
+            Generation = generation;
+            Cell = cell;
+            Body = body;
+            Random = random;
+            Swims = swims;
+            Engulfs = engulfs;
+            AutoDivides = autoDivides;
+            ReleasedAt = releasedAt;
+            Traces = new double[traceCount];
+        }
+
+        /// <summary>Its number in the world (from 1, never reused).</summary>
+        public int Id { get; }
+
+        /// <summary>Id of the organism it divided from; 0 for a daughter of the player's creature.</summary>
+        public int Parent { get; }
+
+        /// <summary>1 for the creature's daughters, 2 for their daughters, and so on.</summary>
+        public int Generation { get; }
+
+        public FermenterCell Cell { get; }
+
+        /// <summary>Its body: one cell at the centre of mass, with the flagella its parent cell had.</summary>
+        public CreatureBody Body { get; }
+
+        public bool Alive => Cell.Alive;
+
+        /// <summary>Where its cell is over the ground [m].</summary>
+        public double X => Body.Body.X;
+
+        public double Y => Body.Body.Y;
+
+        /// <summary>Simulated time it was released [s], and when it died (NaN while alive).</summary>
+        public double ReleasedAt { get; }
+
+        public double DiedAt { get; internal set; } = double.NaN;
+
+        /// <summary>True while its flagellar motors run (a run; false in a pause).</summary>
+        public bool MotorOn { get; internal set; }
+
+        /// <summary>Whether swimming, engulfing and automatic division were on when it was released (they stay so).</summary>
+        public bool Swims { get; }
+
+        public bool Engulfs { get; }
+
+        public bool AutoDivides { get; }
+
+        /// <summary>What it has engulfed, or null.</summary>
+        public Vacuole? Vacuole { get; internal set; }
+
+        /// <summary>Glucose it has eaten from food since its release [mol]: from packets outside and from its vacuole.</summary>
+        public double Eaten { get; internal set; }
+
+        /// <summary>Glucose equivalents it has engulfed, taken up from its vacuole and egested [mol].</summary>
+        public double Engulfed { get; internal set; }
+
+        public double EatenFromVacuole { get; internal set; }
+
+        public double Egested { get; internal set; }
+
+        /// <summary>Prey cells it has engulfed, and its daughters (released the same way).</summary>
+        public int Swallowed { get; internal set; }
+
+        public int Daughters { get; internal set; }
+
+        internal Random Random { get; }
+
+        internal double UntilSwitch { get; set; }
+
+        // this step: touching a packet, inside the environment field, the share of its uptake from its vacuole, the
+        // glucose outside its membrane, the trace species at its membrane
+        internal bool Touching { get; set; }
+
+        internal bool InField { get; set; }
+
+        internal double VacuoleShare { get; set; }
+
+        internal double OutsideGlucose { get; set; }
+
+        internal double[] Traces { get; }
+    }
+
+    /// <summary>
+    /// Free-living organisms: daughters released at division without multicellularity, and their offspring. Each lives in
+    /// the creature's water by the creature's rules: it eats the packets it touches (in competition with the creature: what
+    /// several take from one packet in a step comes out in turn, the creature's cells first, then the organisms by id, as
+    /// colony cells share it), engulfs prey and packets if engulfing was on when it was released, exchanges with the
+    /// environment field where the field covers it, divides by itself if it was released with growth and automatic
+    /// division on (its daughters are its offspring: they earn the player nothing), and dies at a lethal damage load.
+    /// A dead organism drifts for organisms.dead_kept and is removed; one farther than organisms.range_view_widths view
+    /// widths from the creature is no longer simulated; at most organisms.max are (a new daughter replaces a dead one,
+    /// else the farthest). Each organism's motion and integration run on the workers, and what organisms share (packets,
+    /// the field) is settled afterwards in id order, so results do not depend on the number of workers.
+    /// </summary>
+    public sealed partial class FermenterWorld
+    {
+        private readonly List<FreeOrganism> _organisms = new List<FreeOrganism>();
+        private readonly List<(FreeOrganism Parent, FermenterCell Daughter)> _released =
+            new List<(FreeOrganism, FermenterCell)>();
+        private int _nextOrganism = 1;
+        private readonly int _motilitySeed = GameParameters.Default.Integer("motility.seed");
+        private readonly int _maxOrganisms = GameParameters.Default.Integer("organisms.max");
+        private readonly double _deadKept = GameParameters.Default.Value("organisms.dead_kept");
+        private readonly double _rangeWidths = GameParameters.Default.Value("organisms.range_view_widths");
+        private Action<int, int>? _organismMotion, _organismPass;
+
+        /// <summary>Free organisms simulated now, in id order (living and recently dead).</summary>
+        public IReadOnlyList<FreeOrganism> Organisms => _organisms;
+
+        /// <summary>The free organism with this id, or null if it is not simulated (never released, or removed).</summary>
+        public FreeOrganism? Organism(int id)
+        {
+            foreach (var o in _organisms)
+                if (o.Id == id)
+                    return o;
+            return null;
+        }
+
+        /// <summary>Most free organisms simulated at once (content organisms.max).</summary>
+        public int MaxOrganisms => _maxOrganisms;
+
+        /// <summary>
+        /// Distance from the creature along either ground axis beyond which a free organism is no longer simulated [m]:
+        /// organisms.range_view_widths view widths (the view is the food window, 2 x its half size).
+        /// </summary>
+        public double OrganismRange => _rangeWidths * 2.0 * _food.HalfSize;
+
+        /// <summary>Free organisms released so far (the creature's daughters and theirs), that died, and that went out of
+        /// range or were replaced at the cap.</summary>
+        public int OrganismsReleased { get; private set; }
+
+        public int OrganismsDied { get; private set; }
+
+        public int OrganismsGone { get; private set; }
+
+        /// <summary>Glucose all free organisms have eaten from food so far [mol] (not the creature's: no skill points).</summary>
+        public double OrganismsEaten { get; private set; }
+
+        /// <summary>Glucose equivalents free organisms have engulfed, taken up from their vacuoles, and egested [mol].</summary>
+        public double OrganismsEngulfed { get; private set; }
+
+        public double OrganismsEatenFromVacuoles { get; private set; }
+
+        public double OrganismsEgested { get; private set; }
+
+        /// <summary>Overlay channel <paramref name="channel"/> of a free organism's cell (SI), as <see cref="Read"/>.</summary>
+        public double ReadOrganism(FreeOrganism o, int channel) => ReadChannel(o.Cell, channel);
+
+        /// <summary>Flagella a free organism's cell has built (a fraction is a part-built one).</summary>
+        public double FlagellaOf(FreeOrganism o) => _flagellaTrait >= 0 ? o.Cell.TraitValue(_flagellaTrait) : 0.0;
+
+        /// <summary>Cell-panel detail <paramref name="detail"/> of a free organism's cell (SI), as <see cref="ReadDetail"/>.</summary>
+        public double ReadOrganismDetail(FreeOrganism o, int detail)
+        {
+            int trace = _detailTrace[detail];
+            if (trace >= 0)
+                return o.Traces[trace];
+            return _readCell[detail](o.Cell);
+        }
+
+        // The creature's cell divided without multicellularity: the daughter leaves, a cell's spacing out from the colony's
+        // centre (behind the body for a single cell), turned as the body is, with its parent cell's flagella.
+        private void ReleaseFromCreature(int cell, FermenterCell daughter)
+        {
+            var b = _body.Body;
+            _body.WorldPosition(cell, out double x, out double y);
+            double dx = x - b.X, dy = y - b.Y, d = Math.Sqrt(dx * dx + dy * dy);
+            if (d < 0.5 * CellRadius)
+            {
+                dx = -Math.Cos(b.Angle);
+                dy = -Math.Sin(b.Angle);
+                d = 1.0;
+            }
+            bool autoDivides = Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision);
+            Release(daughter, x + _spacing * dx / d, y + _spacing * dy / d, b.Angle, _body.FlagellumAngles(cell), 0, 1,
+                Active(GameFeatures.Swimming), Active(GameFeatures.Engulfing), autoDivides);
+        }
+
+        // A daughter of a free organism: released the same way, behind its parent, with what its parent had.
+        private void ReleaseFromOrganism(FreeOrganism parent, FermenterCell daughter)
+        {
+            parent.Daughters++;
+            double angle = parent.Body.Body.Angle;
+            Release(daughter, parent.X - _spacing * Math.Cos(angle), parent.Y - _spacing * Math.Sin(angle), angle,
+                parent.Body.FlagellumAngles(0), parent.Id, parent.Generation + 1, parent.Swims, parent.Engulfs,
+                parent.AutoDivides);
+        }
+
+        private void Release(FermenterCell daughter, double x, double y, double angle, IReadOnlyList<double> flagella,
+            int parent, int generation, bool swims, bool engulfs, bool autoDivides)
+        {
+            if (_organisms.Count >= _maxOrganisms)
+                MakeRoom();
+            int id = _nextOrganism++;
+            var creature = _body.Body;
+            var rigid = new RigidBody2D { CurrentVx = creature.CurrentVx, CurrentVy = creature.CurrentVy };
+            var body = new CreatureBody(CellRadius, _body.Eta, rigid);
+            body.AddCell(0.0, 0.0, _cellMass, flagella);
+            rigid.Place(x, y, angle);
+            // its own random numbers, from the world's seed and its id (determinism)
+            var random = new Random(unchecked(_motilitySeed * 1_000_003 + id * 7_919));
+            var o = new FreeOrganism(id, parent, generation, daughter, body, random, swims, engulfs, autoDivides, _time,
+                _food.TraceSpecies.Count);
+            o.UntilSwitch = -Math.Log(1.0 - random.NextDouble()) * _meanPause;   // starts in a pause, as the creature
+            _organisms.Add(o);
+            OrganismsReleased++;
+        }
+
+        // At the cap: the first dead organism goes, else the one farthest from the creature (the first of equals).
+        private void MakeRoom()
+        {
+            int gone = -1;
+            for (int k = 0; k < _organisms.Count && gone < 0; k++)
+                if (!_organisms[k].Alive)
+                    gone = k;
+            if (gone < 0)
+            {
+                var b = _body.Body;
+                double far = -1.0;
+                for (int k = 0; k < _organisms.Count; k++)
+                {
+                    var o = _organisms[k];
+                    double d2 = (o.X - b.X) * (o.X - b.X) + (o.Y - b.Y) * (o.Y - b.Y);
+                    if (d2 > far)
+                    {
+                        far = d2;
+                        gone = k;
+                    }
+                }
+            }
+            Remove(_organisms[gone]);
+            _organisms.RemoveAt(gone);
+            OrganismsGone++;
+        }
+
+        // An organism leaves the simulation: the packets it held lie where they are, its vacuole's content goes with it.
+        private void Remove(FreeOrganism o)
+        {
+            _food.Release(o.Id);
+            if (o.Vacuole != null)
+            {
+                o.Egested += o.Vacuole.Glucose;
+                OrganismsEgested += o.Vacuole.Glucose;
+                o.Vacuole = null;
+            }
+        }
+
+        /// <summary>Runs a pass over the free organisms, on the worker threads when there are enough.</summary>
+        private void ForEachOrganism(Action<int, int> pass)
+        {
+            int n = _organisms.Count;
+            if (n == 0)
+                return;
+            if (n < ParallelFrom || _workerCount == 1)
+            {
+                pass(0, n);
+                return;
+            }
+            _workers ??= new ParallelWork(_workerCount);
+            _workers.Run(n, CellChunk, pass);
+        }
+
+        // Each organism's runs and pauses (its own random numbers), its flagella's force from its cell's last state, and
+        // its body's step; then the packets it holds move with it.
+        private void MoveOrganisms()
+        {
+            _organismMotion ??= OrganismMotion;
+            ForEachOrganism(_organismMotion);
+            foreach (var o in _organisms)
+                _food.MoveHeld(o.Id, o.X, o.Y, o.Body.Body.Angle);
+        }
+
+        private void OrganismMotion(int start, int end)
+        {
+            double dt = _stepDt;
+            for (int k = start; k < end; k++)
+            {
+                var o = _organisms[k];
+                var c = o.Cell;
+                o.UntilSwitch -= dt;
+                while (o.UntilSwitch <= 0.0)
+                {
+                    o.MotorOn = !o.MotorOn;
+                    if (o.MotorOn)
+                        o.Body.NewRun(o.Random, _thrustAngleSd);
+                    o.UntilSwitch += -Math.Log(1.0 - o.Random.NextDouble()) * (o.MotorOn ? _meanRun : _meanPause);
+                }
+                c.MotorActivation = o.Swims && o.MotorOn && c.Alive ? 1.0 : 0.0;
+                double flagella = _flagellaTrait >= 0 ? c.TraitValue(_flagellaTrait) : 0.0;
+                double thrust = c.Alive ? Math.Max(0.0, c.FlagellumThrust) : 0.0;
+                o.Body.CellForce(0, flagella, thrust, out double fx, out double fy, out double torque);
+                o.Body.Step(dt, fx, fy, torque);
+            }
+        }
+
+        // After the creature's cells: each living organism engulfs what it touches (if it engulfs), in id order, and its
+        // vacuole is digested.
+        private void EngulfAndDigestOrganisms(double dt)
+        {
+            foreach (var o in _organisms)
+            {
+                var c = o.Cell;
+                if (!c.Alive)
+                    continue;
+                if (o.Engulfs)
+                {
+                    double angle = o.Body.Body.Angle;
+                    o.Vacuole = Engulf(o.Vacuole, c, o.X, o.Y, Math.Cos(angle), Math.Sin(angle), out int prey,
+                        out double glucose);
+                    o.Swallowed += prey;
+                    o.Engulfed += glucose;
+                    OrganismsEngulfed += glucose;
+                }
+                if (o.Vacuole != null)
+                    Digest(c, o.Vacuole, dt);
+            }
+        }
+
+        // Each organism's membrane inputs (the packets it touches, or the environment field where it covers the organism,
+        // and its vacuole) and its own integration (workers).
+        private void StepOrganismCells()
+        {
+            _organismPass ??= OrganismPass;
+            ForEachOrganism(_organismPass);
+        }
+
+        private void OrganismPass(int start, int end)
+        {
+            for (int k = start; k < end; k++)
+            {
+                var o = _organisms[k];
+                var c = o.Cell;
+                double x = o.X, y = o.Y;
+                o.Touching = _food.TouchesAny(x, y, CellRadius);
+                o.InField = false;
+                if (_environment != null)
+                    ReadEnvironment(o, x, y);
+                else
+                {
+                    c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
+                    for (int t = 0; t < o.Traces.Length; t++)
+                        o.Traces[t] = _food.TraceAt(t, x, y, CellRadius);
+                }
+                o.OutsideGlucose = c.MembraneGlucose;
+                o.VacuoleShare = VacuoleOnMembrane(c, o.Vacuole);
+                c.Step(_stepDt);
+            }
+        }
+
+        // As a creature's cell where the field covers the organism (with the membrane correction for its last exchange);
+        // beyond it, the open sea.
+        private void ReadEnvironment(FreeOrganism o, double x, double y)
+        {
+            var env = _environment!;
+            var c = o.Cell;
+            double r = CellRadius, glucose, lactate, protons;
+            o.InField = env.Field.LevelAt(x, y) >= 0;
+            if (o.InField)
+            {
+                glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? c.GlucoseRelease : 0.0);
+                lactate = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? c.LactateRelease : 0.0);
+                protons = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? c.ProtonRelease : 0.0));
+            }
+            else
+            {
+                glucose = Math.Max(0.0, env.Field.Sample(EnvironmentField.Glucose, x, y));
+                lactate = Math.Max(0.0, env.Field.Sample(EnvironmentField.Lactate, x, y));
+                protons = env.Protons(env.Field.Sample(EnvironmentField.Acid, x, y));
+            }
+            if (Moved(c.MembraneGlucose, glucose))
+                c.MembraneGlucose = glucose;
+            if (Moved(c.MembraneLactate, lactate))
+                c.MembraneLactate = lactate;
+            if (Moved(c.MembraneProtons, protons))
+                c.MembraneProtons = protons;
+            for (int t = 0; t < o.Traces.Length; t++)
+                o.Traces[t] = env.Field.Sample(EnvironmentField.FirstTrace + t, x, y);
+        }
+
+        // Food stays with the organism that found it (after the creature's cells took theirs).
+        private void OrganismsStick()
+        {
+            foreach (var o in _organisms)
+                if (o.Touching && o.Alive)
+                    _food.StickTo(o.X, o.Y, CellRadius, o.Id, o.X, o.Y, o.Body.Body.Angle);
+        }
+
+        // With the environment field: each living organism inside it exchanges as a creature's cell does (before the
+        // field steps); food eaten is its uptake above the open water's glucose.
+        private void OrganismsExchange(EnvironmentField env, double dt)
+        {
+            double ocean = env.OceanGlucose;
+            foreach (var o in _organisms)
+            {
+                var c = o.Cell;
+                if (!c.Alive || !o.InField)
+                    continue;
+                double j = c.GlucoseRelease, glucose = j * (j < 0.0 ? 1.0 - o.VacuoleShare : 1.0);
+                env.Exchange(EnvironmentField.Glucose, o.X, o.Y, glucose);
+                env.Exchange(EnvironmentField.Lactate, o.X, o.Y, c.LactateRelease);
+                env.Exchange(EnvironmentField.Acid, o.X, o.Y, c.ProtonRelease);
+                CellGlucoseExchanged -= glucose * dt;
+                double m = o.OutsideGlucose;
+                if (glucose < 0.0 && m > ocean)
+                    Eat(o, -glucose * dt * (m - ocean) / m);
+            }
+        }
+
+        // Under the contact rule: what each organism took beyond the background leaves the packets it touches, after the
+        // creature's cells and in id order; then what it took from its vacuole.
+        private void OrganismsEat(double dt)
+        {
+            double background = _food.BackgroundGlucose, usedUp = Settings.UsedUpFraction * _prey.Content;
+            foreach (var o in _organisms)
+            {
+                var c = o.Cell;
+                if (!c.Alive)
+                    continue;
+                if (_environment == null && o.Touching)
+                {
+                    double outside = _food.GlucoseAt(o.X, o.Y, CellRadius);
+                    double uptake = c.GlucoseUptake * (1.0 - o.VacuoleShare) * dt;
+                    if (outside > background && uptake > 0.0)
+                        Eat(o, _food.Withdraw(o.X, o.Y, CellRadius, uptake * (outside - background) / outside));
+                }
+                var v = o.Vacuole;
+                if (v == null)
+                    continue;
+                double taken = TakeUp(c, v, o.VacuoleShare, dt);
+                Eat(o, taken);
+                o.EatenFromVacuole += taken;
+                OrganismsEatenFromVacuoles += taken;
+                if (v.Glucose < usedUp)
+                {
+                    o.Egested += v.Glucose;
+                    OrganismsEgested += v.Glucose;
+                    o.Vacuole = null;
+                }
+            }
+        }
+
+        private void Eat(FreeOrganism o, double mol)
+        {
+            o.Eaten += mol;
+            OrganismsEaten += mol;
+        }
+
+        // Deaths, divisions, and organisms that are no longer simulated: dead long enough, or out of range.
+        private void OrganismLives()
+        {
+            var b = _body.Body;
+            double range = OrganismRange;
+            _released.Clear();
+            int kept = 0;
+            for (int k = 0; k < _organisms.Count; k++)
+            {
+                var o = _organisms[k];
+                var c = o.Cell;
+                if (!c.Alive && double.IsNaN(o.DiedAt))
+                {
+                    o.DiedAt = _time;
+                    OrganismsDied++;
+                    Remove(o);   // its packets lie where they are; its vacuole's content goes
+                }
+                bool expired = !c.Alive && _time - o.DiedAt >= _deadKept;
+                bool away = Math.Abs(o.X - b.X) > range || Math.Abs(o.Y - b.Y) > range;
+                if (expired || away)
+                {
+                    Remove(o);
+                    if (away && !expired)
+                        OrganismsGone++;
+                    continue;
+                }
+                if (o.AutoDivides && c.Alive && c.GrowthProgress >= 1.0)
+                {
+                    var daughter = c.Divide();
+                    if (daughter != null)
+                        _released.Add((o, daughter));
+                }
+                _organisms[kept++] = o;
+            }
+            _organisms.RemoveRange(kept, _organisms.Count - kept);
+            foreach (var (parent, daughter) in _released)
+                ReleaseFromOrganism(parent, daughter);
+        }
+    }
+}

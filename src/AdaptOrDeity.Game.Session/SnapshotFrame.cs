@@ -10,8 +10,20 @@ namespace AdaptOrDeity.Game.Session
     {
         public SnapshotFrame(int channelCount, int cellCapacity, int probeCapacity, int probeSamples, int detailCount = 0,
             int traitCount = 0, int controlCount = 0, int groupCapacity = 0, int featureCount = 0, int packetCapacity = 0,
-            int preyCapacity = 0)
+            int preyCapacity = 0, int organismCapacity = 0)
         {
+            OrganismId = new int[organismCapacity];
+            OrganismGeneration = new int[organismCapacity];
+            OrganismX = new float[organismCapacity];
+            OrganismY = new float[organismCapacity];
+            OrganismOrientation = new float[organismCapacity];
+            OrganismAlive = new bool[organismCapacity];
+            OrganismMotorOn = new bool[organismCapacity];
+            OrganismFlagella = new float[organismCapacity];
+            OrganismFlagellumAngles = Allocate<float>(organismCapacity, AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella);
+            OrganismVacuoleRadius = new float[organismCapacity];
+            OrganismChannels = Allocate<float>(channelCount, organismCapacity);
+            OrganismDetails = new double[detailCount];
             PreyX = new float[preyCapacity];
             PreyY = new float[preyCapacity];
             PreyRadius = new float[preyCapacity];
@@ -195,6 +207,53 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Daughters that left the creature (divisions without multicellularity).</summary>
         public int Offspring { get; internal set; }
+
+        /// <summary>
+        /// Free-living organisms (daughters released without multicellularity, and their offspring), in id order; only the
+        /// first <see cref="OrganismCount"/> are valid. Not the player's: frames carry them to draw and inspect.
+        /// </summary>
+        public int OrganismCount { get; internal set; }
+
+        /// <summary>Per organism: its id (stable while it is simulated) and generation (1: the creature's daughter).</summary>
+        public int[] OrganismId { get; }
+
+        public int[] OrganismGeneration { get; }
+
+        /// <summary>Per organism: its cell's position relative to the creature, ground axes [m], and its orientation [rad].</summary>
+        public float[] OrganismX { get; }
+
+        public float[] OrganismY { get; }
+
+        public float[] OrganismOrientation { get; }
+
+        public bool[] OrganismAlive { get; }
+
+        /// <summary>Per organism: true while its flagellar motors run.</summary>
+        public bool[] OrganismMotorOn { get; }
+
+        /// <summary>Per organism: flagella built (a fraction is a part-built one) and each one's base angle, body frame [rad].</summary>
+        public float[] OrganismFlagella { get; }
+
+        public float[][] OrganismFlagellumAngles { get; }
+
+        /// <summary>Per organism: radius of its vacuole [m], 0 for none.</summary>
+        public float[] OrganismVacuoleRadius { get; }
+
+        /// <summary>Per overlay channel (schema order), per organism: value in canonical SI, as <see cref="Channels"/>.</summary>
+        public float[][] OrganismChannels { get; }
+
+        /// <summary>The organism whose details <see cref="OrganismDetails"/> holds (-1: none, or it is no longer simulated).</summary>
+        public int InspectedOrganism { get; internal set; } = -1;
+
+        /// <summary>Per cell-panel detail (schema order): the inspected organism's value in SI.</summary>
+        public double[] OrganismDetails { get; }
+
+        /// <summary>Free organisms released so far, that died, and that went out of range (or were replaced at the cap).</summary>
+        public int OrganismsReleased { get; internal set; }
+
+        public int OrganismsDied { get; internal set; }
+
+        public int OrganismsGone { get; internal set; }
 
         /// <summary>Per cell: radius of what it has engulfed (its vacuole) [m], 0 for none.</summary>
         public float[] VacuoleRadius { get; }

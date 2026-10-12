@@ -67,7 +67,8 @@ that leave). Built on branch feat/prey-branch.
   exclude each other (`excludes` in content/timeline.json, mirrored in `GameFeatures`, checked by
   `FeatureTableMatchesTheTimeline`). `FermenterWorld.WhyNotForSale` says why a feature cannot be bought.
 - Without multicellularity a daughter leaves at division: it is not added to the creature, `Offspring` counts it, and
-  it earns **reproduction points** (`skills.points_per_offspring`), on top of food points. With multicellularity the
+  it earns **reproduction points** (`skills.points_per_offspring`), on top of food points. It lives on as a free
+  organism in the same water ([free-daughters.md](free-daughters.md)). With multicellularity the
   daughter stays (the colony) and earns none. Frames carry `FoodPoints`, `ReproductionPoints`, `Offspring`.
 - Later colony features need multicellularity (`requires`): boundary and inner cells, the extracellular matrix,
   several groups, a fixed body size.

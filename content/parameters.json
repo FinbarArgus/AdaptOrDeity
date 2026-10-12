@@ -386,6 +386,34 @@
    "source": "definitional",
    "status": "design",
    "note": "prey the first snapshot frames have room for; frames grow when more are in view"
+  },
+  "organisms.max": {
+   "value": 32,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "most free-living organisms (released daughters and their offspring) simulated at once; a new daughter beyond it replaces a dead one, else the one farthest from the creature (counted as gone). Measured cost: see docs/plans/free-daughters.md"
+  },
+  "organisms.range_view_widths": {
+   "value": 2,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "a free organism farther than this many view widths (2 x food.field_half_size) from the creature, along either ground axis, is no longer simulated (gone out of range); beyond the view it sees only the open water, with no food packets"
+  },
+  "organisms.dead_kept": {
+   "value": 600.0,
+   "units": "s",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "how long a dead free organism stays in the water (drifting, drawn grey) before it is removed; it does not become food yet"
+  },
+  "organisms.initial_capacity": {
+   "value": 8,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "free organisms the first snapshot frames have room for; frames grow when there are more"
   }
  },
  "trace_species": [
