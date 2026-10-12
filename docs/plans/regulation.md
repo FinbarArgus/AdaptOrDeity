@@ -10,8 +10,12 @@ species' drop lowers it; the function is hardcoded for now, experts will choose 
   H+ (f falls as pH falls); K = half the resting level (H+: twice the resting H+). Every protein_pool's target and
   biosynthesis's growth are multiplied by R_reg = prod_s (1 - reg_on_s + reg_on_s f_s); the switches reg_on_s are 0 by
   default, so the cell is bitwise unchanged until the player turns one on. Only targets change, never a flux or a cost.
-- **Game**: feature `regulation` (level 1, free, optional, on by default once unlocked), unlocked the first time a cell
-  of the creature has its ATP below `requires_atp_below` (0.5) of its resting level (FermenterWorld.Regulation.cs). Each
+- **Game**: feature `regulation` (level 1, free, optional, on by default once unlocked), unlocked after the first gap
+  without food (designer, 2026-10-13: "Unlock after the first gap of not contacting food"): the first time the creature
+  goes `requires_food_gap_s` (60 s, content/timeline.json) without a living cell touching a packet, holding one, or with
+  food in its vacuole (`TimeWithoutFood`, `FoodGapMet`, FermenterWorld.Regulation.cs). The gap counts from the start of
+  play. A minute is about half the time a cell's ATP takes to run out in a full famine (~2 min, see below), so the
+  player can act before the crash. Each
   group keeps a switch per regulated target (each trait, then growth) and species; ApplyControls pushes them to the
   group's cells as `reg_on_<species>_mod_<pool|bio>` (all 0 while the feature is locked or off). Daughters and released
   organisms copy their parent's kernel inputs, switches included. Command `SetRegulation(group, target, species, on)`;
@@ -35,9 +39,6 @@ species' drop lowers it; the function is hardcoded for now, experts will choose 
   constant), so the cell cannot use food when it returns: the popup and the explanation say so.
 
 ## Still to do
-- Unlock earlier or keep the creature alive to use it: at level 1 the unlocking dip is the crash itself. A higher
-  threshold (e.g. 0.8 of rest), or unlocking on the first long gap between packets, would let the player set regulation
-  before it is needed (designer's call).
 - Experts choose the function (n, K, or another form): a new version of cell/expression_regulation per function, and a
   game setting to pick it.
 - Show each target's present factor (R_reg) in the popup, and the cell's f per species.

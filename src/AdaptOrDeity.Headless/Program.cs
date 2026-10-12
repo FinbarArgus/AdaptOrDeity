@@ -80,7 +80,10 @@ namespace AdaptOrDeity.Headless
                 world.Level = level;
             if (!double.IsNaN(food))
                 world.Food.SetArrivals(food, world.Food.Settings.CarriedShare);
-            Console.WriteLine(BotOutcome.Play(player, world));
+            bool trace = Environment.GetEnvironmentVariable("AOD_BOT_TRACE") == "1";
+            Console.WriteLine(BotOutcome.Play(player, world, report: trace ? (w, t) => Console.WriteLine(FormattableString.Invariant(
+                $"t {t / 3600:F0} h ATP {w.Cell(0).Atp:F2} X {w.Body.Body.X:R} gap {w.TimeWithoutFood:F0} eaten {w.FoodEaten:G4} survival {w.SurvivalMeter:F1} damage {w.DamageMeter:F1} reg {w.FoodGapMetAt:F0}"))
+                : null));
             return 0;
         }
 

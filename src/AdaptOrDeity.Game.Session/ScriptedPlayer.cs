@@ -32,6 +32,9 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Trait targets set at the start (trait id → value: a multiplier, a count or a share).</summary>
         public Dictionary<string, double> Traits { get; } = new Dictionary<string, double>();
 
+        /// <summary>Features turned on or off at the start (feature id → on).</summary>
+        public Dictionary<string, bool> Features { get; } = new Dictionary<string, bool>();
+
         /// <summary>Controls set at the start (control id → value).</summary>
         public Dictionary<string, double> Controls { get; } = new Dictionary<string, double>();
 
@@ -51,6 +54,8 @@ namespace AdaptOrDeity.Game.Session
             if (!_started)
             {
                 _started = true;
+                foreach (var (id, on) in Features)
+                    world.SetFeature(GameFeatures.IndexOf(id), on);
                 foreach (var (id, value) in Traits)
                     world.SetTrait(0, TraitIndex(world, id), value);
                 foreach (var (id, value) in Controls)
@@ -87,6 +92,7 @@ namespace AdaptOrDeity.Game.Session
         public override string ToString() =>
             string.Join(" ", new[] { Name, "swim=" + Swim }
                 .Concat(Traits.Select(p => FormattableString.Invariant($"{p.Key}={p.Value:G3}")))
+                .Concat(Features.Select(p => $"f:{p.Key}={(p.Value ? "on" : "off")}"))
                 .Concat(Controls.Select(p => FormattableString.Invariant($"{p.Key}={p.Value:G3}")))
                 .Concat(Regulation.Select(r => $"reg:{r.Target}<-{r.Species}")));
 
@@ -99,7 +105,9 @@ namespace AdaptOrDeity.Game.Session
             foreach (var s in settings)
             {
                 var kv = s.Split('=');
-                if (kv[0] == "swim")
+                if (kv[0].StartsWith("f:", StringComparison.Ordinal))
+                    p.Features[kv[0].Substring(2)] = kv[1] == "1" || kv[1] == "on";
+                else if (kv[0] == "swim")
                     p.Swim = (SwimPolicy)Enum.Parse(typeof(SwimPolicy), kv[1]);
                 else if (kv[0] == "reg")
                 {
@@ -180,16 +188,26 @@ namespace AdaptOrDeity.Game.Session
 
         public double FoodEaten { get; set; }
 
+        /// <summary>Daughters released in the lineage and prey swallowed by the end of the level.</summary>
+        public int Offspring { get; set; }
+
+        public int Swallowed { get; set; }
+
         public double Seconds { get; set; }
 
         public override string ToString() => FormattableString.Invariant(
-            $"{Player}: points {Score?.Points} (survival {Score?.Survival:F1} -> {Score?.SurvivalPoints}, damage {Score?.Damage:F1} -> {Score?.DamagePoints}, reproduction {Score?.ReproductionPoints}), stars {Score?.Stars}; starving {TimeStarving / 86400:F2} d (last from day {StarvingFrom / 86400:F2}), regulation at {RegulationAt:F0} s, alive {Alive}, ate {FoodEaten:G3} mol; {Seconds:F0} s to run");
+            $"{Player}: points {Score?.Points} (survival {Score?.Survival:F1} -> {Score?.SurvivalPoints}, damage {Score?.Damage:F1} -> {Score?.DamagePoints}, reproduction {Score?.ReproductionPoints}), stars {Score?.Stars}; starving {TimeStarving / 86400:F2} d (last from day {StarvingFrom / 86400:F2}), regulation at {RegulationAt:F0} s, alive {Alive}, ate {FoodEaten:G3} mol, offspring {Offspring}, swallowed {Swallowed}; {Seconds:F0} s to run");
 
         /// <summary>
         /// Plays <paramref name="player"/> through the world's current level until the next begins (one level), from a fresh
         /// world unless one is given.
         /// </summary>
-        public static BotOutcome Play(ScriptedPlayer player, FermenterWorld? world = null, int workers = 1)
+        /// <param name="player">The strategy.</param>
+        /// <param name="world">The world to play in (a fresh level-1 world if null).</param>
+        /// <param name="workers">Threads for a fresh world.</param>
+        /// <param name="report">Called every simulated hour with the world and the time (progress logs).</param>
+        public static BotOutcome Play(ScriptedPlayer player, FermenterWorld? world = null, int workers = 1,
+            Action<FermenterWorld, double>? report = null)
         {
             var clock = System.Diagnostics.Stopwatch.StartNew();
             bool own = world == null;
@@ -203,6 +221,8 @@ namespace AdaptOrDeity.Game.Session
                     player.Act(world);
                     world.Step(t, dt);
                     t += dt;
+                    if (report != null && Math.Abs(t / 3600.0 - Math.Round(t / 3600.0)) < 0.5 * dt / 3600.0)
+                        report(world, t);
                     if (world.Level != level)
                         break;
                     if (world.StarvingShare > 0.0)
@@ -218,6 +238,7 @@ namespace AdaptOrDeity.Game.Session
                 {
                     Player = player.ToString(), Score = world.LastScore, RegulationAt = world.FoodGapMetAt,
                     StarvingFrom = from, TimeStarving = starving, Alive = world.CellAlive(0), FoodEaten = world.FoodEaten,
+                    Offspring = world.Offspring, Swallowed = world.Swallowed,
                     Seconds = clock.Elapsed.TotalSeconds,
                 };
             }

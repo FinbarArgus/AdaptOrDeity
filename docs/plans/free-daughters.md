@@ -33,8 +33,7 @@ as ours when it was released." Built on branch feat/free-daughters (from m0-skel
   `CellGlucoseExchanged`, so the field's balance holds to 1e-12); beyond the field it sees the open sea and exchanges
   nothing. The field's outermost grid covers the organisms' range each way (`NestedFieldSettings.Reach`; 136 µm across
   for one cell), so in play every simulated organism is inside it.
-- **Its food earns the player nothing**: `Eaten` per organism and `OrganismsEaten` in all; `FoodEaten` and the food
-  points are the creature's only. `Swallowed` likewise counts only the creature's prey.
+- **Its food is its own**: `Eaten` per organism and `OrganismsEaten` in all; `FoodEaten` is the creature's only. `Swallowed` likewise counts only the creature's prey.
 - **Death**: at a lethal damage load. At the end of the step it dies in, it leaves `Organisms` and **its body becomes
   food where it lies** (designer request 2026-10-13, "dead daughters should not be removed, they should be able to be
   eaten"; `FermenterWorld.Die`, `FoodField.AddBody`, `FreeOrganism.Remains`). See "Dead bodies" below.
@@ -63,20 +62,30 @@ as ours when it was released." Built on branch feat/free-daughters (from m0-skel
   id). Untouched, only its free part leaks: its polymer stays. **Engulfing** needs an item smaller than the cell: a fresh body is as large as a cell, so
   no cell (all are the same size) engulfs it whole. Eaten from outside to ~87% (radius ~0.96 of a cell), it fits in an
   empty vacuole with room left for a prey cell and an engulfing cell swallows the rest (`FreeOrganismTests`).
-- **Range**: a body stays while it is within the organisms' range (`organisms.range_view_widths`, 2 view widths, 60 µm
-  along either ground axis) of the creature, though other food leaves the field at the edge of the 30 µm window.
-  Beyond it the body is no longer simulated (`FoodField.BodiesGone`); that is not a timed removal but it is a removal
-  (open question). With the creature drifting in the same water a body it does not swim away from stays in range.
+- **Range**: a body is simulated while it is within the organisms' range (`organisms.range_view_widths`, 2 view widths,
+  60 µm along either ground axis) of the creature, though other food leaves the field at the edge of the 30 µm window.
+  Beyond it the body is **frozen** where it is (designer, 2026-10-13: "keep a memory of where they are in the world so if
+  I enter back in they are still there, freeze them until I get back"; `FoodPacket.Frozen`): not moved, leaked, digested
+  or drawn, its slot not reused, until the creature comes back within range. A body held by a frozen organism freezes
+  and thaws with it. At most `organisms.frozen_bodies_max` (1,024) are kept; beyond it the frozen body farthest from the
+  creature is forgotten (`FoodField.BodiesGone`).
 - At the cap a daughter replaces the farthest living organism: dead ones are food, not organisms. Frames carry only
   living organisms (`OrganismAlive` is gone) and mark bodies among the packets (`PacketBody`); Unity draws a body as a
   grey dead cell with a pale outline, shrinking as it is eaten; its tooltip says "Dead cell".
 
 ### Bounds and cost
 - **Range**: an organism farther than `organisms.range_view_widths` = **2 view widths** (60 µm, the view being the
-  30 µm food window) from the creature along either ground axis is no longer simulated (`OrganismsGone`). Beyond the
-  window there are no packets, so out there it would only starve; the camera shows at most ~1.5 view widths.
-- **Cap**: at most `organisms.max` = **32**. A new daughter beyond it replaces the first dead organism, else the one
-  farthest from the creature (counted as gone).
+  30 µm food window) from the creature along either ground axis is **frozen** (designer, 2026-10-13): kept with its whole
+  state (cell and integrator, body, random numbers, run clock, vacuole, the bodies it holds) in `FrozenOrganisms`, not
+  moved or integrated (no cost: tested, its integrator takes no steps), and it resumes exactly where it was when the
+  creature comes back within range. Freezing and thawing happen at the start of a step, once the creature has moved, so
+  everything simulated in a step starts within range (and inside the field). Frozen things do not drift with the
+  current: the creature drifting at 2 µm/s leaves them behind unless it swims back.
+- **Cap**: at most `organisms.max` = **32** simulated. A new daughter beyond it replaces the first dead organism, else
+  freezes the one farthest from the creature; a frozen organism back in range thaws only while there is room under the
+  cap (otherwise it stays frozen, unseen, until there is). At most `organisms.frozen_max` = **256** are kept frozen
+  (~80 kB each, measured: ~20 MB); beyond it the farthest is forgotten (`OrganismsGone`). Determinism: frozen organisms
+  are kept and thawed in id order.
 - Measured (one thread unless said; 600 s simulated, field off, food 0.05 packets/s, after a 10 s warm-up):
 
   | Organisms | Calm (not swimming) | Swimming |
@@ -104,9 +113,24 @@ as ours when it was released." Built on branch feat/free-daughters (from m0-skel
   group); hovering shows what it is; the HUD's "Free n" counts them (tooltip: released, died, gone) and "Offspring n"'s
   tooltip splits the creature's own daughters from their descendants (as does the skill window's points line).
 
+### Meals have mass
+- Designer, 2026-10-13: "give them mass in the movement calculation so grabbing a big meal slows us down"
+  (FermenterWorld.Meals.cs, `CreatureBody.SetLoad`). Food stuck to a body (packets, dead bodies) adds its mass (a sphere
+  of its radius at the cells' density, `body.cell_density` 1.1 g/mL) and its Stokes drag 6 pi eta r where it sits (and
+  6 pi eta r d² + 8 pi eta r³ against turning, m d² of inertia); food in a vacuole adds the mass of its contents (their
+  volume at the packet density) and no drag, as it is inside the cell. The creature and free organisms alike.
+- At a Reynolds number of ~1e-5 the speed is the force over the drag: mass only sets the ~1e-7 s it takes to reach that
+  speed. So it is the held meal's drag that slows the body: a fresh packet (0.8 µm) on the 1 µm cell slows it to 1/1.8,
+  a dead cell to 1/2; eating it restores the speed as it shrinks. Neglected: hydrodynamic interaction between the meal
+  and the cells (as between cells), the shift of the centre of mass, and the coupling of the meal's drag between moving
+  and turning.
+- Held food shrinking as it is eaten stays against the cell it stuck to (it moves in along the line between their
+  centres): before, it kept its place in the body frame and lost contact, so the cell stopped digesting food it still
+  held (and a level-1 cell starved holding five packets).
+- Tests: MealTests (speed factor 1/1.8, unloaded again when eaten, engulfed food adds mass and no drag, organisms too,
+  held food stays against its cell).
+
 ## Open questions
-- A dead body beyond the organisms' range (60 µm) is dropped like an organism that leaves: should far bodies be kept
-  (unsimulated) for when the creature comes back, or is dropping them out of sight acceptable?
 - The lineage earns points without bound: a large free population of auto-dividing descendants may out-earn food.
   Diminishing points per generation, or a cap? (Not measured yet.)
 - Free organisms cannot meet or engulf one another or the creature (no contact between bodies); should a larger
