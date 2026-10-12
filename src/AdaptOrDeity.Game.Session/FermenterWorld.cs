@@ -17,7 +17,7 @@ namespace AdaptOrDeity.Game.Session
     /// keeps its number of cells: growth energy replaces dead cells, and goes to repair while the group is full. Cells
     /// share the medium but do not yet exchange anything (the transport graph comes later). Values exchanged here are SI.
     /// </summary>
-    public sealed class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld, IFoodWorld, IParallelWorld, IDisposable
+    public sealed partial class FermenterWorld : ISimWorld, IInspectableWorld, IBathWorld, IFoodWorld, IParallelWorld, IDisposable
     {
         /// <summary>Sim-seconds per real second: pause, 1x, 10x, 100x, 1000x.</summary>
         public static readonly double[] SpeedPresets = { 0.0, 1.0, 10.0, 100.0, 1000.0 };
@@ -104,7 +104,11 @@ namespace AdaptOrDeity.Game.Session
         }
 
         /// <param name="cellLimit">Most cells, for tests; no limit when null.</param>
-        public FermenterWorld(int? cellLimit = null)
+        /// <param name="environmentField">
+        /// Whether cells and food exchange with the environment field (<see cref="Environment"/>); content field.enabled
+        /// when null.
+        /// </param>
+        public FermenterWorld(int? cellLimit = null, bool? environmentField = null)
         {
             _cellLimit = cellLimit ?? int.MaxValue;
             _cells.Add(new FermenterCell(TraitCatalog.Fermenter));
@@ -130,6 +134,8 @@ namespace AdaptOrDeity.Game.Session
             _body = new CreatureBody(CellRadius, first.External("eta_mod_i_flagellum"), GameParameters.Default.Body());
             AddToBody(0, _defaultAngles);
             _food.Populate(_body.Body.X, _body.Body.Y);
+            if (environmentField ?? GameParameters.Default.Value("field.enabled") != 0.0)
+                _environment = CreateEnvironment(first);
             double avogadro = _avogadro;
             _cellGroup.Add(0);
             _groups.Add(new Group(_cells[0].Traits.Count));
@@ -257,7 +263,7 @@ namespace AdaptOrDeity.Game.Session
                 _levelStart = _time;
                 ApplyControls();
                 // what the level's world supplies per second (content/timeline.json levels[].arrivals)
-                _food.BackgroundGlucose = GameTimeline.Default.OceanGlucose(value);
+                SetOcean(GameTimeline.Default.OceanGlucose(value));
                 var arrivals = GameTimeline.Default.ArrivalsAt(value);
                 _food.SetArrivals(arrivals.FoodPerSecond, arrivals.CarriedShare);
             }
@@ -274,7 +280,7 @@ namespace AdaptOrDeity.Game.Session
             {
                 if (!(value >= 0.0))
                     throw new ArgumentOutOfRangeException(nameof(value), "must be >= 0 mol/m³");
-                _food.BackgroundGlucose = value;
+                SetOcean(value);
             }
         }
 
@@ -413,14 +419,19 @@ namespace AdaptOrDeity.Game.Session
             _cos = Math.Cos(b.Angle);
             _sin = Math.Sin(b.Angle);
             _stepDt = dt;
+            if (_environment != null)
+                BeforeCells(dt);
             _cellPass ??= CellPass;
             ForEachCell(_cellPass);
 
-            // Food stays with the cell that found it; what cells took beyond the background leaves the packets.
+            // Food stays with the cell that found it; what cells took beyond the background leaves the packets (with the
+            // environment field: the cells' exchange goes into the field and the field steps).
             for (int i = 0; i < n; i++)
                 if (_touching[i] && _cells[i].Alive)
                     _food.StickTo(_cellX[i], _cellY[i], CellRadius);
-            for (int i = 0; i < n; i++)
+            if (_environment != null)
+                AfterCells(dt);
+            for (int i = 0; i < n && _environment == null; i++)
             {
                 if (!_touching[i])
                     continue;
@@ -461,9 +472,14 @@ namespace AdaptOrDeity.Game.Session
                 _cellY[i] = y;
                 _touching[i] = _food.TouchesAny(x, y, CellRadius);
                 var c = _cells[i];
-                c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
-                for (int tr = 0; tr < nt; tr++)
-                    _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
+                if (_environment != null)
+                    ReadEnvironment(i, x, y);
+                else
+                {
+                    c.MembraneGlucose = _food.GlucoseAt(x, y, CellRadius);
+                    for (int tr = 0; tr < nt; tr++)
+                        _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
+                }
                 c.Step(_stepDt);
             }
         }

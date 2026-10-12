@@ -163,6 +163,21 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>True if the packet is carried by another creature; false if it lies on the ground.</summary>
         public bool[] PacketCarried { get; }
 
+        /// <summary>Cells along each side of <see cref="FieldGlucose"/>.</summary>
+        public const int FieldRasterSize = 64;
+
+        /// <summary>
+        /// Side of the square of water <see cref="FieldGlucose"/> covers, centred on the creature [m]; 0 when the world has
+        /// no environment field.
+        /// </summary>
+        public float FieldExtent { get; internal set; }
+
+        /// <summary>
+        /// Glucose in the water around the creature [mol/m³]: <see cref="FieldRasterSize"/>² cell centres row by row from
+        /// the square's lower-left corner, along the ground's axes (not turned with the body).
+        /// </summary>
+        public float[] FieldGlucose { get; } = new float[FieldRasterSize * FieldRasterSize];
+
         private static T[][] Allocate<T>(int rows, int cells)
         {
             var a = new T[rows][];
