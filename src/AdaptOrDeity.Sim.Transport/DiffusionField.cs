@@ -10,6 +10,12 @@ namespace AdaptOrDeity.Sim.Transport
 
         /// <summary>No flux through the edges (a closed box: the field's content is conserved).</summary>
         Closed,
+
+        /// <summary>
+        /// Values just outside each edge cell given per species (<see cref="DiffusionField.EdgeValues"/>): a grid nested in
+        /// a coarser one takes its edge values from it.
+        /// </summary>
+        Given,
     }
 
     /// <summary>
@@ -17,12 +23,17 @@ namespace AdaptOrDeity.Sim.Transport
     /// <see cref="Spacing"/> and depth <see cref="Depth"/>, with concentrations at the cell centres [mol/m³].
     /// Each step is locally one-dimensional backward Euler: sources added, then an implicit diffusion solve along every
     /// row and then every column. It is stable and keeps concentrations non-negative at any step length, so the field
-    /// steps at the cells' exchange interval; it is first-order accurate in time.
+    /// steps at the cells' exchange interval; it is first-order accurate in time. Each step records what crossed each
+    /// edge face and, optionally, the faces of an inner rectangle (<see cref="SetInnerRegion"/>), so nested grids can
+    /// exchange content exactly (<see cref="NestedField"/>).
     /// </summary>
     public sealed class DiffusionField
     {
-        private readonly double[][] _c, _source;
-        private readonly double[] _a, _b, _r, _work;
+        private readonly double[][] _c, _source, _edge, _edgeOut;
+        private double[][] _innerOut;
+        private readonly double[][][] _scratch;   // per species: a, b, r, work (species step independently)
+        private int _i0, _j0, _i1, _j1;
+        private bool _hasInner;
 
         public DiffusionField(int nx, int ny, double spacing, double depth, double[] diffusivity, double[] farField,
             FieldEdge edge = FieldEdge.FarField)
@@ -42,17 +53,22 @@ namespace AdaptOrDeity.Sim.Transport
             FarField = (double[])farField.Clone();
             _c = new double[Species][];
             _source = new double[Species][];
+            _edge = new double[Species][];
+            _edgeOut = new double[Species][];
+            _innerOut = new double[Species][];
+            _scratch = new double[Species][][];
+            int n = Math.Max(nx, ny);
             for (int s = 0; s < Species; s++)
             {
                 _c[s] = new double[nx * ny];
                 _source[s] = new double[nx * ny];
+                _edge[s] = new double[2 * (nx + ny)];
+                _edgeOut[s] = new double[2 * (nx + ny)];
+                _innerOut[s] = Array.Empty<double>();
                 Array.Fill(_c[s], FarField[s]);
+                Array.Fill(_edge[s], FarField[s]);
+                _scratch[s] = new[] { new double[n], new double[n], new double[n], new double[n] };
             }
-            int n = Math.Max(nx, ny);
-            _a = new double[n];
-            _b = new double[n];
-            _r = new double[n];
-            _work = new double[n];
         }
 
         public int Nx { get; }
@@ -66,6 +82,9 @@ namespace AdaptOrDeity.Sim.Transport
 
         /// <summary>Depth of the water layer [m]: a grid cell holds Spacing² x Depth of water.</summary>
         public double Depth { get; }
+
+        /// <summary>Water in one grid cell [m³].</summary>
+        public double CellVolume => Spacing * Spacing * Depth;
 
         public FieldEdge Edge { get; }
 
@@ -87,13 +106,62 @@ namespace AdaptOrDeity.Sim.Transport
             set => _c[s][j * Nx + i] = value;
         }
 
+        /// <summary>Species <paramref name="s"/>'s concentrations, row by row (cell (i, j) at j·Nx + i).</summary>
+        internal double[] Values(int s) => _c[s];
+
+        /// <summary>
+        /// With <see cref="FieldEdge.Given"/>: species <paramref name="s"/>'s values just outside the edges [mol/m³], in face
+        /// order (<see cref="EdgeFace"/>). Set before each step.
+        /// </summary>
+        public double[] EdgeValues(int s) => _edge[s];
+
+        /// <summary>What left through each edge face in the last step [mol] (negative: came in), in face order.</summary>
+        public double[] EdgeOutflow(int s) => _edgeOut[s];
+
+        /// <summary>
+        /// Index of an edge face: the west edge's faces by row j, then the east's by row, the south's by column i, the
+        /// north's by column (side 0-3: west, east, south, north).
+        /// </summary>
+        public int EdgeFace(int side, int k) => side switch
+        {
+            0 => k,
+            1 => Ny + k,
+            2 => 2 * Ny + k,
+            _ => 2 * Ny + Nx + k,
+        };
+
+        /// <summary>
+        /// Records, from the next step on, what crosses the faces of the rectangle of cells [i0, i1) x [j0, j1) (outwards
+        /// positive, <see cref="InnerOutflow"/>). The rectangle must leave at least one cell to each edge.
+        /// </summary>
+        public void SetInnerRegion(int i0, int j0, int i1, int j1)
+        {
+            if (i0 < 1 || j0 < 1 || i1 > Nx - 1 || j1 > Ny - 1 || i1 <= i0 || j1 <= j0)
+                throw new ArgumentOutOfRangeException(nameof(i0), "the inner region must lie inside the grid with a cell to spare");
+            _i0 = i0;
+            _j0 = j0;
+            _i1 = i1;
+            _j1 = j1;
+            _hasInner = true;
+            int faces = 2 * ((i1 - i0) + (j1 - j0));
+            for (int s = 0; s < Species; s++)
+                if (_innerOut[s].Length != faces)
+                    _innerOut[s] = new double[faces];
+        }
+
+        /// <summary>
+        /// What left the inner region through each of its faces in the last step [mol], in face order: west faces by row
+        /// from j0, east by row, south by column from i0, north by column.
+        /// </summary>
+        public double[] InnerOutflow(int s) => _innerOut[s];
+
         /// <summary>Amount of species <paramref name="s"/> in the field [mol].</summary>
         public double Total(int s)
         {
             double sum = 0.0;
             foreach (double v in _c[s])
                 sum += v;
-            return sum * Spacing * Spacing * Depth;
+            return sum * CellVolume;
         }
 
         /// <summary>
@@ -106,7 +174,35 @@ namespace AdaptOrDeity.Sim.Transport
             int i = (int)Math.Floor((x - OriginX) / Spacing), j = (int)Math.Floor((y - OriginY) / Spacing);
             if (i < 0 || j < 0 || i >= Nx || j >= Ny)
                 return;
-            _source[s][j * Nx + i] += molPerSecond / (Spacing * Spacing * Depth);
+            _source[s][j * Nx + i] += molPerSecond / CellVolume;
+        }
+
+        /// <summary>
+        /// Adds a source at (x, y) [mol/s] for the next step, shared between the four nearest cell centres with the
+        /// weights <see cref="Sample"/> reads them with (the transpose of sampling). Weight that falls beyond an edge goes
+        /// to the nearest edge cell, so the whole source enters the field.
+        /// </summary>
+        public void Deposit(int s, double x, double y, double molPerSecond)
+        {
+            double fx = (x - OriginX) / Spacing - 0.5, fy = (y - OriginY) / Spacing - 0.5;
+            int i = (int)Math.Floor(fx), j = (int)Math.Floor(fy);
+            double u = fx - i, v = fy - j, q = molPerSecond / CellVolume;
+            double[] src = _source[s];
+            src[Clamp(j, Ny) * Nx + Clamp(i, Nx)] += (1 - u) * (1 - v) * q;
+            src[Clamp(j, Ny) * Nx + Clamp(i + 1, Nx)] += u * (1 - v) * q;
+            src[Clamp(j + 1, Ny) * Nx + Clamp(i, Nx)] += (1 - u) * v * q;
+            src[Clamp(j + 1, Ny) * Nx + Clamp(i + 1, Nx)] += u * v * q;
+        }
+
+        private static int Clamp(int k, int n) => k < 0 ? 0 : k >= n ? n - 1 : k;
+
+        /// <summary>True if the sources added since the last step hold anything for species <paramref name="s"/>.</summary>
+        internal bool HasSources(int s)
+        {
+            foreach (double q in _source[s])
+                if (q != 0.0)
+                    return true;
+            return false;
         }
 
         /// <summary>The concentration of species <paramref name="s"/> at (x, y), interpolated between cell centres.</summary>
@@ -126,7 +222,17 @@ namespace AdaptOrDeity.Sim.Transport
                 return _c[s][j * Nx + i];
             if (Edge == FieldEdge.FarField)
                 return FarField[s];
-            return _c[s][Math.Min(Ny - 1, Math.Max(0, j)) * Nx + Math.Min(Nx - 1, Math.Max(0, i))];
+            int ci = Clamp(i, Nx), cj = Clamp(j, Ny);
+            if (Edge == FieldEdge.Given)
+            {
+                // the given value beyond the nearest edge face (a corner takes the west or east one)
+                if (i < 0)
+                    return _edge[s][EdgeFace(0, cj)];
+                if (i >= Nx)
+                    return _edge[s][EdgeFace(1, cj)];
+                return _edge[s][EdgeFace(j < 0 ? 2 : 3, ci)];
+            }
+            return _c[s][cj * Nx + ci];
         }
 
         /// <summary>
@@ -135,58 +241,99 @@ namespace AdaptOrDeity.Sim.Transport
         /// </summary>
         public void Step(double dt)
         {
+            for (int s = 0; s < Species; s++)
+                StepSpecies(s, dt);
+        }
+
+        /// <summary>
+        /// Advances species <paramref name="s"/> alone by <paramref name="dt"/> [s] (see <see cref="Step"/>). Different
+        /// species may step at once on different threads.
+        /// </summary>
+        public void StepSpecies(int s, double dt)
+        {
             if (!(dt > 0.0))
                 throw new ArgumentOutOfRangeException(nameof(dt), "the step must be positive");
-            for (int s = 0; s < Species; s++)
+            double[] c = _c[s], q = _source[s], edge = _edge[s], edgeOut = _edgeOut[s], innerOut = _innerOut[s];
+            for (int k = 0; k < c.Length; k++)
             {
-                double[] c = _c[s], q = _source[s];
-                for (int k = 0; k < c.Length; k++)
+                c[k] += dt * q[k];
+                q[k] = 0.0;
+            }
+            Array.Clear(edgeOut, 0, edgeOut.Length);
+            Array.Clear(innerOut, 0, innerOut.Length);
+            double lambda = Diffusivity[s] * dt / (Spacing * Spacing);
+            if (lambda == 0.0)
+                return;
+            bool open = Edge != FieldEdge.Closed;
+            double flux = lambda * CellVolume;   // amount per unit concentration difference across a face
+            if (Edge == FieldEdge.FarField)
+                Array.Fill(edge, FarField[s]);
+            var scratch = _scratch[s];
+            int h = _j1 - _j0, w = _i1 - _i0;
+            for (int j = 0; j < Ny; j++)
+            {
+                int row = j * Nx;
+                double west = edge[EdgeFace(0, j)], east = edge[EdgeFace(1, j)];
+                SolveLine(c, row, 1, Nx, lambda, open, west, east, scratch);
+                if (open)
                 {
-                    c[k] += dt * q[k];
-                    q[k] = 0.0;
+                    edgeOut[EdgeFace(0, j)] = flux * (c[row] - west);
+                    edgeOut[EdgeFace(1, j)] = flux * (c[row + Nx - 1] - east);
                 }
-                double lambda = Diffusivity[s] * dt / (Spacing * Spacing);
-                if (lambda == 0.0)
-                    continue;
-                for (int j = 0; j < Ny; j++)
-                    SolveLine(c, j * Nx, 1, Nx, lambda, FarField[s]);
-                for (int i = 0; i < Nx; i++)
-                    SolveLine(c, i, Nx, Ny, lambda, FarField[s]);
+                if (_hasInner && j >= _j0 && j < _j1)
+                {
+                    innerOut[j - _j0] += flux * (c[row + _i0] - c[row + _i0 - 1]);
+                    innerOut[h + j - _j0] += flux * (c[row + _i1 - 1] - c[row + _i1]);
+                }
+            }
+            for (int i = 0; i < Nx; i++)
+            {
+                double south = edge[EdgeFace(2, i)], north = edge[EdgeFace(3, i)];
+                SolveLine(c, i, Nx, Ny, lambda, open, south, north, scratch);
+                if (open)
+                {
+                    edgeOut[EdgeFace(2, i)] = flux * (c[i] - south);
+                    edgeOut[EdgeFace(3, i)] = flux * (c[(Ny - 1) * Nx + i] - north);
+                }
+                if (_hasInner && i >= _i0 && i < _i1)
+                {
+                    innerOut[2 * h + i - _i0] += flux * (c[_j0 * Nx + i] - c[(_j0 - 1) * Nx + i]);
+                    innerOut[2 * h + w + i - _i0] += flux * (c[(_j1 - 1) * Nx + i] - c[_j1 * Nx + i]);
+                }
             }
         }
 
-        // (1 + 2λ) c_k − λ (c_{k−1} + c_{k+1}) = c_k(old) along one line, by the Thomas algorithm. Beyond a far-field edge
-        // the neighbour is the far-field value; a closed edge has no neighbour (no flux).
-        private void SolveLine(double[] c, int start, int stride, int n, double lambda, double far)
+        // (1 + 2λ) c_k − λ (c_{k−1} + c_{k+1}) = c_k(old) along one line, by the Thomas algorithm. Beyond an open edge the
+        // neighbour is the given value (first, last); a closed edge has no neighbour (no flux).
+        private static void SolveLine(double[] c, int start, int stride, int n, double lambda, bool open, double first,
+            double last, double[][] scratch)
         {
-            bool open = Edge == FieldEdge.FarField;
+            double[] a = scratch[0], b = scratch[1], r = scratch[2], work = scratch[3];
             for (int k = 0; k < n; k++)
             {
-                bool first = k == 0, last = k == n - 1;
-                int neighbours = (first && last) ? 0 : (first || last) ? 1 : 2;
-                if (open)
-                    neighbours = 2;
-                _b[k] = 1.0 + neighbours * lambda;
-                _a[k] = -lambda;
-                _r[k] = c[start + k * stride];
-                if (open && first)
-                    _r[k] += lambda * far;
-                if (open && last)
-                    _r[k] += lambda * far;
+                bool isFirst = k == 0, isLast = k == n - 1;
+                int neighbours = open ? 2 : (isFirst && isLast) ? 0 : (isFirst || isLast) ? 1 : 2;
+                b[k] = 1.0 + neighbours * lambda;
+                a[k] = -lambda;
+                r[k] = c[start + k * stride];
+                if (open && isFirst)
+                    r[k] += lambda * first;
+                if (open && isLast)
+                    r[k] += lambda * last;
             }
             // forward sweep (the matrix is symmetric: sub- and super-diagonals both −λ)
-            _work[0] = _a[0] / _b[0];
-            _r[0] /= _b[0];
+            work[0] = a[0] / b[0];
+            r[0] /= b[0];
             for (int k = 1; k < n; k++)
             {
-                double m = _b[k] - _a[k] * _work[k - 1];
-                _work[k] = _a[k] / m;
-                _r[k] = (_r[k] - _a[k] * _r[k - 1]) / m;
+                double m = b[k] - a[k] * work[k - 1];
+                work[k] = a[k] / m;
+                r[k] = (r[k] - a[k] * r[k - 1]) / m;
             }
             for (int k = n - 2; k >= 0; k--)
-                _r[k] -= _work[k] * _r[k + 1];
+                r[k] -= work[k] * r[k + 1];
             for (int k = 0; k < n; k++)
-                c[start + k * stride] = _r[k];
+                c[start + k * stride] = r[k];
         }
 
         /// <summary>

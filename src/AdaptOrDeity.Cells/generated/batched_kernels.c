@@ -1434,14 +1434,19 @@ const BkKernel BK_KERNELS[] = {
 
 const int BK_KERNEL_COUNT = 2;
 
-/* The model's outputs (17 algebraic variables) and what they read, into the one variables array. */
-const int BK_OUTPUT_COUNT = 17;
-const int BK_OUTPUTS[] = { 462, 475, 474, 378, 379, 336, 305, 307, 308, 317, 318, 319, 320, 321, 322, 323, 324, 0 };
+/* The model's outputs (20 algebraic variables) and what they read, into the one variables array. */
+const int BK_OUTPUT_COUNT = 20;
+const int BK_OUTPUTS[] = { 462, 466, 467, 465, 475, 474, 378, 379, 336, 305, 307, 308, 317, 318, 319, 320, 321, 322, 323, 324, 0 };
 
 void bk_model_outputs(double t, const double *y, double *in)
 {
     (void) t; (void) y; (void) in;
     in[462] = (in[205] * (y[22] * (in[285] * ((in[24] / (in[57] + in[24])) - (y[9] / (in[57] + y[9]))))));
+    in[466] = (-in[462]);
+    in[463] = ((y[11] * y[6]) / in[39]);
+    in[464] = (in[206] * (y[23] * (in[285] * ((in[312] / (in[61] + in[312])) - (in[463] / (in[61] + in[463]))))));
+    in[467] = (-in[464]);
+    in[465] = in[464];
     in[337] = (((in[109] * in[112]) / in[35]) * (log((in[38] / y[6])) * 1000.0));
     in[470] = (in[337] - y[1]);
     in[471] = ((y[24] * (in[181] * in[470])) / in[256]);
