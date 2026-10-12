@@ -169,6 +169,8 @@ namespace AdaptOrDeity.Sim.Physiology
                 _native = parent._native.Copy();
                 _relativeTolerance = parent._relativeTolerance;
                 _native.SetRelativeTolerance(_relativeTolerance);
+                _stopAtMacroSteps = parent._stopAtMacroSteps;
+                _native.SetStopAtOutputs(_stopAtMacroSteps);
                 for (int i = 0; i < Batch.States.Length; i++)
                     Batch.States[i][0] = parent.Batch.States[i][0];
                 for (int i = 0; i < Batch.Externals.Length; i++)
@@ -417,6 +419,22 @@ namespace AdaptOrDeity.Sim.Physiology
         }
 
         private double _relativeTolerance = DefaultRelativeTolerance;
+
+        /// <summary>
+        /// Steps end on each macro step and input changes there restart softly (<see cref="NativeInstance.SetStopAtOutputs"/>):
+        /// for cells whose inputs change every macro step (the environment field). Daughters inherit it.
+        /// </summary>
+        public bool StopAtMacroSteps
+        {
+            get => _stopAtMacroSteps;
+            set
+            {
+                _stopAtMacroSteps = value;
+                _native.SetStopAtOutputs(value);
+            }
+        }
+
+        private bool _stopAtMacroSteps;
 
         /// <summary>The integration's steps accepted and rejected, rate evaluations and Jacobians so far (diagnostics).</summary>
         public (long Steps, long Rejected, long RateEvaluations, long Jacobians) Statistics => _native.Statistics;

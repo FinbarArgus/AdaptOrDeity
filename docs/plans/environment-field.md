@@ -99,6 +99,10 @@ input change passed to the cells, cells at rtol 1e-8. Against it, for one cell a
 - the 1% input tolerance hides a lone cell's depletion (0.1%) from the cell altogether.
 To improve before the field is on by default.
 
+Soft restarts (libcuflynx #574's stop at outputs, on for cells in the field, 2026-10-12): colony-bench 512 cells, 20 s,
+1 thread: contact rule 0.61 s; field with the 1% input tolerance 1.47 -> 0.84 s; every input change passed 3.97 ->
+1.36 s.
+
 ## To discuss (earlier notes)
 - **Food model after the research:** cells at 2 Ga absorb (external digestion), they do not engulf; packets as small
   polymer particles (0.5-2 µm, one dead-cell equivalent) eroded by cell-surface enzymes, the sugar halo diffusing out

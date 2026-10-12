@@ -16,8 +16,13 @@
      count as error. After a rejected step the next step does not grow.
    - output times are interpolated (cubic Hermite, from the states and rates at both ends of a step), so
      steps are not cut at outputs;
+   - the step size changes only when the error control asks for more than 20% growth (or any shrink), so the
+     LU factors serve several steps;
    - a block continues its step across calls unless something it reads changed (its inputs, or the states
-     set from outside), when it restarts from the given states with a short step;
+     set from outside), when it restarts from the given states with a short step. With
+     bk_set_stop_at_outputs, steps end on each run's last output time instead of passing it, and a block whose
+     inputs changed there keeps its step size, Jacobian and LU factors: a caller that changes inputs at
+     every call (a game's macro step) then costs little more than one that does not;
    - an input may follow a protocol trace (bk_set_trace): a piecewise-linear function of the model's time,
      held at its end values outside its range, read at every rate and Jacobian evaluation. Steps end on the
      trace's breakpoints, so each step sees one straight piece of it.
@@ -44,6 +49,7 @@ typedef struct {
     double rtol, atol, h_max, h_min, newton_tol;
     int max_newton, max_jacobian_age, finite_difference_jacobian, method;   /* method 0: BE, 1: TR-BDF2 */
     long max_steps;
+    int stop_at_outputs;           /* steps end on each run's last output time (bk_set_stop_at_outputs) */
 } BkOptions;
 
 typedef struct {
@@ -70,6 +76,7 @@ typedef struct {
     double crate;                  /* Newton's rate of convergence, from earlier iterations */
     int rejected_last;
     double origin;                 /* the kernels see time t - origin */
+    double t_stop;                 /* no step past this: the run's last output time, or INFINITY */
     int jacobian_valid, jacobian_age, active;
     long steps, rejected, newton_failures, rates_calls, jacobians, fd_jacobians, factorisations, run_steps;
     int status;
@@ -84,6 +91,9 @@ typedef struct {
     BkTrace **traces;
     double origin;
 } BkSim;
+
+/* The solver this library integrates with. */
+BK_API const char *bk_solver_name(void) { return "BE_batched_c"; }
 
 BK_API int bk_kernel_count(void) { return BK_KERNEL_COUNT; }
 BK_API int bk_kernel_states(int k) { return BK_KERNELS[k].n_states; }
@@ -130,6 +140,8 @@ BK_API BkSim *bk_create(int n_blocks, const int *kernel, const int *state_offset
         B->inputs = (int *) malloc(sizeof(int) * (B->ni > 0 ? B->ni : 1));
         memcpy(B->inputs, inputs + input_offsets[b], sizeof(int) * B->ni);
         B->in = bk_zeros(B->ni);
+        B->traced_slot = (int *) calloc(B->ni > 0 ? B->ni : 1, sizeof(int));
+        B->traced = (const BkTrace **) calloc(B->ni > 0 ? B->ni : 1, sizeof(BkTrace *));
         B->ya = bk_zeros(n); B->yb = bk_zeros(n); B->fa = bk_zeros(n); B->fb = bk_zeros(n);
         B->scale = bk_zeros(n);
         B->y = bk_zeros(n); B->f = bk_zeros(n); B->g = bk_zeros(n); B->dx = bk_zeros(n);
@@ -138,8 +150,6 @@ BK_API BkSim *bk_create(int n_blocks, const int *kernel, const int *state_offset
         B->J = bk_zeros(n * n); B->lu = bk_zeros(n * n);
         B->piv = (int *) calloc(n > 0 ? n : 1, sizeof(int));
         B->lu_h = NAN;
-        B->traced_slot = (int *) calloc(B->ni > 0 ? B->ni : 1, sizeof(int));
-        B->traced = (const BkTrace **) calloc(B->ni > 0 ? B->ni : 1, sizeof(BkTrace *));
     }
     return sim;
 }
@@ -235,10 +245,10 @@ BK_API void bk_destroy(BkSim *sim)
         return;
     for (int b = 0; b < sim->n_blocks; ++b) {
         BkBlock *B = &sim->blocks[b];
-        free(B->states); free(B->inputs); free(B->in);
+        free(B->states); free(B->inputs); free(B->in); free(B->traced_slot); free((void *) B->traced);
         free(B->ya); free(B->yb); free(B->fa); free(B->fb); free(B->scale);
         free(B->y); free(B->f); free(B->g); free(B->dx); free(B->ftmp); free(B->y1); free(B->c); free(B->fz);
-        free(B->J); free(B->lu); free(B->piv); free(B->traced_slot); free((void *) B->traced);
+        free(B->J); free(B->lu); free(B->piv);
     }
     for (int r = 0; r < sim->n_traces; ++r)
         bk_free_trace(sim->traces[r]);
@@ -263,6 +273,10 @@ BK_API void bk_set_options(BkSim *sim, double rtol, double atol, double h_max, d
     sim->opt.finite_difference_jacobian = finite_difference_jacobian;
 }
 
+/* Whether steps end on each run's last output time (0, the default: they may pass it, and outputs are
+   interpolated). On, a block whose inputs change between runs keeps its step size, Jacobian and LU factors. */
+BK_API void bk_set_stop_at_outputs(BkSim *sim, int on) { sim->opt.stop_at_outputs = on; }
+
 /* Every block restarts at its next run, from the states it is given, and forgets the sizes its states
    reached (the states were set from outside). */
 BK_API void bk_invalidate(BkSim *sim)
@@ -284,12 +298,6 @@ BK_API void bk_set_time_origin(BkSim *sim, double origin)
             B->active = 0;
         B->origin = origin;
     }
-}
-
-static double bk_weight(const BkOptions *o, const BkBlock *B, int i, double y)
-{
-    double s = fabs(y) > B->scale[i] ? fabs(y) : B->scale[i];
-    return 1.0 / (o->rtol * s + o->atol);
 }
 
 /* The traced inputs at runtime clock t. */
@@ -317,20 +325,44 @@ static double bk_next_breakpoint(const BkBlock *B, double t)
     return next;
 }
 
-static void bk_rates(BkBlock *B, double t, const double *y, double *f)
-{
-    if (B->n_traced)
-        bk_apply_traces(B, t);
-    B->k->rates(t - B->origin, y, B->in, f);
-    B->rates_calls++;
-}
-
 static int bk_finite(const double *x, int n)
 {
     for (int i = 0; i < n; ++i)
         if (!isfinite(x[i]))
             return 0;
     return 1;
+}
+
+/* The block's inputs from the variables (traced ones excepted, which their traces drive); 1 if any changed. */
+static int bk_gather_inputs(BkBlock *B, const double *variables)
+{
+    int changed = 0;
+    for (int k = 0; k < B->ni; ++k) {
+        int traced = 0;
+        for (int r = 0; r < B->n_traced; ++r)
+            traced |= B->traced_slot[r] == k;
+        if (traced)
+            continue;              /* driven by its trace, not by the variables */
+        double v = variables[B->inputs[k]];
+        if (!(v == B->in[k]) && !(isnan(v) && isnan(B->in[k])))
+            changed = 1;
+        B->in[k] = v;
+    }
+    return changed;
+}
+
+static double bk_weight(const BkOptions *o, const BkBlock *B, int i, double y)
+{
+    double s = fabs(y) > B->scale[i] ? fabs(y) : B->scale[i];
+    return 1.0 / (o->rtol * s + o->atol);
+}
+
+static void bk_rates(BkBlock *B, double t, const double *y, double *f)
+{
+    if (B->n_traced)
+        bk_apply_traces(B, t);
+    B->k->rates(t - B->origin, y, B->in, f);
+    B->rates_calls++;
 }
 
 /* df/dy at (t, y), whose rates are f: the kernel's exact Jacobian, or forward differences where it is not
@@ -427,6 +459,13 @@ static void bk_solve(BkBlock *B)
     }
 }
 
+/* Whether the factors serve for I - a J: made for the same a, up to rounding (a step ending on t_stop is
+   t_stop - tb, which can differ from the last in its last bits). */
+static int bk_factored_for(const BkBlock *B, double a)
+{
+    return fabs(a - B->lu_h) <= 1e-9 * a;
+}
+
 /* Modified Newton on y - c - a f(t1, y) = 0 from the y in B->y (c in B->c). On success B->f holds the stage's
    rate, (y - c) / a. */
 static int bk_newton(const BkOptions *o, BkBlock *B, double t1, double a, int fresh)
@@ -447,7 +486,7 @@ static int bk_newton(const BkOptions *o, BkBlock *B, double t1, double a, int fr
             B->crate = 1.0;
             fresh = 0;
         }
-        if (B->lu_h != a && !bk_factor(B, a))
+        if (!bk_factored_for(B, a) && !bk_factor(B, a))
             return 0;
         for (int i = 0; i < n; ++i)
             B->dx[i] = -B->g[i];
@@ -507,7 +546,9 @@ static double bk_first_step(const BkOptions *o, BkBlock *B)
     return h > o->h_min ? h : (o->h_min > 0.0 ? o->h_min : 1e-300);
 }
 
-static void bk_restart(const BkOptions *o, BkBlock *B, const double *states, double t)
+/* Restarts from the given states at t. soft: only the inputs changed, at the end of the block's last step, so
+   its step size, Jacobian and factors are kept (Newton redoes them if they no longer serve). */
+static void bk_restart(const BkOptions *o, BkBlock *B, const double *states, double t, int soft)
 {
     for (int i = 0; i < B->n; ++i) {
         B->yb[i] = states[B->states[i]];
@@ -518,9 +559,11 @@ static void bk_restart(const BkOptions *o, BkBlock *B, const double *states, dou
     B->ta = B->tb = t;
     bk_rates(B, t, B->yb, B->fb);
     memcpy(B->fa, B->fb, sizeof(double) * B->n);
+    B->active = 1;
+    if (soft)
+        return;
     B->h = bk_first_step(o, B);
     B->jacobian_valid = 0;
-    B->active = 1;
 }
 
 /* The weighted max-norm of the error estimate in B->dx. */
@@ -592,6 +635,11 @@ static int bk_advance(const BkOptions *o, BkBlock *B)
             if (B->tb + h > next)
                 h = next - B->tb;
         }
+        double wanted = h, rest = B->t_stop - B->tb;
+        if (rest <= 1.1 * h)
+            h = rest;                /* end on t_stop, stretching the step by up to 10% to get there */
+        else if (rest <= 2.2 * h)
+            h = 0.5 * rest;          /* two equal steps to t_stop rather than a step and a sliver */
         double a = bk_try_step(o, B, h);
         if (a == 0.0) {
             B->rejected++;
@@ -601,7 +649,7 @@ static int bk_advance(const BkOptions *o, BkBlock *B)
             continue;
         }
         double err = bk_error(o, B);
-        if (!(err <= 1.0) && B->jacobian_valid && (B->lu_h == a || bk_factor(B, a))) {
+        if (!(err <= 1.0) && B->jacobian_valid && (bk_factored_for(B, a) || bk_factor(B, a))) {
             bk_solve(B);         /* filtered only when needed: it can only lower a stiff mode's error */
             err = bk_error(o, B);
         }
@@ -623,10 +671,13 @@ static int bk_advance(const BkOptions *o, BkBlock *B)
         B->steps++;
         B->jacobian_age++;
         double grow = err > 0.0 ? fmin(4.0, 0.9 * pow(err, -1.0 / (order + 1.0))) : 4.0;
-        if (B->rejected_last)
-            grow = fmin(grow, 1.0);
+        int after_rejection = B->rejected_last;
+        if (after_rejection || (grow >= 1.0 && grow <= 1.2))
+            grow = fmin(grow, 1.0);  /* h, and so the factors, kept unless it can grow by more than 20% */
         B->rejected_last = 0;
         B->h = fmin(h * grow, o->h_max);
+        if (h < wanted && !after_rejection && grow >= 1.0 && B->h < wanted)
+            B->h = wanted;           /* a step cut short for t_stop does not shrink the next */
         return BK_OK;
     }
 }
@@ -651,23 +702,14 @@ static void bk_interpolate(const BkBlock *B, double t, double *out)
 static void bk_run_block(const BkOptions *o, BkBlock *B, double *states, const double *variables, double t0,
                          int n_out, const double *t_out, double *out, int n_states)
 {
-    int changed = !B->active;
-    for (int k = 0; k < B->ni; ++k) {
-        int traced = 0;
-        for (int r = 0; r < B->n_traced; ++r)
-            traced |= B->traced_slot[r] == k;
-        if (traced)
-            continue;              /* driven by its trace, not by the variables */
-        double v = variables[B->inputs[k]];
-        if (!(v == B->in[k]) && !(isnan(v) && isnan(B->in[k])))
-            changed = 1;
-        B->in[k] = v;
-    }
+    int inputs_only = B->active && o->stop_at_outputs;   /* if anything changed, only the inputs did */
+    int changed = bk_gather_inputs(B, variables) || !B->active;
     double eps = 1e-12 * (fabs(t0) + 1.0);
+    B->t_stop = o->stop_at_outputs && n_out > 0 ? t_out[n_out - 1] : INFINITY;
     if (!changed && !(B->ta - eps <= t0 && t0 <= B->tb + eps))
         changed = 1;            /* not where the last run left this block */
-    if (changed)
-        bk_restart(o, B, states, t0);
+    if (changed)                /* soft only at the end of its own step, never from an interpolated state */
+        bk_restart(o, B, states, t0, inputs_only && fabs(t0 - B->tb) <= eps);
     B->status = BK_OK;
     B->run_steps = 0;
     for (int k = 0; k < n_out; ++k) {
@@ -934,6 +976,20 @@ BK_API int bk_instance_advance(BkInstance *I, double dt)
         failed += I->sim->blocks[b].status != BK_OK;
     }
     I->t = t1;
+    return failed;
+}
+
+/* Advances n instances by dt each, on OpenMP threads (instances are independent, so the results are the same on
+   any number). Returns the number of instances with a failed block. */
+BK_API int bk_instances_advance(int n, BkInstance **instances, double dt, int threads)
+{
+    int failed = 0;
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(dynamic, 1) num_threads(threads > 0 ? threads : 1) reduction(+:failed)
+#endif
+    for (int i = 0; i < n; ++i)
+        failed += bk_instance_advance(instances[i], dt) != 0;
+    (void) threads;
     return failed;
 }
 

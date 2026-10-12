@@ -155,7 +155,10 @@ namespace AdaptOrDeity.Game.Session
             AddToBody(0, _defaultAngles);
             _food.Populate(_body.Body.X, _body.Body.Y);
             if (environmentField ?? GameParameters.Default.Value("field.enabled") != 0.0)
+            {
                 _environment = CreateEnvironment(first);
+                first.StopAtMacroSteps = true;   // the field changes cells' inputs every macro step; daughters inherit it
+            }
             double avogadro = _avogadro;
             _cellGroup.Add(0);
             _groups.Add(new Group(_cells[0].Traits.Count));

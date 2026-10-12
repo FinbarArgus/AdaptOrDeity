@@ -25,6 +25,12 @@ namespace AdaptOrDeity.Sim.Modules
         public void SetRelativeTolerance(double relativeTolerance) =>
             bk_set_options(bk_instance_sim(_handle), relativeTolerance, 1e-12, 0.0, 0.0, 0.01, 6, 50, 10_000_000, 0, 1);
 
+        /// <summary>
+        /// Steps end on each <see cref="Advance"/>'s end, and an input change there keeps the step size, Jacobian and
+        /// factorisation (a soft restart): much faster when inputs change every macro step; off by default.
+        /// </summary>
+        public void SetStopAtOutputs(bool on) => bk_set_stop_at_outputs(bk_instance_sim(_handle), on ? 1 : 0);
+
         private NativeInstance(NativeModule module, IntPtr handle)
         {
             Module = module;
@@ -157,6 +163,7 @@ namespace AdaptOrDeity.Sim.Modules
         [DllImport(Library)] private static extern void bk_instance_outputs(IntPtr instance);
         [DllImport(Library)] private static extern void bk_instance_compute_variables(IntPtr instance);
         [DllImport(Library)] private static extern void bk_stats(IntPtr sim, long[] stats);
+        [DllImport(Library)] private static extern void bk_set_stop_at_outputs(IntPtr sim, int on);
         [DllImport(Library)] private static extern void bk_set_options(IntPtr sim, double rtol, double atol, double hMax, double hMin,
             double newtonTol, int maxNewton, int maxJacobianAge, long maxSteps, int finiteDifferenceJacobian, int method);
     }
