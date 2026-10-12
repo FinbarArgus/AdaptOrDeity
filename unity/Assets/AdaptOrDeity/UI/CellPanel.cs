@@ -9,7 +9,9 @@ namespace AdaptOrDeity.UI
     /// The window on the right that opens when a cell is selected (ONI's side screen): the cell's metabolic rate, where
     /// its ATP comes from and goes, growth and storage, its state, and the controls of its group: protein expression,
     /// energy to growth, glycogen storage and repair, a Divide button and the unlocked features. Sliders change every
-    /// cell in the selected cell's group. Everything shown comes from the snapshot schema. IMGUI for the vertical slice.
+    /// cell in the selected cell's group. Once Regulation is unlocked each expression slider and the growth slider has a
+    /// cog that opens a popup choosing which falling species lower it. Everything shown comes from the snapshot schema.
+    /// IMGUI for the vertical slice.
     /// </summary>
     public sealed class CellPanel : MonoBehaviour
     {
@@ -37,6 +39,7 @@ namespace AdaptOrDeity.UI
         private float[] _sliders = new float[0];
         private float[] _controls = new float[0];
         private int _slidersForGroup = -1;
+        private int _regulationTarget = -1;   // the target whose regulation popup is open (a trait, or growth), or -1
         private GUIStyle _header, _big, _small, _right;
 
         /// <summary>True while the panel is drawn (other HUD elements move left of it).</summary>
@@ -115,7 +118,7 @@ namespace AdaptOrDeity.UI
             GUILayout.Label("Energy", _header);
             for (int c = 0; c < schema.Controls.Count; c++)
                 if (Active(schema, frame, schema.Controls[c].Feature))
-                    DrawControl(bridge, schema.Controls[c], group, c);
+                    DrawControl(bridge, schema, frame, schema.Controls[c], group, c);
 
             GUILayout.Space(6);
             _showFeatures = Foldout(_showFeatures, "Features (your choice once unlocked)");
@@ -130,6 +133,64 @@ namespace AdaptOrDeity.UI
 
             GUILayout.EndScrollView();
             GUILayout.EndArea();
+            if (_regulationTarget >= 0)
+                DrawRegulationPopup(bridge, schema, frame, group);
+        }
+
+        /// <summary>
+        /// The cog beside a slider once Regulation is unlocked and on: opens the popup for <paramref name="target"/> (a
+        /// trait, or <see cref="SessionSchema.GrowthRegulation"/>). Shows how many species lower it.
+        /// </summary>
+        private void DrawCog(SessionSchema schema, SnapshotFrame frame, int group, int target)
+        {
+            if (!Active(schema, frame, GameFeatures.Regulation))
+                return;
+            int on = 0;
+            for (int s = 0; s < SessionSchema.RegulationSpecies.Count; s++)
+                if (frame.Regulation[SnapshotFrame.RegulationRow(target, s)][group])
+                    on++;
+            string label = on > 0 ? $"⚙{on}" : "⚙";
+            if (GUILayout.Button(new GUIContent(label, "Regulation: which falling species turn this down"), GUILayout.Width(30)))
+                _regulationTarget = _regulationTarget == target ? -1 : target;
+        }
+
+        // The regulation popup: a toggle per species ("dropping lowers this") and the function, fixed for now.
+        private void DrawRegulationPopup(SessionBridge bridge, SessionSchema schema, SnapshotFrame frame, int group)
+        {
+            if (!Active(schema, frame, GameFeatures.Regulation) || _regulationTarget > schema.GrowthRegulation)
+            {
+                _regulationTarget = -1;
+                return;
+            }
+            const float w = 360f, h = 330f;
+            var rect = new Rect(Screen.width - Width - w - 8f, Top + 40f, w, h);
+            string what = _regulationTarget < schema.Traits.Count ? schema.Traits[_regulationTarget].Label : "Energy to growth";
+            GUILayout.Window(0x5E6017, rect, id => DrawRegulation(bridge, frame, group, what), "Regulation");
+        }
+
+        private void DrawRegulation(SessionBridge bridge, SnapshotFrame frame, int group, string what)
+        {
+            int target = _regulationTarget;
+            GUILayout.Label(what, _header);
+            GUILayout.Label($"For every cell of group {group + 1}: when a ticked species falls, this target is turned down.", _small);
+            for (int s = 0; s < SessionSchema.RegulationSpecies.Count; s++)
+            {
+                bool on = frame.Regulation[SnapshotFrame.RegulationRow(target, s)][group];
+                bool want = GUILayout.Toggle(on, $"Dropping {SessionSchema.RegulationSpecies[s].Name} lowers this");
+                if (want != on)
+                    bridge.Send(SimCommands.SetRegulation(group, target, s, want));
+            }
+            GUILayout.Space(6);
+            GUILayout.Label("Function (fixed for now)", _header);
+            GUILayout.Label("target × f, with f = Cⁿ / (Kⁿ + Cⁿ) for each ticked species: n = 4, K = half the species' resting " +
+                            "level. f is 0.94 at rest, 0.5 at half the resting level, near 0 below a quarter. For pH, f falls " +
+                            "as the pH drops (half-way 0.3 below rest). Several ticked species multiply.", _small);
+            GUILayout.Label("Experts will be able to choose the function.", _small);
+            GUILayout.Space(4);
+            GUILayout.Label("Turning down pumps, exchangers and flagella saves energy in a famine; turning down glycolysis or " +
+                            "the sugar carriers leaves the cell unable to use food when it returns.", _small);
+            if (GUILayout.Button("Close"))
+                _regulationTarget = -1;
         }
 
         /// <summary>
@@ -297,9 +358,10 @@ namespace AdaptOrDeity.UI
 
             GUILayout.BeginHorizontal();
             float lo = Mathf.Log((float)trait.Min), hi = Mathf.Log((float)trait.Max);
-            float moved = GUILayout.HorizontalSlider(Mathf.Log(_sliders[t]), lo, hi, GUILayout.Width(Width - 90));
+            float moved = GUILayout.HorizontalSlider(Mathf.Log(_sliders[t]), lo, hi, GUILayout.Width(Width - 124));
             if (GUILayout.Button("1×", GUILayout.Width(34)))
                 moved = 0f;
+            DrawCog(bridge.Schema, frame, group, t);
             GUILayout.EndHorizontal();
             float value = Mathf.Exp(moved);
             if (Mathf.Abs(value - _sliders[t]) > 1e-4f)
@@ -331,7 +393,10 @@ namespace AdaptOrDeity.UI
             GUILayout.Label(status, _right);
             GUILayout.EndHorizontal();
             float room = Mathf.Max((float)CellHints.ShareRoom(bridge.Schema, frame, cell, t), target);
-            float moved = GUILayout.HorizontalSlider(_sliders[t], 0f, Mathf.Max(room, 1e-3f), GUILayout.Width(Width - 50));
+            GUILayout.BeginHorizontal();
+            float moved = GUILayout.HorizontalSlider(_sliders[t], 0f, Mathf.Max(room, 1e-3f), GUILayout.Width(Width - 84));
+            DrawCog(bridge.Schema, frame, group, t);
+            GUILayout.EndHorizontal();
             if (Mathf.Abs(moved - _sliders[t]) > 1e-4f)
             {
                 _sliders[t] = moved;
@@ -356,7 +421,10 @@ namespace AdaptOrDeity.UI
             GUILayout.Label(status, _right);
             GUILayout.EndHorizontal();
             float step = (float)trait.Step;
-            float moved = GUILayout.HorizontalSlider(_sliders[t], (float)trait.Min, (float)trait.Max, GUILayout.Width(Width - 50));
+            GUILayout.BeginHorizontal();
+            float moved = GUILayout.HorizontalSlider(_sliders[t], (float)trait.Min, (float)trait.Max, GUILayout.Width(Width - 84));
+            DrawCog(bridge.Schema, frame, group, t);
+            GUILayout.EndHorizontal();
             float value = Mathf.Round(moved / step) * step;
             if (Mathf.Abs(value - _sliders[t]) > 1e-4f)
             {
@@ -367,14 +435,19 @@ namespace AdaptOrDeity.UI
                 _sliders[t] = target;   // the membrane room clamped the request: show what was accepted
         }
 
-        private void DrawControl(SessionBridge bridge, ControlInfo control, int group, int c)
+        private void DrawControl(SessionBridge bridge, SessionSchema schema, SnapshotFrame frame, ControlInfo control, int group,
+            int c)
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label(new GUIContent(control.Label, control.Description), GUILayout.Width(200));
             GUILayout.FlexibleSpace();
             GUILayout.Label($"{_controls[c]:F2} {control.Unit}", _right);
             GUILayout.EndHorizontal();
-            float moved = GUILayout.HorizontalSlider(_controls[c], (float)control.Min, (float)control.Max, GUILayout.Width(Width - 50));
+            GUILayout.BeginHorizontal();
+            float moved = GUILayout.HorizontalSlider(_controls[c], (float)control.Min, (float)control.Max, GUILayout.Width(Width - 84));
+            if (control.Id == "growth")
+                DrawCog(schema, frame, group, schema.GrowthRegulation);
+            GUILayout.EndHorizontal();
             if (Mathf.Abs(moved - _controls[c]) > 1e-4f)
             {
                 _controls[c] = moved;

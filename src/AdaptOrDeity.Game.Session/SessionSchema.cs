@@ -81,8 +81,9 @@ namespace AdaptOrDeity.Game.Session
     {
         public FeatureInfo(string id, string name, int unlockLevel, bool optional, bool defaultEnabled, string effect,
             int cost = 0, string explanation = "", IReadOnlyList<string>? requires = null, int requiresSwallowed = 0,
-            IReadOnlyList<string>? excludes = null)
+            IReadOnlyList<string>? excludes = null, double requiresAtpBelow = 0.0)
         {
+            RequiresAtpBelow = requiresAtpBelow;
             Requires = requires ?? new string[0];
             RequiresSwallowed = requiresSwallowed;
             Excludes = excludes ?? new string[0];
@@ -119,6 +120,12 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Prey cells the creature must have swallowed before the feature can be bought (0: none).</summary>
         public int RequiresSwallowed { get; }
+
+        /// <summary>
+        /// Unlocked only once a cell of the creature has had its ATP below this fraction of the resting level (0: no such
+        /// condition), e.g. regulation by falling metabolites, unlocked by experiencing an energy shortage.
+        /// </summary>
+        public double RequiresAtpBelow { get; }
 
         /// <summary>Features this one closes: once either is bought, the other cannot be.</summary>
         public IReadOnlyList<string> Excludes { get; }
@@ -230,6 +237,21 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Per-group energy controls; an entry's index is its index in <see cref="SnapshotFrame.Controls"/>.</summary>
         public IReadOnlyList<ControlInfo> Controls { get; }
+
+        /// <summary>
+        /// Species whose fall can lower an expression or growth target (feature Regulation), in the order of
+        /// <see cref="SnapshotFrame.Regulation"/>: kernel ids and names for the player.
+        /// </summary>
+        public static readonly IReadOnlyList<(string Id, string Name)> RegulationSpecies = new[]
+        {
+            ("ATP", "ATP"), ("G6P", "Glucose 6-phosphate"), ("glc", "Glucose inside"), ("H", "pH (falling)"),
+        };
+
+        /// <summary>
+        /// The regulated target that is growth: targets are the traits (their indices), then growth. With
+        /// <see cref="SnapshotFrame.RegulationRow"/>.
+        /// </summary>
+        public int GrowthRegulation => Traits.Count;
 
         /// <summary>Game features by level; an entry's index is its index in <see cref="SnapshotFrame.FeatureEnabled"/>.</summary>
         public IReadOnlyList<FeatureInfo> Features { get; }

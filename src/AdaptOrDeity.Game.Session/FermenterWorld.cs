@@ -101,6 +101,7 @@ namespace AdaptOrDeity.Game.Session
                     Targets[i] = traits[i].Default;
                 for (int c = 0; c < ControlList.Length; c++)
                     Controls[c] = ControlList[c].DefaultValue;
+                Regulation = new bool[(traits.Count + 1) * FermenterCell.RegulationSpecies.Length];
             }
 
             /// <summary>A group with another's trait targets and controls.</summary>
@@ -108,11 +109,15 @@ namespace AdaptOrDeity.Game.Session
             {
                 Targets = (double[])other.Targets.Clone();
                 Array.Copy(other.Controls, Controls, Controls.Length);
+                Regulation = (bool[])other.Regulation.Clone();
             }
 
             public double[] Targets { get; }
 
             public double[] Controls { get; } = new double[ControlList.Length];
+
+            /// <summary>Per regulated target (traits, then growth), per species: whether its fall lowers the target.</summary>
+            public bool[] Regulation { get; }
 
             /// <summary>Cells the group holds with a fixed body size (set when the feature is turned on).</summary>
             public int FixedSize { get; set; }
@@ -519,6 +524,7 @@ namespace AdaptOrDeity.Game.Session
             }
             TakeUpFromVacuoles(dt);
             OrganismsEat(dt);
+            NoticeAtpDip();
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))
@@ -614,7 +620,7 @@ namespace AdaptOrDeity.Game.Session
         public bool FeatureUnlocked(int feature)
         {
             var info = GameFeatures.All[feature];
-            if (info.UnlockLevel > _level || (info.Cost > 0 && !_bought[feature]))
+            if (info.UnlockLevel > _level || (info.Cost > 0 && !_bought[feature]) || (info.RequiresAtpBelow > 0.0 && !AtpDipped))
                 return false;
             foreach (var other in info.Requires)
                 if (!FeatureUnlocked(GameFeatures.IndexOf(other)))
@@ -835,7 +841,7 @@ namespace AdaptOrDeity.Game.Session
         {
             bool growthOn = Active(GameFeatures.GrowthAndDivision), storageOn = Active(GameFeatures.GlycogenStorage);
             bool repairOn = Active(GameFeatures.RepairLevel), fixedSize = Active(GameFeatures.FixedBodySize);
-            bool matrixOn = Active(GameFeatures.ExtracellularMatrix);
+            bool matrixOn = Active(GameFeatures.ExtracellularMatrix), regulationOn = Active(GameFeatures.Regulation);
             if (fixedSize)
             {
                 if (_aliveIn.Length < _groups.Count)
@@ -860,6 +866,7 @@ namespace AdaptOrDeity.Game.Session
                 c.StorageAllocation = storageOn ? g.Controls[StorageControl] : 0.0;
                 c.RepairLevel = repair;
                 c.MatrixAllocation = matrixOn ? g.Controls[MatrixControl] : 0.0;
+                ApplyRegulation(c, g, regulationOn);
             }
         }
 

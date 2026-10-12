@@ -6,7 +6,9 @@ namespace AdaptOrDeity.UI
 {
     /// <summary>
     /// Heads-up display in the style of Oxygen Not Included: overlay tabs with hotkeys, speed controls, a legend, hover
-    /// tooltips and a probe plot for the clicked cell; clicking a cell also opens the <see cref="CellPanel"/>. IMGUI for the vertical slice; all input
+    /// tooltips and a probe plot for the clicked cell; clicking a cell also opens the <see cref="CellPanel"/>. A feature that
+    /// unlocks during play (e.g. Regulation, when a cell's ATP first falls below half) is announced in a box under the top
+    /// bar until dismissed. IMGUI for the vertical slice; all input
     /// comes through IMGUI events so it works with either Unity input backend.
     /// </summary>
     public sealed class Hud : MonoBehaviour
@@ -17,6 +19,9 @@ namespace AdaptOrDeity.UI
         private int _lastRunningSpeed = 1;
         private Material _lineMaterial;
         private GUIStyle _tooltipStyle;
+        private bool[] _wasUnlocked;         // per feature, as of the last frame (null before the first)
+        private int _announced = -1;         // the feature whose unlocking is shown, or -1
+        private bool _announcedDetails;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
@@ -39,6 +44,43 @@ namespace AdaptOrDeity.UI
                 DrawLegend(bridge.Schema.Overlays[bridge.ActiveOverlay]);
             DrawProbePlot(bridge, frame);
             DrawTooltip(bridge, frame);
+            DrawUnlockNotice(bridge, frame);
+        }
+
+        // Announces a feature the first frame it is unlocked (not those unlocked when the session starts).
+        private void DrawUnlockNotice(SessionBridge bridge, SnapshotFrame frame)
+        {
+            var features = bridge.Schema.Features;
+            if (_wasUnlocked == null || _wasUnlocked.Length != frame.FeatureUnlocked.Length)
+                _wasUnlocked = (bool[])frame.FeatureUnlocked.Clone();
+            for (int f = 0; f < features.Count; f++)
+            {
+                if (frame.FeatureUnlocked[f] && !_wasUnlocked[f])
+                {
+                    _announced = f;
+                    _announcedDetails = false;
+                }
+                _wasUnlocked[f] = frame.FeatureUnlocked[f];
+            }
+            if (_announced < 0 || _announced >= features.Count)
+                return;
+            var info = features[_announced];
+            float w = Mathf.Min(560f, Screen.width - RightInset() - 24f);
+            var rect = new Rect(12f, BarHeight + 8f, w, _announcedDetails ? 380f : 120f);
+            GUILayout.BeginArea(rect, GUI.skin.box);
+            GUILayout.Label($"New: {info.Name}", new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, fontSize = 14 });
+            var wrap = new GUIStyle(GUI.skin.label) { wordWrap = true, fontSize = 12 };
+            GUILayout.Label(info.Effect, wrap);
+            if (_announcedDetails)
+                GUILayout.Label(info.Explanation, wrap);
+            GUILayout.BeginHorizontal();
+            if (!string.IsNullOrEmpty(info.Explanation) && GUILayout.Button(_announcedDetails ? "Less" : "Why?", GUILayout.Width(60)))
+                _announcedDetails = !_announcedDetails;
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button("OK", GUILayout.Width(60)))
+                _announced = -1;
+            GUILayout.EndHorizontal();
+            GUILayout.EndArea();
         }
 
         private void HandleInput(SessionBridge bridge, SnapshotFrame frame)
