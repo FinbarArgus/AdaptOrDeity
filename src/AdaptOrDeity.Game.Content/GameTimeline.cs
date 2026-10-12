@@ -44,7 +44,19 @@ namespace AdaptOrDeity.Game.Content
                 var feature = (Dictionary<string, object?>)item!;
                 _explanations[(string)feature["id"]!] = feature.TryGetValue("explanation", out var e) ? (string)e! : "";
             }
+            if (root.TryGetValue("achievements", out var achievements) && achievements is List<object?> list)
+                foreach (var item in list)
+                {
+                    var a = (Dictionary<string, object?>)item!;
+                    _achievements.Add(((string)a["id"]!, (string)a["name"]!, (string)a["description"]!));
+                }
         }
+
+        private readonly List<(string Id, string Name, string Description)> _achievements =
+            new List<(string Id, string Name, string Description)>();
+
+        /// <summary>The achievements (content/timeline.json achievements[]), in order.</summary>
+        public IReadOnlyList<(string Id, string Name, string Description)> Achievements => _achievements;
 
         /// <summary>The embedded content/timeline.json.</summary>
         public static GameTimeline Default => _default ??= new GameTimeline(ContentFiles.Read("timeline.json"));

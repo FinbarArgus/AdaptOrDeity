@@ -73,14 +73,17 @@ namespace AdaptOrDeity.Game.Session
         }
 
         // The gap since the creature last had food; regulation unlocks the first time it reaches the feature's gap.
-        private void NoticeFoodGap(double dt)
+        // Returns whether the creature has food now.
+        private bool NoticeFoodGap(double dt)
         {
-            TimeWithoutFood = HasFood() ? 0.0 : TimeWithoutFood + dt;
+            bool food = HasFood();
+            TimeWithoutFood = food ? 0.0 : TimeWithoutFood + dt;
             if (FoodGapMet || TimeWithoutFood < _foodGapToUnlock)
-                return;
+                return food;
             FoodGapMet = true;
             FoodGapMetAt = _time;
             ApplyControls();
+            return food;
         }
 
         // Whether a living cell of the creature touches a packet or holds food in its vacuole, or the creature holds a packet.

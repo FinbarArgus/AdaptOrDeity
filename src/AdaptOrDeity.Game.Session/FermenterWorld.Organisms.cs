@@ -119,6 +119,9 @@ namespace AdaptOrDeity.Game.Session
 
         internal double FieldRelease { get; set; }
 
+        // the last level the creature saw it in
+        internal int SeenLevel { get; set; }
+
         // glucose leaking from the packets it touches this step, entering the field at it [mol/s]
         internal double ContactRelease { get; set; }
 

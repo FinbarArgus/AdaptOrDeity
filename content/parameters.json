@@ -233,6 +233,27 @@
    "status": "design",
    "note": "starvation of the whole creature that empties the survival meter, in level durations: 1 empties it over a whole level of starving, so the meter at the end is the share of the level not spent starving"
   },
+  "scoring.star_points_1": {
+   "value": 5,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "points a level must earn (its meters and its reproduction points) for star 1 (designer 2026-10-13: 1 star a mediocre player, 2 a great one, 3 perfect control; set from the scripted players, docs/plans/scoring.md)"
+  },
+  "scoring.star_points_2": {
+   "value": 10,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "points a level must earn (its meters and its reproduction points) for star 2 (designer 2026-10-13: 1 star a mediocre player, 2 a great one, 3 perfect control; set from the scripted players, docs/plans/scoring.md)"
+  },
+  "scoring.star_points_3": {
+   "value": 15,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "points a level must earn (its meters and its reproduction points) for star 3 (designer 2026-10-13: 1 star a mediocre player, 2 a great one, 3 perfect control; set from the scripted players, docs/plans/scoring.md)"
+  },
   "skills.points_per_offspring": {
    "value": 1,
    "units": "1",

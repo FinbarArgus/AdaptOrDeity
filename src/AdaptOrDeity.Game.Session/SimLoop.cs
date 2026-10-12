@@ -283,6 +283,12 @@ namespace AdaptOrDeity.Game.Session
                 frame.ScoredDamage = (float)(score?.Damage ?? 0.0);
                 frame.ScoredSurvivalPoints = score?.SurvivalPoints ?? 0;
                 frame.ScoredDamagePoints = score?.DamagePoints ?? 0;
+                frame.ScoredReproductionPoints = score?.ReproductionPoints ?? 0;
+                frame.ScoredStars = score?.Stars ?? 0;
+                for (int f = 0; f < frame.ScoredUnlocked.Length; f++)
+                    frame.ScoredUnlocked[f] = score != null && f < score.Unlocked.Count && score.Unlocked[f];
+                for (int k = 0; k < frame.ScoredSeen.Length; k++)
+                    frame.ScoredSeen[k] = score != null ? score.Seen[k] : 0;
                 frame.LevelTimeLeft = inspect.LevelTimeLeft;
                 for (int f = 0; f < frame.FeatureEnabled.Length; f++)
                 {
@@ -384,6 +390,12 @@ namespace AdaptOrDeity.Game.Session
             frame.BodiesFrozen = world.Food.FrozenBodies;
             frame.StarvingShare = (float)world.StarvingShare;
             frame.TimeWithoutFood = (float)world.TimeWithoutFood;
+            frame.LevelPointsNow = world.LevelPointsNow;
+            frame.StarsNow = world.StarsNow;
+            for (int a = 0; a < frame.Achieved.Length; a++)
+                frame.Achieved[a] = world.AchievedLevel(a);
+            for (int k = 0; k < frame.Seen.Length; k++)
+                frame.Seen[k] = world.Seen((SeenKind)k);
             frame.OwnOffspring = world.OwnOffspring;
         }
 

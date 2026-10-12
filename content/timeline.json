@@ -388,6 +388,51 @@
    "reviewed": false
   }
  ],
+ "achievements": [
+  {
+   "id": "first_meal",
+   "name": "First meal",
+   "description": "Your creature touched or swallowed food for the first time.",
+   "reviewed": false
+  },
+  {
+   "id": "survived_famine",
+   "name": "Survived a famine",
+   "description": "Your creature went without food long enough to unlock regulation, found food again, and its cells were not starving when it did.",
+   "reviewed": false
+  },
+  {
+   "id": "never_starved",
+   "name": "Never starved",
+   "description": "A level ended without your creature's cells ever starving: its survival meter stayed full.",
+   "reviewed": false
+  },
+  {
+   "id": "first_daughter",
+   "name": "First daughter",
+   "description": "One of your cells divided for the first time.",
+   "reviewed": false
+  },
+  {
+   "id": "grandchild",
+   "name": "Grandmother",
+   "description": "A daughter of your creature had a daughter of its own.",
+   "reviewed": false
+  },
+  {
+   "id": "first_prey",
+   "name": "First prey",
+   "description": "Your creature swallowed its first prey cell.",
+   "reviewed": false
+  },
+  {
+   "id": "ten_prey",
+   "name": "Ten prey",
+   "description": "Your creature has swallowed ten prey cells.",
+   "reviewed": false
+  }
+ ],
+ "achievements_note": "Achievements shown in the level-end window when earned (each once, in the level it is earned). The sim decides when each is earned (FermenterWorld.Achievements.cs); 'reviewed' is set by a human who has checked the text.",
  "events": [
   {
    "id": "earth",

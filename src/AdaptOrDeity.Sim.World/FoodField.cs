@@ -86,6 +86,9 @@ namespace AdaptOrDeity.Sim.World
 
         public bool Active { get; internal set; }
 
+        /// <summary>The last level the creature saw it in (0: not seen since it came into the field); kept by the game.</summary>
+        public int SeenLevel { get; set; }
+
         /// <summary>
         /// A dead body out of range, kept as it was (not moved, leaked, digested or drawn in frames) until the creature comes
         /// back within <see cref="FoodField.BodyRange"/> or the body is held by a frozen organism that thaws. Not
@@ -609,6 +612,7 @@ namespace AdaptOrDeity.Sim.World
                 slot.Traces[i] = i == mainTrace ? 1.0 : Settings.PacketTraceMinorShare;
             slot.Stuck = false;
             slot.Holder = 0;
+            slot.SeenLevel = 0;
             slot.Active = true;
             return slot;
         }
@@ -742,6 +746,7 @@ namespace AdaptOrDeity.Sim.World
                 slot.Traces[i] = i == slot.MainTrace ? 1.0 : Settings.PacketTraceMinorShare;   // relative strengths
             slot.Stuck = false;
             slot.Holder = 0;
+            slot.SeenLevel = 0;
             slot.Active = true;
         }
     }

@@ -282,6 +282,7 @@ namespace AdaptOrDeity.Game.Session
                 _traits[i] = new TraitInfo(traits[i].Id, traits[i].Label, traits[i].Protein, true, traits[i].Min,
                     traits[i].Max, traits[i].Kind == TraitKind.Expression, traits[i].Step, traits[i].Kind == TraitKind.Share,
                     traits[i].Feature);
+            ResetMeters();   // level 1 starts
         }
 
         public IReadOnlyList<OverlayInfo> Overlays => OverlayList;
@@ -520,7 +521,7 @@ namespace AdaptOrDeity.Game.Session
             AfterCells(dt);
             TakeUpFromVacuoles(dt);
             OrganismsEat(dt);
-            NoticeFoodGap(dt);
+            bool hadFood = NoticeFoodGap(dt);
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))
@@ -528,6 +529,7 @@ namespace AdaptOrDeity.Game.Session
             ApplyFixedSize();
             OrganismLives();
             UpdateMeters(dt);
+            NoticeAchievementsAndSights(hadFood);
         }
 
         // Each cell's motors, and its flagella's force on the body from the last step's state (the motors' response to
@@ -778,6 +780,7 @@ namespace AdaptOrDeity.Game.Session
             var daughter = _cells[cell].Divide();
             if (daughter == null)
                 return;
+            _divisions++;
             if (!Active(GameFeatures.Multicellularity))
             {
                 // without multicellularity the daughter swims off on its own (FermenterWorld.Organisms.cs)

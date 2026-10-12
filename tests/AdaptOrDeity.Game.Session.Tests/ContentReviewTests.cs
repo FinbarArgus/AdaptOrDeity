@@ -33,9 +33,11 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             using var doc = Timeline();
             var unreviewed = doc.RootElement.GetProperty("features").EnumerateArray()
+                .Concat(doc.RootElement.GetProperty("achievements").EnumerateArray())
                 .Where(f => !f.TryGetProperty("reviewed", out var r) || !r.GetBoolean())
                 .Select(f => f.GetProperty("id").GetString()).ToList();
-            Assert.That(unreviewed, Is.Empty, "content/timeline.json features a human has not reviewed (set \"reviewed\": true)");
+            Assert.That(unreviewed, Is.Empty,
+                "content/timeline.json features and achievements a human has not reviewed (set \"reviewed\": true)");
         }
 
         [Test]

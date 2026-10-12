@@ -51,6 +51,10 @@ namespace AdaptOrDeity.Game.Session
                 groupCapacity);
             FeatureUnlocked = new bool[featureCount];
             FeatureEnabled = new bool[featureCount];
+            ScoredUnlocked = new bool[featureCount];
+            Achieved = new int[GameAchievements.All.Count];
+            Seen = new int[FermenterWorld.SeenKinds];
+            ScoredSeen = new int[FermenterWorld.SeenKinds];
             Details = Allocate<double>(detailCount, cellCapacity);
             TraitValues = Allocate(traitCount, cellCapacity);
             TraitTargets = Allocate(traitCount, cellCapacity);
@@ -160,6 +164,27 @@ namespace AdaptOrDeity.Game.Session
         public int ScoredSurvivalPoints { get; internal set; }
 
         public int ScoredDamagePoints { get; internal set; }
+
+        /// <summary>The last finished level's reproduction points and stars (0-3).</summary>
+        public int ScoredReproductionPoints { get; internal set; }
+
+        public int ScoredStars { get; internal set; }
+
+        /// <summary>Per feature: unlocked during the last finished level.</summary>
+        public bool[] ScoredUnlocked { get; }
+
+        /// <summary>Per <see cref="SeenKind"/>: individuals seen in the last finished level, and in this level so far.</summary>
+        public int[] ScoredSeen { get; }
+
+        public int[] Seen { get; }
+
+        /// <summary>This level's points if it ended now (meters and reproduction) and the stars they would give.</summary>
+        public int LevelPointsNow { get; internal set; }
+
+        public int StarsNow { get; internal set; }
+
+        /// <summary>Per achievement (<see cref="GameAchievements.All"/>): the level it was earned in, 0 if not yet.</summary>
+        public int[] Achieved { get; }
 
         /// <summary>Simulated time left in the current level [s].</summary>
         public double LevelTimeLeft { get; internal set; }

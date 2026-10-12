@@ -135,6 +135,10 @@ namespace AdaptOrDeity.Game.Session
             float scoredDamage = f.ScoredDamage; io.Value(ref scoredDamage); f.ScoredDamage = scoredDamage;
             int scoredSurvivalPoints = f.ScoredSurvivalPoints; io.Value(ref scoredSurvivalPoints); f.ScoredSurvivalPoints = scoredSurvivalPoints;
             int scoredDamagePoints = f.ScoredDamagePoints; io.Value(ref scoredDamagePoints); f.ScoredDamagePoints = scoredDamagePoints;
+            int scoredReproduction = f.ScoredReproductionPoints; io.Value(ref scoredReproduction); f.ScoredReproductionPoints = scoredReproduction;
+            int scoredStars = f.ScoredStars; io.Value(ref scoredStars); f.ScoredStars = scoredStars;
+            int levelPoints = f.LevelPointsNow; io.Value(ref levelPoints); f.LevelPointsNow = levelPoints;
+            int starsNow = f.StarsNow; io.Value(ref starsNow); f.StarsNow = starsNow;
             int organisms = f.OrganismCount; io.Value(ref organisms); f.OrganismCount = organisms;
             int inspected = f.InspectedOrganism; io.Value(ref inspected); f.InspectedOrganism = inspected;
             int released = f.OrganismsReleased; io.Value(ref released); f.OrganismsReleased = released;
@@ -156,6 +160,10 @@ namespace AdaptOrDeity.Game.Session
             io.Block(f.CellCanDivide);
             io.Block(f.FeatureUnlocked);
             io.Block(f.FeatureEnabled);
+            io.Block(f.ScoredUnlocked);
+            io.Block(f.Achieved);
+            io.Block(f.Seen);
+            io.Block(f.ScoredSeen);
             io.Block(f.CellSurface);
             io.Block(f.CellX);
             io.Block(f.CellY);
