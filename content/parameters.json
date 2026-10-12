@@ -206,11 +206,11 @@
    "note": "where new flagella are placed by default: around the back of the cell, this far apart"
   },
   "skills.glucose_per_point": {
-   "value": 2e-14,
+   "value": 1.2e-14,
    "units": "mol",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "glucose eaten per skill point: calibrated so a level-1 cell left alone for the week earns one 5-point transporter and one kept on food all week two (LevelTests). Re-measured 2026-10-12 with packets at a cell's density (4.9e-15 mol each), field off, food 3e-3 packets/s: left alone it ate 1.69e-13 mol (8 points; ATP gone on day 4, damage 0.32 by day 7); kept on food (0.01 packets/s) 2.98e-13 mol (14 points), the most its carriers take up without growth (4.3e-14 mol a day). The value is unchanged; the outcome is sensitive to the arrival rate and the random sequence (a probe that redrew the arrivals ate 9.45e-14 mol)"
+   "note": "glucose eaten per skill point: calibrated so a level-1 cell left alone for the week earns one 5-point transporter and one kept on food all week two (LevelTests). Re-measured 2026-10-13 with the environment field always on (touching packets feed the membrane facing them) and level-1 food at 5e-3 packets/s: left alone it ate 7.23e-14 mol (6 points; ATP gone at day 1.66, damage 0.55 by day 7); kept on food (1.5e-2 packets/s) 3.12e-13 mol (26 points). Was 2e-14 (field off: 1.69e-13 mol and 8 points left alone). The left-alone outcome hangs on the gaps between packets: on the same random draws, 3e-3 packets/s gave 1 point (ATP gone at 0.43 d), 4e-3 6 (1.91 d), 6e-3 3 (0.79 d), 7e-3 21 (6.1 d)"
   },
   "skills.points_per_offspring": {
    "value": 1,
@@ -238,7 +238,7 @@
    "units": "dimensionless",
    "source": "definitional",
    "status": "design",
-   "note": "steps the finest grid takes per macro step (the coarser grids take one): Douglas steps damp short modes slowly, so a moving cell's own near field lags. A sink drifting at 2 um/s (the current) sees its membrane depletion 7% short with 1, 0.7% with 4, +0.1% with 8; swimming at 20 um/s 16%, 4% and 1% short (NestedFieldTests, 2026-10-13)"
+   "note": "steps the finest grid takes per macro step for glucose (the coarser grids, and lactate, acid and the smells, take one): Douglas steps damp short modes slowly, so a moving cell's own near field lags. A sink drifting at 2 um/s (the current) sees its membrane depletion 7% short with 1, 0.7% with 4, +0.1% with 8; swimming at 20 um/s 16%, 4% and 1% short (NestedFieldTests, 2026-10-13). Lactate and acid at the membrane barely act back on the cell, so they take one"
   },
   "field.trace_stride": {
    "value": 10,

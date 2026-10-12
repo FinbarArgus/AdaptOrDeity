@@ -30,9 +30,7 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
 ## Next: consolidate before new features (designer, 2026-10-12)
 After the prey, engulfing and multicellularity/mitochondria features land and the designer has tested them in Unity,
 no new features until:
-1. **Solidify:** fix what testing finds; turn the field on by default only once it meets its reference
-   (docs/plans/environment-field.md, "Accuracy against the reference"); retire stand-ins (content/upstream copies once
-   upstream is pushed).
+1. **Solidify:** fix what testing finds; retire stand-ins (content/upstream copies once upstream is pushed).
 2. **Check every module:** each upstream module passes cam_testing's full set (every test under 10 minutes); each
    game-side native element has its analytic and conservation tests; goldens current; every value without a checked
    source is in docs/review/unreferenced-values.md, to go through with the designer.
@@ -223,11 +221,12 @@ no new features until:
 - **Food packets.** Dead cells or organic particles, smaller than a cell (0.8 µm radius fresh), at a cell's density of
   glucose equivalents (2.3 M: 1.1 g/mL × 30% dry × 50% carbon, 6 C per glucose; a sphere of its radius, 4.9×10⁻¹⁵ mol,
   about 3% of a daughter's glucose), with traces of other species (aspartate, serine, ribose, dimethyl sulfide);
-  a packet keeps its density as it is eaten (radius as the cube root of what is left) and is removed below 1%. A cell touching one
-  sees the contact concentration (50 mM) at its membrane while it lasts and takes glucose up through its own carriers
-  (Glf, and the PTS, ABC and H+ symport once bought, all seeing the same membrane glucose); what it takes beyond the
-  background comes out of the packet, which then travels with the creature. Traces are recorded at the membrane for smell (level 3); nothing
-  takes them up yet. `Sim.World.FoodField` stands in for the environment field of the transport graph.
+  a packet keeps its density as it is eaten (radius as the cube root of what is left) and is removed below 1%. Its free
+  sugar leaks into the environment field; a touching cell's surface hydrolase cuts its polymer into that free sugar (held
+  at 50 mM), and the cap of the cell's membrane facing the packet sees it and takes it up through the cell's own carriers
+  (Glf, and the PTS, ABC and H+ symport once bought); the packet then travels with the creature
+  (docs/plans/environment-field.md). Traces leak with the sugar into the field, for smell (level 3); nothing takes them
+  up yet.
   Since 2026-10-09 a packet either **lies on the ground** (still; a dead creature will be one too) or is **carried by
   another creature** (prey, or an ally bringing food); nothing drifts freely. Lying food has a density per area
   (`food.lying_density`) and comes into view ahead of the moving creature; carriers arrive at random times. The food
@@ -574,8 +573,6 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     Regulation (2026-10-13) avoids the trap only while some food remains (half the resting glucose): the unregulated
     maintenance ATPase still drains ATP to 0 in a full famine. Should maintenance fall in a famine too, and should
     regulation unlock before the first crash?
-19. The contact rule (field off) takes a touching packet's polymer as if dissolved, so the hydrolase slider matters only in
-    the field and in vacuoles. Make contact eating hydrolase-limited, or turn the field on by default? (2026-10-12)
 20. libcuflynx's runtime failed after a division with hard restarts on inputs changing every step (vacuole cells): soft
     restarts avoid it; worth a minimal reproduction upstream. (2026-10-12)
 21. Free organisms (docs/plans/free-daughters.md): a dead body beyond the organisms' range (60 µm) is dropped; keep far

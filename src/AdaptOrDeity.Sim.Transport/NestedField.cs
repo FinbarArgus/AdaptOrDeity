@@ -101,10 +101,15 @@ namespace AdaptOrDeity.Sim.Transport
         private double _lastDt;
         private readonly int[] _stride, _waited;
         private readonly double[] _speciesDt;
+        private readonly int[] _fineSubsteps, _passList;
+        private int _passCount;
         private int _stepLevel, _chunks, _stepCells;
 
         /// <summary>Rows (or columns) per work item when a level's lines are shared between threads.</summary>
         private const int LinesPerItem = 32;
+
+        /// <summary>Levels narrower than this many cells step on one thread (sharing them costs more than it saves).</summary>
+        private const int ParallelFromCells = 64;
 
         /// <summary>
         /// Grids for a colony of diameter <paramref name="diameter"/> [m] centred at (<paramref name="cx"/>,
@@ -133,6 +138,8 @@ namespace AdaptOrDeity.Sim.Transport
             Array.Fill(_stride, 1);
             _waited = new int[Species];
             _speciesDt = new double[Species];
+            _fineSubsteps = new int[Species];
+            _passList = new int[Species];
             _hierarchy = new Hierarchy(_far);
             _levels = Array.Empty<DiffusionField>();
             _spare = Array.Empty<DiffusionField?>();
@@ -459,16 +466,40 @@ namespace AdaptOrDeity.Sim.Transport
                     for (int a = 0; a < _activeCount; a++)
                         if (_stepLevel + 1 < Levels)
                             BoundaryInflow(_stepLevel, _activeList[a]);
-                    int fine = _stepLevel == 0 && Levels > 1 ? Math.Max(1, _settings.FineSubsteps) : 1;
-                    double[][]? heldFine = fine > 1 ? HoldLevel(0) : null;
-                    for (int f = 0; f < fine; f++)
+                    if (!(_stepLevel == 0 && Levels > 1))
                     {
-                        if (f > 0)
-                            RestoreLevel(0, heldFine!);
+                        // a coarser level (or a single grid): every species one step
                         for (int a = 0; a < _activeCount; a++)
-                            _levels[_stepLevel].Prepare(_activeList[a], _speciesDt[_activeList[a]] / fine);
-                        Run(_activeCount * _chunks, _rowPass);
-                        Run(_activeCount * _chunks, _columnPass);
+                        {
+                            _levels[_stepLevel].Prepare(_activeList[a], _speciesDt[_activeList[a]]);
+                            _passList[a] = _activeList[a];
+                        }
+                        _passCount = _activeCount;
+                        Run(_passCount * _chunks, _rowPass);
+                        Run(_passCount * _chunks, _columnPass);
+                        continue;
+                    }
+                    // the finest level: each species its own number of substeps, its sources held over them
+                    int fineMost = 1;
+                    if (_stepLevel == 0 && Levels > 1)
+                        for (int a = 0; a < _activeCount; a++)
+                            fineMost = Math.Max(fineMost, FineSubstepsOf(_activeList[a]));
+                    double[][]? heldFine = fineMost > 1 ? HoldLevel(0) : null;
+                    for (int f = 0; f < fineMost; f++)
+                    {
+                        _passCount = 0;
+                        for (int a = 0; a < _activeCount; a++)
+                        {
+                            int s = _activeList[a], fine = fineMost > 1 ? FineSubstepsOf(s) : 1;
+                            if (f >= fine)
+                                continue;
+                            if (f > 0)
+                                Array.Copy(heldFine![a], _levels[0].Sources(s), heldFine[a].Length);
+                            _levels[_stepLevel].Prepare(s, _speciesDt[s] / fine);
+                            _passList[_passCount++] = s;
+                        }
+                        Run(_passCount * _chunks, _rowPass);
+                        Run(_passCount * _chunks, _columnPass);
                     }
                 }
                 Run(_activeCount, _restrictPass);
@@ -484,6 +515,19 @@ namespace AdaptOrDeity.Sim.Transport
             }
             _workers = null;
         }
+
+        /// <summary>
+        /// Steps the finest level takes for species <paramref name="s"/> per step of the others (default
+        /// <see cref="NestedFieldSettings.FineSubsteps"/>).
+        /// </summary>
+        public void SetFineSubsteps(int s, int substeps)
+        {
+            if (substeps < 1)
+                throw new ArgumentOutOfRangeException(nameof(substeps), "at least 1");
+            _fineSubsteps[s] = substeps;
+        }
+
+        private int FineSubstepsOf(int s) => _fineSubsteps[s] > 0 ? _fineSubsteps[s] : Math.Max(1, _settings.FineSubsteps);
 
         // Steps every species that has waited since its last step, so no sources are pending when the grids move.
         private void CatchUp()
@@ -527,12 +571,6 @@ namespace AdaptOrDeity.Sim.Transport
 
         private double[][] _heldFine = Array.Empty<double[]>();
 
-        private void RestoreLevel(int k, double[][] held)
-        {
-            for (int a = 0; a < _activeCount; a++)
-                Array.Copy(held[a], _levels[k].Sources(_activeList[a]), held[a].Length);
-        }
-
         private void RestoreSources(double[][][] held)
         {
             for (int k = 0; k < Levels; k++)
@@ -540,9 +578,10 @@ namespace AdaptOrDeity.Sim.Transport
                     Array.Copy(held[k][a], _levels[k].Sources(_activeList[a]), held[k][a].Length);
         }
 
+        // A pass over count items, on the workers when the level is large enough to repay sharing it.
         private void Run(int count, Action<int, int> pass)
         {
-            if (_workers == null || _workers.Workers == 1 || count < 2)
+            if (_workers == null || _workers.Workers == 1 || count < 2 || _stepCells < ParallelFromCells)
                 pass(0, count);
             else
                 _workers.Run(count, 1, pass);
@@ -554,7 +593,7 @@ namespace AdaptOrDeity.Sim.Transport
             for (int item = start; item < end; item++)
             {
                 int j0 = item % _chunks * LinesPerItem;
-                _levels[_stepLevel].RowPass(_activeList[item / _chunks], j0, Math.Min(_stepCells, j0 + LinesPerItem));
+                _levels[_stepLevel].RowPass(_passList[item / _chunks], j0, Math.Min(_stepCells, j0 + LinesPerItem));
             }
         }
 
@@ -563,7 +602,7 @@ namespace AdaptOrDeity.Sim.Transport
             for (int item = start; item < end; item++)
             {
                 int i0 = item % _chunks * LinesPerItem;
-                _levels[_stepLevel].ColumnPass(_activeList[item / _chunks], i0, Math.Min(_stepCells, i0 + LinesPerItem));
+                _levels[_stepLevel].ColumnPass(_passList[item / _chunks], i0, Math.Min(_stepCells, i0 + LinesPerItem));
             }
         }
 

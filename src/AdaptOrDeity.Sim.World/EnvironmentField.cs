@@ -79,10 +79,14 @@ namespace AdaptOrDeity.Sim.World
             far[Oxygen] = settings.Oxygen;
             Field = new NestedField(settings.Grid, settings.Diffusivity, far, cx, cy, diameter);
             Field.SetActive(Oxygen, false);   // nothing makes or takes O2 yet
+            // the fine substeps keep a moving cell's own glucose depletion; its lactate and acid barely act back on it
+            Field.SetFineSubsteps(Lactate, 1);
+            Field.SetFineSubsteps(Acid, 1);
             for (int t = 0; t < settings.TraceSpecies.Count; t++)
             {
                 Field.SetActive(FirstTrace + t, false);
                 Field.SetStride(FirstTrace + t, Math.Max(1, settings.TraceStride));
+                Field.SetFineSubsteps(FirstTrace + t, 1);
             }
         }
 

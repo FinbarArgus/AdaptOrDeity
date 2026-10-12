@@ -68,19 +68,19 @@ grows) takes its new group's targets.
 
 **Coupling, per macro step (0.1 s).**
 1. Each cell sees the mean of what its sectors face, either a volume or open water. Open water is the environment field
-   at the cell when the field is on (`ICellEnvironment.AtMembrane`, corrected for the open share's own exchange).
-   Otherwise it is the food field's glucose and the sea's lactate and pH. That gives the cell's membrane glucose, lactate
-   and H+. Changes below `field.input_tolerance` are not passed on, because each change restarts the cell's integration.
+   at the cell (`ICellEnvironment.AtMembrane`, corrected for the open share's own exchange with it), with the free sugar
+   of packets it touches on the membrane facing them. That gives the cell's membrane glucose, lactate and H+. Changes
+   below `field.input_tolerance` of their departure from the sea are not passed on, because each change restarts the
+   cell's integration.
 2. The cells step.
 3. Their exchange is shared out over their sectors. Glucose uptake becomes an implicit sink on each facing volume
    (J/C_membrane/6 x the volume's new concentration), so no volume is overdrawn. Lactate, acid and matrix released are
-   sources. With the field, the open-water shares go into it (`Exchange`) and the field steps after the space. Without
-   it they go to the sea, and the open-water share of uptake beyond the background comes out of touching food packets.
+   sources. The open-water shares go into the field (`Exchange`), the share through the membrane facing packets comes
+   out of them, and the field steps after the space.
 4. Transport (`Sim.Physiology.ExtracellularSpace`) takes one backward Euler step per species across faces and open
    gaps, solved by conjugate gradients. The gaps relax in milliseconds, so an explicit step would be unstable. The new
    state is rebuilt from the solved fluxes, so the bookkeeping is exact. The mouth of an open gap sees the field
-   there, and what flows in is taken from the field at the mouth (H+ as acid). Without the field it sees the food field,
-   and a packet touching the mouth gives up what flows in beyond the background.
+   there, and what flows in is taken from the field at the mouth (H+ as acid).
 5. Chemistry, every 1 s: each volume's module advances its matrix (delivered, broken down, overflowing). Volumes with no
    matrix are skipped.
 
@@ -101,8 +101,7 @@ cell panel shows "Making matrix" (ATP/s), "Matrix exported" and "Edge on open wa
   - matrix cost exactly 3 ATP and one glucose per unit;
   - exact bookkeeping in the world;
   - inner cells see less glucose;
-  - with the environment field, the field gains exactly the packets' glucose less what the cells' open sectors and the
-    gaps took (1e-12);
+  - the field gains exactly the packets' glucose less what the cells' open sectors and the gaps took (1e-12);
   - bit-identical results on 1 and 4 threads.
 - kernelgen: goldens for a module without states.
 

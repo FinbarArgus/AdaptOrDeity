@@ -20,9 +20,10 @@ as ours when it was released." Built on branch feat/free-daughters (from m0-skel
 - Ids from 1, never reused; `Parent` (0 for the creature) and `Generation` (1 for the creature's daughters).
 
 ### Same world, same rules
-- **Eating** (contact rule): it sees the packets it touches, and what it takes beyond the background leaves them. A
-  packet several organisms touch is shared as colony cells share it: withdrawn in turn, the creature's cells first, then
-  organisms by id (`FoodField.Withdraw` never gives more than a packet holds). Food stays with the body that met it
+- **Eating** (as a creature's cell, environment-field.md): it sees the free sugar of the packets it touches on the
+  membrane facing them, and what it takes through that membrane leaves them. A packet several bodies touch is shared:
+  drawn in turn, the creature's cells first, then organisms by id (`FoodField.Draw` never gives more than a packet's free
+  sugar). Food stays with the body that met it
   first: `FoodPacket.Holder` (0 the creature, else an organism's id), moved with that body (`FoodField.MoveHeld`) and
   left lying where it is when the organism dies or goes (`FoodField.Release`).
 - **Engulfing**, if it was on at release: the creature's rules (prey and packets smaller than the cell, one vacuole that
@@ -30,8 +31,8 @@ as ours when it was released." Built on branch feat/free-daughters (from m0-skel
   `VacuoleOnMembrane`, `TakeUp` in `FermenterWorld.Engulfing.cs`).
 - **Environment field**: inside the field it reads its membrane and exchanges as a creature's cell does (into
   `CellGlucoseExchanged`, so the field's balance holds to 1e-12); beyond the field it sees the open sea and exchanges
-  nothing. With the game's grids the field (~380 µm across for one cell) reaches beyond the range, so in play every
-  simulated organism is inside it.
+  nothing. The field's outermost grid covers the organisms' range each way (`NestedFieldSettings.Reach`; 136 µm across
+  for one cell), so in play every simulated organism is inside it.
 - **Its food earns the player nothing**: `Eaten` per organism and `OrganismsEaten` in all; `FoodEaten` and the food
   points are the creature's only. `Swallowed` likewise counts only the creature's prey.
 - **Death**: at a lethal damage load. At the end of the step it dies in, it leaves `Organisms` and **its body becomes
@@ -57,9 +58,9 @@ as ours when it was released." Built on branch feat/free-daughters (from m0-skel
 - **It stays until it is eaten**: no timed removal (`organisms.dead_kept` is retired). Its radius goes as the cube root
   of what is left, from its own size (`FoodPacket.Amount`, `FullRadius`), and it is used up below
   `food.used_up_fraction` of its own amount.
-- **Who eats it, by the packets' rules**: the creature's cells and living organisms by contact (in turn: the creature's
-  cells first, then organisms by id); with the environment field its free sugar leaks into the field and touching
-  cells' hydrolase digests it. **Engulfing** needs an item smaller than the cell: a fresh body is as large as a cell, so
+- **Who eats it, by the packets' rules**: its free sugar leaks into the field; touching cells' hydrolase cuts its polymer
+  into its free sugar and the membrane facing it takes that up (in turn: the creature's cells first, then organisms by
+  id). Untouched, only its free part leaks: its polymer stays. **Engulfing** needs an item smaller than the cell: a fresh body is as large as a cell, so
   no cell (all are the same size) engulfs it whole. Eaten from outside to ~87% (radius ~0.96 of a cell), it fits in an
   empty vacuole with room left for a prey cell and an engulfing cell swallows the rest (`FreeOrganismTests`).
 - **Range**: a body stays while it is within the organisms' range (`organisms.range_view_widths`, 2 view widths, 60 µm

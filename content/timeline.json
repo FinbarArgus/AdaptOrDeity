@@ -15,7 +15,7 @@
     "regulation"
    ],
    "arrivals": {
-    "food_per_s": 0.003,
+    "food_per_s": 0.005,
     "carried_share": 0.8,
     "prey_per_s": 0.0
    },
@@ -41,7 +41,7 @@
     "mitochondria"
    ],
    "arrivals": {
-    "food_per_s": 0.003,
+    "food_per_s": 0.005,
     "carried_share": 0.8,
     "prey_per_s": 0.0002
    },

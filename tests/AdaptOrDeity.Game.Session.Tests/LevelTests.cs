@@ -57,7 +57,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             using var world = new FermenterWorld();
             int cost = GameFeatures.All[GameFeatures.IndexOf(GameFeatures.PtsTransport)].Cost;
-            world.Food.SetArrivals(0.01, 0.8);   // food everywhere: it never runs out
+            world.Food.SetArrivals(0.015, 0.8);   // 3x the level's food: it never runs out
             Run(world, Week - 1.0);
             TestContext.Progress.WriteLine($"kept on food: ate {world.FoodEaten:G4} mol, {world.SkillPoints} points");
             Assert.That(world.SkillPoints, Is.GreaterThanOrEqualTo(2 * cost), $"ate {world.FoodEaten:G4} mol");

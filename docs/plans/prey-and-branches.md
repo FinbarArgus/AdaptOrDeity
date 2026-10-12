@@ -18,8 +18,8 @@ that leave). Built on branch feat/prey-branch.
 - The hydrolase's substrate S (`PolymerConcentration`) is the packet's polymer over its sphere, ~2.2 M, far above
   K_m_poly (20 mM): the enzyme is **saturated** and digestion is limited by the enzyme on the surface, not the
   substrate. That is realistic for a dense particle (surface-limited erosion).
-- `food.free_fraction` (3%) is now read as a share of the carbon: ~70 mM of free sugar inside a packet, in line with the
-  contact rule's 50 mM at a touching membrane.
+- `food.free_fraction` (3%) is now read as a share of the carbon: ~70 mM of free sugar inside a packet, above the
+  50 mM (`food.contact_glucose`) at which hydrolysis stops.
 
 ### Surface hydrolase slider
 - Trait `Hydrolase_expression` (content/traits/fermenter.json; pool `pool_Hydrolase`, protein `glycoside_hydrolase_gh13`
@@ -29,9 +29,8 @@ that leave). Built on branch feat/prey-branch.
   surface lipoprotein), B. licheniformis amylase 512 (P06278). The upstream value (700) is unchanged and now sourced
   (homogenisation-checks 0db734f, notes only; the game's cell is unchanged). Footprint 20 nm² kept (a 75-80 kDa globular
   protein is ~25 nm² in cross-section).
-- Where it acts: on packets in the environment field and in vacuoles. Under the contact rule (field off, the default),
-  a packet touching a cell from outside is taken as if already dissolved, so the slider does not speed up eating from
-  outside (said in the trait's explanation; see Open questions).
+- Where it acts: on packets the cell touches (into the packet's free sugar, which the membrane facing it takes up;
+  environment-field.md) and in vacuoles.
 
 ### Prey (`Sim.World.PreyField`)
 - Small cells (radius `prey.radius` 0.5 µm; content at the packet density, 1.2e-15 mol) arriving at the window's edge at
@@ -82,7 +81,7 @@ that leave). Built on branch feat/prey-branch.
 - A cell holding a vacuole sees inputs that change every macro step, so it uses the soft restarts of the environment
   field's cells (`StopAtMacroSteps`); with hard restarts libcuflynx's integrator failed a few seconds after a division.
 
-## Calibration (2026-10-12, contact rule, field off)
+## Calibration (2026-10-12, contact rule, field off; superseded 2026-10-13 by the field's, environment-field.md)
 Measured with explicit probes (deleted after); numbers in the content notes and the decision log.
 
 | Run | Result |
