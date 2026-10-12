@@ -6,9 +6,9 @@ namespace AdaptOrDeity.UI
 {
     /// <summary>
     /// Heads-up display in the style of Oxygen Not Included: overlay tabs with hotkeys, speed controls, a legend, hover
-    /// tooltips and a probe plot for the clicked cell; clicking a cell also opens the <see cref="CellPanel"/>. A feature that
-    /// unlocks during play (e.g. Regulation, when a cell's ATP first falls below half) is announced in a box under the top
-    /// bar until dismissed. IMGUI for the vertical slice; all input
+    /// tooltips and a probe plot for the clicked cell; clicking a cell also opens the <see cref="CellPanel"/>. The level's
+    /// survival and damage meters are in the top bar. A feature that unlocks during play (e.g. Regulation, after the first
+    /// gap without food) is announced in a box under the top bar until dismissed. IMGUI for the vertical slice; all input
     /// comes through IMGUI events so it works with either Unity input backend.
     /// </summary>
     public sealed class Hud : MonoBehaviour
@@ -238,8 +238,19 @@ namespace AdaptOrDeity.UI
                     bridge.Send(SimCommands.SetLevel(frame.Level - 1));
                 if (GUILayout.Button("+", GUILayout.Width(24)))
                     bridge.Send(SimCommands.SetLevel(frame.Level + 1));
+                if (GUILayout.Button(new GUIContent("End", "development: end the level now and score it"), GUILayout.Width(40)))
+                    bridge.Send(SimCommands.DevEndLevel());
+                DrawMeter("Survival", frame.SurvivalMeter, frame.SurvivalPointsNow,
+                    "falls while your cells are starving (ATP below half its resting level)" +
+                    (frame.StarvingShare > 0f ? $"; starving now: {frame.StarvingShare * 100f:F0}% of your cells" : "") +
+                    $"; {frame.TimeWithoutFood:F0} s since your creature last had food");
+                DrawMeter("Damage", frame.DamageMeter, frame.DamagePointsNow,
+                    "100 less the worst damage your cells have carried this level (share of a lethal load)");
+                GUILayout.Label(new GUIContent(new string('★', frame.StarsNow) + new string('☆', 3 - Mathf.Clamp(frame.StarsNow, 0, 3)),
+                    $"this level's points so far: {frame.LevelPointsNow} (meters and reproduction); stars at the level's end"),
+                    GUILayout.Width(44));
                 int forSale = SkillTree.ForSale(bridge.Schema, frame);
-                string earned = $"earned: food {frame.FoodPoints}, reproduction {frame.ReproductionPoints}";
+                string earned = $"earned: survival {frame.SurvivalPoints}, damage {frame.DamagePoints}, reproduction {frame.ReproductionPoints}";
                 if (GUILayout.Button(new GUIContent($"Skills ({frame.SkillPoints})",
                         (forSale > 0 ? $"{forSale} to evolve; " : "") + earned), GUILayout.Width(90)))
                     SkillTree.Toggle();
@@ -255,7 +266,8 @@ namespace AdaptOrDeity.UI
                     GUILayout.Label(new GUIContent($"Free {frame.OrganismCount}",
                         $"daughters and their offspring living nearby on their own (pale, white outline; click one to see " +
                         $"its state). Released {frame.OrganismsReleased}, died {frame.OrganismsDied} (their bodies are " +
-                        $"food, grey), gone out of range {frame.OrganismsGone}"), GUILayout.Width(60));
+                        $"food, grey); out of range and frozen until you come back: {frame.OrganismsFrozen} living, " +
+                        $"{frame.BodiesFrozen} dead; forgotten {frame.OrganismsGone}"), GUILayout.Width(60));
                     // development aids until play-testing is done: points and a prey cell swimming at the creature
                     if (GUILayout.Button(new GUIContent("+5", "development: 5 skill points"), GUILayout.Width(30)))
                         bridge.Send(SimCommands.DevGrantPoints(5));
@@ -274,6 +286,20 @@ namespace AdaptOrDeity.UI
 
             GUILayout.EndHorizontal();
             GUILayout.EndArea();
+        }
+
+        // A meter in the top bar: its value as a small bar and its worth in points if the level ended now.
+        private static void DrawMeter(string name, float meter, int points, string tip)
+        {
+            GUILayout.Label(new GUIContent($"{name} {meter:F0}", $"{name} meter {meter:F0}/100, worth {points} points now: {tip}"),
+                GUILayout.Width(82));
+            var bar = GUILayoutUtility.GetRect(40f, 10f, GUILayout.Width(40f));
+            if (Event.current.type != EventType.Repaint)
+                return;
+            bar.y += 8f;
+            GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.2f, 0.2f), 0f, 0f);
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(meter / 100f), bar.height), Texture2D.whiteTexture,
+                ScaleMode.StretchToFill, false, 0f, LevelEndWindow.MeterColour(meter), 0f, 0f);
         }
 
         private void DrawLegend(OverlayInfo info)

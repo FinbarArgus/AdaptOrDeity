@@ -6,9 +6,10 @@ using UnityEngine;
 namespace AdaptOrDeity.UI
 {
     /// <summary>
-    /// The skill window: features with a cost (<see cref="FeatureInfo.Cost"/>) bought with skill points, earned by food
-    /// eaten and by daughters that leave the creature (reproduction). It opens when the level goes up and there is something
-    /// new to buy, and from the Skills button. Each entry shows its short effect, what it still needs (a feature, prey
+    /// The skill window: features with a cost (<see cref="FeatureInfo.Cost"/>) bought with skill points, earned by each
+    /// level's survival and damage meters and by daughters that leave the creature (reproduction). It opens when the level
+    /// goes up and there is something new to buy (after the <see cref="LevelEndWindow"/> is closed), and from the Skills
+    /// button. Each entry shows its short effect, what it still needs (a feature, prey
     /// swallowed) and which path it closes; buying a feature that closes another asks first. Its full explanation opens
     /// under it.
     /// </summary>
@@ -17,7 +18,7 @@ namespace AdaptOrDeity.UI
         private const float Width = 520f, Height = 460f;
         private static SkillTree _instance;
 
-        private bool _open;
+        private bool _open, _pending;
         private int _seenLevel = -1;
         private Vector2 _scroll;
         private readonly HashSet<int> _expanded = new HashSet<int>();
@@ -100,8 +101,13 @@ namespace AdaptOrDeity.UI
             if (frame == null || bridge.Schema.Features.Count == 0)
                 return;
             if (_seenLevel >= 0 && frame.Level > _seenLevel && ForSale(bridge.Schema, frame) > 0)
-                _open = true;   // a new level: spend the points earned
+                _pending = true;   // a new level: spend the points earned, once its level-end window is closed
             _seenLevel = frame.Level;
+            if (_pending && !LevelEndWindow.IsOpen)
+            {
+                _pending = false;
+                _open = true;
+            }
             if (!_open)
                 return;
             _wrap ??= new GUIStyle(GUI.skin.label) { wordWrap = true, fontSize = 12 };
@@ -117,10 +123,12 @@ namespace AdaptOrDeity.UI
             var schema = bridge.Schema;
             var features = schema.Features;
             GUILayout.Label($"Skill points: {frame.SkillPoints} to spend", _title);
-            GUILayout.Label($"Earned so far: food {frame.FoodPoints}, reproduction {frame.ReproductionPoints} " +
-                            $"({frame.Offspring} daughters left on their own: {frame.OwnOffspring} your creature's, " +
-                            $"{frame.Offspring - frame.OwnOffspring} theirs). Eaten: {frame.FoodEaten * 6.02214076e23:G3} glucose " +
-                            $"molecules. Prey swallowed: {frame.Swallowed}.", _wrap);
+            GUILayout.Label($"Earned so far: survival {frame.SurvivalPoints}, damage {frame.DamagePoints}, reproduction " +
+                            $"{frame.ReproductionPoints} ({frame.Offspring} daughters left on their own: {frame.OwnOffspring} your " +
+                            $"creature's, {frame.Offspring - frame.OwnOffspring} theirs). This level so far: survival " +
+                            $"{frame.SurvivalMeter:F0}/100 (worth {frame.SurvivalPointsNow}), damage {frame.DamageMeter:F0}/100 " +
+                            $"(worth {frame.DamagePointsNow}). Eaten: {frame.FoodEaten * 6.02214076e23:G3} glucose molecules. " +
+                            $"Prey swallowed: {frame.Swallowed}.", _wrap);
             if (_confirm >= 0)
             {
                 DrawConfirm(bridge, frame, _confirm);

@@ -33,6 +33,7 @@ namespace AdaptOrDeity.Game.Session
         DevSpawnPrey = 16,
         InspectOrganism = 17,
         SetRegulation = 18,
+        DevEndLevel = 19,
     }
 
     /// <summary>
@@ -126,6 +127,9 @@ namespace AdaptOrDeity.Game.Session
                 case SimCommandKind.DevGrantPoints:
                     Fermenter(loop, "this world has no skill points").DevGrantPoints(A);
                     return;
+                case SimCommandKind.DevEndLevel:
+                    Fermenter(loop, "this world has no levels to score").DevEndLevel();
+                    return;
                 case SimCommandKind.DevSpawnPrey:
                     Fermenter(loop, "this world has no prey").DevSpawnPrey();
                     return;
@@ -215,8 +219,11 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>The cell whose details frames carry (-1: none).</summary>
         public static SimCommand Inspect(int cell) => new SimCommand(SimCommandKind.Inspect, cell);
 
-        /// <summary>Development aid: adds skill points without food (not for play).</summary>
+        /// <summary>Development aid: adds skill points (not for play).</summary>
         public static SimCommand DevGrantPoints(int points) => new SimCommand(SimCommandKind.DevGrantPoints, points);
+
+        /// <summary>Development aid: ends the level now, scoring it as if its time had run out (not for play).</summary>
+        public static SimCommand DevEndLevel() => new SimCommand(SimCommandKind.DevEndLevel);
 
         /// <summary>Development aid: a prey cell swimming straight at the creature (not for play).</summary>
         public static SimCommand DevSpawnPrey() => new SimCommand(SimCommandKind.DevSpawnPrey);

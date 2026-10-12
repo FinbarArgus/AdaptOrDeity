@@ -34,6 +34,8 @@ namespace AdaptOrDeity.Headless
                 return FieldBench.Run(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "bench")
                 return Bench.Run(args.Skip(1).ToArray());
+            if (args.Length > 0 && args[0] == "bot")
+                return Bot(args.Skip(1).ToArray());
 
             double duration = args.Length > 0 ? double.Parse(args[0], CultureInfo.InvariantCulture) : 1.0;
             using var session = SimSession.CreateOneCell();
@@ -45,6 +47,40 @@ namespace AdaptOrDeity.Headless
             Console.WriteLine(FormattableString.Invariant(
                 $"sim_time={frame.SimTime:F3} s  cell {o2.Name}={frame.Channels[0][0] * o2.DisplayMultiplier:F2} {o2.DisplayUnit}"));
             PrintRejections(session);
+            return 0;
+        }
+
+        // bot left|mediocre|great|NAME [level=n] [food=packets/s] [key=value ...]: a scripted player through one level (the
+        // named reference player, or NAME with the settings, ScriptedPlayer.Parse); prints its outcome.
+        private static int Bot(string[] args)
+        {
+            string name = args.Length > 0 ? args[0] : "left";
+            var rest = args.Skip(1).ToList();
+            int level = 1;
+            double food = double.NaN;
+            foreach (var a in rest.ToList())
+            {
+                if (a.StartsWith("level=", StringComparison.Ordinal))
+                    level = int.Parse(a.Substring(6), CultureInfo.InvariantCulture);
+                else if (a.StartsWith("food=", StringComparison.Ordinal))
+                    food = double.Parse(a.Substring(5), CultureInfo.InvariantCulture);
+                else
+                    continue;
+                rest.Remove(a);
+            }
+            var player = name switch
+            {
+                "left" => Bots.LeftAlone(),
+                "mediocre" => Bots.Mediocre(),
+                "great" => Bots.Great(),
+                _ => ScriptedPlayer.Parse(name, rest),
+            };
+            using var world = new FermenterWorld { Workers = 1 };
+            if (level != 1)
+                world.Level = level;
+            if (!double.IsNaN(food))
+                world.Food.SetArrivals(food, world.Food.Settings.CarriedShare);
+            Console.WriteLine(BotOutcome.Play(player, world));
             return 0;
         }
 

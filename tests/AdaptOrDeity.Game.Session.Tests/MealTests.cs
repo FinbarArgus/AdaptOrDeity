@@ -116,5 +116,21 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(o.Body.LoadDrag, Is.EqualTo(6.0 * Math.PI * o.Body.Eta * meal.Radius).Within(1e-4 * o.Body.Body.Drag));
             Assert.That(world.Body.LoadDrag, Is.EqualTo(0.0), "not the creature's");
         }
+
+        [Test]
+        public void HeldFoodStaysAgainstItsCellAsItShrinks()
+        {
+            var (world, meal) = HoldingAMeal();
+            using var _ = world;
+            double radius = meal.Radius;
+            typeof(FoodPacket).GetProperty("Glucose")!.SetValue(meal, 0.3 * meal.Amount);   // most of it eaten
+            typeof(FoodPacket).GetProperty("Free")!.SetValue(meal, 0.0);
+            world.Step(0.1, world.MacroDt);
+            world.Step(0.2, world.MacroDt);
+            Assert.That(meal.Radius, Is.LessThan(0.7 * radius));
+            world.CellPosition(0, out double x, out double y);
+            Assert.That(world.Food.Touches(meal, x, y, world.CellRadius), Is.True, "still held against the cell");
+            Assert.That(world.TimeWithoutFood, Is.EqualTo(0.0));
+        }
     }
 }

@@ -101,6 +101,14 @@ namespace AdaptOrDeity.Sim.World
 
         public double LocalY { get; internal set; }
 
+        // The centre of the cell it stuck to, in the same body frame [m], and that cell's radius: as it shrinks it stays
+        // against that cell.
+        internal double CellLocalX { get; set; }
+
+        internal double CellLocalY { get; set; }
+
+        internal double CellRadius { get; set; }
+
         /// <summary>True once the packet has met a cell: it stays with that cell's body until it is eaten.</summary>
         public bool Stuck { get; internal set; }
 
@@ -348,7 +356,11 @@ namespace AdaptOrDeity.Sim.World
                 else if (Beyond(p, HalfSize + margin))
                     p.Active = false;
                 if (p.Active)
+                {
                     p.Radius = p.FullRadius * Math.Pow(Fill(p), 1.0 / 3.0);   // its volume shrinks as it is eaten
+                    if (p.Stuck)
+                        KeepAgainstCell(p, cx, cy, cos, sin);
+                }
             }
             ForgetFrozenBeyondCap();
             // Food arrives at the level's rate, Poisson (exponential intervals), whatever is already in the field: carried by
@@ -554,7 +566,29 @@ namespace AdaptOrDeity.Sim.World
                     double dx = p.X - bx, dy = p.Y - by;
                     p.LocalX = cos * dx + sin * dy;    // into the body frame
                     p.LocalY = -sin * dx + cos * dy;
+                    dx = x - bx;
+                    dy = y - by;
+                    p.CellLocalX = cos * dx + sin * dy;
+                    p.CellLocalY = -sin * dx + cos * dy;
+                    p.CellRadius = r;
                 }
+        }
+
+        // Held food shrinking as it is eaten stays against the cell it stuck to (it is held, not let go): moved in along
+        // the line between their centres until they touch again.
+        private static void KeepAgainstCell(FoodPacket p, double cx, double cy, double cos, double sin)
+        {
+            double dx = p.LocalX - p.CellLocalX, dy = p.LocalY - p.CellLocalY, d = Math.Sqrt(dx * dx + dy * dy);
+            double touch = (p.CellRadius + p.Radius) * (1.0 - 1e-9);
+            if (!(d > touch))
+                return;
+            p.LocalX = p.CellLocalX + dx * touch / d;
+            p.LocalY = p.CellLocalY + dy * touch / d;
+            if (p.Holder == 0)
+            {
+                p.X = cx + cos * p.LocalX - sin * p.LocalY;
+                p.Y = cy + sin * p.LocalX + cos * p.LocalY;
+            }
         }
 
         /// <summary>Moves the packets <paramref name="holder"/> holds with its body, now at (bx, by) turned by angle.</summary>
