@@ -1,7 +1,7 @@
 {
   "module": "/extracellular_face/versions/biofilm_ArgusUNPUBLISHED_v01",
   "instance": "default",
-  "source_sha256": "7f0bc62a91b37c70fbfad13a2f6db3bcc36366d3248e3a8ab8a10c9a6c734cf8",
+  "source_sha256": "b5ea9d9e9080590427c81c68bea616273216d54dbfbbf102a4ee76d309fbe0db",
   "modules_commit": "948630794801cc388c317dda0b16ae74181d27d5",
   "solver": "myokit 1.39.2 CVODE",
   "rtol": 1e-10,

@@ -7,7 +7,7 @@
   "component_type": "cell",
   "default_instance": "default",
   "licence": "CC0-1.0",
-  "assembled_from": "circulatory-autogen-modules feat/extracellular-matrix (based on homogenisation-checks 0ffad77), cell/generic_adaptive_cell/versions/fermenter, assembled by libcuflynx 2026-10-12",
+  "assembled_from": "circulatory-autogen-modules feat/extracellular-matrix c34eb0b (based on homogenisation-checks 0ffad77), cell/generic_adaptive_cell/versions/fermenter, assembled by libcuflynx 2026-10-12",
   "entrance_ports": [],
   "exit_ports": [],
   "general_ports": [],
