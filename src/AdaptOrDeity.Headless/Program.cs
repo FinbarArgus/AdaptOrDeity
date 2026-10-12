@@ -30,6 +30,8 @@ namespace AdaptOrDeity.Headless
                 return ScaleBench.Run(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "colony-bench")
                 return ColonyBench.Run(args.Skip(1).ToArray());
+            if (args.Length > 0 && args[0] == "field-bench")
+                return FieldBench.Run(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "bench")
                 return Bench.Run(args.Skip(1).ToArray());
 

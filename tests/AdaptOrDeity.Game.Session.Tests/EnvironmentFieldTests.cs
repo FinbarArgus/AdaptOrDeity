@@ -87,7 +87,9 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(field.Total(g), Is.EqualTo(start + sourced + field.OceanInflow(g) - ocean0).Within(1e-12 * start));
             Assert.That(AtColony(world, lac), Is.GreaterThan(0.0), "the cells' lactate is in the water around them");
             Assert.That(world.Cell(0).MembraneLactate, Is.GreaterThan(0.0));
-            Assert.That(world.Cell(0).MembraneProtons, Is.GreaterThan(env.OceanProtons), "and the acid that came with it");
+            var b = world.Body.Body;
+            double acid = env.AtMembrane(AdaptOrDeity.Sim.World.EnvironmentField.Acid, b.X, b.Y, world.CellRadius, 0.0);
+            Assert.That(env.Protons(acid), Is.GreaterThan(env.OceanProtons), "and the acid that came with it");
             world.Dispose();
         }
 
@@ -100,8 +102,9 @@ namespace AdaptOrDeity.Game.Session.Tests
             loop.StepExactly(600);
             double ocean = world.Environment!.OceanGlucose, depleted = AtColony(world, g);
             Assert.That(depleted, Is.LessThan(0.995 * ocean), "the colony draws glucose down around itself");
-            Assert.That(world.Cell(0).MembraneGlucose, Is.LessThan(depleted), "the membrane sits below the grid");
             var b = world.Body.Body;
+            Assert.That(world.Environment.AtMembrane(g, b.X, b.Y, world.CellRadius, world.Cell(0).GlucoseRelease),
+                Is.LessThan(world.Environment.Field.Sample(g, b.X, b.Y)), "a cell taking glucose up sees less at its membrane");
             double farther = world.Environment.Field.Sample(g, b.X + 60e-6, b.Y);
             Assert.That(farther, Is.InRange(depleted, ocean), "less so farther out");
 
@@ -151,6 +154,62 @@ namespace AdaptOrDeity.Game.Session.Tests
                 return r;
             }
             Assert.That(Run(4), Is.EqualTo(Run(1)), "bit for bit");
+        }
+    
+        [Test]
+        public void FramesCarryTheGlucoseAroundTheCreature()
+        {
+            var (world, loop) = Colony(8);
+            world.BathConcentration = 0.1;
+            loop.StepExactly(300);
+            var frame = loop.CreateFrame();
+            loop.WriteSnapshot(frame);
+            Assert.That(frame.FieldExtent, Is.GreaterThanOrEqualTo(2.0 * world.Food.HalfSize * 0.999));
+            int m = SnapshotFrame.FieldRasterSize;
+            float centre = 0.25f * (frame.FieldGlucose[(m / 2 - 1) * m + m / 2 - 1] + frame.FieldGlucose[(m / 2 - 1) * m + m / 2]
+                + frame.FieldGlucose[m / 2 * m + m / 2 - 1] + frame.FieldGlucose[m / 2 * m + m / 2]);
+            Assert.That(centre, Is.EqualTo(AtColony(world, 0)).Within(2e-4 * 0.1));
+            Assert.That(frame.FieldGlucose[0], Is.GreaterThan(centre), "the corner is less depleted than the colony");
+            var bytes = new byte[SnapshotCodec.Size(frame)];
+            SnapshotCodec.Write(frame, bytes);
+            var back = SnapshotCodec.NewFrameFor(bytes);
+            SnapshotCodec.Read(bytes, back);
+            Assert.That(back.FieldGlucose, Is.EqualTo(frame.FieldGlucose));
+            world.Dispose();
+
+            var plain = new FermenterWorld(environmentField: false);
+            var plainLoop = new SimLoop(plain, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
+            var plainFrame = plainLoop.CreateFrame();
+            plainLoop.WriteSnapshot(plainFrame);
+            Assert.That(plainFrame.FieldExtent, Is.EqualTo(0f), "no field, no raster");
+            plain.Dispose();
+        }
+    
+        [Test]
+        public void ACellsInputsChangeOnlyWhenTheFieldMovesBeyondTheTolerance()
+        {
+            // Each changed input restarts the cell's integrator, so inputs are passed on a change above
+            // field.input_tolerance; what the cell sees stays within it of the field's value at its membrane.
+            var (world, loop) = Colony(8);
+            world.BathConcentration = 0.1;
+            loop.StepExactly(300);
+            double tolerance = GameParameters.Default.Value("field.input_tolerance");
+            var env = world.Environment!;
+            var c = world.Cell(3);
+            int changes = 0;
+            double last = c.MembraneGlucose;
+            for (int n = 0; n < 50; n++)
+            {
+                loop.StepExactly(1);
+                if (c.MembraneGlucose != last)
+                    changes++;
+                last = c.MembraneGlucose;
+            }
+            Assert.That(changes, Is.LessThan(25), "near steady, most steps keep the input");
+            world.CellPosition(3, out double cx, out double cy);
+            double field = env.AtMembrane(AdaptOrDeity.Sim.World.EnvironmentField.Glucose, cx, cy, world.CellRadius, c.GlucoseRelease);
+            Assert.That(c.MembraneGlucose, Is.EqualTo(field).Within(2 * tolerance * field));
+            world.Dispose();
         }
     }
 }

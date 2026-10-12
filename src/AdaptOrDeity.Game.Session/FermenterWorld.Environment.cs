@@ -13,6 +13,7 @@ namespace AdaptOrDeity.Game.Session
     {
         private readonly EnvironmentField? _environment;
         private int _colonyCells;
+        private readonly double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");
         private double _colonyRadius;
 
         /// <summary>The environment field, or null when cells use the contact rule.</summary>
@@ -70,13 +71,23 @@ namespace AdaptOrDeity.Game.Session
             var env = _environment!;
             var c = _cells[i];
             double r = CellRadius;
-            c.MembraneGlucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? c.GlucoseRelease : 0.0);
-            c.MembraneLactate = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? c.LactateRelease : 0.0);
-            c.MembraneProtons = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? c.ProtonRelease : 0.0));
+            double glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? c.GlucoseRelease : 0.0);
+            double lactate = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? c.LactateRelease : 0.0);
+            double protons = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? c.ProtonRelease : 0.0));
+            // an input that moved less than the tolerance keeps its value: each change restarts the cell's integrator
+            if (Moved(c.MembraneGlucose, glucose))
+                c.MembraneGlucose = glucose;
+            if (Moved(c.MembraneLactate, lactate))
+                c.MembraneLactate = lactate;
+            if (Moved(c.MembraneProtons, protons))
+                c.MembraneProtons = protons;
             int nt = env.TraceCount;
             for (int t = 0; t < nt; t++)
                 _traceAtCell[i * nt + t] = env.Field.Sample(EnvironmentField.FirstTrace + t, x, y);
         }
+
+        private bool Moved(double current, double next) =>
+            Math.Abs(next - current) > _inputTolerance * Math.Max(Math.Abs(current), Math.Abs(next));
 
         // Each living cell's exchange over the step goes into the field, in cell order; then the field steps.
         private void AfterCells(double dt)

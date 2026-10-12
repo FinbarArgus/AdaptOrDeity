@@ -42,7 +42,8 @@ namespace AdaptOrDeity.Sim.Transport
         private readonly double[][] _c, _source, _edge, _edgeOut;
         private double[][] _innerOut;
         private readonly double[][][] _scratch;
-        private readonly double[]?[] _delta;   // per species, the Douglas step's change   // per species: a, b, r, work (species step independently)
+        private readonly double[]?[] _delta;   // per species, the Douglas step's change
+        private readonly double[] _lambda, _stepDt;   // per species, of the step under way   // per species: a, b, r, work (species step independently)
         private int _i0, _j0, _i1, _j1;
         private bool _hasInner;
 
@@ -69,6 +70,8 @@ namespace AdaptOrDeity.Sim.Transport
             _innerOut = new double[Species][];
             _scratch = new double[Species][][];
             _delta = new double[Species][];
+            _lambda = new double[Species];
+            _stepDt = new double[Species];
             int n = Math.Max(nx, ny);
             for (int s = 0; s < Species; s++)
             {
@@ -209,14 +212,8 @@ namespace AdaptOrDeity.Sim.Transport
 
         private static int Clamp(int k, int n) => k < 0 ? 0 : k >= n ? n - 1 : k;
 
-        /// <summary>True if the sources added since the last step hold anything for species <paramref name="s"/>.</summary>
-        internal bool HasSources(int s)
-        {
-            foreach (double q in _source[s])
-                if (q != 0.0)
-                    return true;
-            return false;
-        }
+        /// <summary>Species <paramref name="s"/>'s sources for the next step, per cell [mol/(m³·s)].</summary>
+        internal double[] Sources(int s) => _source[s];
 
         /// <summary>The concentration of species <paramref name="s"/> at (x, y), interpolated between cell centres.</summary>
         public double Sample(int s, double x, double y)
@@ -255,148 +252,246 @@ namespace AdaptOrDeity.Sim.Transport
         /// </summary>
         public void StepSpecies(int s, double dt)
         {
+            Prepare(s, dt);
+            RowPass(s, 0, Ny);
+            ColumnPass(s, 0, Nx);
+        }
+
+        /// <summary>
+        /// The first part of a step of species <paramref name="s"/>: then <see cref="RowPass"/> over every row and
+        /// <see cref="ColumnPass"/> over every column. The rows of one pass (and the columns of the other) are independent,
+        /// so they may be shared between threads in any way with the same result.
+        /// </summary>
+        internal void Prepare(int s, double dt)
+        {
             if (!(dt > 0.0))
                 throw new ArgumentOutOfRangeException(nameof(dt), "the step must be positive");
-            double[] c = _c[s], q = _source[s], edge = _edge[s], edgeOut = _edgeOut[s], innerOut = _innerOut[s];
-            Array.Clear(edgeOut, 0, edgeOut.Length);
-            Array.Clear(innerOut, 0, innerOut.Length);
+            Array.Clear(_edgeOut[s], 0, _edgeOut[s].Length);
+            Array.Clear(_innerOut[s], 0, _innerOut[s].Length);
             if (Edge == FieldEdge.FarField)
-                Array.Fill(edge, FarField[s]);
+                Array.Fill(_edge[s], FarField[s]);
             double lambda = Diffusivity[s] * dt / (Spacing * Spacing);
-            if (Scheme == DiffusionScheme.LocallyOneDimensional || lambda == 0.0)
+            _stepDt[s] = dt;
+            _lambda[s] = lambda;
+            bool open = Edge != FieldEdge.Closed;
+            var scratch = _scratch[s];
+            Factor(Nx, lambda, open, scratch[0], scratch[1]);
+            Factor(Ny, lambda, open, scratch[2], scratch[3]);
+            if (Douglas(s))
+                _delta[s] ??= new double[Nx * Ny];
+        }
+
+        // Douglas steps (1 − λLx)(1 − λLy) Δ = dt q + λ(Lx + Ly) c, then c += Δ; locally one-dimensional ones add the sources
+        // and solve on c itself.
+        private bool Douglas(int s) => Scheme == DiffusionScheme.Douglas && _lambda[s] != 0.0;
+
+        /// <summary>
+        /// Rows [j0, j1) of a step: the sources (and with Douglas the explicit part, whose face fluxes are recorded here),
+        /// then the implicit solve along each row.
+        /// </summary>
+        internal void RowPass(int s, int j0, int j1)
+        {
+            double[] c = _c[s], q = _source[s], edge = _edge[s], edgeOut = _edgeOut[s], innerOut = _innerOut[s];
+            double lambda = _lambda[s], dt = _stepDt[s];
+            bool open = Edge != FieldEdge.Closed, douglas = Douglas(s);
+            double flux = lambda * CellVolume;   // amount per unit concentration difference across a face
+            int h = _j1 - _j0, w = _i1 - _i0;
+            double[] v = douglas ? _delta[s]! : c;
+            if (!douglas)
             {
-                for (int k = 0; k < c.Length; k++)
+                for (int k = j0 * Nx; k < j1 * Nx; k++)
                 {
                     c[k] += dt * q[k];
                     q[k] = 0.0;
                 }
-                if (lambda != 0.0)
-                    Sweeps(s, c, lambda, false);
-                return;
+                if (lambda == 0.0)
+                    return;
             }
-            // Douglas: (1 - λLx)(1 - λLy) Δ = dt q + λ(Lx + Ly) c, then c += Δ. The explicit part's face fluxes are recorded
-            // here, the sweeps' (with zero beyond open edges: Δ of a given value is in the explicit part) in Sweeps.
-            double[] d = _delta[s] ??= new double[Nx * Ny];
-            bool open = Edge != FieldEdge.Closed;
-            double flux = lambda * CellVolume;
-            int h = _j1 - _j0, w = _i1 - _i0;
-            for (int j = 0; j < Ny; j++)
-                for (int i = 0; i < Nx; i++)
-                {
-                    int k = j * Nx + i;
-                    double v = c[k];
-                    double west = i > 0 ? c[k - 1] : open ? edge[EdgeFace(0, j)] : v;
-                    double east = i < Nx - 1 ? c[k + 1] : open ? edge[EdgeFace(1, j)] : v;
-                    double south = j > 0 ? c[k - Nx] : open ? edge[EdgeFace(2, i)] : v;
-                    double north = j < Ny - 1 ? c[k + Nx] : open ? edge[EdgeFace(3, i)] : v;
-                    d[k] = dt * q[k] + lambda * (west + east + south + north - 4.0 * v);
-                    q[k] = 0.0;
-                }
-            if (open)
+            else
             {
-                for (int j = 0; j < Ny; j++)
-                {
-                    edgeOut[EdgeFace(0, j)] += flux * (c[j * Nx] - edge[EdgeFace(0, j)]);
-                    edgeOut[EdgeFace(1, j)] += flux * (c[j * Nx + Nx - 1] - edge[EdgeFace(1, j)]);
-                }
-                for (int i = 0; i < Nx; i++)
-                {
-                    edgeOut[EdgeFace(2, i)] += flux * (c[i] - edge[EdgeFace(2, i)]);
-                    edgeOut[EdgeFace(3, i)] += flux * (c[(Ny - 1) * Nx + i] - edge[EdgeFace(3, i)]);
-                }
-            }
-            if (_hasInner)
-                InnerFluxes(c, innerOut, flux, h, w, true, true);
-            Sweeps(s, d, lambda, true);
-            for (int k = 0; k < c.Length; k++)
-                c[k] += d[k];
-        }
-
-        // Implicit solves along every row, then every column, of v; records what crosses the edge and inner faces. With
-        // homogeneous set, the value beyond an open edge is zero (v is a change), else the given or far-field value.
-        private void Sweeps(int s, double[] v, double lambda, bool homogeneous)
-        {
-            double[] edge = _edge[s], edgeOut = _edgeOut[s], innerOut = _innerOut[s];
-            bool open = Edge != FieldEdge.Closed;
-            double flux = lambda * CellVolume;   // amount per unit concentration difference across a face
-            var scratch = _scratch[s];
-            int h = _j1 - _j0, w = _i1 - _i0;
-            for (int j = 0; j < Ny; j++)
-            {
-                int row = j * Nx;
-                double west = homogeneous ? 0.0 : edge[EdgeFace(0, j)], east = homogeneous ? 0.0 : edge[EdgeFace(1, j)];
-                SolveLine(v, row, 1, Nx, lambda, open, west, east, scratch);
-                if (open)
-                {
-                    edgeOut[EdgeFace(0, j)] += flux * (v[row] - west);
-                    edgeOut[EdgeFace(1, j)] += flux * (v[row + Nx - 1] - east);
-                }
-            }
-            if (_hasInner)
-                InnerFluxes(v, innerOut, flux, h, w, true, false);
-            for (int i = 0; i < Nx; i++)
-            {
-                double south = homogeneous ? 0.0 : edge[EdgeFace(2, i)], north = homogeneous ? 0.0 : edge[EdgeFace(3, i)];
-                SolveLine(v, i, Nx, Ny, lambda, open, south, north, scratch);
-                if (open)
-                {
-                    edgeOut[EdgeFace(2, i)] += flux * (v[i] - south);
-                    edgeOut[EdgeFace(3, i)] += flux * (v[(Ny - 1) * Nx + i] - north);
-                }
-            }
-            if (_hasInner)
-                InnerFluxes(v, innerOut, flux, h, w, false, true);
-        }
-
-        // What crosses the inner region's west and east faces (rows) and south and north faces (columns) for values v.
-        private void InnerFluxes(double[] v, double[] innerOut, double flux, int h, int w, bool rows, bool columns)
-        {
-            if (rows)
-                for (int j = _j0; j < _j1; j++)
+                for (int j = j0; j < j1; j++)
                 {
                     int row = j * Nx;
+                    if (j > 0 && j < Ny - 1)
+                        for (int k = row + 1; k < row + Nx - 1; k++)
+                        {
+                            v[k] = dt * q[k] + lambda * (c[k - 1] + c[k + 1] + c[k - Nx] + c[k + Nx] - 4.0 * c[k]);
+                            q[k] = 0.0;
+                        }
+                    bool edgeRow = j == 0 || j == Ny - 1;
+                    for (int i = 0; i < Nx; i += edgeRow || i == Nx - 1 ? 1 : Nx - 1)
+                    {
+                        int k = row + i;
+                        double x = c[k];
+                        double west = i > 0 ? c[k - 1] : open ? edge[EdgeFace(0, j)] : x;
+                        double east = i < Nx - 1 ? c[k + 1] : open ? edge[EdgeFace(1, j)] : x;
+                        double south = j > 0 ? c[k - Nx] : open ? edge[EdgeFace(2, i)] : x;
+                        double north = j < Ny - 1 ? c[k + Nx] : open ? edge[EdgeFace(3, i)] : x;
+                        v[k] = dt * q[k] + lambda * (west + east + south + north - 4.0 * x);
+                        q[k] = 0.0;
+                    }
+                    if (open)
+                    {
+                        edgeOut[EdgeFace(0, j)] += flux * (c[row] - edge[EdgeFace(0, j)]);
+                        edgeOut[EdgeFace(1, j)] += flux * (c[row + Nx - 1] - edge[EdgeFace(1, j)]);
+                        if (j == 0)
+                            for (int i = 0; i < Nx; i++)
+                                edgeOut[EdgeFace(2, i)] += flux * (c[i] - edge[EdgeFace(2, i)]);
+                        if (j == Ny - 1)
+                            for (int i = 0; i < Nx; i++)
+                                edgeOut[EdgeFace(3, i)] += flux * (c[row + i] - edge[EdgeFace(3, i)]);
+                    }
+                    if (_hasInner)
+                    {
+                        if (j >= _j0 && j < _j1)
+                        {
+                            innerOut[j - _j0] += flux * (c[row + _i0] - c[row + _i0 - 1]);
+                            innerOut[h + j - _j0] += flux * (c[row + _i1 - 1] - c[row + _i1]);
+                        }
+                        if (j == _j0)
+                            for (int i = _i0; i < _i1; i++)
+                                innerOut[2 * h + i - _i0] += flux * (c[row + i] - c[row - Nx + i]);
+                        if (j == _j1 - 1)
+                            for (int i = _i0; i < _i1; i++)
+                                innerOut[2 * h + w + i - _i0] += flux * (c[row + i] - c[row + Nx + i]);
+                    }
+                }
+            }
+            // beyond an open edge: the given value, or zero for Douglas's change (the value's part is explicit above)
+            var scratch = _scratch[s];
+            double[] inv = scratch[0], wk = scratch[1];
+            for (int j = j0; j < j1; j++)
+            {
+                int row = j * Nx;
+                if (open)
+                {
+                    v[row] += lambda * (douglas ? 0.0 : edge[EdgeFace(0, j)]);
+                    v[row + Nx - 1] += lambda * (douglas ? 0.0 : edge[EdgeFace(1, j)]);
+                }
+            }
+            int j4 = j0 + (j1 - j0) / 4 * 4;
+            for (int j = j0; j < j4; j += 4)   // four rows side by side: independent recurrences
+            {
+                int r0 = j * Nx, r1 = r0 + Nx, r2 = r1 + Nx, r3 = r2 + Nx;
+                double f = inv[0];
+                v[r0] *= f;
+                v[r1] *= f;
+                v[r2] *= f;
+                v[r3] *= f;
+                for (int k = 1; k < Nx; k++)
+                {
+                    f = inv[k];
+                    v[r0 + k] = (v[r0 + k] + lambda * v[r0 + k - 1]) * f;
+                    v[r1 + k] = (v[r1 + k] + lambda * v[r1 + k - 1]) * f;
+                    v[r2 + k] = (v[r2 + k] + lambda * v[r2 + k - 1]) * f;
+                    v[r3 + k] = (v[r3 + k] + lambda * v[r3 + k - 1]) * f;
+                }
+                for (int k = Nx - 2; k >= 0; k--)
+                {
+                    double g = wk[k];
+                    v[r0 + k] -= g * v[r0 + k + 1];
+                    v[r1 + k] -= g * v[r1 + k + 1];
+                    v[r2 + k] -= g * v[r2 + k + 1];
+                    v[r3 + k] -= g * v[r3 + k + 1];
+                }
+            }
+            for (int j = j4; j < j1; j++)
+            {
+                int row = j * Nx;
+                v[row] *= inv[0];
+                for (int k = 1; k < Nx; k++)
+                    v[row + k] = (v[row + k] + lambda * v[row + k - 1]) * inv[k];
+                for (int k = Nx - 2; k >= 0; k--)
+                    v[row + k] -= wk[k] * v[row + k + 1];
+            }
+            for (int j = j0; j < j1; j++)
+            {
+                int row = j * Nx;
+                if (open)
+                {
+                    edgeOut[EdgeFace(0, j)] += flux * (v[row] - (douglas ? 0.0 : edge[EdgeFace(0, j)]));
+                    edgeOut[EdgeFace(1, j)] += flux * (v[row + Nx - 1] - (douglas ? 0.0 : edge[EdgeFace(1, j)]));
+                }
+                if (_hasInner && j >= _j0 && j < _j1)
+                {
                     innerOut[j - _j0] += flux * (v[row + _i0] - v[row + _i0 - 1]);
                     innerOut[h + j - _j0] += flux * (v[row + _i1 - 1] - v[row + _i1]);
                 }
-            if (columns)
-                for (int i = _i0; i < _i1; i++)
+            }
+        }
+
+        /// <summary>
+        /// Columns [i0, i1) of a step (after every row's <see cref="RowPass"/>): the implicit solve along each column, swept
+        /// row by row across the columns; with Douglas the change is then added.
+        /// </summary>
+        internal void ColumnPass(int s, int i0, int i1)
+        {
+            double lambda = _lambda[s];
+            if (lambda == 0.0)
+                return;
+            double[] c = _c[s], edge = _edge[s], edgeOut = _edgeOut[s], innerOut = _innerOut[s];
+            bool open = Edge != FieldEdge.Closed, douglas = Douglas(s);
+            double flux = lambda * CellVolume;
+            int h = _j1 - _j0, w = _i1 - _i0, top = (Ny - 1) * Nx;
+            double[] v = douglas ? _delta[s]! : c;
+            var scratch = _scratch[s];
+            double[] inv = scratch[2], wk = scratch[3];
+            if (open)
+                for (int i = i0; i < i1; i++)
+                {
+                    v[i] += lambda * (douglas ? 0.0 : edge[EdgeFace(2, i)]);
+                    v[top + i] += lambda * (douglas ? 0.0 : edge[EdgeFace(3, i)]);
+                }
+            for (int i = i0; i < i1; i++)
+                v[i] *= inv[0];
+            for (int j = 1; j < Ny; j++)
+            {
+                int row = j * Nx, below = row - Nx;
+                double f = inv[j];
+                for (int i = i0; i < i1; i++)
+                    v[row + i] = (v[row + i] + lambda * v[below + i]) * f;
+            }
+            for (int j = Ny - 2; j >= 0; j--)
+            {
+                int row = j * Nx, above = row + Nx;
+                double g = wk[j];
+                for (int i = i0; i < i1; i++)
+                    v[row + i] -= g * v[above + i];
+            }
+            for (int i = i0; i < i1; i++)
+            {
+                if (open)
+                {
+                    edgeOut[EdgeFace(2, i)] += flux * (v[i] - (douglas ? 0.0 : edge[EdgeFace(2, i)]));
+                    edgeOut[EdgeFace(3, i)] += flux * (v[top + i] - (douglas ? 0.0 : edge[EdgeFace(3, i)]));
+                }
+                if (_hasInner && i >= _i0 && i < _i1)
                 {
                     innerOut[2 * h + i - _i0] += flux * (v[_j0 * Nx + i] - v[(_j0 - 1) * Nx + i]);
                     innerOut[2 * h + w + i - _i0] += flux * (v[(_j1 - 1) * Nx + i] - v[_j1 * Nx + i]);
                 }
+            }
+            if (douglas)
+                for (int j = 0; j < Ny; j++)
+                {
+                    int row = j * Nx;
+                    for (int i = i0; i < i1; i++)
+                        c[row + i] += v[row + i];
+                }
         }
 
-        // (1 + 2λ) c_k − λ (c_{k−1} + c_{k+1}) = c_k(old) along one line, by the Thomas algorithm. Beyond an open edge the
-        // neighbour is the given value (first, last); a closed edge has no neighbour (no flux).
-        private static void SolveLine(double[] c, int start, int stride, int n, double lambda, bool open, double first,
-            double last, double[][] scratch)
+        // The Thomas algorithm's factors for (1 + 2λ) x_k − λ (x_{k−1} + x_{k+1}) = r_k along a line of n cells (a closed end
+        // has one neighbour, an open one a value beyond it): solve by x_0 = r_0·inv_0, x_k = (r_k + λ x_{k−1})·inv_k, then
+        // x_k −= w_k x_{k+1} backwards. The same for every line of a step.
+        private static void Factor(int n, double lambda, bool open, double[] inv, double[] w)
         {
-            double[] a = scratch[0], b = scratch[1], r = scratch[2], work = scratch[3];
             for (int k = 0; k < n; k++)
             {
-                bool isFirst = k == 0, isLast = k == n - 1;
-                int neighbours = open ? 2 : (isFirst && isLast) ? 0 : (isFirst || isLast) ? 1 : 2;
-                b[k] = 1.0 + neighbours * lambda;
-                a[k] = -lambda;
-                r[k] = c[start + k * stride];
-                if (open && isFirst)
-                    r[k] += lambda * first;
-                if (open && isLast)
-                    r[k] += lambda * last;
+                int neighbours = open ? 2 : (k == 0 && k == n - 1) ? 0 : (k == 0 || k == n - 1) ? 1 : 2;
+                double m = 1.0 + neighbours * lambda + (k > 0 ? lambda * w[k - 1] : 0.0);
+                inv[k] = 1.0 / m;
+                w[k] = -lambda * inv[k];
             }
-            // forward sweep (the matrix is symmetric: sub- and super-diagonals both −λ)
-            work[0] = a[0] / b[0];
-            r[0] /= b[0];
-            for (int k = 1; k < n; k++)
-            {
-                double m = b[k] - a[k] * work[k - 1];
-                work[k] = a[k] / m;
-                r[k] = (r[k] - a[k] * r[k - 1]) / m;
-            }
-            for (int k = n - 2; k >= 0; k--)
-                r[k] -= work[k] * r[k + 1];
-            for (int k = 0; k < n; k++)
-                c[start + k * stride] = r[k];
         }
 
         /// <summary>

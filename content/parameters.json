@@ -295,6 +295,13 @@
    "source": "unreferenced_placeholder",
    "status": "placeholder",
    "note": "a fresh packet dissolves into the field over this time, its radius shrinking at a constant rate (release rate proportional to sqrt of what is left); the research note gives minutes to hours for polymer particles eroded by surface enzymes"
+  },
+  "field.input_tolerance": {
+   "value": 0.01,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "a cell's membrane concentrations from the field reach its module only when they moved by more than this share since they last did: every changed input restarts the cell's integrator, and the field moves a little every step (colony-bench 512 cells, 20 s, environment field: 4.0 s with every change passed, 3.0 s at 1e-3, 1.5 s at 1e-2; 0.6 s on the contact rule). The exchange stays exact (it uses the cell's own fluxes)"
   }
  },
  "trace_species": [

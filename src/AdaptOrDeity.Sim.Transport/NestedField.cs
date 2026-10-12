@@ -31,8 +31,8 @@ namespace AdaptOrDeity.Sim.Transport
     ///
     /// <para>A step (<see cref="Step"/>), coarsest level first: each level takes a Douglas step (species in parallel;
     /// <see cref="DiffusionScheme.Douglas"/>, whose steady state is exact at any step, where locally one-dimensional steps
-    /// at the exchange interval halve the gradients near a cell). Sources act on their finest level and on the cell
-    /// holding them on every coarser level. A finer level's edges are closed but for what the coarser level's step carried
+    /// at the exchange interval halve the gradients near a cell; each level's rows, then columns, shared between threads).
+    /// Sources act on their finest level and, summed over each shadow cell, on every coarser level. A finer level's edges are closed but for what the coarser level's step carried
     /// into its shadow through each coarse face, which enters the finer level through the edge cells along that face. Then,
     /// finest first, each shadow takes the mean of the finer cells over it (restriction). So the finer grid's boundary flux
     /// is the coarse one, and the content over all levels (each region counted once at its finest level: the outermost
@@ -67,9 +67,12 @@ namespace AdaptOrDeity.Sim.Transport
         private ParallelWork? _workers;
         private int[] _activeList;
         private int _activeCount;
-        private Action<int, int>? _solvePass, _restrictPass;
+        private Action<int, int>? _rowPass, _columnPass, _restrictPass;
         private double _dt;
-        private int _stepLevel;
+        private int _stepLevel, _chunks;
+
+        /// <summary>Rows (or columns) per work item when a level's lines are shared between threads.</summary>
+        private const int LinesPerItem = 32;
 
         /// <summary>
         /// Grids for a colony of diameter <paramref name="diameter"/> [m] centred at (<paramref name="cx"/>,
@@ -199,8 +202,6 @@ namespace AdaptOrDeity.Sim.Transport
                 _levels[0].Deposit(s, x, y, molPerSecond);
             else
                 _levels[k].AddSource(s, x, y, molPerSecond);
-            for (int p = k + 1; p < _levels.Length; p++)
-                _levels[p].AddSource(s, x, y, molPerSecond);   // the coarser levels see it too; restriction replaces them
             _pending[s] += molPerSecond;
             _active[s] = true;
             _hasPending = true;
@@ -294,10 +295,26 @@ namespace AdaptOrDeity.Sim.Transport
             }
             _hasPending = false;
             _workers = workers;
-            _solvePass ??= SolvePass;
+            _rowPass ??= RowPass;
+            _columnPass ??= ColumnPass;
             _restrictPass ??= RestrictPass;
+            // the coarser levels see the finer levels' sources in their shadows (restriction replaces the result there)
+            for (int a = 0; a < _activeCount; a++)
+                for (int k = 0; k + 1 < Levels; k++)
+                    RestrictSources(k, _activeList[a]);
+            _chunks = (CellsPerSide + LinesPerItem - 1) / LinesPerItem;
             for (_stepLevel = Levels - 1; _stepLevel >= 0; _stepLevel--)
-                Run(_activeCount, _solvePass);
+            {
+                for (int a = 0; a < _activeCount; a++)
+                {
+                    int s = _activeList[a];
+                    if (_stepLevel + 1 < Levels)
+                        BoundaryInflow(_stepLevel, s);
+                    _levels[_stepLevel].Prepare(s, dt);
+                }
+                Run(_activeCount * _chunks, _rowPass);
+                Run(_activeCount * _chunks, _columnPass);
+            }
             Run(_activeCount, _restrictPass);
             _workers = null;
             var outer = _levels[Levels - 1];
@@ -319,37 +336,46 @@ namespace AdaptOrDeity.Sim.Transport
                 _workers.Run(count, 1, pass);
         }
 
-        // Level _stepLevel steps each active species; a finer level takes in, through its edges, what the next coarser
-        // level's step carried into its shadow.
-        private void SolvePass(int start, int end)
+        // Level _stepLevel's rows, then its columns, by (species, block of lines) items.
+        private void RowPass(int start, int end)
         {
-            int k = _stepLevel;
-            for (int a = start; a < end; a++)
+            for (int item = start; item < end; item++)
             {
-                int s = _activeList[a];
-                if (k + 1 < Levels)
-                    BoundaryInflow(k, s);
-                _levels[k].StepSpecies(s, _dt);
+                int j0 = item % _chunks * LinesPerItem;
+                _levels[_stepLevel].RowPass(_activeList[item / _chunks], j0, Math.Min(CellsPerSide, j0 + LinesPerItem));
             }
         }
 
-        // Per active species, finest first: each shadow takes the mean of the finer cells over it.
-        private void RestrictPass(int start, int end)
+        private void ColumnPass(int start, int end)
         {
-            for (int a = start; a < end; a++)
+            for (int item = start; item < end; item++)
             {
-                int s = _activeList[a];
-                for (int k = 0; k + 1 < Levels; k++)
-                    Restrict(k, s);
+                int i0 = item % _chunks * LinesPerItem;
+                _levels[_stepLevel].ColumnPass(_activeList[item / _chunks], i0, Math.Min(CellsPerSide, i0 + LinesPerItem));
             }
         }
 
-        // The shadow of level k on level k+1: its first cell and its side in level k+1's cells.
-        private void Shadow(int k, out int i0, out int j0, out int side)
+        // Level k's sources added into the cells of its shadow on level k+1 (the same amount per second).
+        private void RestrictSources(int k, int s)
         {
-            i0 = (int)(_ox[k] / Ratio - _ox[k + 1]);
-            j0 = (int)(_oy[k] / Ratio - _oy[k + 1]);
-            side = CellsPerSide / Ratio;
+            DiffusionField F = _levels[k], P = _levels[k + 1];
+            Shadow(k, out int i0, out int j0, out int m);
+            double[] fine = F.Sources(s), coarse = P.Sources(s);
+            int fnx = F.Nx, nx = P.Nx;
+            const double share = 1.0 / (Ratio * Ratio);
+            for (int J = 0; J < m; J++)
+                for (int I = 0; I < m; I++)
+                {
+                    double sum = 0.0;
+                    for (int b = 0; b < Ratio; b++)
+                    {
+                        int row = (Ratio * J + b) * fnx + Ratio * I;
+                        for (int a = 0; a < Ratio; a++)
+                            sum += fine[row + a];
+                    }
+                    if (sum != 0.0)
+                        coarse[(j0 + J) * nx + i0 + I] += sum * share;
+                }
         }
 
         // What the coarser level's step carried into level k's shadow through each coarse face enters level k through the
@@ -369,6 +395,25 @@ namespace AdaptOrDeity.Sim.Transport
                     F.AddCellSource(s, t, 0, coarse[2 * m + f] * share);
                     F.AddCellSource(s, t, n - 1, coarse[3 * m + f] * share);
                 }
+        }
+
+        // Per active species, finest first: each shadow takes the mean of the finer cells over it.
+        private void RestrictPass(int start, int end)
+        {
+            for (int a = start; a < end; a++)
+            {
+                int s = _activeList[a];
+                for (int k = 0; k + 1 < Levels; k++)
+                    Restrict(k, s);
+            }
+        }
+
+        // The shadow of level k on level k+1: its first cell and its side in level k+1's cells.
+        private void Shadow(int k, out int i0, out int j0, out int side)
+        {
+            i0 = (int)(_ox[k] / Ratio - _ox[k + 1]);
+            j0 = (int)(_oy[k] / Ratio - _oy[k + 1]);
+            side = CellsPerSide / Ratio;
         }
 
         // Each cell of level k's shadow on level k+1 takes the mean of the 4x4 fine cells over it.

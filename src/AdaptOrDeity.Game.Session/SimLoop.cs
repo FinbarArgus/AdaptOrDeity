@@ -183,6 +183,25 @@ namespace AdaptOrDeity.Game.Session
         public bool Outgrown(SnapshotFrame frame) =>
             frame.CellX.Length < World.CellCount || (Schema.InitialPacketCapacity > 0 && frame.PacketX.Length < PacketsInField);
 
+        // Glucose in the water around the creature on the frame's raster (extent 0 without an environment field).
+        private static void WriteField(FermenterWorld world, SnapshotFrame frame)
+        {
+            var env = world.Environment;
+            if (env == null)
+            {
+                frame.FieldExtent = 0f;
+                return;
+            }
+            double extent = Math.Max(2.0 * world.Food.HalfSize, 3.0 * world.ColonyDiameter);
+            int m = SnapshotFrame.FieldRasterSize;
+            double h = extent / m, x0 = frame.CreatureX - 0.5 * extent, y0 = frame.CreatureY - 0.5 * extent;
+            for (int j = 0; j < m; j++)
+                for (int i = 0; i < m; i++)
+                    frame.FieldGlucose[j * m + i] = (float)env.Field.Sample(AdaptOrDeity.Sim.World.EnvironmentField.Glucose,
+                        x0 + (i + 0.5) * h, y0 + (j + 0.5) * h);
+            frame.FieldExtent = (float)extent;
+        }
+
         private int PacketsInField => World is IFoodWorld f ? f.Food.ActiveCount : 0;
 
         private static int Capacity(int cells)
@@ -246,6 +265,7 @@ namespace AdaptOrDeity.Game.Session
                 {
                     frame.MotorOn = fw.MotorOn && fw.FeatureEnabled(GameFeatures.IndexOf(GameFeatures.Swimming));
                     frame.MotorPower = (float)fw.MotorPower;
+                    WriteField(fw, frame);
                 }
                 int n = 0;
                 foreach (var p in foodWorld.Food.Packets)
