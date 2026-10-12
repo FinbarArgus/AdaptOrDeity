@@ -225,6 +225,35 @@ namespace AdaptOrDeity.Sim.Transport
                    + (1 - u) * v * At(s, i, j + 1) + u * v * At(s, i + 1, j + 1);
         }
 
+        /// <summary>
+        /// How much less a unit source at (x, y) raises the value <see cref="Sample"/> reads there than a source at a cell
+        /// centre raises its own cell, in units of the lattice Green's function (D d (sum of neighbours - 4 c) = -J):
+        /// g(0) - sum_ij w_i v_j g(p_i - p_j), with v the source's shares (bilinear when <paramref name="spread"/>, as
+        /// <see cref="Deposit"/>; else all in the cell holding the point, as <see cref="AddSource"/>) and w the sampling
+        /// weights, using g(0) - g(1, 0) = 1/4 and g(0) - g(1, 1) = 1/pi. 0 at a cell centre, 0.205 at a corner with
+        /// bilinear spreading. Edges are ignored (the source is assumed away from them).
+        /// </summary>
+        public double SelfCoupling(double x, double y, bool spread)
+        {
+            double fx = (x - OriginX) / Spacing - 0.5, fy = (y - OriginY) / Spacing - 0.5;
+            double u = fx - Math.Floor(fx), v = fy - Math.Floor(fy);
+            // sampling weights of the four cells (0,0), (1,0), (0,1), (1,1) around the point
+            double a = (1 - u) * (1 - v), b = u * (1 - v), c = (1 - u) * v, d = u * v;
+            const double adjacent = 0.25, diagonal = 1.0 / Math.PI;
+            if (spread)
+                return adjacent * 2.0 * (a * b + c * d + a * c + b * d) + diagonal * 2.0 * (a * d + b * c);
+            // the source's cell among the four: offsets to the others are adjacent or diagonal
+            int si = u >= 0.5 ? 1 : 0, sj = v >= 0.5 ? 1 : 0;
+            double sum = 0.0;
+            double[] w = { a, b, c, d };
+            for (int k = 0; k < 4; k++)
+            {
+                int di = Math.Abs((k & 1) - si), dj = Math.Abs((k >> 1) - sj);
+                sum += w[k] * (di + dj == 0 ? 0.0 : di + dj == 1 ? adjacent : diagonal);
+            }
+            return sum;
+        }
+
         // A cell's value, with the edge's rule beyond the grid.
         private double At(int s, int i, int j)
         {

@@ -35,13 +35,19 @@ namespace AdaptOrDeity.Sim.Core.Tests
         {
             var f = Field(2e-6);
             Assert.That(f.CellsPerSide, Is.EqualTo(24), "colony + 2 x 8 um margin, at least 24 cells");
-            Assert.That(f.Levels, Is.EqualTo(3), "24, 96, 384 um: the last reaches 120 um");
+            Assert.That(f.Levels, Is.EqualTo(2), "24 um at 1 um, then the outermost at 4 um");
+            Assert.That(f.OuterCells, Is.EqualTo(30), "120 um: 60 diameters exactly");
             for (int k = 1; k < f.Levels; k++)
                 Assert.That(f.Level(k).Spacing, Is.EqualTo(4 * f.Level(k - 1).Spacing).Within(1e-18));
-            f.Size(150e-6, out int n, out int levels);
+            f.Size(150e-6, out int n, out int levels, out int outerCells);
             Assert.That(n, Is.EqualTo(168));
-            Assert.That(n * 1e-6 * Math.Pow(4, levels - 1), Is.GreaterThanOrEqualTo(60 * 150e-6));
-            Assert.That(n * 1e-6 * Math.Pow(4, levels - 2), Is.LessThan(60 * 150e-6), "no more levels than needed");
+            double hOuter = 1e-6 * Math.Pow(4, levels - 1);
+            Assert.That(outerCells * hOuter, Is.InRange(60 * 150e-6, 60 * 150e-6 + hOuter), "the extent, to one outer cell");
+            Assert.That(outerCells, Is.InRange(n / 2, 2 * n), "the fewest levels with at most 2N outer cells");
+            Assert.That(Math.Ceiling(60 * 150e-6 / (hOuter / 4)), Is.GreaterThan(2 * n), "no more levels than needed");
+            var single = new NestedField(new NestedFieldSettings { SingleGrid = true }, new[] { Dglc }, new[] { 0.0 }, 0.0, 0.0, 2e-6);
+            Assert.That(single.Levels, Is.EqualTo(1));
+            Assert.That(single.CellsPerSide, Is.EqualTo(120), "the reference covers the nested grids' extent");
         }
 
         [Test]
@@ -99,9 +105,8 @@ namespace AdaptOrDeity.Sim.Core.Tests
         public void ASteadyPointSinkMakesTheThinLayersLogarithmicProfile()
         {
             // At steady state a sink J in a layer of depth H draws C(r) = C_far - J/(2 pi D H) ln(R/r): between 4 um (fine
-            // grid) and 40 um (second level) the drop is J/(2 pi D H) ln 10. The membrane of a cell of radius a sits a
-            // further J/(4 pi D a) below the grid.
-            const double far = 1.0, J = -2e-17, a = 1e-6;
+            // grid) and 40 um (the outermost level) the drop is J/(2 pi D H) ln 10.
+            const double far = 1.0, J = -2e-17;
             var f = Field(2e-6, FieldEdge.FarField, far);
             for (int n = 0; n < 6000; n++)
             {
@@ -113,9 +118,44 @@ namespace AdaptOrDeity.Sim.Core.Tests
             double drop = f.Sample(0, 40e-6, 0.0) - f.Sample(0, 4e-6, 0.0);
             Assert.That(drop, Is.EqualTo(scale * Math.Log(10.0)).Within(0.04 * scale * Math.Log(10.0)));
             Assert.That(f.Sample(0, 0.0, 40e-6) - f.Sample(0, 0.0, 4e-6), Is.EqualTo(drop).Within(0.02 * drop), "isotropic");
-            Assert.That(f.AtMembrane(0, 0.0, 0.0, a, J), Is.EqualTo(f.Sample(0, 0.0, 0.0) + J / (4 * Math.PI * Dglc * a)).Within(1e-15));
             Assert.That(f.Total(0) - f.OceanInflow(0) - f.Sourced(0), Is.EqualTo(far * Math.Pow(outer, 2) * Depth).Within(1e-12 * far * Math.Pow(outer, 2) * Depth),
                 "the ocean resupplies exactly what the sink takes");
+        }
+
+        [TestCase(0.0, 0.0)]
+        [TestCase(0.5e-6, 0.5e-6)]
+        [TestCase(0.25e-6, -0.1e-6)]
+        public void TheMembraneSeesTheThinLayersNearFieldWhereverTheCellSits(double x0, double y0)
+        {
+            // A sphere of radius a at mid-depth in a layer of depth d, with closed floor and top: its images make the
+            // depth-averaged field 2D beyond ~d, and at its membrane C = C2D(r*) + J/(4 pi D a), r* = 2 d e^-gamma (11.2 um).
+            // The grid's own value at the source depends on the spacing and where in its cell the source sits (by ~1.3
+            // ln-units between a cell's centre and its corner); the membrane value must not, on any grid.
+            const double far = 0.1, J = -2e-18, a = 1e-6, gamma = 0.5772156649015329;
+            double scale = -J / (2 * Math.PI * Dglc * Depth), rStar = 2 * Depth * Math.Exp(-gamma);
+            foreach (double h in new[] { 1e-6, 0.5e-6 })
+                foreach (bool single in new[] { false, true })
+                {
+                    var settings = Settings();
+                    settings.FineSpacing = h;
+                    settings.MinCells = (int)Math.Round(24e-6 / h);
+                    settings.SingleGrid = single;
+                    var f = new NestedField(settings, new[] { Dglc }, new[] { far }, 0.0, 0.0, 2e-6);
+                    for (int n = 0; n < 600; n++)
+                    {
+                        f.Deposit(0, x0, y0, J);
+                        f.Step(0.1);
+                    }
+                    // the 2D field at r*, from the grid along four directions (well resolved there)
+                    double c2d = 0.25 * (f.Sample(0, x0 + rStar, y0) + f.Sample(0, x0 - rStar, y0) + f.Sample(0, x0, y0 + rStar)
+                                         + f.Sample(0, x0, y0 - rStar));
+                    double expected = c2d + J / (4 * Math.PI * Dglc * a);
+                    Assert.That(f.AtMembrane(0, x0, y0, a, J), Is.EqualTo(expected).Within(0.01 * (far - expected)),
+                        $"h {h * 1e6} um, {(single ? "single grid" : "nested")}");
+                    Assert.That((far - f.AtMembrane(0, x0, y0, a, J)) / scale, Is.EqualTo(6.76).Within(0.06),
+                        "the same depletion on every grid (6.76 J/(2 pi D d) for a 120 um field)");
+                    Assert.That(f.AtMembrane(0, x0, y0, a, 0.0), Is.EqualTo(f.Sample(0, x0, y0)), "no exchange, no correction");
+                }
         }
 
         [Test]
