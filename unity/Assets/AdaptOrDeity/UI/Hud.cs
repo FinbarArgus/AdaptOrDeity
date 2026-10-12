@@ -90,20 +90,31 @@ namespace AdaptOrDeity.UI
                 e.Use();
             }
             else if (e.type == EventType.MouseDown && e.mousePosition.y > BarHeight
-                     && e.mousePosition.x < Screen.width - RightInset())
+                     && e.mousePosition.x < Screen.width - RightInset() && !OrganismPanel.Covers(e.mousePosition))
             {
                 var cell = CellUnderMouse(e.mousePosition);
+                var organism = cell == null ? bridge.OrganismAt(MouseWorld(e.mousePosition)) : null;
                 if (e.button == 0 && cell != null)
                 {
                     // Select the cell (opens the cell panel) and follow it on the shown overlay with one probe.
                     bridge.SelectedCell = cell.CellIndex;
+                    bridge.SelectedOrganism = -1;
                     bridge.Send(SimCommands.ClearProbes());
                     bridge.Send(SimCommands.AddProbe(cell.CellIndex, Mathf.Max(0, bridge.ActiveOverlay)));
+                    e.Use();
+                }
+                else if (e.button == 0 && organism != null && organism.Slot < frame.OrganismCount)
+                {
+                    // a free organism: its read-only panel (OrganismPanel)
+                    bridge.SelectedOrganism = frame.OrganismId[organism.Slot];
+                    bridge.SelectedCell = -1;
+                    bridge.Send(SimCommands.ClearProbes());
                     e.Use();
                 }
                 else if (e.button == 1 && e.mousePosition.x < Screen.width - RightInset())
                 {
                     bridge.SelectedCell = -1;
+                    bridge.SelectedOrganism = -1;
                     bridge.Send(SimCommands.ClearProbes());
                     e.Use();
                 }
@@ -170,6 +181,14 @@ namespace AdaptOrDeity.UI
                     GUILayout.Label(new GUIContent($"Offspring {frame.Offspring}",
                         "daughters that swam off on their own (without multicellularity); each earns reproduction points"),
                         GUILayout.Width(85));
+                    int living = 0;
+                    for (int k = 0; k < frame.OrganismCount; k++)
+                        if (frame.OrganismAlive[k])
+                            living++;
+                    GUILayout.Label(new GUIContent($"Free {living}",
+                        $"daughters and their offspring living nearby on their own (pale, white outline; click one to see " +
+                        $"its state). Released {frame.OrganismsReleased}, died {frame.OrganismsDied}, " +
+                        $"gone out of range {frame.OrganismsGone}"), GUILayout.Width(60));
                     // development aids until play-testing is done: points and a prey cell swimming at the creature
                     if (GUILayout.Button(new GUIContent("+5", "development: 5 skill points"), GUILayout.Width(30)))
                         bridge.Send(SimCommands.DevGrantPoints(5));
@@ -300,6 +319,17 @@ namespace AdaptOrDeity.UI
             if (cam == null || mouse.x > Screen.width - RightInset())
                 return;
             var world = (Vector2)cam.ScreenToWorldPoint(new Vector3(mouse.x, Screen.height - mouse.y, 0f));
+            var organism = bridge.OrganismAt(world);
+            if (organism != null && organism.Slot < frame.OrganismCount)
+            {
+                int k = organism.Slot;
+                ShowTooltip(mouse, $"Free organism {frame.OrganismId[k]} (generation {frame.OrganismGeneration[k]})\n" +
+                    (frame.OrganismGeneration[k] > 1 ? "Offspring of a daughter that left your creature" :
+                        "A daughter that left your creature") + "\n" +
+                    (frame.OrganismAlive[k] ? "Lives on its own: not yours to control" : "<b>Dead</b>") +
+                    "\n<i>Click to see its state</i>");
+                return;
+            }
             var prey = bridge.PreyAt(world);
             if (prey != null && prey.Slot < frame.PreyCount)
             {

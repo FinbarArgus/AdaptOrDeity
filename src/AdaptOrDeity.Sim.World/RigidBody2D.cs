@@ -89,6 +89,15 @@ namespace AdaptOrDeity.Sim.World
             Y += dy;
         }
 
+        /// <summary>Places the body at (x, y) over the ground [m], turned by <paramref name="angle"/> [rad], at rest in the water.</summary>
+        public void Place(double x, double y, double angle)
+        {
+            X = x;
+            Y = y;
+            Angle = angle;
+            Vx = Vy = Omega = 0.0;
+        }
+
         /// <summary>Advances by dt with force (fx, fy) [N] and torque t [N m] held over the step.</summary>
         public void Step(double dt, double fx, double fy, double torque)
         {

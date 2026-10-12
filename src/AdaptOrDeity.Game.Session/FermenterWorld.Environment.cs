@@ -40,11 +40,14 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>The environment field, or null when cells use the contact rule.</summary>
         public EnvironmentField? Environment => _environment;
 
-        /// <summary>Glucose the cells have taken from the environment field and released into it so far, net [mol].</summary>
+        /// <summary>
+        /// Glucose the creature's cells and free organisms have taken from the environment field and released into it so
+        /// far, net [mol].
+        /// </summary>
         public double CellGlucoseExchanged { get; private set; }
 
         /// <summary>
-        /// Test hook: the rate at which cell <c>i</c>'s surface enzymes hydrolyse a food packet it touches [mol glucose/s],
+        /// Test hook: the rate at which the creature's cell <c>i</c>'s surface enzymes hydrolyse a food packet it touches [mol glucose/s],
         /// whatever the packet. Null (the default): each cell's surface hydrolase,
         /// V_hydrolysis_max S / (K_m_poly + S) (<see cref="FermenterCell.Hydrolysis"/>), with S the packet's polymer
         /// concentration (<see cref="PolymerConcentration"/>).
@@ -63,7 +66,7 @@ namespace AdaptOrDeity.Game.Session
             return volume > 0.0 ? Math.Max(0.0, p.Glucose - p.Free) / volume : 0.0;
         }
 
-        // Packet p is hydrolysed by every living cell touching it.
+        // Packet p is hydrolysed by every living cell touching it: the creature's, then free organisms'.
         private double Hydrolysis(FoodPacket p)
         {
             double rate = 0.0, polymer = -1.0;
@@ -82,6 +85,14 @@ namespace AdaptOrDeity.Game.Session
                         polymer = PolymerConcentration(p);
                     rate += _cells[i].Hydrolysis(polymer);
                 }
+            }
+            foreach (var o in _organisms)
+            {
+                if (!o.Alive || !_food.Touches(p, o.X, o.Y, CellRadius))
+                    continue;
+                if (polymer < 0.0)
+                    polymer = PolymerConcentration(p);
+                rate += o.Cell.Hydrolysis(polymer);
             }
             return rate;
         }
@@ -182,6 +193,7 @@ namespace AdaptOrDeity.Game.Session
                 if (glucose < 0.0 && m > ocean)
                     FoodEaten += -glucose * dt * (m - ocean) / m;
             }
+            OrganismsExchange(env, dt);
             if (_workerCount > 1)
                 _workers ??= new ParallelWork(_workerCount);
             env.Step(dt, _workers);

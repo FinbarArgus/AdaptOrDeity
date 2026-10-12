@@ -73,8 +73,11 @@ namespace AdaptOrDeity.Sim.World
 
         internal double LocalY { get; set; }
 
-        /// <summary>True once the packet has met a cell: it stays with the creature until it is eaten.</summary>
+        /// <summary>True once the packet has met a cell: it stays with that cell's body until it is eaten.</summary>
         public bool Stuck { get; internal set; }
+
+        /// <summary>Whose body a stuck packet moves with: 0 the creature (the window's centre), else a free organism's id.</summary>
+        public int Holder { get; internal set; }
     }
 
     /// <summary>
@@ -245,9 +248,13 @@ namespace AdaptOrDeity.Sim.World
                     continue;
                 if (p.Stuck)
                 {
-                    // food a cell found moves rigidly with the body: carried along and turned with it
-                    p.X = cx + cos * p.LocalX - sin * p.LocalY;
-                    p.Y = cy + sin * p.LocalX + cos * p.LocalY;
+                    // food a cell found moves rigidly with the body: carried along and turned with it (a free
+                    // organism's packets move with its body in MoveHeld)
+                    if (p.Holder == 0)
+                    {
+                        p.X = cx + cos * p.LocalX - sin * p.LocalY;
+                        p.Y = cy + sin * p.LocalX + cos * p.LocalY;
+                    }
                 }
                 else
                 {
@@ -353,16 +360,48 @@ namespace AdaptOrDeity.Sim.World
         }
 
         /// <summary>Stops every packet that touches a cell at (x, y) of radius r: food stays with the cell that found it.</summary>
-        public void StickTo(double x, double y, double r)
+        public void StickTo(double x, double y, double r) => StickTo(x, y, r, 0, CentreX, CentreY, _angle);
+
+        /// <summary>
+        /// Stops every free packet that touches a cell at (x, y) of radius r and gives it to <paramref name="holder"/> (0 the
+        /// creature, else a free organism's id), whose body is at (<paramref name="bx"/>, <paramref name="by"/>) turned by
+        /// <paramref name="angle"/>. A packet already held stays with its holder.
+        /// </summary>
+        public void StickTo(double x, double y, double r, int holder, double bx, double by, double angle)
         {
+            double cos = Math.Cos(angle), sin = Math.Sin(angle);
             foreach (var p in _packets)
                 if (p.Active && !p.Stuck && Touches(p, x, y, r))
                 {
                     p.Stuck = true;
+                    p.Holder = holder;
                     p.Vx = p.Vy = 0.0;
-                    double dx = p.X - CentreX, dy = p.Y - CentreY, cos = Math.Cos(_angle), sin = Math.Sin(_angle);
+                    double dx = p.X - bx, dy = p.Y - by;
                     p.LocalX = cos * dx + sin * dy;    // into the body frame
                     p.LocalY = -sin * dx + cos * dy;
+                }
+        }
+
+        /// <summary>Moves the packets <paramref name="holder"/> holds with its body, now at (bx, by) turned by angle.</summary>
+        public void MoveHeld(int holder, double bx, double by, double angle)
+        {
+            double cos = Math.Cos(angle), sin = Math.Sin(angle);
+            foreach (var p in _packets)
+                if (p.Active && p.Stuck && p.Holder == holder)
+                {
+                    p.X = bx + cos * p.LocalX - sin * p.LocalY;
+                    p.Y = by + sin * p.LocalX + cos * p.LocalY;
+                }
+        }
+
+        /// <summary>The packets <paramref name="holder"/> held lie still where they are (its body died or left).</summary>
+        public void Release(int holder)
+        {
+            foreach (var p in _packets)
+                if (p.Active && p.Stuck && p.Holder == holder)
+                {
+                    p.Stuck = false;
+                    p.Holder = 0;
                 }
         }
 
@@ -475,6 +514,7 @@ namespace AdaptOrDeity.Sim.World
             for (int i = 0; i < slot.Traces.Length; i++)
                 slot.Traces[i] = i == slot.MainTrace ? 1.0 : Settings.PacketTraceMinorShare;   // relative strengths
             slot.Stuck = false;
+            slot.Holder = 0;
             slot.Active = true;
         }
     }

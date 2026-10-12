@@ -505,6 +505,14 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   - A cell with a vacuole has inputs that change every macro step: it uses the soft restarts (StopAtMacroSteps) the
     field's cells use. With hard restarts the integrator failed a few seconds after a division (deterministically, at any
     glucose).
+- **2026-10-12** Released daughters live on (designer request; docs/plans/free-daughters.md): without multicellularity
+  a daughter becomes a free organism in the same water, its cell exactly as divided and its own one-cell body that runs
+  and tumbles by the creature's rules with its own random numbers. It keeps its controls (nobody controls it), eats and
+  engulfs by the creature's rules in competition with it (packets withdrawn in turn: the creature's cells, then
+  organisms by id), exchanges with the field where the field covers it, divides by itself if released with growth and
+  automatic division on (its daughters earn the player nothing), dies at a lethal damage load and is removed 600 s
+  later. At most 32 are simulated, none beyond 2 view widths (60 µm) from the creature; a calm organism costs ~30 µs and
+  a swimming one ~80 µs per simulated second, and swimmers leave the range within a minute or two.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
@@ -551,5 +559,7 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     the field and in vacuoles. Make contact eating hydrolase-limited, or turn the field on by default? (2026-10-12)
 20. libcuflynx's runtime failed after a division with hard restarts on inputs changing every step (vacuole cells): soft
     restarts avoid it; worth a minimal reproduction upstream. (2026-10-12)
+21. Free organisms (docs/plans/free-daughters.md): should a dead one become a food packet, and should a released
+    daughter's own offspring count for reproduction points? (2026-10-12)
 17. Communication and memory: what a signal costs, what memory stores (places, individuals, threats) and how it
     is modelled (neural cells, a game abstraction, or both). Levels and dates decided when we get there.

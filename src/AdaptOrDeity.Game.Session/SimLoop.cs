@@ -171,6 +171,9 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>The cell whose details frames carry (-1: none; <see cref="SimCommands.Inspect"/>).</summary>
         public int InspectedCell { get; set; } = -1;
 
+        /// <summary>The free organism (by id) whose details frames carry (-1: none; <see cref="SimCommands.InspectOrganism"/>).</summary>
+        public int InspectedOrganism { get; set; } = -1;
+
         /// <summary>
         /// A frame for the current world: room for at least the cells and food packets there are, in powers of two.
         /// </summary>
@@ -179,12 +182,19 @@ namespace AdaptOrDeity.Game.Session
                 _options.ProbeSamples, Schema.Details.Count, Schema.Traits.Count, Schema.Controls.Count, Schema.MaxGroups,
                 Schema.Features.Count, Schema.InitialPacketCapacity == 0 ? 0
                     : Capacity(Math.Max(PacketsInField, Schema.InitialPacketCapacity)),
-                Schema.InitialPreyCapacity == 0 ? 0 : Capacity(Math.Max(PreyInView, Schema.InitialPreyCapacity)));
+                Schema.InitialPreyCapacity == 0 ? 0 : Capacity(Math.Max(PreyInView, Schema.InitialPreyCapacity)),
+                World is FermenterWorld ? Capacity(Math.Max(OrganismsNow, InitialOrganisms)) : 0);
+
+        /// <summary>Free organisms snapshot frames are first sized for (content organisms.initial_capacity).</summary>
+        private static readonly int InitialOrganisms =
+            AdaptOrDeity.Game.Content.GameParameters.Default.Integer("organisms.initial_capacity");
+
+        private int OrganismsNow => World is FermenterWorld fw ? fw.Organisms.Count : 0;
 
         /// <summary>True when <paramref name="frame"/> has no room for the current colony, food or prey (frames grow, see SimHost).</summary>
         public bool Outgrown(SnapshotFrame frame) =>
             frame.CellX.Length < World.CellCount || (Schema.InitialPacketCapacity > 0 && frame.PacketX.Length < PacketsInField)
-            || (Schema.InitialPreyCapacity > 0 && frame.PreyX.Length < PreyInView);
+            || (Schema.InitialPreyCapacity > 0 && frame.PreyX.Length < PreyInView) || frame.OrganismX.Length < OrganismsNow;
 
         // Glucose in the water around the creature on the frame's raster (extent 0 without an environment field).
         private static void WriteField(FermenterWorld world, SnapshotFrame frame)
@@ -275,6 +285,7 @@ namespace AdaptOrDeity.Game.Session
                     frame.MotorOn = fw.MotorOn && fw.FeatureEnabled(GameFeatures.IndexOf(GameFeatures.Swimming));
                     frame.MotorPower = (float)fw.MotorPower;
                     WriteField(fw, frame);
+                    WriteOrganisms(fw, frame);
                 }
                 int n = 0;
                 foreach (var p in foodWorld.Food.Packets)
@@ -313,6 +324,41 @@ namespace AdaptOrDeity.Game.Session
                 else
                     frame.Probes[p].Clear();
             }
+        }
+
+        // The free organisms: where they are relative to the creature, their state, and the inspected one's details.
+        private void WriteOrganisms(FermenterWorld world, SnapshotFrame frame)
+        {
+            var list = world.Organisms;
+            int n = Math.Min(list.Count, frame.OrganismX.Length);
+            frame.InspectedOrganism = -1;
+            for (int k = 0; k < n; k++)
+            {
+                var o = list[k];
+                frame.OrganismId[k] = o.Id;
+                frame.OrganismGeneration[k] = o.Generation;
+                frame.OrganismX[k] = (float)(o.X - frame.CreatureX);
+                frame.OrganismY[k] = (float)(o.Y - frame.CreatureY);
+                frame.OrganismOrientation[k] = (float)o.Body.Body.Angle;
+                frame.OrganismAlive[k] = o.Alive;
+                frame.OrganismMotorOn[k] = o.Alive && o.Swims && o.MotorOn;
+                frame.OrganismFlagella[k] = (float)world.FlagellaOf(o);
+                for (int f = 0; f < AdaptOrDeity.Sim.World.CreatureBody.MaxFlagella; f++)
+                    frame.OrganismFlagellumAngles[k][f] = (float)o.Body.FlagellumAngle(0, f);
+                frame.OrganismVacuoleRadius[k] = o.Vacuole != null ? (float)world.VacuoleRadius(o.Vacuole.Glucose) : 0f;
+                for (int c = 0; c < frame.OrganismChannels.Length; c++)
+                    frame.OrganismChannels[c][k] = (float)world.ReadOrganism(o, c);
+                if (o.Id == InspectedOrganism)
+                {
+                    frame.InspectedOrganism = o.Id;
+                    for (int d = 0; d < frame.OrganismDetails.Length; d++)
+                        frame.OrganismDetails[d] = world.ReadOrganismDetail(o, d);
+                }
+            }
+            frame.OrganismCount = n;
+            frame.OrganismsReleased = world.OrganismsReleased;
+            frame.OrganismsDied = world.OrganismsDied;
+            frame.OrganismsGone = world.OrganismsGone;
         }
 
         private SnapshotFrame? _writing;

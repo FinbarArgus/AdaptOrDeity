@@ -199,6 +199,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             FermenterSessionTests.FinishDaughter(world, 0);
             world.Divide(0);
             Assert.That(world.CellCount, Is.EqualTo(1), "the daughter left");
+            Assert.That(world.Organisms, Has.Count.EqualTo(1), "and lives on its own (FreeOrganismTests)");
             Assert.That(world.Offspring, Is.EqualTo(1));
             Assert.That(world.ReproductionPoints, Is.EqualTo((int)Math.Floor(perOffspring)));
             Assert.That(world.SkillPoints, Is.EqualTo(before + world.ReproductionPoints));
@@ -208,6 +209,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             FermenterSessionTests.FinishDaughter(world, 0);
             world.Divide(0);
             Assert.That(world.CellCount, Is.EqualTo(2), "with multicellularity the daughter stays");
+            Assert.That(world.Organisms, Has.Count.EqualTo(1), "no new free organism");
             Assert.That(world.Offspring, Is.EqualTo(1), "and is not offspring");
             Assert.That(world.ReproductionPoints, Is.EqualTo((int)Math.Floor(perOffspring)), "a staying daughter earns no points");
         }
