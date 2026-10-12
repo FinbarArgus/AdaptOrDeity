@@ -29,6 +29,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             typeof(FermenterWorld).GetProperty(nameof(FermenterWorld.FoodEaten))!
                 .SetValue(world, 20 * GameParameters.Default.Value("skills.glucose_per_point"));
             world.Level = 2;
+            world.SetFeature(GameFeatures.IndexOf(GameFeatures.Engulfing), false);   // packets on the cell stay outside it
             return world;
         }
 
@@ -165,7 +166,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         [Test]
         public void TheSurfaceHydrolaseDigestsATouchingPacketInTheField()
         {
-            // V_hydrolysis_max S / (K_m_poly + S), with S the packet's polymer over a disc of its radius as deep as the cell.
+            // V_hydrolysis_max S / (K_m_poly + S), with S the packet's polymer over a sphere of its radius.
             using var world = Level2(field: true);
             var food = world.Food;
             food.Settings.LyingDensity = 0.0;
@@ -177,8 +178,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             foreach (var p in food.Packets.Where(p => p != packet))
                 typeof(FoodPacket).GetProperty("Active")!.SetValue(p, false);
             var cell = world.Cell(0);
-            double depth = cell.External("h_cell_mod_membrane") * 1e-6;
-            double s = packet.Glucose / (Math.PI * packet.Radius * packet.Radius * depth);
+            double s = packet.Glucose / (4.0 / 3.0 * Math.PI * Math.Pow(packet.Radius, 3));
+            Assert.That(s, Is.EqualTo(GameParameters.Default.PacketDensity).Within(1e-12 * s), "a fresh packet is at the packet density");
             Assert.That(world.PolymerConcentration(packet), Is.EqualTo(s).Within(1e-12 * s));
             double rate = cell.HydrolysisMax * s / (cell.HydrolysisHalfSaturation + s);
             Assert.That(rate, Is.GreaterThan(0.99 * cell.HydrolysisMax), "a fresh packet saturates the enzyme");

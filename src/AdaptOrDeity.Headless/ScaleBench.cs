@@ -42,6 +42,9 @@ namespace AdaptOrDeity.Headless
             var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             loop.Enqueue(SimCommands.SetLevel(2));
             loop.ApplyCommands();
+            int multicellularity = GameFeatures.IndexOf(GameFeatures.Multicellularity);   // daughters stay
+            world.DevGrantPoints(GameFeatures.All[multicellularity].Cost);
+            world.BuyFeature(multicellularity);
             while (world.CellCount < n)
             {
                 int parent = world.CellCount - 1;

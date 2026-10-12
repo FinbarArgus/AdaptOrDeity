@@ -13,7 +13,9 @@ namespace AdaptOrDeity.Game.Session
     /// The stage-1 world: fermenter cells (circulatory-autogen-modules cell/generic_adaptive_cell fermenter) in a Proterozoic
     /// sea. Cell physiology comes from the kernel; game-side values (food, colony, control ranges) from content/parameters.json.
     /// Cells belong to groups; traits and energy controls are set per group and apply to every cell in it. From level 2 a
-    /// cell can put energy into a daughter and divide; at a lethal damage load it dies. With a fixed body size a group
+    /// cell can put energy into a daughter and divide (the daughter stays only with multicellularity; otherwise it leaves
+    /// and earns reproduction points), and cells engulf prey and small food packets (FermenterWorld.Engulfing.cs); at a
+    /// lethal damage load a cell dies. With a fixed body size a group
     /// keeps its number of cells: growth energy replaces dead cells, and goes to repair while the group is full. From level 4
     /// the water between the cells is a space of its own and the cells fall into boundary and inner groups
     /// (FermenterWorld.Colony.cs). Values exchanged here are SI.
@@ -135,9 +137,10 @@ namespace AdaptOrDeity.Game.Session
                 first.RelativeTolerance = GameParameters.Default.Value("field.reference_cell_tolerance");   // daughters inherit it
             // Geometry from the kernel (upstream parameters.json); the open water and food field from content.
             CellRadius = first.External("R_cell_mod_membrane") * 1e-6;   // µm → m
-            _cellDepth = first.External("h_cell_mod_membrane") * 1e-6;
             _spacing = 2.0 * CellRadius + GameParameters.Default.Value("colony.cell_gap");
             _food = new FoodField(GameParameters.Default.Food(GameTimeline.Default.OceanGlucose(1)));
+            _prey = CreatePrey();
+            _vacuoles.Add(null);
             _motilityRandom = new Random(GameParameters.Default.Integer("motility.seed"));
             _meanRun = GameParameters.Default.Value("motility.mean_run");
             _meanPause = GameParameters.Default.Value("motility.mean_pause");
@@ -303,6 +306,7 @@ namespace AdaptOrDeity.Game.Session
                 SetOcean(GameTimeline.Default.OceanGlucose(value));
                 var arrivals = GameTimeline.Default.ArrivalsAt(value);
                 _food.SetArrivals(arrivals.FoodPerSecond, arrivals.CarriedShare);
+                _prey.SetArrivals(arrivals.PreyPerSecond);
             }
         }
 
@@ -438,6 +442,11 @@ namespace AdaptOrDeity.Game.Session
                 Array.Resize(ref _openGlucose, 2 * n);
             if (_cellY.Length < n)
                 Array.Resize(ref _cellY, 2 * n);
+            if (_vacuoleShare.Length < n)
+            {
+                Array.Resize(ref _vacuoleShare, 2 * n);
+                Array.Resize(ref _outsideGlucose, 2 * n);
+            }
             if (_forceX.Length < n)
             {
                 Array.Resize(ref _forceX, 2 * n);
@@ -463,9 +472,11 @@ namespace AdaptOrDeity.Game.Session
 
             var b = _body.Body;
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
+            _prey.Step(dt, b.X, b.Y, b.CurrentVx, b.CurrentVy);   // prey swim in the same water as the creature
             _cos = Math.Cos(b.Angle);
             _sin = Math.Sin(b.Angle);
             _stepDt = dt;
+            EngulfAndDigest(dt);
             if (_environment != null)
                 BeforeCells(dt);
             _cellPass ??= CellPass;
@@ -490,6 +501,7 @@ namespace AdaptOrDeity.Game.Session
                 if (c > _food.BackgroundGlucose && uptake > 0.0)
                     FoodEaten += _food.Withdraw(_cellX[i], _cellY[i], CellRadius, uptake * (c - _food.BackgroundGlucose) / c);
             }
+            TakeUpFromVacuoles(dt);
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))
@@ -533,6 +545,7 @@ namespace AdaptOrDeity.Game.Session
                     for (int tr = 0; tr < nt; tr++)
                         _traceAtCell[i * nt + tr] = _food.TraceAt(tr, x, y, CellRadius);
                 }
+                AddVacuoleToMembrane(i, c);
                 c.Step(_stepDt);
             }
         }
@@ -579,26 +592,77 @@ namespace AdaptOrDeity.Game.Session
 
         public double ReadControl(int group, int control) => _groups[CheckGroup(group)].Controls[control];
 
-        public bool FeatureUnlocked(int feature) =>
-            GameFeatures.All[feature].UnlockLevel <= _level && (GameFeatures.All[feature].Cost == 0 || _bought[feature]);
+        public bool FeatureUnlocked(int feature)
+        {
+            var info = GameFeatures.All[feature];
+            if (info.UnlockLevel > _level || (info.Cost > 0 && !_bought[feature]))
+                return false;
+            foreach (var other in info.Requires)
+                if (!FeatureUnlocked(GameFeatures.IndexOf(other)))
+                    return false;
+            return true;
+        }
 
         /// <summary>Glucose the creature has eaten from food packets since the start [mol].</summary>
         public double FoodEaten { get; private set; }
 
-        /// <summary>Skill points to spend: one per content skills.glucose_per_point of food eaten, less those spent.</summary>
-        public int SkillPoints => (int)Math.Floor(FoodEaten / _glucosePerPoint) - _pointsSpent;
+        /// <summary>Skill points to spend: food points and reproduction points, less those spent.</summary>
+        public int SkillPoints => FoodPoints + ReproductionPoints + _pointsGranted - _pointsSpent;
+
+        /// <summary>Points earned by eating: one per content skills.glucose_per_point of food eaten.</summary>
+        public int FoodPoints => (int)Math.Floor(FoodEaten / _glucosePerPoint);
+
+        /// <summary>
+        /// Points earned by reproducing: content skills.points_per_offspring for each daughter that left the creature
+        /// (divisions without multicellularity). Daughters that stay in a colony earn none.
+        /// </summary>
+        public int ReproductionPoints => (int)Math.Floor(Offspring * _pointsPerOffspring);
+
+        private readonly double _pointsPerOffspring = GameParameters.Default.Value("skills.points_per_offspring");
+
+        private int _pointsGranted;
+
+        /// <summary>Development aid: adds skill points without food (to try features quickly; tests). Not for play.</summary>
+        public void DevGrantPoints(int points)
+        {
+            if (points < 0)
+                throw new ArgumentOutOfRangeException(nameof(points), "points must be >= 0");
+            _pointsGranted += points;
+        }
+
+        /// <summary>
+        /// Why the feature cannot be bought now, or null if it can: it has no cost or is bought, its level is not reached,
+        /// a feature it requires is not unlocked, too few prey have been swallowed, a feature it excludes was bought, or
+        /// there are too few points.
+        /// </summary>
+        public string? WhyNotForSale(int feature)
+        {
+            var info = GameFeatures.All[feature];
+            if (info.Cost == 0 || _bought[feature])
+                return $"{info.Name} is not for sale";
+            if (info.UnlockLevel > _level)
+                return $"{info.Name} can be bought from level {info.UnlockLevel}";
+            foreach (var other in info.Excludes)
+                if (_bought[GameFeatures.IndexOf(other)])
+                    return $"{info.Name} is closed: {GameFeatures.All[GameFeatures.IndexOf(other)].Name} was chosen";
+            foreach (var other in info.Requires)
+                if (!FeatureUnlocked(GameFeatures.IndexOf(other)))
+                    return $"{info.Name} needs {GameFeatures.All[GameFeatures.IndexOf(other)].Name}";
+            if (Swallowed < info.RequiresSwallowed)
+                return $"{info.Name} needs {info.RequiresSwallowed} prey swallowed; {Swallowed} so far";
+            if (SkillPoints < info.Cost)
+                return $"{info.Name} costs {info.Cost} points; there are {SkillPoints}";
+            return null;
+        }
 
         public void BuyFeature(int feature)
         {
             if (feature < 0 || feature >= _bought.Length)
                 throw new ArgumentOutOfRangeException(nameof(feature), $"no feature {feature}");
             var info = GameFeatures.All[feature];
-            if (info.Cost == 0 || _bought[feature])
-                throw new InvalidOperationException($"{info.Name} is not for sale");
-            if (info.UnlockLevel > _level)
-                throw new InvalidOperationException($"{info.Name} can be bought from level {info.UnlockLevel}");
-            if (SkillPoints < info.Cost)
-                throw new InvalidOperationException($"{info.Name} costs {info.Cost} points; there are {SkillPoints}");
+            string? why = WhyNotForSale(feature);
+            if (why != null)
+                throw new InvalidOperationException(why);
             _pointsSpent += info.Cost;
             _bought[feature] = true;
             ApplyControls();
@@ -643,7 +707,8 @@ namespace AdaptOrDeity.Game.Session
                 throw new ArgumentOutOfRangeException(nameof(feature), $"no feature {feature}");
             var info = GameFeatures.All[feature];
             if (!FeatureUnlocked(feature))
-                throw new InvalidOperationException($"{info.Name} unlocks at level {info.UnlockLevel}");
+                throw new InvalidOperationException(info.UnlockLevel > _level ? $"{info.Name} unlocks at level {info.UnlockLevel}"
+                    : $"{info.Name} is not evolved yet");
             if (!info.Optional && !enabled)
                 throw new InvalidOperationException($"{info.Name} cannot be turned off");
             _featureEnabled[feature] = enabled;
@@ -684,6 +749,11 @@ namespace AdaptOrDeity.Game.Session
             var daughter = _cells[cell].Divide();
             if (daughter == null)
                 return;
+            if (!Active(GameFeatures.Multicellularity))
+            {
+                Offspring++;   // without multicellularity the daughter swims off on its own
+                return;
+            }
             int group = _cellGroup[cell];
             // With a fixed body size the daughter takes a dead cell's place; otherwise it joins the colony.
             int slot = Active(GameFeatures.FixedBodySize) ? DeadSlot(group) : -1;
@@ -691,11 +761,14 @@ namespace AdaptOrDeity.Game.Session
             if (slot >= 0)
             {
                 _cells[slot] = daughter;
+                Egested += _vacuoles[slot]?.Glucose ?? 0.0;   // what the dead cell held goes with it
+                _vacuoles[slot] = null;
                 _body.SetFlagellumAngles(slot, angles);
             }
             else
             {
                 _cells.Add(daughter);
+                _vacuoles.Add(null);
                 _cellGroup.Add(group);
                 AddToBody(_cells.Count - 1, angles);
             }

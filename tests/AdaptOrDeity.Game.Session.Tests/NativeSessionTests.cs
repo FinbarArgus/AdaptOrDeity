@@ -81,6 +81,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         private static void Grow(ISessionFront session, int cells)
         {
             session.Enqueue(SimCommands.SetLevel(2));
+            Colonies.Multicellular(session.Enqueue);
             for (int i = 1; i < cells; i++)
             {
                 session.Enqueue(SimCommands.DevCompleteDaughter(i - 1));

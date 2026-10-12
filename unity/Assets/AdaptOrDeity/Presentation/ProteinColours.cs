@@ -19,6 +19,7 @@ namespace AdaptOrDeity.Presentation
             new Color(0.35f, 0.55f, 0.95f),   // PTS
             new Color(0.95f, 0.30f, 0.65f),   // ABC importer
             new Color(0.45f, 0.95f, 0.45f),   // H+ glucose symporter
+            new Color(0.85f, 0.60f, 0.35f),   // surface hydrolase
         };
 
         public static Color For(int trait) => Palette[trait % Palette.Length];

@@ -36,7 +36,6 @@ namespace AdaptOrDeity.Game.Session
         private readonly double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");   // 0 for the reference
         private double _colonyRadius;
         private Func<FoodPacket, double>? _hydrolysis;
-        private double _cellDepth;   // [m]
 
         /// <summary>The environment field, or null when cells use the contact rule.</summary>
         public EnvironmentField? Environment => _environment;
@@ -53,12 +52,14 @@ namespace AdaptOrDeity.Game.Session
         public Func<int, double>? HydrolysisCapacity { get; set; }
 
         /// <summary>
-        /// Polymer in packet <paramref name="p"/> [mol glucose units/m³]: its polymer glucose over its volume, a disc of the
-        /// packet's radius as deep as the cells (the kernel's h_cell), as everything in the game's sheet is.
+        /// Polymer in packet <paramref name="p"/> [mol glucose units/m³]: its polymer glucose over its volume, a sphere of
+        /// the packet's radius (the convention its amount is set by). A packet keeps its density as it is eaten, so this
+        /// stays near the packet density (~2.2 M of polymer), far above the hydrolase's K_m_poly: the enzyme is saturated
+        /// and digestion is limited by the enzyme on the cell's surface, not by the substrate.
         /// </summary>
         public double PolymerConcentration(FoodPacket p)
         {
-            double volume = Math.PI * p.Radius * p.Radius * _cellDepth;
+            double volume = 4.0 / 3.0 * Math.PI * p.Radius * p.Radius * p.Radius;
             return volume > 0.0 ? Math.Max(0.0, p.Glucose - p.Free) / volume : 0.0;
         }
 
@@ -177,7 +178,7 @@ namespace AdaptOrDeity.Game.Session
                 env.Exchange(EnvironmentField.Acid, _cellX[i], _cellY[i], w * c.ProtonRelease);
                 CellGlucoseExchanged -= glucose * dt;
                 // food eaten: the share of the uptake above the open water's glucose
-                double m = _gaps != null ? _openGlucose[i] : c.MembraneGlucose;
+                double m = _gaps != null ? _openGlucose[i] : _outsideGlucose[i];
                 if (glucose < 0.0 && m > ocean)
                     FoodEaten += -glucose * dt * (m - ocean) / m;
             }

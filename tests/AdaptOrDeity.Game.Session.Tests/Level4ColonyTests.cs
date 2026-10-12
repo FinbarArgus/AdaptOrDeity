@@ -18,6 +18,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             world.Workers = workers;
             loop.Enqueue(SimCommands.SetLevel(4));
+            Colonies.Multicellular(loop.Enqueue);
             loop.ApplyCommands();
             while (world.CellCount < cells)
             {
@@ -58,6 +59,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             var loop = NewLoop(out var world);
             loop.Enqueue(SimCommands.SetLevel(2));
+            Colonies.Multicellular(loop.Enqueue);
             loop.ApplyCommands();
             for (int n = 1; n < 7; n++)
             {

@@ -30,7 +30,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             var schema = loop.Schema;
             Assert.That(schema.Details.Select(d => d.Group).Distinct(), Is.EquivalentTo(new[]
                 { "Food", "Metabolic rate", "ATP made", "ATP used", "Protein turnover", "Growth and storage", "Cell state" }));
-            Assert.That(schema.Traits.Count, Is.EqualTo(12), "8 expression traits, the number of flagella and 3 carriers to evolve");
+            Assert.That(schema.Traits.Count, Is.EqualTo(13), "8 expression traits, the number of flagella, 3 carriers to evolve and the surface hydrolase");
             Assert.That(schema.Traits.Where(t => t.IsShare).Select(t => t.Feature), Is.EqualTo(new[]
                 { GameFeatures.PtsTransport, GameFeatures.AbcTransport, GameFeatures.ProtonSymport }));
             Assert.That(schema.Controls.Select(c => c.Id), Is.EqualTo(new[] { "growth", "storage", "repair", "matrix" }));
@@ -61,6 +61,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             var loop = NewLoop(out world);
             loop.Enqueue(SimCommands.SetLevel(2));
+            Colonies.Multicellular(loop.Enqueue);
             loop.ApplyCommands();
             while (world.CellCount < cells)
             {
@@ -122,6 +123,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             using var session = SimSession.CreateFermenter();
             session.Enqueue(SimCommands.SetLevel(2));
+            Colonies.Multicellular(session.Enqueue);
             for (int i = 1; i < 150; i++)
             {
                 session.Enqueue(SimCommands.DevCompleteDaughter(i - 1));
@@ -145,6 +147,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             var loop = NewLoop(out var world);
             loop.Enqueue(SimCommands.SetLevel(2));
+            Colonies.Multicellular(loop.Enqueue);
             loop.ApplyCommands();
             FinishDaughter(world, 0);
             loop.Enqueue(SimCommands.Divide(0));
@@ -182,6 +185,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             var loop = NewLoop(out var world);
             loop.Enqueue(SimCommands.SetLevel(2));
+            Colonies.Multicellular(loop.Enqueue);
             loop.Enqueue(SimCommands.Divide(0));
             loop.ApplyCommands();
             Assert.That(loop.TryDequeueEvent(out var e) && e is CommandRejected r && r.Reason.Contains("built"), Is.True);
@@ -199,6 +203,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             var loop = NewLoop(out var world);
             loop.Enqueue(SimCommands.SetLevel(7));
+            Colonies.Multicellular(loop.Enqueue);
             loop.ApplyCommands();
             FinishDaughter(world, 0);
             loop.Enqueue(SimCommands.Divide(0));
@@ -242,12 +247,21 @@ namespace AdaptOrDeity.Game.Session.Tests
                 Assert.That(json[i].GetProperty("default_enabled").GetBoolean(), Is.EqualTo(f.DefaultEnabled));
                 Assert.That(json[i].TryGetProperty("cost", out var cost) ? cost.GetInt32() : 0, Is.EqualTo(f.Cost), f.Id);
                 Assert.That(f.Explanation, Is.EqualTo(json[i].GetProperty("explanation").GetString()), f.Id);
+                Assert.That(f.Requires, Is.EqualTo(Strings(json[i], "requires")), f.Id + " requires");
+                Assert.That(f.Excludes, Is.EqualTo(Strings(json[i], "excludes")), f.Id + " excludes");
+                Assert.That(json[i].TryGetProperty("requires_swallowed", out var n) ? n.GetInt32() : 0, Is.EqualTo(f.RequiresSwallowed),
+                    f.Id + " requires_swallowed");
+                foreach (var other in f.Excludes)
+                    Assert.That(GameFeatures.All[GameFeatures.IndexOf(other)].Excludes, Does.Contain(f.Id), $"{f.Id} and {other} exclude each other");
             }
             foreach (var level in doc.RootElement.GetProperty("levels").EnumerateArray())
                 foreach (var id in level.GetProperty("unlocks").EnumerateArray())
                     Assert.That(GameFeatures.All.Single(f => f.Id == id.GetString()).UnlockLevel,
                         Is.EqualTo(level.GetProperty("level").GetInt32()), id.GetString());
         }
+
+        private static string[] Strings(JsonElement e, string name) =>
+            e.TryGetProperty(name, out var a) ? a.EnumerateArray().Select(x => x.GetString()!).ToArray() : new string[0];
 
         [Test]
         public void AtTopSpeedFramesKeepComingInSmallSteps()

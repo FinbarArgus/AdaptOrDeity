@@ -92,8 +92,20 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Rate constant of the free part leaking out of a packet [1/s].</summary>
         public double FreeLeakRate { get; set; }
 
-        /// <summary>Glucose in a fresh packet [mol].</summary>
-        public double PacketAmount { get; set; }
+        /// <summary>
+        /// Glucose equivalents per volume of a packet [mol/m³]: a dead cell's or organic particle's carbon counted as
+        /// glucose (content: cell density × dry share × carbon share / (carbon's molar mass × 6)).
+        /// </summary>
+        public double PacketDensity { get; set; }
+
+        /// <summary>
+        /// Glucose equivalents in a fresh packet [mol]: a sphere of <see cref="PacketRadius"/> at
+        /// <see cref="PacketDensity"/>. Contact with a cell uses the disc of that radius in the plane (the sphere's equator).
+        /// </summary>
+        public double PacketAmount => SphereAmount(PacketRadius);
+
+        /// <summary>Glucose equivalents in a sphere of radius <paramref name="radius"/> at the packet density [mol].</summary>
+        public double SphereAmount(double radius) => PacketDensity * 4.0 / 3.0 * Math.PI * radius * radius * radius;
 
         /// <summary>Glucose a cell touching a packet sees at its membrane while the packet lasts [mol/m³].</summary>
         public double ContactGlucose { get; set; }
@@ -104,7 +116,8 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>The other trace species, relative to the main one.</summary>
         public double PacketTraceMinorShare { get; set; }
 
-        /// <summary>Radius of a fresh packet [m]; a packet's area shrinks in proportion to the glucose eaten.</summary>
+        /// <summary>Radius of a fresh packet [m]; a packet keeps its density as it is eaten, so its volume shrinks in
+        /// proportion to the glucose left.</summary>
         public double PacketRadius { get; set; }
 
         /// <summary>Speed of a creature carrying food [m/s].</summary>
@@ -245,7 +258,7 @@ namespace AdaptOrDeity.Sim.World
                     || Fill(p) < Settings.UsedUpFraction)
                     p.Active = false;
                 else
-                    p.Radius = PacketRadius * Math.Sqrt(Fill(p));   // its area shrinks as it is eaten
+                    p.Radius = PacketRadius * Math.Pow(Fill(p), 1.0 / 3.0);   // its volume shrinks as it is eaten
             }
             // Food arrives at the level's rate, Poisson (exponential intervals), whatever is already in the field: carried by
             // another creature, or lying on the ground and coming into view on the sides the creature moves towards.
@@ -352,6 +365,9 @@ namespace AdaptOrDeity.Sim.World
                     p.LocalY = -sin * dx + cos * dy;
                 }
         }
+
+        /// <summary>Takes packet <paramref name="p"/> out of the field (a cell engulfed it): its content leaves with it.</summary>
+        public void Remove(FoodPacket p) => p.Active = false;
 
         /// <summary>Whether a cell at (x, y) of radius r touches any packet.</summary>
         public bool TouchesAny(double x, double y, double r)

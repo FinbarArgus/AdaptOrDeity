@@ -29,6 +29,8 @@ namespace AdaptOrDeity.Game.Session
         SetFlagellumAngle = 12,
         Inspect = 13,
         BuyFeature = 14,
+        DevGrantPoints = 15,
+        DevSpawnPrey = 16,
     }
 
     /// <summary>
@@ -113,6 +115,12 @@ namespace AdaptOrDeity.Game.Session
                 case SimCommandKind.Inspect:
                     loop.InspectedCell = A;
                     return;
+                case SimCommandKind.DevGrantPoints:
+                    Fermenter(loop, "this world has no skill points").DevGrantPoints(A);
+                    return;
+                case SimCommandKind.DevSpawnPrey:
+                    Fermenter(loop, "this world has no prey").DevSpawnPrey();
+                    return;
                 default:
                     throw new ArgumentException($"unknown command {(int)Kind}");
             }
@@ -190,6 +198,12 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>The cell whose details frames carry (-1: none).</summary>
         public static SimCommand Inspect(int cell) => new SimCommand(SimCommandKind.Inspect, cell);
+
+        /// <summary>Development aid: adds skill points without food (not for play).</summary>
+        public static SimCommand DevGrantPoints(int points) => new SimCommand(SimCommandKind.DevGrantPoints, points);
+
+        /// <summary>Development aid: a prey cell swimming straight at the creature (not for play).</summary>
+        public static SimCommand DevSpawnPrey() => new SimCommand(SimCommandKind.DevSpawnPrey);
     }
 
     /// <summary>Something that happened in the simulation, delivered to the front end in order.</summary>

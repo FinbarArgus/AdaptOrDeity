@@ -6,9 +6,11 @@ using UnityEngine;
 namespace AdaptOrDeity.UI
 {
     /// <summary>
-    /// The skill window: features with a cost (<see cref="FeatureInfo.Cost"/>) bought with the skill points that food
-    /// eaten earns. It opens when the level goes up and there is something new to buy, and from the Skills button.
-    /// Each entry shows its short effect; its full explanation opens under it.
+    /// The skill window: features with a cost (<see cref="FeatureInfo.Cost"/>) bought with skill points, earned by food
+    /// eaten and by daughters that leave the creature (reproduction). It opens when the level goes up and there is something
+    /// new to buy, and from the Skills button. Each entry shows its short effect, what it still needs (a feature, prey
+    /// swallowed) and which path it closes; buying a feature that closes another asks first. Its full explanation opens
+    /// under it.
     /// </summary>
     public sealed class SkillTree : MonoBehaviour
     {
@@ -37,14 +39,58 @@ namespace AdaptOrDeity.UI
                 _instance._open = !_instance._open;
         }
 
-        /// <summary>Features of the current level or earlier that can still be bought.</summary>
+        /// <summary>Features of the current level or earlier that can still be bought (not closed by a choice made).</summary>
         public static int ForSale(SessionSchema schema, SnapshotFrame frame)
         {
             int n = 0;
             for (int f = 0; f < schema.Features.Count; f++)
-                if (schema.Features[f].Cost > 0 && schema.Features[f].UnlockLevel <= frame.Level && !frame.FeatureUnlocked[f])
+                if (schema.Features[f].Cost > 0 && schema.Features[f].UnlockLevel <= frame.Level && !frame.FeatureUnlocked[f]
+                    && ClosedBy(schema, frame, f) == null)
                     n++;
             return n;
+        }
+
+        private static int Index(SessionSchema schema, string id)
+        {
+            for (int f = 0; f < schema.Features.Count; f++)
+                if (schema.Features[f].Id == id)
+                    return f;
+            return -1;
+        }
+
+        /// <summary>The name of the feature whose choice closed feature <paramref name="f"/>, or null.</summary>
+        private static string ClosedBy(SessionSchema schema, SnapshotFrame frame, int f)
+        {
+            foreach (var other in schema.Features[f].Excludes)
+            {
+                int o = Index(schema, other);
+                if (o >= 0 && frame.FeatureUnlocked[o])
+                    return schema.Features[o].Name;
+            }
+            return null;
+        }
+
+        /// <summary>The first required feature not yet unlocked, or null.</summary>
+        private static string Missing(SessionSchema schema, SnapshotFrame frame, int f)
+        {
+            foreach (var other in schema.Features[f].Requires)
+            {
+                int o = Index(schema, other);
+                if (o >= 0 && !frame.FeatureUnlocked[o])
+                    return schema.Features[o].Name;
+            }
+            return null;
+        }
+
+        private static string Names(SessionSchema schema, System.Collections.Generic.IReadOnlyList<string> ids)
+        {
+            var names = new List<string>();
+            foreach (var id in ids)
+            {
+                int o = Index(schema, id);
+                names.Add(o >= 0 ? schema.Features[o].Name : id);
+            }
+            return string.Join(", ", names);
         }
 
         private void OnGUI()
@@ -64,11 +110,21 @@ namespace AdaptOrDeity.UI
             GUILayout.Window(0x5C111, rect, id => Draw(bridge, frame), "Evolve");
         }
 
+        private int _confirm = -1;   // an exclusive feature waiting for the player to confirm
+
         private void Draw(SessionBridge bridge, SnapshotFrame frame)
         {
-            var features = bridge.Schema.Features;
-            GUILayout.Label($"Skill points: {frame.SkillPoints}", _title);
-            GUILayout.Label($"Earned by eating: {frame.FoodEaten * 6.02214076e23:G3} glucose molecules from food so far.", _wrap);
+            var schema = bridge.Schema;
+            var features = schema.Features;
+            GUILayout.Label($"Skill points: {frame.SkillPoints} to spend", _title);
+            GUILayout.Label($"Earned so far: food {frame.FoodPoints}, reproduction {frame.ReproductionPoints} " +
+                            $"({frame.Offspring} daughters left on their own). Eaten: {frame.FoodEaten * 6.02214076e23:G3} glucose " +
+                            $"molecules. Prey swallowed: {frame.Swallowed}.", _wrap);
+            if (_confirm >= 0)
+            {
+                DrawConfirm(bridge, frame, _confirm);
+                return;
+            }
             _scroll = GUILayout.BeginScrollView(_scroll);
             for (int f = 0; f < features.Count; f++)
             {
@@ -76,23 +132,40 @@ namespace AdaptOrDeity.UI
                 if (info.Cost == 0)
                     continue;
                 bool reached = info.UnlockLevel <= frame.Level, owned = frame.FeatureUnlocked[f];
+                string closedBy = owned ? null : ClosedBy(schema, frame, f), missing = owned ? null : Missing(schema, frame, f);
                 GUILayout.BeginVertical(GUI.skin.box);
                 GUILayout.BeginHorizontal();
                 GUILayout.Label(info.Name, _title);
                 GUILayout.FlexibleSpace();
                 if (owned)
                     GUILayout.Label("Evolved");
+                else if (closedBy != null)
+                    GUILayout.Label($"Closed: you chose {closedBy}");
                 else if (!reached)
                     GUILayout.Label($"Level {info.UnlockLevel}");
+                else if (missing != null)
+                    GUILayout.Label($"Needs {missing}");
+                else if (frame.Swallowed < info.RequiresSwallowed)
+                    GUILayout.Label($"Swallowed {frame.Swallowed}/{info.RequiresSwallowed}");
                 else
                 {
                     GUI.enabled = frame.SkillPoints >= info.Cost;
                     if (GUILayout.Button($"Evolve ({info.Cost} points)", GUILayout.Width(150)))
-                        bridge.Send(SimCommands.BuyFeature(f));
+                    {
+                        if (info.Excludes.Count > 0)
+                            _confirm = f;   // a choice that closes another path: ask first
+                        else
+                            bridge.Send(SimCommands.BuyFeature(f));
+                    }
                     GUI.enabled = true;
                 }
                 GUILayout.EndHorizontal();
                 GUILayout.Label(info.Effect, _wrap);
+                if (info.RequiresSwallowed > 0 && !owned)
+                    GUILayout.Label($"Needs {info.RequiresSwallowed} prey cells swallowed: {Mathf.Min(frame.Swallowed, info.RequiresSwallowed)}" +
+                                    $"/{info.RequiresSwallowed} so far.", _wrap);
+                if (info.Excludes.Count > 0 && !owned && closedBy == null)
+                    GUILayout.Label($"Choosing this closes {Names(schema, info.Excludes)} for good.", _wrap);
                 if (info.Explanation.Length > 0)
                 {
                     bool open = _expanded.Contains(f);
@@ -111,6 +184,28 @@ namespace AdaptOrDeity.UI
             GUILayout.EndScrollView();
             if (GUILayout.Button("Close"))
                 _open = false;
+        }
+
+        private void DrawConfirm(SessionBridge bridge, SnapshotFrame frame, int f)
+        {
+            var info = bridge.Schema.Features[f];
+            GUILayout.BeginVertical(GUI.skin.box);
+            GUILayout.Label($"Evolve {info.Name}?", _title);
+            GUILayout.Label($"This closes {Names(bridge.Schema, info.Excludes)} for good: the two are separate paths, and " +
+                            "you cannot take the other one later.", _wrap);
+            GUILayout.BeginHorizontal();
+            GUI.enabled = frame.SkillPoints >= info.Cost;
+            if (GUILayout.Button($"Evolve {info.Name} ({info.Cost} points)"))
+            {
+                bridge.Send(SimCommands.BuyFeature(f));
+                _confirm = -1;
+            }
+            GUI.enabled = true;
+            if (GUILayout.Button("Back"))
+                _confirm = -1;
+            GUILayout.EndHorizontal();
+            GUILayout.EndVertical();
+            GUILayout.FlexibleSpace();
         }
     }
 }

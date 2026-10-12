@@ -83,6 +83,18 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>Skill points not yet spent.</summary>
         int SkillPoints { get; }
 
+        /// <summary>Points earned by eating so far (spent or not).</summary>
+        int FoodPoints { get; }
+
+        /// <summary>Points earned by daughters that left the creature so far (spent or not).</summary>
+        int ReproductionPoints { get; }
+
+        /// <summary>Prey cells the creature has engulfed since the start (some features need a number of them).</summary>
+        int Swallowed { get; }
+
+        /// <summary>Daughters that left the creature (divisions without multicellularity).</summary>
+        int Offspring { get; }
+
         /// <summary>Buys a feature that has a cost (<see cref="FeatureInfo.Cost"/>) once its level is reached.</summary>
         void BuyFeature(int feature);
 
@@ -104,6 +116,9 @@ namespace AdaptOrDeity.Game.Session
     public interface IFoodWorld
     {
         AdaptOrDeity.Sim.World.FoodField Food { get; }
+
+        /// <summary>Prey cells swimming around the creature.</summary>
+        AdaptOrDeity.Sim.World.PreyField Prey { get; }
 
         /// <summary>The creature's body: one rigid body (position, orientation, velocity, spin), its cells and flagella.</summary>
         AdaptOrDeity.Sim.World.CreatureBody Body { get; }

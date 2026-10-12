@@ -21,6 +21,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             var loop = NewLoop(out var world);
             loop.Enqueue(SimCommands.SetLevel(2));
+            Colonies.Multicellular(loop.Enqueue);
             loop.ApplyCommands();
             FinishDaughter(world, 0);
             loop.Enqueue(SimCommands.Divide(0));

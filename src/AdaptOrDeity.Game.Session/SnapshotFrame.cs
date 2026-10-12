@@ -9,8 +9,17 @@ namespace AdaptOrDeity.Game.Session
     public sealed class SnapshotFrame
     {
         public SnapshotFrame(int channelCount, int cellCapacity, int probeCapacity, int probeSamples, int detailCount = 0,
-            int traitCount = 0, int controlCount = 0, int groupCapacity = 0, int featureCount = 0, int packetCapacity = 0)
+            int traitCount = 0, int controlCount = 0, int groupCapacity = 0, int featureCount = 0, int packetCapacity = 0,
+            int preyCapacity = 0)
         {
+            PreyX = new float[preyCapacity];
+            PreyY = new float[preyCapacity];
+            PreyRadius = new float[preyCapacity];
+            PreyHeading = new float[preyCapacity];
+            VacuoleRadius = new float[cellCapacity];
+            VacuoleX = new float[cellCapacity];
+            VacuoleY = new float[cellCapacity];
+            VacuolePrey = new int[cellCapacity];
             CellX = new float[cellCapacity];
             CellY = new float[cellCapacity];
             PacketX = new float[packetCapacity];
@@ -92,6 +101,11 @@ namespace AdaptOrDeity.Game.Session
 
         public int SkillPoints { get; internal set; }
 
+        /// <summary>Points earned so far by eating and by daughters that left (reproduction), spent or not.</summary>
+        public int FoodPoints { get; internal set; }
+
+        public int ReproductionPoints { get; internal set; }
+
         /// <summary>Simulated time left in the current level [s].</summary>
         public double LevelTimeLeft { get; internal set; }
 
@@ -162,6 +176,36 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>True if the packet is carried by another creature; false if it lies on the ground.</summary>
         public bool[] PacketCarried { get; }
+
+        /// <summary>Prey cells around the creature; only the first <see cref="PreyCount"/> are valid. Positions relative to
+        /// the creature and radii [m], ground axes.</summary>
+        public int PreyCount { get; internal set; }
+
+        public float[] PreyX { get; }
+
+        public float[] PreyY { get; }
+
+        public float[] PreyRadius { get; }
+
+        /// <summary>Direction each prey cell swims in [rad], ground axes.</summary>
+        public float[] PreyHeading { get; }
+
+        /// <summary>Prey cells the creature has engulfed since the start.</summary>
+        public int Swallowed { get; internal set; }
+
+        /// <summary>Daughters that left the creature (divisions without multicellularity).</summary>
+        public int Offspring { get; internal set; }
+
+        /// <summary>Per cell: radius of what it has engulfed (its vacuole) [m], 0 for none.</summary>
+        public float[] VacuoleRadius { get; }
+
+        /// <summary>Per cell: where its vacuole sits, from the cell's centre in the body frame [m].</summary>
+        public float[] VacuoleX { get; }
+
+        public float[] VacuoleY { get; }
+
+        /// <summary>Per cell: prey cells in its vacuole (0: only food packets, or none).</summary>
+        public int[] VacuolePrey { get; }
 
         /// <summary>Cells along each side of <see cref="FieldGlucose"/>.</summary>
         public const int FieldRasterSize = 64;

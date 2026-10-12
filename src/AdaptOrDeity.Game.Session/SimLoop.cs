@@ -57,7 +57,8 @@ namespace AdaptOrDeity.Game.Session
                     traces.Add(t.Name);
             Schema = new SessionSchema(world.Overlays, _options.SpeedPresets, inspect?.Details, inspect?.Traits,
                 inspect?.Controls, inspect?.Features, inspect?.InitialCellCapacity ?? world.CellCount, inspect?.MaxGroups ?? 0,
-                traces, food?.Food.HalfSize ?? 0.0, food?.Food.Settings.InitialPacketCapacity ?? 0);
+                traces, food?.Food.HalfSize ?? 0.0, food?.Food.Settings.InitialPacketCapacity ?? 0,
+                food?.Prey.Settings.InitialCapacity ?? 0);
             // Sample on step counts, not accumulated float times, so sampling is exact and deterministic.
             _stepsPerProbeSample = Math.Max(1L, (long)Math.Round(_options.ProbeInterval / world.MacroDt));
         }
@@ -177,11 +178,13 @@ namespace AdaptOrDeity.Game.Session
             new SnapshotFrame(World.Overlays.Count, Capacity(Math.Max(World.CellCount, Schema.InitialCellCapacity)), _options.MaxProbes,
                 _options.ProbeSamples, Schema.Details.Count, Schema.Traits.Count, Schema.Controls.Count, Schema.MaxGroups,
                 Schema.Features.Count, Schema.InitialPacketCapacity == 0 ? 0
-                    : Capacity(Math.Max(PacketsInField, Schema.InitialPacketCapacity)));
+                    : Capacity(Math.Max(PacketsInField, Schema.InitialPacketCapacity)),
+                Schema.InitialPreyCapacity == 0 ? 0 : Capacity(Math.Max(PreyInView, Schema.InitialPreyCapacity)));
 
-        /// <summary>True when <paramref name="frame"/> has no room for the current colony or food (frames grow, see SimHost).</summary>
+        /// <summary>True when <paramref name="frame"/> has no room for the current colony, food or prey (frames grow, see SimHost).</summary>
         public bool Outgrown(SnapshotFrame frame) =>
-            frame.CellX.Length < World.CellCount || (Schema.InitialPacketCapacity > 0 && frame.PacketX.Length < PacketsInField);
+            frame.CellX.Length < World.CellCount || (Schema.InitialPacketCapacity > 0 && frame.PacketX.Length < PacketsInField)
+            || (Schema.InitialPreyCapacity > 0 && frame.PreyX.Length < PreyInView);
 
         // Glucose in the water around the creature on the frame's raster (extent 0 without an environment field).
         private static void WriteField(FermenterWorld world, SnapshotFrame frame)
@@ -203,6 +206,8 @@ namespace AdaptOrDeity.Game.Session
         }
 
         private int PacketsInField => World is IFoodWorld f ? f.Food.ActiveCount : 0;
+
+        private int PreyInView => World is IFoodWorld f ? f.Prey.ActiveCount : 0;
 
         private static int Capacity(int cells)
         {
@@ -243,6 +248,10 @@ namespace AdaptOrDeity.Game.Session
                 frame.Level = inspect.Level;
                 frame.FoodEaten = inspect.FoodEaten;
                 frame.SkillPoints = inspect.SkillPoints;
+                frame.Swallowed = inspect.Swallowed;
+                frame.Offspring = inspect.Offspring;
+                frame.FoodPoints = inspect.FoodPoints;
+                frame.ReproductionPoints = inspect.ReproductionPoints;
                 frame.LevelTimeLeft = inspect.LevelTimeLeft;
                 for (int f = 0; f < frame.FeatureEnabled.Length; f++)
                 {
@@ -281,6 +290,20 @@ namespace AdaptOrDeity.Game.Session
                     n++;
                 }
                 frame.PacketCount = n;
+                n = 0;
+                var preyList = foodWorld.Prey.Prey;
+                for (int k = 0; k < preyList.Count; k++)
+                {
+                    var p = preyList[k];
+                    if (!p.Active || n >= frame.PreyX.Length)
+                        continue;
+                    frame.PreyX[n] = (float)(p.X - frame.CreatureX);
+                    frame.PreyY[n] = (float)(p.Y - frame.CreatureY);
+                    frame.PreyRadius[n] = (float)p.Radius;
+                    frame.PreyHeading[n] = (float)p.Heading;
+                    n++;
+                }
+                frame.PreyCount = n;
             }
             frame.ProbeCount = _probes.Count;
             for (int p = 0; p < frame.Probes.Length; p++)
@@ -338,6 +361,11 @@ namespace AdaptOrDeity.Game.Session
                     frame.CellSurface[k] = (float)(cell.SurfaceArea * 1e-12);   // µm² -> m²
                     for (int t = 0; t < frame.TraitArea.Length && t < cell.Traits.Count; t++)
                         frame.TraitArea[t][k] = (float)(cell.TraitShare(t) * cell.TransporterAreaMax * 1e-12);   // µm² -> m²
+                    var vacuole = fw.VacuoleOf(k);
+                    frame.VacuoleRadius[k] = vacuole != null ? (float)fw.VacuoleRadius(vacuole.Glucose) : 0f;
+                    frame.VacuoleX[k] = vacuole != null ? (float)vacuole.LocalX : 0f;
+                    frame.VacuoleY[k] = vacuole != null ? (float)vacuole.LocalY : 0f;
+                    frame.VacuolePrey[k] = vacuole?.Prey ?? 0;
                 }
         }
 
