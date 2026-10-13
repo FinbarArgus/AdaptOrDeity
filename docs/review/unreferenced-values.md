@@ -99,6 +99,21 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 - Maintenance regulation (2026-10-13): protein synthesis, RNA and lipid upkeep, repair and the maintenance ATPase each
   take the regulation switches (off by default). Cutting the upkeep or the maintenance ATPase has no modelled downside
   (the mRNA, ribosome and lipid counts are fixed; the maintenance ATPase is everything not itemised): a design question.
+- Regulated proteolysis and amino-acid recycling (homogenisation-checks 4e84568, 2026-10-13):
+  - `t_half_proteolysis` 5 min (tau_prot = 433 s) at 20 C: placeholder at the fast end of the measured range. At 37 C
+    sigma32 lasts under 1 min (Herman 1995) and RpoS ~2 min (Zhou & Gottesman 1998); ssrA-tagged LacI lasts 8 min at 37 C
+    and 38 min at 25 C (Purcell 2012). At 20 C that is ~3 min to over an hour. It applies to every protein the cell lowers,
+    as if each carried a degron; bacteria mostly lower transporters by dilution in growth.
+  - `proteolysis_capacity` 5%/h of the resting cell's protein (Q_prot_max 8.1e4 amino acids/s): Willetts 1967's bulk
+    breakdown in starving cells, taken as the capacity of regulated proteolysis (placeholder). It makes halving the
+    glycolytic enzymes take about an hour.
+  - `aa_reuse_K` 1 mM: recycled amino acids at which half of a new protein's amino acids come from them. Estimated from
+    feedback-inhibition constants (~0.1 mM each, from memory) over 20 amino acids; unreferenced.
+  - `tau_aa_catabolism` 30 min: unreferenced.
+  - `y_aa_catabolism` 0.5 ATP per amino acid catabolised: unreferenced. Arginine deiminase gives 1 ATP per arginine, and
+    serine, threonine and alanine ~1 through acetate; most others give none without respiration (from memory).
+  - `c_deg` 1 ATP per amino acid is now cited (Kenniston 2003: ~1 ATP per residue translocated by ClpXP), but the
+    unfolding cost (10 to over 500 ATP per substrate) is not counted separately.
 
 ## Level 4: extracellular space (upstream homogenisation-checks a12d84a; copies in content/upstream while that branch is local)
 

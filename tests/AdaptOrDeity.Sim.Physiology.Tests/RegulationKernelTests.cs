@@ -91,8 +91,9 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             }
             Assert.That(cell.Atp, Is.LessThan(4.8), "ATP has fallen below half its resting level");
             Assert.That(cell.RegulationFactor(atpase), Is.LessThan(0.5));
-            Assert.That(cell.TraitValue(atpase), Is.GreaterThan(0.99),
-                "the H+-ATPase copies fall only as they are degraded (about 1% an hour)");
+            Assert.That(cell.TraitValue(atpase), Is.LessThan(0.95),
+                "the H+-ATPase copies above the falling goal are removed by proteolysis within minutes");
+            Assert.That(cell.RecycledAminoAcids, Is.GreaterThan(1e6), "their amino acids go to the recycled pool");
         }
 
         [Test]
@@ -100,10 +101,11 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         {
             // Half the resting medium glucose (0.05 mM) for an hour, then full food (0.1 mM) for an hour. Without
             // regulation ATP runs out and stays out (hexokinase needs ATP to restart glycolysis), and regulating the pumps,
-            // exchangers, flagellum and hydrolase by ATP does not help (their copies barely fall in an hour). With the
-            // maintenance regulated by ATP (protein synthesis, RNA and lipid upkeep, repair, the maintenance ATPase), ATP
-            // holds above 4 mM; when food returns the cell rebuilds the protein it lost while synthesis was cut, so ATP
-            // rises slowly while the membrane recovers.
+            // exchangers, flagellum and hydrolase by ATP does not help: their copies are removed within minutes (the
+            // H+-ATPase to about half), the membrane depolarises and ATP still runs out. With the maintenance regulated by
+            // ATP (protein synthesis, RNA and lipid upkeep, repair, the maintenance ATPase), ATP holds above 4 mM; when
+            // food returns the cell rebuilds the protein it lost while synthesis was cut, mostly from the recycled amino
+            // acids, and ATP returns towards rest.
             string[] pumps = { "H_ATPase_expression", "NhaA_expression", "KefC_expression", "Trk_expression",
                 "NCX_expression", "flagella", "Hydrolase_expression" };
             var plain = NewCell();
@@ -128,6 +130,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
                                   $"{maintained.Atp:G3} maintenance regulated (lowest {minAtp:G3})");
             Assert.That(plain.Atp, Is.LessThan(1e-3));
             Assert.That(pumped.Atp, Is.LessThan(1e-3));
+            Assert.That(pumped.TraitValue(Trait(pumped, "H_ATPase_expression")), Is.LessThan(0.6));
             Assert.That(minAtp, Is.GreaterThan(4.0));
             foreach (var c in cells)
                 c.MembraneGlucose = 0.1;
@@ -137,7 +140,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
                                   $"V {maintained.State("membrane__V"):F1} mV");
             Assert.That(plain.Atp, Is.LessThan(1e-3), "the trap: food is back but glycolysis cannot restart");
             Assert.That(pumped.Atp, Is.LessThan(1e-3));
-            Assert.That(maintained.Atp, Is.GreaterThan(famineAtp));
+            Assert.That(maintained.Atp, Is.GreaterThan(9.0), "back near the resting 9.6 mM within the hour");
             Assert.That(maintained.State("membrane__V"), Is.LessThan(-100.0));
         }
     }

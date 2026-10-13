@@ -15,14 +15,16 @@ species' drop lowers it; the function is hardcoded for now, experts will choose 
   switches are 0 by default, so the cell is unchanged until the player turns one on.
 - **Protein turnover is realistic** (2026-10-13): a protein is degraded at k_deg about 1%/h and replaced up to its target;
   it rises towards a higher target with its mRNA's mean lifetime (~7 min) within the ribosomes' capacity (~9x the
-  resting turnover at 20 C, throttled as ATP falls). So a lowered target, by the player or by regulation, takes days to
-  empty a pool (an e-fold in ~100 h): regulating a protein's target stops it being made but saves little in a famine of
-  minutes. Regulating the maintenance acts at once.
+  resting turnover at 20 C, throttled as ATP falls). Copies above a lowered target, set by the player or by regulation,
+  are removed by ATP-dependent proteolysis with a 5 min half-life, within the proteases' capacity (5%/h of the cell's
+  protein). Their amino acids go to a recycled pool that later building draws on first. In a famine the proteolysis
+  stops once ATP is spent. Regulating the maintenance acts at once.
 - **Game**: feature `regulation` (level 1, free, optional, on by default once unlocked), unlocked after the first gap
   without food (designer, 2026-10-13: "Unlock after the first gap of not contacting food"): the first time the creature
   goes `requires_food_gap_s` (content/timeline.json) without a living cell touching a packet, holding one, or with food
   in its vacuole (`TimeWithoutFood`, `FoodGapMet`, FermenterWorld.Regulation.cs). The gap counts from the start of play;
-  its value is set against the famine reserve (docs/plans/scoring.md). Each group keeps a switch per regulated target (each trait, growth, then the maintenance: `FermenterCell.MaintenanceRegulation`)
+  its value is set against the famine reserve (docs/plans/scoring.md). Each
+  group keeps a switch per regulated target (each trait, growth, then the maintenance: `FermenterCell.MaintenanceRegulation`)
   and species; ApplyControls pushes them to the group's cells as `reg_on_<species><suffix>_mod_<submodule>` (all 0 while
   the feature is locked or off). Daughters and released organisms copy their parent's kernel inputs, switches included.
   Command `SetRegulation(group, target, species, on)`; frames carry `Regulation[RegulationRow(target, species)][group]`;

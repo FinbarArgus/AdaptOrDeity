@@ -94,9 +94,12 @@ namespace AdaptOrDeity.Game.Session.Tests
             Run(world, 600.0);
             Assert.That(d.Time, Is.EqualTo(parent.Time), "it integrated from its release on");
             Assert.That(d.State("cytosol__C_ATP"), Is.Not.EqualTo(atp0), "its ATP moved on from release");
+            // (the recycled amino acids, a count per cell that is 0 at rest up to round-off, to within one amino acid)
+            int aminoAcids = d.Batch.Descriptor.StateIndex("protein__N_aa");
             for (int s = 0; s < d.Batch.States.Length; s++)
                 Assert.That(d.Batch.States[s][0], Is.EqualTo(parent.Batch.States[s][0])
-                    .Within(1e-5 * Math.Abs(parent.Batch.States[s][0]) + 1e-15), $"state {s} after 10 min");
+                    .Within(1e-5 * Math.Abs(parent.Batch.States[s][0]) + (s == aminoAcids ? 1.0 : 1e-15)),
+                    $"state {s} after 10 min");
             Assert.That(world.ReproductionPoints, Is.EqualTo((int)Math.Floor(perOffspring)), "still one daughter's points");
         }
 

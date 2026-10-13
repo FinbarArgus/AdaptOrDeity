@@ -216,13 +216,20 @@ namespace AdaptOrDeity.Game.Session
                 c => c.Budget().AtpGlycolysis);
             Add(new DetailInfo("atp_from_glycogen", made, "From glycogen (3 per glucose)", "mol/s", "ATP/s", avogadro),
                 c => c.Budget().AtpFromGlycogen);
+            Add(new DetailInfo("atp_recycled_protein", made, "Recycled protein", "mol/s", "ATP/s", avogadro,
+                "amino acids of removed protein: reused to build new copies (saving about 23 ATP each against making them " +
+                "from glucose) or broken down for a little ATP"), c => c.Budget().AtpRecycledProtein);
             Add(new DetailInfo("atp_pumps", used, "H⁺-ATPase pumping", "mol/s", "ATP/s", avogadro,
                 "powers the proton gradient that drives NhaA, Trk and KefC"), c => c.Budget().AtpPumps);
             Add(new DetailInfo("atp_protein_turnover", used, "Protein turnover", "mol/s", "ATP/s", avogadro,
                 "remaking degraded protein at the ribosomes (1%/h), all proteins including the unmodelled ones"),
                 c => c.Budget().AtpProteinTurnover);
             Add(new DetailInfo("atp_protein_build", used, "Building new protein", "mol/s", "ATP/s", avogadro,
-                "while expression rises"), c => c.Budget().AtpProteinBuild);
+                "while expression rises, at the full cost of making the amino acids from glucose (recycled ones pay " +
+                "back under ATP made)"), c => c.Budget().AtpProteinBuild);
+            Add(new DetailInfo("atp_protein_breakdown", used, "Protein breakdown", "mol/s", "ATP/s", avogadro,
+                "proteases removing copies above a lowered target, about 1 ATP per amino acid"),
+                c => c.Budget().AtpProteinBreakdown);
             Add(new DetailInfo("atp_rna", used, "RNA turnover and ribosomes", "mol/s", "ATP/s", avogadro,
                 "mRNA lasts about 5 min; ribosome RNA upkeep"), c => c.Budget().AtpRna);
             Add(new DetailInfo("atp_lipids", used, "Membrane lipids", "mol/s", "ATP/s", avogadro,
@@ -272,6 +279,9 @@ namespace AdaptOrDeity.Game.Session
             Add(new DetailInfo("k", state, "K⁺", "mol/m³", "mM", 1.0), c => c.State("Na_K__Ki"));
             Add(new DetailInfo("ca", state, "Ca²⁺ (free)", "mol/m³", "µM", 1e3), c => c.State("Ca__Cai"));
             Add(new DetailInfo("damage", state, "Damage", "", "% of lethal", 100.0), c => c.Damage);
+            Add(new DetailInfo("recycled_amino_acids", state, "Recycled amino acids", "", "amino acids", 1.0,
+                "freed by removing protein above a lowered target; built into new protein first, the rest slowly broken " +
+                "down"), c => c.RecycledAminoAcids);
             _details = details.ToArray();
             _read = read.ToArray();
             _readCell = readCell.ToArray();

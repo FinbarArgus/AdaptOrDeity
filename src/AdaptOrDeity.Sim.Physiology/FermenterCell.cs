@@ -19,8 +19,16 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Turning over (degrading and remaking) the cell's proteins.</summary>
         public double AtpProteinTurnover;
 
-        /// <summary>Building new protein copies while expression rises.</summary>
+        /// <summary>Building new protein copies while expression rises, at the full cost of making their amino acids
+        /// from glucose (what recycled amino acids save is under <see cref="AtpRecycledProtein"/>).</summary>
         public double AtpProteinBuild;
+
+        /// <summary>Regulated proteolysis: removing the copies above a lowered target.</summary>
+        public double AtpProteinBreakdown;
+
+        /// <summary>ATP returned by recycled protein: the amino acids of removed copies saved in building new ones, plus
+        /// the little ATP made by catabolising those not reused.</summary>
+        public double AtpRecycledProtein;
 
         /// <summary>mRNA turnover (minutes) and ribosome upkeep.</summary>
         public double AtpRna;
@@ -49,9 +57,9 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Heat released [W].</summary>
         public double Heat;
 
-        public double AtpProduced => AtpGlycolysis + AtpFromGlycogen;
+        public double AtpProduced => AtpGlycolysis + AtpFromGlycogen + AtpRecycledProtein;
 
-        public double AtpConsumed => AtpPumps + AtpProteinTurnover + AtpProteinBuild + AtpRna + AtpLipids + AtpRepair
+        public double AtpConsumed => AtpPumps + AtpProteinTurnover + AtpProteinBuild + AtpProteinBreakdown + AtpRna + AtpLipids + AtpRepair
                                      + AtpGrowth + AtpStorage + AtpMatrix + AtpCarriers + AtpOtherMaintenance;
     }
 
@@ -78,9 +86,9 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly int[] _eCarrierGlucose, _aCarrierUptake;   // Glf, PTS, ABC, GalP: medium glucose input, J_glc
         private readonly int _aHydrolysisMax, _eHydrolysisKm, _aPtsCost, _aAbcCost;
         private readonly int _growthLevel, _storeAlloc, _repairLevel, _matrixAlloc, _jRef;
-        private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aRna, _aRibo, _aLipid, _aRepair;
+        private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aSaved, _aBreakdown, _aRecycled, _aRna, _aRibo, _aLipid, _aRepair;
         private readonly int _aGrowthUsed, _aHeat, _aVol, _aSurface, _aAreaMax, _aDaughter, _aProgress, _aGlycProgress;
-        private readonly int _aGlycAtp, _aThrust, _aFlagPower, _eMotor;
+        private readonly int _aGlycAtp, _aThrust, _aFlagPower, _eMotor, _sAminoAcids;
         private readonly int _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
         private readonly int _aMatrix, _aAtpMatrix;
         private readonly int _sDamage, _sGrowth, _sGlycogen, _sAtp;
@@ -204,6 +212,10 @@ namespace AdaptOrDeity.Sim.Physiology
             _aPump = Alg("i_H_ATPase__v_ATP_H");
             _aKeep = Alg("protein__J_keep_total");
             _aBuild = Alg("protein__J_build_total");
+            _aSaved = Alg("protein__J_saved_total");
+            _aBreakdown = Alg("protein__J_prot_total");
+            _aRecycled = Alg("protein__J_recycled");
+            _sAminoAcids = St("protein__N_aa");
             _aRna = Alg("bio__J_RNA");
             _aRibo = Alg("bio__J_ribo");
             _aLipid = Alg("bio__J_lipid");
@@ -475,6 +487,10 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Glycogen [mol/m³ of glucose units].</summary>
         public double Glycogen => Batch.States[_sGlycogen][0];
 
+        /// <summary>Recycled amino acids: those freed by removing protein copies above a lowered target and not yet reused
+        /// or catabolised [amino acids per cell].</summary>
+        public double RecycledAminoAcids => Batch.States[_sAminoAcids][0];
+
         /// <summary>ATP the glycogen store would give [mol].</summary>
         public double GlycogenAtp => A(_aGlycAtp);
 
@@ -684,7 +700,7 @@ namespace AdaptOrDeity.Sim.Physiology
 
         /// <summary>
         /// Divides: the daughter is built (glycogen finishes it if needed), both halves keep the concentrations, traits and
-        /// controls, and the growth investment restarts. Returns the daughter, or null if the cell cannot divide yet.
+        /// controls, share the recycled amino acids, and the growth investment restarts. Returns the daughter, or null if the cell cannot divide yet.
         /// </summary>
         public FermenterCell? Divide()
         {
@@ -694,6 +710,7 @@ namespace AdaptOrDeity.Sim.Physiology
             if (shortfall > 0.0)
                 Batch.States[_sGlycogen][0] = Math.Max(0.0, Glycogen * (1.0 - shortfall / GlycogenAtp));
             Batch.States[_sGrowth][0] = 0.0;
+            Batch.States[_sAminoAcids][0] *= 0.5;   // a count per cell, not a concentration: shared between the halves
             Recompute();
             return new FermenterCell(_module, Traits, Instance, this);
         }
@@ -709,7 +726,9 @@ namespace AdaptOrDeity.Sim.Physiology
                 AtpFromGlycogen = a[_aMob][0],
                 AtpPumps = a[_aPump][0],
                 AtpProteinTurnover = a[_aKeep][0],
-                AtpProteinBuild = a[_aBuild][0],
+                AtpProteinBuild = a[_aBuild][0] + a[_aSaved][0],
+                AtpProteinBreakdown = a[_aBreakdown][0],
+                AtpRecycledProtein = a[_aRecycled][0],
                 AtpRna = a[_aRna][0] + a[_aRibo][0],
                 AtpLipids = a[_aLipid][0],
                 AtpRepair = a[_aRepair][0],

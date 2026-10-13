@@ -308,7 +308,8 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
         public void EveryTraitIsAPoolOfTheKernel()
         {
             // content/traits/fermenter.json names each trait's protein_pool; the kernel must have it, and a cell with a new
-            // target lower than its copies loses them as they are degraded (about 1% an hour).
+            // target lower than its copies has the extra copies removed by proteolysis within minutes (tau_prot ~7 min, on
+            // top of turnover at about 1% an hour), their amino acids going to the recycled pool.
             var cell = NewCell();
             for (int i = 0; i < cell.Traits.Count; i++)
             {
@@ -332,11 +333,17 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             cell.RelativeTolerance = 1e-5;   // this checks the model's time constant, not the game's 1% integration
             int k = cell.Traits.ToList().FindIndex(t => t.Id == "KefC_expression");
             cell.SetTrait(k, 0.5);
-            double kDeg = cell.External("k_deg_mod_pool_KefC");
+            double kDeg = cell.External("k_deg_mod_pool_KefC"), tauProt = cell.External("tau_prot_mod_pool_KefC");
             Assert.That(kDeg, Is.EqualTo(0.01 / 3600.0).Within(1e-12 * kDeg), "about 1% of the protein degraded per hour");
-            Run(cell, 3600.0);
-            Assert.That(cell.TraitValue(k), Is.EqualTo(0.5 + 0.5 * Math.Exp(-kDeg * 3600.0)).Within(1e-4),
-                "above its target a protein falls only as it is degraded, not replaced");
+            Assert.That(tauProt, Is.EqualTo(300.0 / Math.Log(2.0)).Within(1e-9 * tauProt), "a 5 min half-life");
+            Run(cell, 600.0);
+            // ATP barely moves, so proteolysis runs at full speed (min(f_ATP, 1) within 1e-3 of 1)
+            Assert.That(cell.TraitValue(k), Is.EqualTo(0.5 + 0.5 * Math.Exp(-(1.0 / tauProt + kDeg) * 600.0)).Within(1e-3),
+                "above its target a protein is removed by proteolysis within minutes");
+            double removed = 0.5 * cell.External("n_0_mod_pool_KefC") * cell.External("L_mod_pool_KefC")
+                             * (1.0 - Math.Exp(-(1.0 / tauProt + kDeg) * 600.0));
+            Assert.That(cell.RecycledAminoAcids, Is.GreaterThan(0.8 * removed).And.LessThanOrEqualTo(removed),
+                "their amino acids are recycled (some catabolised, with a 30 min time constant)");
         }
 
         [Test]

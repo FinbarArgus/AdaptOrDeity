@@ -77,6 +77,22 @@ no new features until:
 | New cells | Start at their CellType's baseline steady state. |
 | UX | Oxygen Not Included style: hotkeyed overlay tabs, legends, hover tooltips, category build menu, speed controls, warnings, level report; live plots on click; flux arrows; educational parameter inspector; stylised 2D art; the evolutionary time bar on top. |
 
+### Optimising a group with libcuflynx, for evolution points (designer, 2026-10-13; not started)
+The player can spend skill (evolution) points to have a cell group's settings optimised instead of tuning sliders by
+hand: the group's module array (as exported now by `ToModuleArray` / the headless `model` command) goes to libcuflynx's
+parameter identification (the optimisers circulatory_autogen already runs for calibration), which searches the
+group's player-controllable values (expression shares and counts, energy controls, regulation switches; within the
+sliders' bounds and the membrane ceiling) for an objective the player picks (e.g. survive a famine, most ATP to growth,
+least damage) under a protocol (a recorded or chosen food/environment trace). The best set comes back as the group's
+targets, which then take effect at the normal expression rates. Design points to settle:
+- Cost: points per optimisation, scaling with the number of values searched and the protocol length (a cheap local
+  refinement vs a costly global search), so it competes with buying features.
+- Where it runs: off the game thread (a worker or a separate process with libcuflynx's Python/C solvers), with a
+  progress bar and cancel; deterministic for a given seed; results checked in the game's own solver before applying.
+- Honesty: show what was searched, the objective's value before and after, and that evolution found it (framed as
+  selection over generations, not design).
+- Ties in with the scripted reference players (docs/plans/scoring.md), whose "optimised" strategy is the same search.
+
 ### Organelles visible in the cell (designer, 2026-10-13; not started)
 Once organelles are in the cell model (mitochondria first, from the level-2 branch; later others such as a nucleus,
 vacuoles beyond today's food vacuole, and a cytoskeleton), the player sees them inside each cell in Unity: drawn
@@ -556,13 +572,26 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 - **2026-10-13** Realistic protein turnover and maintenance regulation (designer; upstream homogenisation-checks,
   docs/plans/regulation.md):
   - Proteins are degraded at ~1%/h and replaced up to their target; they rise with their mRNA's mean lifetime (~7 min)
-    within the ribosomes' capacity (~9x the resting turnover at 20 C), so sliders take minutes to hours to act and a
-    lowered target empties a pool over days.
+    within the ribosomes' capacity (~9x the resting turnover at 20 C), so sliders take minutes to hours to act (a lowered
+    target is removed by proteolysis within minutes: the next entry).
   - Regulation is normalised: f = 1 exactly at and above the resting level, so switching a species on has no effect at
     rest.
   - The maintenance (protein synthesis, RNA and lipid upkeep, repair, the maintenance ATPase) takes regulation switches of
     its own, off by default, offered as a "Maintenance" block with cogs; starving bacteria cut maintenance far below its
     resting value (Hoehler & Jorgensen 2013). Levels are recalibrated around it in a later step.
+- **2026-10-13** Expression changes act within minutes and lowering recovers the protein's amino acids (designer;
+  upstream homogenisation-checks 4e84568):
+  - Copies above a lowered target (set by the player or by regulation) are removed by regulated, ATP-dependent
+    proteolysis with a 5 min half-life, at 1 ATP per amino acid, within the proteases' capacity (5%/h of the cell's
+    protein, so the big pools, the proteome and the glycolytic enzymes, take about an hour). Natural turnover stays at
+    ~1%/h, and holding an amount still costs its upkeep each second.
+  - The amino acids go to a recycled pool. New copies are built from it first, saving ~23.5 ATP per amino acid against
+    making them from glucose; the 4 ATP per peptide bond are paid again. What is not reused is broken down over ~30 min
+    for 0.5 ATP each. The cell panel shows "Protein breakdown" under ATP used and "Recycled protein" under ATP made.
+  - The literature differs from the request: bacteria lower most transporters by dilution in growth, and their fast
+    regulation is activity switching (seconds, e.g. inducer exclusion). Fast proteolysis is reserved for tagged
+    regulators. A fermenter gets little ATP from breaking protein down, so the energy comes back as cheaper rebuilding.
+    Activity switching is not modelled.
 
 - **2026-10-13** Survival, achievements and memory (designer requests; docs/plans/scoring.md, free-daughters.md,
   environment-field.md, regulation.md):

@@ -26,6 +26,9 @@ namespace AdaptOrDeity.Sim.Modules.Tests
             }
         }
 
+        /// <summary>States counted in molecules per cell (the recycled amino acids, 0 at rest up to round-off).</summary>
+        private static readonly HashSet<string> CountedPerCell = new HashSet<string> { "protein__N_aa" };
+
         [TestCaseSource(nameof(GoldenCases))]
         public void MatchesGoldenTrace(NativeModule module, string instance, string goldenPath)
         {
@@ -61,6 +64,9 @@ namespace AdaptOrDeity.Sim.Modules.Tests
                 if (statesOnly && d.StateIndex(pair.Key) < 0)
                     continue;
                 double atol = meta.RootElement.TryGetProperty("atol", out var at) ? at.GetDouble() : 1e-300;
+                // a state that counts molecules per cell is resolved to one molecule, not to the solver's atol
+                if (CountedPerCell.Contains(pair.Key))
+                    atol = Math.Max(atol, 1.0);
                 double nrmse = statesOnly
                     ? GoldenTrace.Nrmse(golden.Column(pair.Key), pair.Value, atol, rtol)
                     : GoldenTrace.Nrmse(golden.Column(pair.Key), pair.Value);
