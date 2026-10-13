@@ -1,7 +1,7 @@
 {
   "module": "/generic_adaptive_cell/versions/fermenter",
   "instance": "famine",
-  "source_sha256": "04790821251791faabb8e84b935fbb861f72f607a5addaea1087e0251988168c",
+  "source_sha256": "d30a4c4f8ec94f46c4e395213e1aa513d28cc2dc417a129a0d6f341df011a626",
   "modules_commit": "948630794801cc388c317dda0b16ae74181d27d5",
   "solver": "myokit 1.39.2 CVODE",
   "rtol": 1e-10,
