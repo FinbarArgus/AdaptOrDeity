@@ -77,6 +77,22 @@ no new features until:
 | New cells | Start at their CellType's baseline steady state. |
 | UX | Oxygen Not Included style: hotkeyed overlay tabs, legends, hover tooltips, category build menu, speed controls, warnings, level report; live plots on click; flux arrows; educational parameter inspector; stylised 2D art; the evolutionary time bar on top. |
 
+### Optimising a group with libcuflynx, for evolution points (designer, 2026-10-13; not started)
+The player can spend skill (evolution) points to have a cell group's settings optimised instead of tuning sliders by
+hand: the group's module array (as exported now by `ToModuleArray` / the headless `model` command) goes to libcuflynx's
+parameter identification (the optimisers circulatory_autogen already runs for calibration), which searches the
+group's player-controllable values (expression shares and counts, energy controls, regulation switches; within the
+sliders' bounds and the membrane ceiling) for an objective the player picks (e.g. survive a famine, most ATP to growth,
+least damage) under a protocol (a recorded or chosen food/environment trace). The best set comes back as the group's
+targets, which then take effect at the normal expression rates. Design points to settle:
+- Cost: points per optimisation, scaling with the number of values searched and the protocol length (a cheap local
+  refinement vs a costly global search), so it competes with buying features.
+- Where it runs: off the game thread (a worker or a separate process with libcuflynx's Python/C solvers), with a
+  progress bar and cancel; deterministic for a given seed; results checked in the game's own solver before applying.
+- Honesty: show what was searched, the objective's value before and after, and that evolution found it (framed as
+  selection over generations, not design).
+- Ties in with the scripted reference players (docs/plans/scoring.md), whose "optimised" strategy is the same search.
+
 ### Organelles visible in the cell (designer, 2026-10-13; not started)
 Once organelles are in the cell model (mitochondria first, from the level-2 branch; later others such as a nucleus,
 vacuoles beyond today's food vacuole, and a cytoskeleton), the player sees them inside each cell in Unity: drawn
