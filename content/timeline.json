@@ -15,7 +15,7 @@
     "regulation"
    ],
    "arrivals": {
-    "food_per_s": 0.005,
+    "food_per_s": 0.003,
     "carried_share": 0.8,
     "prey_per_s": 0.0
    },
@@ -23,7 +23,7 @@
    "reviewed": false,
    "duration_s": 604800.0,
    "ocean": {
-    "glucose": 0.001
+    "glucose": 0.035
    }
   },
   {

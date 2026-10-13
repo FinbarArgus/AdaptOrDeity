@@ -38,8 +38,6 @@ namespace AdaptOrDeity.Game.Session.Tests
     /// The level-1 calibration (docs/plans/scoring.md): each reference player plays the week once (its own fixture, so
     /// each stays under 10 minutes and they run in parallel), and the stars it earns are the designer's targets: left alone
     /// the cell starves within the level (no star); a mediocre player one star, a great one two, the best found three.
-    /// Explicit until the content is calibrated on the next expression model (docs/plans/scoring.md, "Calibration");
-    /// run them with --filter "FullyQualifiedName~LevelOne".
     /// </summary>
     public abstract class LevelOneBot
     {
@@ -58,7 +56,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         public void TheNextLevelBeginsWhenTheWeekIsUp() => Assert.That(Outcome.Score!.Level, Is.EqualTo(1));
     }
 
-    [Parallelizable(ParallelScope.Self), Explicit("calibration pending: docs/plans/scoring.md")]
+    [Parallelizable(ParallelScope.Self)]
     public class LevelOneLeftAlone : LevelOneBot
     {
         protected override ScriptedPlayer Player => Bots.LeftAlone();
@@ -71,7 +69,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
     }
 
-    [Parallelizable(ParallelScope.Self), Explicit("calibration pending: docs/plans/scoring.md")]
+    [Parallelizable(ParallelScope.Self)]
     public class LevelOneMediocre : LevelOneBot
     {
         protected override ScriptedPlayer Player => Bots.Mediocre();
@@ -80,7 +78,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         public void ItEarnsOneStar() => Assert.That(Outcome.Score!.Stars, Is.EqualTo(1), Outcome.ToString());
     }
 
-    [Parallelizable(ParallelScope.Self), Explicit("calibration pending: docs/plans/scoring.md")]
+    [Parallelizable(ParallelScope.Self)]
     public class LevelOneGreat : LevelOneBot
     {
         protected override ScriptedPlayer Player => Bots.Great();
@@ -89,7 +87,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         public void ItEarnsTwoStars() => Assert.That(Outcome.Score!.Stars, Is.EqualTo(2), Outcome.ToString());
     }
 
-    [Parallelizable(ParallelScope.Self), Explicit("calibration pending: docs/plans/scoring.md")]
+    [Parallelizable(ParallelScope.Self)]
     public class LevelOneOptimised : LevelOneBot
     {
         protected override ScriptedPlayer Player => Bots.Optimised();

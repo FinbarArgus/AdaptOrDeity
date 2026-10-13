@@ -206,7 +206,7 @@
    "note": "where new flagella are placed by default: around the back of the cell, this far apart"
   },
   "scoring.survival_points": {
-   "value": 5,
+   "value": 10,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
@@ -227,7 +227,7 @@
    "note": "a living cell is starving while its ATP is below this fraction of its resting level; the survival meter falls in proportion to the share of the creature's living cells starving (all of it once none lives)"
   },
   "scoring.starvation_to_empty": {
-   "value": 1.0,
+   "value": 0.1,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
@@ -248,7 +248,7 @@
    "note": "points a level must earn (its meters and its reproduction points) for star 2 (designer 2026-10-13: 1 star a mediocre player, 2 a great one, 3 perfect control; set from the scripted players, docs/plans/scoring.md)"
   },
   "scoring.star_points_3": {
-   "value": 15,
+   "value": 14,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",

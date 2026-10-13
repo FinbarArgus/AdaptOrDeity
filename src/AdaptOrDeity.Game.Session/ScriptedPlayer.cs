@@ -162,16 +162,13 @@ namespace AdaptOrDeity.Game.Session
     /// <summary>The calibration's reference players (docs/plans/scoring.md).</summary>
     public static class Bots
     {
-        /// <summary>Regulation a mediocre player turns on: falling ATP lowers the pumps and maintenance.</summary>
-        public static readonly (string, string)[] SavingRegulation =
-        {
-            ("H_ATPase_expression", "ATP"), ("maintenance", "ATP"),
-        };
+        /// <summary>Regulation a mediocre player turns on: falling ATP lowers every part of the maintenance.</summary>
+        public static readonly (string, string)[] SavingRegulation = { ("maintenance", "ATP") };
 
         /// <summary>Touches nothing.</summary>
         public static ScriptedPlayer LeftAlone() => new ScriptedPlayer("left alone");
 
-        /// <summary>Turns regulation on when it unlocks (ATP lowers the pumps and maintenance); otherwise the defaults.</summary>
+        /// <summary>Turns regulation on when it unlocks (falling ATP lowers the maintenance); otherwise the defaults.</summary>
         public static ScriptedPlayer Mediocre()
         {
             var p = new ScriptedPlayer("mediocre");
@@ -180,29 +177,26 @@ namespace AdaptOrDeity.Game.Session
         }
 
         /// <summary>
-        /// The mediocre player's regulation, and swimming to gather a store of food: on while it holds less than two fresh
-        /// packets' worth, off once it does (it stops to eat, and looks for more before it runs out).
+        /// The mediocre player's regulation, and a sensible expression choice: half as much again of the glucose carrier
+        /// (Glf x1.5), so the cell takes up more of the sea's glucose and of a packet's face.
         /// </summary>
         public static ScriptedPlayer Great()
         {
             var p = Rename(Mediocre(), "great");
-            p.Swim = SwimPolicy.Gather;
-            p.HoldTarget = 2e-14;
+            p.Traits["Glf_expression"] = 1.5;
             return p;
         }
 
         /// <summary>
-        /// The best strategy found so far (docs/plans/scoring.md; provisional until the search on the next expression model):
-        /// the great player's, with more glucose carrier and surface hydrolase, and the pumps, exchangers and flagella
-        /// regulated by ATP as well.
+        /// The best found by the search in docs/plans/scoring.md: the mediocre player's regulation, Glf x2, and swimming to
+        /// gather a store of food (on while it holds less than two fresh packets' worth).
         /// </summary>
         public static ScriptedPlayer Optimised()
         {
-            var p = Rename(Great(), "optimised");
+            var p = Rename(Mediocre(), "optimised");
             p.Traits["Glf_expression"] = 2.0;
-            p.Traits["Hydrolase_expression"] = 2.0;
-            foreach (var pump in new[] { "NhaA_expression", "KefC_expression", "Trk_expression", "NCX_expression", "flagella" })
-                p.Regulation.Add((pump, "ATP"));
+            p.Swim = SwimPolicy.Gather;
+            p.HoldTarget = 2e-14;
             return p;
         }
 
