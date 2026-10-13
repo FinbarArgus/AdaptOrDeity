@@ -505,6 +505,12 @@
     "constant"
    ],
    [
+    "K_aa_mod_protein",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "K_act_H_mod_i_H_ATPase",
     "millimolar",
     "access",
@@ -913,6 +919,18 @@
     "constant"
    ],
    [
+    "N_A_mod_protein",
+    "per_mol",
+    "access",
+    "constant"
+   ],
+   [
+    "N_aa_init_mod_protein",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "Na_K__E_K",
     "milliV",
     "access",
@@ -969,6 +987,18 @@
    [
     "Q10_mod_cytosol",
     "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "Q_eps_mod_protein",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "Q_prot_max_mod_protein",
+    "per_s",
     "access",
     "constant"
    ],
@@ -3205,8 +3235,38 @@
     "variable"
    ],
    [
+    "multiport_sum_mod_protein_J_prot_in__J_prot_in",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "multiport_sum_mod_protein_J_saved_in__J_saved_in",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "multiport_sum_mod_protein_M_build_in__M_build_in",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "multiport_sum_mod_protein_Q_aa_rel_in__Q_aa_rel_in",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "multiport_sum_mod_protein_Q_aa_use_in__Q_aa_use_in",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "multiport_sum_mod_protein_Q_prot_demand_in__Q_prot_demand_in",
+    "per_s",
     "access",
     "variable"
    ],
@@ -3403,8 +3463,38 @@
     "variable"
    ],
    [
+    "pool_ABC__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_ABC__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_ABC__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_ABC__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_ABC__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_ABC__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -3463,6 +3553,12 @@
     "variable"
    ],
    [
+    "pool_ABC__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_ABC__r_deg",
     "per_s",
     "access",
@@ -3470,6 +3566,12 @@
    ],
    [
     "pool_ABC__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_ABC__r_prot",
     "per_s",
     "access",
     "variable"
@@ -3535,8 +3637,38 @@
     "variable"
    ],
    [
+    "pool_Flagellum__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Flagellum__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Flagellum__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Flagellum__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Flagellum__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Flagellum__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -3589,6 +3721,12 @@
     "variable"
    ],
    [
+    "pool_Flagellum__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Flagellum__r_deg",
     "per_s",
     "access",
@@ -3596,6 +3734,12 @@
    ],
    [
     "pool_Flagellum__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Flagellum__r_prot",
     "per_s",
     "access",
     "variable"
@@ -3661,8 +3805,38 @@
     "variable"
    ],
    [
+    "pool_GalP__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_GalP__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_GalP__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_GalP__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_GalP__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_GalP__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -3721,6 +3895,12 @@
     "variable"
    ],
    [
+    "pool_GalP__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_GalP__r_deg",
     "per_s",
     "access",
@@ -3728,6 +3908,12 @@
    ],
    [
     "pool_GalP__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_GalP__r_prot",
     "per_s",
     "access",
     "variable"
@@ -3793,8 +3979,38 @@
     "variable"
    ],
    [
+    "pool_Glf__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glf__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Glf__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glf__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glf__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glf__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -3853,6 +4069,12 @@
     "variable"
    ],
    [
+    "pool_Glf__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Glf__r_deg",
     "per_s",
     "access",
@@ -3860,6 +4082,12 @@
    ],
    [
     "pool_Glf__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glf__r_prot",
     "per_s",
     "access",
     "variable"
@@ -3925,8 +4153,38 @@
     "variable"
    ],
    [
+    "pool_Glyc__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glyc__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Glyc__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glyc__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glyc__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glyc__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -3979,6 +4237,12 @@
     "variable"
    ],
    [
+    "pool_Glyc__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Glyc__r_deg",
     "per_s",
     "access",
@@ -3986,6 +4250,12 @@
    ],
    [
     "pool_Glyc__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Glyc__r_prot",
     "per_s",
     "access",
     "variable"
@@ -4051,8 +4321,38 @@
     "variable"
    ],
    [
+    "pool_H_ATPase__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_H_ATPase__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_H_ATPase__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_H_ATPase__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_H_ATPase__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_H_ATPase__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -4111,6 +4411,12 @@
     "variable"
    ],
    [
+    "pool_H_ATPase__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_H_ATPase__r_deg",
     "per_s",
     "access",
@@ -4118,6 +4424,12 @@
    ],
    [
     "pool_H_ATPase__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_H_ATPase__r_prot",
     "per_s",
     "access",
     "variable"
@@ -4183,8 +4495,38 @@
     "variable"
    ],
    [
+    "pool_Hydrolase__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Hydrolase__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Hydrolase__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Hydrolase__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Hydrolase__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Hydrolase__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -4243,6 +4585,12 @@
     "variable"
    ],
    [
+    "pool_Hydrolase__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Hydrolase__r_deg",
     "per_s",
     "access",
@@ -4250,6 +4598,12 @@
    ],
    [
     "pool_Hydrolase__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Hydrolase__r_prot",
     "per_s",
     "access",
     "variable"
@@ -4315,8 +4669,38 @@
     "variable"
    ],
    [
+    "pool_KefC__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_KefC__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_KefC__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_KefC__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_KefC__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_KefC__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -4375,6 +4759,12 @@
     "variable"
    ],
    [
+    "pool_KefC__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_KefC__r_deg",
     "per_s",
     "access",
@@ -4382,6 +4772,12 @@
    ],
    [
     "pool_KefC__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_KefC__r_prot",
     "per_s",
     "access",
     "variable"
@@ -4447,8 +4843,38 @@
     "variable"
    ],
    [
+    "pool_LacT__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_LacT__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_LacT__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_LacT__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_LacT__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_LacT__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -4507,6 +4933,12 @@
     "variable"
    ],
    [
+    "pool_LacT__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_LacT__r_deg",
     "per_s",
     "access",
@@ -4514,6 +4946,12 @@
    ],
    [
     "pool_LacT__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_LacT__r_prot",
     "per_s",
     "access",
     "variable"
@@ -4579,8 +5017,38 @@
     "variable"
    ],
    [
+    "pool_NCX__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NCX__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NCX__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NCX__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NCX__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NCX__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -4639,6 +5107,12 @@
     "variable"
    ],
    [
+    "pool_NCX__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NCX__r_deg",
     "per_s",
     "access",
@@ -4646,6 +5120,12 @@
    ],
    [
     "pool_NCX__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NCX__r_prot",
     "per_s",
     "access",
     "variable"
@@ -4711,8 +5191,38 @@
     "variable"
    ],
    [
+    "pool_NhaA__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NhaA__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NhaA__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NhaA__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NhaA__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NhaA__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -4771,6 +5281,12 @@
     "variable"
    ],
    [
+    "pool_NhaA__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_NhaA__r_deg",
     "per_s",
     "access",
@@ -4778,6 +5294,12 @@
    ],
    [
     "pool_NhaA__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_NhaA__r_prot",
     "per_s",
     "access",
     "variable"
@@ -4843,8 +5365,38 @@
     "variable"
    ],
    [
+    "pool_PTS__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_PTS__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_PTS__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_PTS__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_PTS__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_PTS__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -4903,6 +5455,12 @@
     "variable"
    ],
    [
+    "pool_PTS__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_PTS__r_deg",
     "per_s",
     "access",
@@ -4910,6 +5468,12 @@
    ],
    [
     "pool_PTS__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_PTS__r_prot",
     "per_s",
     "access",
     "variable"
@@ -4975,8 +5539,38 @@
     "variable"
    ],
    [
+    "pool_Trk__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Trk__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Trk__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Trk__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Trk__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Trk__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -5035,6 +5629,12 @@
     "variable"
    ],
    [
+    "pool_Trk__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_Trk__r_deg",
     "per_s",
     "access",
@@ -5042,6 +5642,12 @@
    ],
    [
     "pool_Trk__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_Trk__r_prot",
     "per_s",
     "access",
     "variable"
@@ -5107,8 +5713,38 @@
     "variable"
    ],
    [
+    "pool_proteome__J_prot",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_proteome__J_saved",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_proteome__M_build",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_proteome__Q_aa_rel",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_proteome__Q_aa_use",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_proteome__Q_prot_demand",
+    "per_s",
     "access",
     "variable"
    ],
@@ -5161,6 +5797,12 @@
     "variable"
    ],
    [
+    "pool_proteome__r_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "pool_proteome__r_deg",
     "per_s",
     "access",
@@ -5168,6 +5810,12 @@
    ],
    [
     "pool_proteome__r_down",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "pool_proteome__r_prot",
     "per_s",
     "access",
     "variable"
@@ -5239,6 +5887,12 @@
     "variable"
    ],
    [
+    "protein__J_cat",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "protein__J_demand_total",
     "mol_per_s",
     "access",
@@ -5251,8 +5905,50 @@
     "variable"
    ],
    [
+    "protein__J_prot_total",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__J_recycled",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__J_saved_total",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
     "protein__M_build_protein",
     "mole",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__N_aa",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__Q_aa_rel_total",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__Q_aa_use_total",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__Q_prot_demand_total",
+    "per_s",
     "access",
     "variable"
    ],
@@ -5287,7 +5983,25 @@
     "variable"
    ],
    [
+    "protein__phi_aa",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__r_aa_cat",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "protein__s_build",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "protein__s_prot",
     "dimensionless",
     "access",
     "variable"
@@ -5983,6 +6697,12 @@
     "constant"
    ],
    [
+    "tau_aa_cat_mod_protein",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
     "tau_bundle_mod_i_flagellum",
     "second",
     "access",
@@ -6073,8 +6793,98 @@
     "constant"
    ],
    [
+    "tau_prot_mod_pool_ABC",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_Flagellum",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_GalP",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_Glf",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_Glyc",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_H_ATPase",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_Hydrolase",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_KefC",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_LacT",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_NCX",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_NhaA",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_PTS",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_Trk",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
+    "tau_prot_mod_pool_proteome",
+    "second",
+    "access",
+    "constant"
+   ],
+   [
     "v_one_mod_i_flagellum",
     "m_per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "y_aa_cat_mod_protein",
+    "dimensionless",
     "access",
     "constant"
    ]

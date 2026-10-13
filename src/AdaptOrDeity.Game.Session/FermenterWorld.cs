@@ -279,6 +279,9 @@ namespace AdaptOrDeity.Game.Session
             Add(new DetailInfo("k", state, "K⁺", "mol/m³", "mM", 1.0), c => c.State("Na_K__Ki"));
             Add(new DetailInfo("ca", state, "Ca²⁺ (free)", "mol/m³", "µM", 1e3), c => c.State("Ca__Cai"));
             Add(new DetailInfo("damage", state, "Damage", "", "% of lethal", 100.0), c => c.Damage);
+            Add(new DetailInfo("recycled_amino_acids", state, "Recycled amino acids", "", "amino acids", 1.0,
+                "freed by removing protein above a lowered target; built into new protein first, the rest slowly broken " +
+                "down"), c => c.RecycledAminoAcids);
             _details = details.ToArray();
             _read = read.ToArray();
             _readCell = readCell.ToArray();

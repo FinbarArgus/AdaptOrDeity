@@ -117,11 +117,12 @@ def _state_names():
 
 
 def worst_differences(t_ours, ours, cvodes):
-    """Largest difference over time of each cell's state, relative to the largest size the state reaches (CVODES)."""
+    """Largest difference over time of each cell's state, relative to the largest size the state reaches (CVODES); the
+    recycled amino acids, a count per cell that is 0 here up to round-off, relative to at least one amino acid."""
     assert np.allclose(t_ours, cvodes['t']), 'output times differ'
     out = []
     for name, reference in cvodes['series'].items():
-        scale = max(np.max(np.abs(reference)), 1e-12)
+        scale = max(np.max(np.abs(reference)), 1.0 if name.endswith('protein__N_aa') else 1e-12)
         out.append((float(np.max(np.abs(ours[name] - reference)) / scale), name))
     return sorted(out, reverse=True)
 
