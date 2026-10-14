@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review 1: protein_pool</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1f2328;--muted:#5d646d;--card:#ffffff;--line:#e3e0d8;--accent:#2f6f8f;--warn:#9a5b00;--warnbg:#fff4e0;--ok:#2e7d4f;--okbg:#e8f5ec;--code:#f2efe8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16181b;--fg:#e6e6e3;--muted:#a3a7ad;--card:#1f2226;--line:#33373c;--accent:#7cb8d6;--warn:#f0b35a;--warnbg:#3a2c14;--ok:#7fd1a0;--okbg:#17301f;--code:#262a2f}}
+:root[data-theme="dark"]{--bg:#16181b;--fg:#e6e6e3;--muted:#a3a7ad;--card:#1f2226;--line:#33373c;--accent:#7cb8d6;--warn:#f0b35a;--warnbg:#3a2c14;--ok:#7fd1a0;--okbg:#17301f;--code:#262a2f}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;margin:0}
+main{max-width:860px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:1.6rem;margin:.2em 0}h2{font-size:1.2rem;margin-top:2em;border-bottom:1px solid var(--line);padding-bottom:.2em}
+.sub{color:var(--muted)}code,pre{background:var(--code);border-radius:4px;font-size:.92em}code{padding:.05em .3em}pre{padding:10px 12px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.93em;display:block;overflow-x:auto}th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}th{background:var(--card)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px;margin:12px 0}
+.warn{background:var(--warnbg);border-color:var(--warn)}.ok{background:var(--okbg);border-color:var(--ok)}
+a{color:var(--accent)}li{margin:.25em 0}.tag{font-size:.8em;padding:.1em .45em;border-radius:3px;border:1px solid var(--line);white-space:nowrap}
+</style></head><body><main>
+<p class="sub">Module review 1 of 29 · circulatory-autogen-modules <code>homogenisation-checks</code> 5cea85e</p>
+<h1>protein_pool <span class="sub">ArgusUNPUBLISHED_v01</span></h1>
+<p>The building block every protein in the game's cell is made of: a <b>pool of copies of one protein</b> that the cell
+builds, keeps, degrades and (when asked) actively removes, with what each of those costs in ATP. Every slider in the game's
+cell panel ends up driving one of these.</p>
+<div class="card"><b>Generated report:</b>
+<a href="file:///home/farg967/Documents/git_projects/circulatory-autogen-modules-homogenisation/modules/cell/protein_pool/versions/ArgusUNPUBLISHED_v01/protein_pool_ArgusUNPUBLISHED_v01.html">version page</a> ·
+<a href="file:///home/farg967/Documents/git_projects/circulatory-autogen-modules-homogenisation/modules/cell/protein_pool/protein_pool.html">module page</a>
+(the module page also lists the sibling version <code>membrane_share_ArgusUNPUBLISHED_v01</code>, reviewed next)</div>
+
+<h2>What it models</h2>
+<ul>
+<li><b>State:</b> one number, the expression <code>m</code>: copies relative to the calibrated cell (<code>n = n₀·m</code>; <code>n₀</code> = 682 copies in the default instance, which is NhaA).</li>
+<li><b>Target:</b> the game sets <code>m_target</code>; regulation (if switched on) lowers it to the goal <code>m_goal = m_target·R_reg</code>.</li>
+<li><b>Rising:</b> towards the goal with the mRNA's mean lifetime, <code>τ = t½,mRNA / ln 2 ≈ 7 min</code>, at most as fast as the cell's ribosomes allow (share <code>s_build</code>, set by protein_expression).</li>
+<li><b>Natural turnover:</b> copies degrade at <code>k_deg ≈ 1%/h</code> and are replaced up to the goal (only as far as protein synthesis is allowed: <code>R_syn</code>).</li>
+<li><b>Lowering:</b> copies above the goal are removed by regulated, ATP-dependent proteolysis with <code>τ_prot ≈ 7 min</code>, as far as the cell's protease capacity allows (<code>s_prot</code>).</li>
+<li><b>Energy:</b> raising costs ATP (amino acids from glucose plus peptide bonds), holding costs upkeep every second, removal costs ATP and returns the amino acids to a recycled pool that makes later building cheaper.</li>
+<li><b>Everything slows as ATP runs out</b> through <code>min(f_ATP, 1)</code>, where <code>f_ATP = ATP/(K_m+ATP) · (K_m+ATP_ref)/ATP_ref</code> (1 at the reference ATP).</li>
+</ul>
+
+<h2>The equations</h2>
+<pre>dm/dt   = r_build + r_down − r_prot
+r_build = r_up · s_build · min(f_ATP,1)            r_up = max(m_goal − m, 0)/τ   (rising)
+r_deg   = k_deg · m · min(f_ATP,1)                 (natural degradation)
+r_rep   = k_deg · R_syn · min(m, m_goal) · min(f_ATP,1)   (replacement, up to the goal)
+r_down  = r_rep − r_deg  ≤ 0
+r_prot  = max(m − m_goal, 0)/τ_prot · s_prot · min(f_ATP,1)   (regulated removal)
+
+J_keep  = n₀ L ((c_poly + c_recycle) r_rep + c_deg r_deg) / N_A      upkeep  [mol ATP/s]
+J_build = r_build n₀ L (c_syn + c_poly)/N_A − J_saved                building
+J_saved = (c_syn − c_recycle) · φ_aa · n₀ L r_build / N_A            recycled amino acids
+J_prot  = c_deg n₀ L r_prot / N_A                                    removal
+Q_aa_rel = n₀ L (r_prot − r_down)        amino acids returned to the cell's pool  [aa/s]</pre>
+<p class="sub">L = protein length (388 aa for NhaA). At the goal with nothing regulated, upkeep is
+<code>n L (c_poly + c_deg + c_recycle) k_deg / N_A</code>: a degraded copy's amino acids are reused, so replacing it costs
+re-polymerising (4) plus degrading (1) plus recycling (0.5) ATP per residue, not the 28 of making it from glucose.</p>
+
+<h2>Where the numbers come from</h2>
+<p>29 parameters: 6 have a checked source, the rest are definitional (couplings that other modules set when connected), derived or placeholders.</p>
+<table><tr><th>Value</th><th>Number</th><th>Source</th><th>Status</th></tr>
+<tr><td>mRNA lifetime → rise τ</td><td>433 s</td><td>Bernstein 2002 (mRNA half-lives)</td><td><span class="tag">sourced</span></td></tr>
+<tr><td>Natural degradation k_deg</td><td>1%/h</td><td>Maurizi 1992 after Pine 1970; Willetts 1967; Gupta 2024</td><td><span class="tag">sourced</span></td></tr>
+<tr><td>Proteolysis cost c_deg</td><td>1 ATP/aa</td><td>Kenniston 2003 (plus 10–500 per substrate to unfold, not counted)</td><td><span class="tag">sourced, medium</span></td></tr>
+<tr><td>Reference ATP</td><td>9.6 mM</td><td>Bennett 2009</td><td><span class="tag">sourced</span></td></tr>
+<tr><td>NhaA length L</td><td>388 aa</td><td>UniProt P13738</td><td><span class="tag">sourced</span></td></tr>
+<tr><td>Amino acid from glucose c_syn</td><td>24 ~P/aa</td><td>Akashi &amp; Gojobori 2002 (range 12–74; 24 as a proteome mean)</td><td><span class="tag">assumed</span></td></tr>
+<tr><td>Peptide bond c_poly</td><td>4 ~P/aa</td><td>textbook (2 to charge the tRNA, 2 GTP)</td><td><span class="tag">definitional</span></td></tr>
+<tr><td>Recycling c_recycle</td><td>0.5 ATP/aa</td><td>Lynch &amp; Marinov 2015 supplement (0.25–1)</td><td><span class="tag">assumed</span></td></tr>
+<tr class="warn"><td>Proteolysis time τ_prot</td><td>433 s</td><td>Purcell 2012 tagged LacI, scaled from 37 °C to 20 °C</td><td><span class="tag">placeholder</span></td></tr>
+<tr class="warn"><td>Footprint (NhaA)</td><td>15 nm²</td><td>none</td><td><span class="tag">placeholder</span></td></tr>
+<tr class="warn"><td>ATP affinity K_m_ATP</td><td>0.1 mM</td><td>none (order of ribosome/synthetase K_m)</td><td><span class="tag">placeholder</span></td></tr>
+<tr class="warn"><td>Membrane ceiling A_ceiling</td><td>2.83 µm²</td><td>derived from placeholders (15% of the surface)</td><td><span class="tag">placeholder</span></td></tr>
+<tr><td>n₀</td><td>682 copies</td><td>calibrated: NhaA cycles at rest / its turnover</td><td><span class="tag">calibrated</span></td></tr></table>
+
+<h2>What the tests show</h2>
+<div class="card ok"><ul>
+<li><b>Run:</b> 3,600 s, all 25 outputs finite.</li>
+<li><b>Invariants (7, all hold):</b> the turnover and cost formulas exactly, <code>r_down ≤ 0</code>, amino-acid bookkeeping.</li>
+<li><b>Boundary sweep:</b> 89 runs over 25 inputs and constants, including the target from ×0.25 (removal) to ×4 (building), ATP 0.5–12 mM, and every coupling share from 0 to 1: all finite, invariants hold.</li>
+<li><b>Time step:</b> RK4 converges at order 4.6 (expected 4), and agrees with CVODE to 1×10⁻⁵.</li>
+<li><b>Stability:</b> all 9 solver families work at some step.</li>
+<li><b>Units:</b> every equation is unit-consistent.</li></ul></div>
+<div class="card"><b>Worth knowing:</b> the default run sits at rest, so the removal and recycling outputs read zero there
+(the run test flags them as "identically zero"). They are exercised by the boundary sweep (target ×0.25) and by the
+tests in <code>tests/test_expression_regulation.py</code> (removal within minutes, recycling, ATP cost), not by this page's run.</div>
+
+<h2>What to review or decide</h2>
+<ol>
+<li><b>Any protein can be actively removed in minutes.</b> In real bacteria only proteins with a degradation tag (or a
+specific adaptor) are; most leave growing cells by <b>dilution</b>. This is a deliberate gameplay simplification; is it
+acceptable, or should removal be limited to proteins that real cells regulate this way?</li>
+<li><b>Dilution by growth is not modelled</b> (the pool does not grow with the cell), nor the rise of degradation to ~5%/h
+in starvation (Willetts 1967).</li>
+<li><b>The 5-minute removal half-life</b> is the fast end of measured tagged substrates (1–8 min at 37 °C, 38 min for tagged LacI at 25 °C). Low confidence.</li>
+<li><b>Unfolding cost not counted:</b> ClpXP spends 10–500 extra ATP per substrate to unfold it. With L = 388 that is 0.03–1.3 ATP/aa on top of the 1 charged; the 1 ATP/aa could be low by up to 2×.</li>
+<li><b>The default instance is NhaA.</b> The pool is generic, but its default parameters (n₀, L, footprint) are NhaA's; every other protein is an instance of it in the fermenter.</li>
+<li><b><code>min</code>/<code>max</code> switches</b> (at the goal, at ATP_ref) are kinks in the rates. The solver handles them (stability test passes), but they are non-smooth.</li>
+<li><b>Values to source:</b> K_m_ATP 0.1 mM, footprint 15 nm², the membrane ceiling's 15% (all on the review list).</li>
+</ol>
+
+<h2>To learn more</h2>
+<ul>
+<li><b>Why m is relative:</b> the game's sliders are multipliers of the calibrated cell, so a pool works in m and converts to copies with n₀.</li>
+<li><b>Why the rise follows the mRNA:</b> a protein's synthesis rate follows its mRNA level, which turns over in minutes (bacterial mRNA half-lives 1–10 min; Bernstein 2002), so a change of target reaches synthesis on that timescale.</li>
+<li><b>Why upkeep is cheap compared with building:</b> turnover recycles amino acids, so replacing a copy costs re-polymerising (≈4–5.5 ATP/aa) rather than making amino acids from glucose (≈24 more). Lynch &amp; Marinov 2015 discuss these costs for whole cells.</li>
+<li><b>Regulated proteolysis:</b> ClpXP, Lon and FtsH (membrane) recognise tags such as the ssrA tag; see Kenniston 2003 and Purcell 2012 for energetics and temperature dependence.</li>
+</ul>
+<p class="sub">Next: 2. <code>protein_pool membrane_share_ArgusUNPUBLISHED_v01</code>, the version every membrane protein uses.</p>
+</main></body></html>
