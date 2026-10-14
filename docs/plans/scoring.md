@@ -59,14 +59,58 @@ in parallel, each under 10 minutes, and check the stars.
 | Player | Strategy |
 |---|---|
 | left alone | nothing |
-| mediocre | regulation on when it unlocks: falling ATP lowers the H+-ATPase and all four parts of the maintenance |
-| great | the mediocre regulation; swimming to gather a store (on while it holds less than two fresh packets' worth) |
-| optimised | provisional: the great player's, Glf and the surface hydrolase x2, pumps, exchangers and flagella regulated too |
+| mediocre | regulation on when it unlocks: falling ATP lowers all four parts of the maintenance (`Bots.SavingRegulation`) |
+| great | the mediocre regulation; Glf x1.5 (more of the glucose carrier) |
+| optimised | the best found by the search below: the mediocre regulation, Glf x2, swimming to gather a store (on while it holds less than two fresh packets' worth) |
 
-The four LevelOne fixtures are `[Explicit]` until the content is calibrated: the designer is changing protein expression
-again (fast regulated synthesis and proteolysis), and the calibration waits for that cell.
+## Calibration (2026-10-14, on the fast-expression cell of m0-skeleton 4bdc712)
+Content chosen: level 1's open water at **0.035 mM** glucose (timeline `levels[1].ocean.glucose`, was 1 µM) and food at
+**3e-3 packets/s** (was 5e-3); `scoring.survival_points` **10**, `scoring.damage_points` 5, `scoring.starvation_to_empty`
+**0.143** (a day of starving in the 7-day level empties the meter), star thresholds **5 / 10 / 14**, regulation unlocked
+after 30 s without food.
 
-## Calibration: provisional measurements (2026-10-13)
+| Player (level 1, the level's own random sequence) | starving | survival | damage | points | stars |
+|---|---|---|---|---|---|
+| left alone | from day 0.31 for good (6.69 d) | 0 | 32.0 → 2 | 2 | 0 |
+| mediocre | 1.16 d in famines, alive (recovers) | 0 | 97.5 → 5 | 5 | 1 |
+| great | 0.36 d | ~64 → 6 | 98.4 → 5 | ~11 | 2 |
+| optimised | never | 100 → 10 | 98.8 → 5 | 15 | 3 |
+
+(Rows measured with `starvation_to_empty` 0.03; survival points re-derived for 0.143; the LevelOne fixtures check the
+stars with the content as committed: see "Tests".)
+
+Why these values:
+- In a full famine (a 1 µM sea) regulating the maintenance only delays the crash (ATP to 0.1 mM at 190 s instead of 124 s
+  from rest), so a mediocre player could not differ from a cell left alone. With glucose in the open water a regulated
+  cell keeps its ATP above the trap through a famine and recovers when food returns; a cell left alone crashes in its
+  first long famine and stays starved (the ATP trap). 0.035 mM is about a third of what a resting cell needs to live on
+  the water alone with Glf at x1.
+- The outcomes are close to binary: a strategy either never starves or loses several hours to famines. The survival
+  meter's scale (a day of starving empties it) puts the mediocre player's 1.2 days at 0 and the great player's 0.36 day
+  at about two thirds. Damage separates the cell left alone (its load reaches ~68% of lethal) from every regulated one.
+
+### The search for the optimised player
+Level 1 at the chosen content, mediocre regulation in every case unless said (each one week, one sequence):
+
+| Strategy | starving [d] | points (scale above) |
+|---|---|---|
+| Glf x1.5 | 0.36 | 11 |
+| Glf x2 / x3 / x4 | 0 | 15 |
+| Glf x2 without regulation | 0 | 15 |
+| Glf x2, hydrolase x2 (swimming on, or gathering) | 0 | 15 |
+| Glf x2 or x3, gathering | 0 | 15 |
+| gathering only | 0.92 | 5 |
+
+Earlier, at 0.05 mM and with the meter at 0.03 (r9/r10 runs): Glf x1.25 0.71 d; Glf x1.5, x1.75, x2 (with or without
+gathering, hydrolase x1.5-2) never starved; gathering with stores of 1, 2, 4, 8e-14 mol 0.32-0.79 d; hydrolase x2 0.27 d;
+lactate exporter x2 0.35 d; flagella 2 0.59-0.80 d; repair 0.5 0.54 d; Glf x0.5 4.4 d; regulating the maintenance by G6P
+instead of ATP: the cell starves as if left alone (G6P stays up as ATP crashes).
+**Design note:** raising Glf to x2 is enough on its own: a cell with twice the carrier lives on 0.035 mM of sea glucose
+between packets, so it never starves even without regulation. A player who only raises Glf earns three stars at level
+1. Whether level 1 should allow that (a lower sea, a costlier carrier) is the designer's call (adapting_plan.md open
+question 22).
+
+## Earlier measurements (2026-10-13, before the fast-expression cell)
 One deterministic random sequence per run (the level's seeds); outcomes hang on when the first long famine comes, so a
 change anywhere moves them. Points use `scoring.survival_points` = `damage_points` = 5 (placeholders).
 
@@ -98,7 +142,7 @@ water's glucose decides whether regulation pays:
 | 0.05 mM, 3e-3 | day 0.81, 3 | 0.45 d starving, survives: 10 | 0.52 d, 10 |
 | 0.05 mM, 5e-3 | never, 10 | never, 10 | 0.16 d, 10 |
 
-**Provisional direction** for the calibration after the expression change: level 1 with ~0.05 mM of glucose in the open
+The direction taken in the calibration above: level 1 with ~0.05 mM of glucose in the open
 water and ~3e-3 packets/s makes the left-alone cell starve (day 0.8) and the mediocre one survive; the points per meter
 then need to reach 15 at full meters (three stars), and the survival meter to tell 0.5 d of starving from none
 (`scoring.starvation_to_empty` well below 1, e.g. 0.25 of a level), so that great and optimised players earn more than
@@ -109,5 +153,5 @@ points, 7 prey); growth 1 or 3 without engulfing starves (touching packets canno
 growth 3 with engulfing starves on day 0.4.
 
 ## Still to do
-- The calibration above, on the next expression model; then the LevelOne fixtures lose `[Explicit]`.
-- Level 2's reference players.
+- Level 2's reference players (measured: see the level-2 table when run) and their fixtures.
+- A search over more seeds: one random sequence per player is all the test time allows.

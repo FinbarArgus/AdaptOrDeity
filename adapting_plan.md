@@ -608,10 +608,12 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   - The packet face: what leaks from a touched packet comes out at the contact, in the cell's near field; the cell takes
     k/(k + 4 pi D a) of it (Glf 5e-4, PTS ~9%). The near field cannot widen the ~5% face for the starting cell; the face
     (a sealed contact) stays.
-  - Scripted players (left alone, mediocre, great, optimised) calibrate level 1 and are the LevelTests (explicit until
-    calibrated). Calibration waits for the next expression model; provisional runs (scoring.md) show that with a 1 µM
-    ocean regulation only delays a full famine's crash, while with ~0.05 mM in the open water a regulated cell survives
-    the famines that kill a cell left alone.
+  - Scripted players (left alone, mediocre, great, optimised) calibrate level 1 and are the LevelTests. Calibrated
+    2026-10-14 on the fast-expression cell (docs/plans/scoring.md): level 1's sea at 0.035 mM glucose (was 1 µM: in a
+    full famine regulation only delays the crash) and food 3e-3 packets/s; survival 10 points, damage 5, the survival
+    meter empty after a day of starving; stars at 5 / 10 / 14. Left alone: starves from day 0.31, 2 points, no star;
+    mediocre (maintenance regulated by ATP): 1.2 d of famines survived, 5 points, one star; great (also Glf x1.5): 0.36 d,
+    ~11, two; optimised (Glf x2, gathering): never starves, 15, three. Glf x2 alone also never starves (open question 22).
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
@@ -668,8 +670,9 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     restarts avoid it; worth a minimal reproduction upstream. (2026-10-12)
 21. Free organisms (docs/plans/free-daughters.md): should lineage points diminish by generation, since descendants may
     out-earn the survival points? (Far bodies and organisms are now frozen until the creature returns, 2026-10-13.)
-22. Scoring (docs/plans/scoring.md): starvation is absorbing (open question 18), so the survival meter mostly measures
-    the day of the first long famine; whether points should also reward recovering, and the damage meter's baseline
-    (~1.1% of a lethal load at rest), are open. (2026-10-13)
+22. Scoring (docs/plans/scoring.md): outcomes are nearly binary (a strategy never starves or loses hours to famines),
+    and at level 1 raising Glf to x2 alone avoids every famine (the cell lives on the 0.035 mM sea between packets): three
+    stars without regulation. Lower the sea or make the carrier costlier? Also open: the damage meter's baseline (~1.1% of
+    a lethal load at rest) and judging players on one random sequence. (2026-10-14)
 17. Communication and memory: what a signal costs, what memory stores (places, individuals, threats) and how it
     is modelled (neural cells, a game abstraction, or both). Levels and dates decided when we get there.

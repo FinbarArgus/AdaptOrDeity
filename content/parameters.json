@@ -210,7 +210,7 @@
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "skill points the survival meter converts to at 100/100 when a level ends (designer request 2026-10-13: no food points; survival and reproduction points). In proportion below, rounded. Calibration: see docs/plans/scoring.md"
+   "note": "skill points the survival meter converts to at 100/100 when a level ends (designer request 2026-10-13: no food points; survival and reproduction points). In proportion below, rounded. Calibrated 2026-10-14 with the scripted players (docs/plans/scoring.md): with damage 5 at full, a perfect level 1 earns 15 (three stars)"
   },
   "scoring.damage_points": {
    "value": 5,
@@ -227,32 +227,32 @@
    "note": "a living cell is starving while its ATP is below this fraction of its resting level; the survival meter falls in proportion to the share of the creature's living cells starving (all of it once none lives)"
   },
   "scoring.starvation_to_empty": {
-   "value": 0.1,
+   "value": 0.143,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "starvation of the whole creature that empties the survival meter, in level durations: 1 empties it over a whole level of starving, so the meter at the end is the share of the level not spent starving"
+   "note": "starvation of the whole creature that empties the survival meter, in level durations: 0.143 is a day of starving in the 7-day level. Calibrated 2026-10-14 (docs/plans/scoring.md): the mediocre player's 1.2 days of famine leave 0, the great player's 0.36 day about two thirds"
   },
   "scoring.star_points_1": {
    "value": 5,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "points a level must earn (its meters and its reproduction points) for star 1 (designer 2026-10-13: 1 star a mediocre player, 2 a great one, 3 perfect control; set from the scripted players, docs/plans/scoring.md)"
+   "note": "points a level must earn (its meters and its reproduction points) for star 1: 5 / 10 / 14 match the scripted players at level 1 (left alone 2, mediocre 5, great ~11, optimised 15; docs/plans/scoring.md, 2026-10-14)"
   },
   "scoring.star_points_2": {
    "value": 10,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "points a level must earn (its meters and its reproduction points) for star 2 (designer 2026-10-13: 1 star a mediocre player, 2 a great one, 3 perfect control; set from the scripted players, docs/plans/scoring.md)"
+   "note": "points a level must earn (its meters and its reproduction points) for star 2: 5 / 10 / 14 match the scripted players at level 1 (left alone 2, mediocre 5, great ~11, optimised 15; docs/plans/scoring.md, 2026-10-14)"
   },
   "scoring.star_points_3": {
    "value": 14,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "points a level must earn (its meters and its reproduction points) for star 3 (designer 2026-10-13: 1 star a mediocre player, 2 a great one, 3 perfect control; set from the scripted players, docs/plans/scoring.md)"
+   "note": "points a level must earn (its meters and its reproduction points) for star 3: 5 / 10 / 14 match the scripted players at level 1 (left alone 2, mediocre 5, great ~11, optimised 15; docs/plans/scoring.md, 2026-10-14)"
   },
   "skills.points_per_offspring": {
    "value": 1,

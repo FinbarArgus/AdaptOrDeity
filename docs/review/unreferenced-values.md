@@ -23,13 +23,13 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `environment.current_speed` | 2e-06 | m/s | unreferenced_placeholder | placeholder | drift of the water over the ground, which carries the creature: a slow near-bed current, 2 um/s (a cell moves with its water; over the sea floor the f |
 | `motility.mean_run` | 2 | s | unreferenced_placeholder | placeholder | mean length of a run with the motor on (random, exponential; E. coli runs ~1 s between tumbles) |
 | `motility.mean_pause` | 4 | s | unreferenced_placeholder | placeholder | mean pause with the motor off between runs (random, exponential); each run sets off in a random direction |
-| `scoring.survival_points` | 5 | 1 | unreferenced_placeholder | design | skill points the survival meter converts to at 100/100 when a level ends (designer 2026-10-13); calibrated with the scripted players (docs/plans/scoring.md) |
+| `scoring.survival_points` | 10 | 1 | unreferenced_placeholder | design | skill points the survival meter converts to at 100/100 when a level ends (designer 2026-10-13); calibrated with the scripted players (docs/plans/scoring.md) |
 | `scoring.damage_points` | 5 | 1 | unreferenced_placeholder | design | skill points the damage meter converts to at 100/100 |
 | `scoring.starving_atp_fraction` | 0.5 | 1 | unreferenced_placeholder | design | a living cell is starving while its ATP is below this fraction of its resting level |
-| `scoring.starvation_to_empty` | 1 | 1 | unreferenced_placeholder | design | starvation of the whole creature that empties the survival meter, in level durations |
+| `scoring.starvation_to_empty` | 0.143 | 1 | unreferenced_placeholder | design | starvation of the whole creature that empties the survival meter, in level durations |
 | `scoring.star_points_1` | 5 | 1 | unreferenced_placeholder | design | a level's points for one star (a mediocre player; set from the scripted players) |
 | `scoring.star_points_2` | 10 | 1 | unreferenced_placeholder | design | points for two stars (a great player) |
-| `scoring.star_points_3` | 15 | 1 | unreferenced_placeholder | design | points for three stars (the best strategy found) |
+| `scoring.star_points_3` | 14 | 1 | unreferenced_placeholder | design | points for three stars (the best strategy found) |
 | `skills.points_per_offspring` | 1 | 1 | unreferenced_placeholder | design | reproduction points: skill points per daughter released in the creature's lineage (its own daughters at division without multicellularity, and its free organisms' daughters, any generation |
 | `field.diffusivity.lactate` | 1e-09 | m2/s | unreferenced_placeholder | placeholder | lactate anion in water: ~1.0e-9 m2/s, typical of small organic anions; needs a measured value |
 | `field.diffusivity.aspartate` | 8e-10 | m2/s | longsworth1953diffusion | placeholder | amino acids of aspartate's size diffuse at ~0.8-0.9e-9 m2/s at 25 C (glycine 1.06e-9, alanine 0.91e-9); aspartate's own value to check |
@@ -53,7 +53,9 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 
 ## content/timeline.json
 
-- `levels[].ocean.glucose` = 1 µM: free glucose in open water is nM to low µM; no source yet.
+- `levels[].ocean.glucose`: 1 µM (free glucose in open water is nM to low µM; no source yet), except level 1 at 0.035 mM
+  (2026-10-14): a design value so that a regulated cell survives the famines between packets (docs/plans/scoring.md),
+  far above what open water holds.
 - `levels[].duration_s` for levels 2-7 (a week each): placeholders; level 1's week is the designer's decision.
 - `levels[].arrivals.food_per_s` (3e-3 packets/s since packets hold 4.9e-15 mol; 80% carried): calibrated for play (level 1
   starts to starve within the week), not sourced. The outcome is sensitive to it and to the random sequence: in probes 3e-3 to 3.5e-3
