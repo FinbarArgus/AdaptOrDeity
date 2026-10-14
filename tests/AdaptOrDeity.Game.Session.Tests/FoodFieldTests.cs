@@ -265,7 +265,11 @@ namespace AdaptOrDeity.Game.Session.Tests
             loop.Enqueue(SimCommands.SetFeature(GameFeatures.IndexOf(GameFeatures.Swimming), false));
             loop.ApplyCommands();
             loop.StepExactly(100);
-            Assert.That(b.Vx * b.Vx + b.Vy * b.Vy, Is.LessThan(1e-20), "no thrust: it only drifts with the water (< 1e-4 um/s)");
+            if (world.TouchingSeabed)   // held against the ground or a rock: the water flows past it, it moves no further in
+                Assert.That(b.GroundVx * b.GroundVx + b.GroundVy * b.GroundVy, Is.LessThan(b.CurrentVx * b.CurrentVx + b.CurrentVy * b.CurrentVy + 1e-24),
+                    "no thrust: it rests against what it drifted into");
+            else
+                Assert.That(b.Vx * b.Vx + b.Vy * b.Vy, Is.LessThan(1e-20), "no thrust: it only drifts with the water (< 1e-4 um/s)");
             Assert.That(world.Cell(0).External("a_motor_mod_i_flagellum"), Is.EqualTo(0.0));
         }
 

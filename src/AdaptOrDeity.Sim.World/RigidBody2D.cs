@@ -98,15 +98,18 @@ namespace AdaptOrDeity.Sim.World
 
         /// <summary>
         /// Stops motion into a surface with outward normal (nx, ny): the body's velocity over the ground (current plus its
-        /// velocity through the water) loses any component into the surface, so it rests against it.
+        /// velocity through the water) loses any component into the surface, so it rests against it; the kinetic energy it
+        /// loses is counted as dissipated.
         /// </summary>
         public void StopInto(double nx, double ny)
         {
             double into = (CurrentVx + Vx) * nx + (CurrentVy + Vy) * ny;
             if (into >= 0.0)
                 return;
+            double ke0 = KineticEnergy;
             Vx -= into * nx;
             Vy -= into * ny;
+            Dissipated += ke0 - KineticEnergy;   // the contact is inelastic: the kinetic energy lost becomes heat
         }
 
         /// <summary>Places the body at (x, y) over the ground [m], turned by <paramref name="angle"/> [rad], at rest in the water.</summary>

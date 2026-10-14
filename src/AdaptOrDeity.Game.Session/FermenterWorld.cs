@@ -450,6 +450,9 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>The ground and rocks at the bottom of the world.</summary>
         public Seabed Seabed { get; }
 
+        /// <summary>True when the creature rested against the ground or a rock in the last step.</summary>
+        public bool TouchingSeabed { get; private set; }
+
         private readonly double _freeVx, _freeVy;
         private readonly Func<int, (double X, double Y)>? _cellAt;
 
@@ -566,7 +569,7 @@ namespace AdaptOrDeity.Game.Session
             LoadCreature();   // the food it holds weighs on it
             CurrentAt(_body.Body);   // slower in the seabed's boundary layer and behind rocks
             _body.Step(dt, fx, fy, torque);
-            Seabed.Collide(_body.Body, _cells.Count, _cellAt!, CellRadius);   // it rests against what it ran into
+            TouchingSeabed = Seabed.Collide(_body.Body, _cells.Count, _cellAt!, CellRadius);   // it rests against what it ran into
 
             var b = _body.Body;
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
