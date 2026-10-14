@@ -312,6 +312,23 @@ namespace AdaptOrDeity.Sim.World
         /// the creature at (cx, cy) moving at (vx, vy), retires packets that left it or are spent, and releases new ones at
         /// its boundary.
         /// </summary>
+        /// <summary>
+        /// Dead bodies no cell holds drift with the water around them: each takes the seabed's current at its position
+        /// (<paramref name="vx"/>, <paramref name="vy"/>: the free current; scaled by <see cref="Seabed.CurrentFactor"/>).
+        /// </summary>
+        public void DriftBodies(Seabed seabed, double vx, double vy)
+        {
+            double flow = vx >= 0.0 ? 1.0 : -1.0;
+            foreach (var p in _packets)
+            {
+                if (!p.Active || p.Stuck || p.Kind != PacketKind.Body)
+                    continue;
+                double f = seabed.CurrentFactor(p.X, p.Y, flow);
+                p.Vx = p.DriftVx = vx * f;
+                p.Vy = p.DriftVy = vy * f;
+            }
+        }
+
         /// <summary>Moves packets that are not held by a cell out of the ground and rocks they overlap.</summary>
         public void KeepOutOf(Seabed seabed)
         {

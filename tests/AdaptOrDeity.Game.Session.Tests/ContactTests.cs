@@ -48,7 +48,8 @@ namespace AdaptOrDeity.Game.Session.Tests
         // Steps on; returns the glucose the cell took up meanwhile [mol].
         private static double Run(FermenterWorld world, double seconds)
         {
-            double t0 = 1e6, taken = 0.0;   // after any carrier build-up above
+            double period = GameParameters.Default.Value("environment.tide_period");
+            double t0 = Math.Round(1e6 / period) * period, taken = 0.0;   // after any carrier build-up; the tide flowing +x
             int steps = (int)Math.Round(seconds / world.MacroDt);
             for (int k = 0; k < steps; k++)
             {

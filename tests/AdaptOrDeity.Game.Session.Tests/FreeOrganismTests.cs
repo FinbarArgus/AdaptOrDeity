@@ -128,7 +128,12 @@ namespace AdaptOrDeity.Game.Session.Tests
                 }
             }
             double t = steps * world.MacroDt;
-            Assert.That(drifter.X - b0.Item3, Is.EqualTo(water.CurrentVx * t).Within(1e-9 * Math.Abs(water.CurrentVx * t) + 1e-15),
+            // the tide: x(t) = sum over the steps of U0 cos(2 pi t_k / T) dt (the current is held over each step)
+            double amp = GameParameters.Default.Value("environment.current_speed"), period = GameParameters.Default.Value("environment.tide_period");
+            double drift = 0.0;
+            for (int k = 0; k < steps; k++)
+                drift += amp * Math.Cos(2.0 * Math.PI * k * world.MacroDt / period) * world.MacroDt;
+            Assert.That(drifter.X - b0.Item3, Is.EqualTo(drift).Within(1e-9 * Math.Abs(drift) + 1e-15),
                 "without swimming it moves with the water");
             Assert.That(drifter.Y - b0.Item4, Is.EqualTo(water.CurrentVy * t).Within(1e-9 * Math.Abs(water.CurrentVy * t) + 1e-15));
             Assert.That(switches, Is.GreaterThan(4), "runs and pauses");
@@ -257,12 +262,18 @@ namespace AdaptOrDeity.Game.Session.Tests
             // nobody touches it: it stays, drifting with the water it died in; only its free part leaks into the water
             double glucose = body.Glucose, polymer = body.Glucose - body.Free, x0 = body.X, y0 = body.Y;
             const double seconds = 1800.0;
+            long first = Clocks.GetOrCreateValue(world).Steps;
             Run(world, seconds);
+            // the tide it drifts in: the free current at each step (open water, far above the seabed)
+            double amp = GameParameters.Default.Value("environment.current_speed"), period = GameParameters.Default.Value("environment.tide_period");
+            double drift = 0.0;
+            for (long k = first; k < first + (long)Math.Round(seconds / world.MacroDt); k++)
+                drift += amp * Math.Cos(2.0 * Math.PI * k * world.MacroDt / period) * world.MacroDt;
             Assert.That(body.Active, Is.True, "a dead body is not removed with time");
             Assert.That(body.Glucose - body.Free, Is.EqualTo(polymer).Within(1e-12 * polymer), "its polymer stays");
             Assert.That(body.Free, Is.LessThan(0.1 * (glucose - polymer)), "its small molecules leak out");
-            Assert.That(body.X - x0, Is.EqualTo(b.CurrentVx * seconds).Within(1e-9 * Math.Abs(b.CurrentVx * seconds) + 1e-15));
-            Assert.That(body.Y - y0, Is.EqualTo(b.CurrentVy * seconds).Within(1e-9 * Math.Abs(b.CurrentVy * seconds) + 1e-15));
+            Assert.That(body.X - x0, Is.EqualTo(drift).Within(1e-9 * Math.Abs(drift) + 1e-15), "it drifts with the tide");
+            Assert.That(body.Y - y0, Is.EqualTo(0.0).Within(1e-15));
 
             // the creature's cell digests it with its hydrolase and takes it up through the membrane facing it; it shrinks
             OnCreature(world, body);

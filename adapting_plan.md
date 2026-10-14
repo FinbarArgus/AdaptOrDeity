@@ -621,6 +621,11 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   linear to 10 µm) and in the wake behind rocks, so swimming down or sheltering behind a rock beats the drift. Food and
   prey stay out of it. Not yet: rocks do not block diffusion in the environment field.
 
+- **2026-10-14** The current is a tide (amplitude 0.2 µm/s, period 12.42 h, the M2 tide): slower than the creature
+  swims, turning twice a day; rocks' wakes follow it. The flagellum's proton cost is scaled with its thrust squared
+  (motility.proton_cost_scale 0.01), keeping a bacterium's propulsion efficiency; stronger-flagella proteins come later.
+  Level 1 recalibrated (docs/plans/scoring.md): the four reference players earn 0, 1, 2 and 3 stars.
+
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.

@@ -67,6 +67,8 @@ namespace AdaptOrDeity.Game.Session
     {
         private readonly double _starvingAtp = GameParameters.Default.Value("scoring.starving_atp_fraction");
         private readonly double _starvationToEmpty = GameParameters.Default.Value("scoring.starvation_to_empty");
+        private readonly double _damageToEmpty = GameParameters.Default.Value("scoring.damage_to_empty");
+        private double _damageAtLevelStart;
         private readonly int _survivalPointsMax = GameParameters.Default.Integer("scoring.survival_points");
         private readonly int _damagePointsMax = GameParameters.Default.Integer("scoring.damage_points");
         private readonly int[] _starPoints =
@@ -138,7 +140,10 @@ namespace AdaptOrDeity.Game.Session
             StarvingShare = living > 0 ? (double)starving / living : 1.0;
             double empty = _starvationToEmpty * GameTimeline.Default.DurationOf(_level);
             SurvivalMeter = Math.Max(0.0, SurvivalMeter - 100.0 * StarvingShare * dt / empty);
-            DamageMeter = Math.Min(DamageMeter, 100.0 * (1.0 - damage / _cells.Count));
+            // the damage the level added (mean over the cells, a dead cell counting as a full lethal load), against
+            // scoring.damage_to_empty of a lethal load
+            double gained = Math.Max(0.0, damage / _cells.Count - _damageAtLevelStart);
+            DamageMeter = Math.Min(DamageMeter, Math.Max(0.0, 100.0 * (1.0 - gained / _damageToEmpty)));
         }
 
         // The level's time ran out: each meter converts to points, and the level is scored.
@@ -161,6 +166,10 @@ namespace AdaptOrDeity.Game.Session
         private void ResetMeters()
         {
             SurvivalMeter = DamageMeter = 100.0;
+            double damage = 0.0;
+            foreach (var c in _cells)
+                damage += c.Alive ? Math.Min(1.0, Math.Max(0.0, c.Damage)) : 1.0;
+            _damageAtLevelStart = _cells.Count > 0 ? damage / _cells.Count : 0.0;
             _reproductionAtLevelStart = ReproductionPoints;
             Array.Clear(_seen, 0, _seen.Length);
             _unlockedAtLevelStart ??= new bool[GameFeatures.All.Count];

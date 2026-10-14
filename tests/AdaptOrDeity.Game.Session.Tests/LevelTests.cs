@@ -90,7 +90,6 @@ namespace AdaptOrDeity.Game.Session.Tests
     }
 
     [Parallelizable(ParallelScope.Self)]
-    [Explicit("to recalibrate: level 1 is now survive one day, with 0.5 um packets (2026-10-14)")]
     public class LevelOneLeftAlone : LevelOneBot
     {
         protected override ScriptedPlayer Player => Bots.LeftAlone();
@@ -104,7 +103,6 @@ namespace AdaptOrDeity.Game.Session.Tests
     }
 
     [Parallelizable(ParallelScope.Self)]
-    [Explicit("to recalibrate: level 1 is now survive one day, with 0.5 um packets (2026-10-14)")]
     public class LevelOneMediocre : LevelOneBot
     {
         protected override ScriptedPlayer Player => Bots.Mediocre();
@@ -114,7 +112,6 @@ namespace AdaptOrDeity.Game.Session.Tests
     }
 
     [Parallelizable(ParallelScope.Self)]
-    [Explicit("to recalibrate: level 1 is now survive one day, with 0.5 um packets (2026-10-14)")]
     public class LevelOneGreat : LevelOneBot
     {
         protected override ScriptedPlayer Player => Bots.Great();
@@ -124,7 +121,6 @@ namespace AdaptOrDeity.Game.Session.Tests
     }
 
     [Parallelizable(ParallelScope.Self)]
-    [Explicit("to recalibrate: level 1 is now survive one day, with 0.5 um packets (2026-10-14)")]
     public class LevelOneOptimised : LevelOneBot
     {
         protected override ScriptedPlayer Player => Bots.Optimised();

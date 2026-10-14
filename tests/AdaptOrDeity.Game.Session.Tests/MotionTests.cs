@@ -62,22 +62,47 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
-        public void TheCurrentOutrunsTheFlagellaSoTheCreatureDriftsDownstream()
+        public void AtPeakTideTheFlagellaOutrunTheCurrent()
         {
-            // During a run a cell pushing straight upstream moves over the ground at U - F/xi; averaged over runs and
-            // pauses (content motility.mean_run, mean_pause) at U - (F/xi) run/(run + pause). With the game's numbers both
-            // are downstream (+x): the flagella work, but the current is faster.
+            // During a run a cell pushing straight upstream moves over the ground at U - F/xi: with the game's numbers its
+            // swimming beats the tidal current's amplitude, so it makes headway even at peak tide.
             var (body, f, _) = OneCell();
             var b = body.Body;
             double swim = f / b.Drag, u = b.CurrentVx;
-            double run = GameParameters.Default.Value("motility.mean_run"), pause = GameParameters.Default.Value("motility.mean_pause");
-            double duringRun = u - swim, average = u - swim * run / (run + pause);
             for (int k = 0; k < 100; k++)
                 body.Step(0.1, _ => 1.0, _ => f);   // 10 s running upstream
-            Assert.That(b.GroundVx, Is.EqualTo(duringRun).Within(1e-9 * u));
-            TestContext.Out.WriteLine($"swimming {swim * 1e6:F2} um/s, current {u * 1e6:F2} um/s: " +
-                                      $"{duringRun * 1e6:F2} um/s over the ground while running, {average * 1e6:F2} on average");
-            Assert.That(duringRun, Is.GreaterThan(0.0), "downstream even while running upstream");
+            Assert.That(b.GroundVx, Is.EqualTo(u - swim).Within(1e-9 * swim));
+            Assert.That(b.GroundVx, Is.LessThan(0.0), "upstream against the peak tide");
+            TestContext.Out.WriteLine($"swimming {swim * 1e6:F2} um/s against a tide of up to {u * 1e6:F2} um/s");
+        }
+
+        [Test]
+        public void TheCurrentIsATide()
+        {
+            // The free current is the amplitude times cos(2 pi t / period): it slows, turns and flows back.
+            using var world = new FermenterWorld();
+            double amp = GameParameters.Default.Value("environment.current_speed"), period = GameParameters.Default.Value("environment.tide_period");
+            double t = 0.0;
+            foreach (double target in new[] { 0.0, 0.25 * period, 0.5 * period })
+            {
+                while (t < target - 1e-9)
+                {
+                    world.Step(t, world.MacroDt);
+                    t += world.MacroDt;
+                }
+                world.Step(t, world.MacroDt);
+                Assert.That(world.FreeCurrentX, Is.EqualTo(amp * Math.Cos(2.0 * Math.PI * t / period)).Within(1e-12 * amp), $"t = {t:F0} s");
+                t += world.MacroDt;
+            }
+        }
+
+        [Test]
+        public void TheFlagellumsProtonCostIsScaledWithItsThrust()
+        {
+            using var world = new FermenterWorld();
+            var fresh = new FermenterCell(TraitCatalog.Fermenter);
+            Assert.That(world.Cell(0).External("n_H_rev_mod_i_flagellum"),
+                Is.EqualTo(GameParameters.Default.Value("motility.proton_cost_scale") * fresh.External("n_H_rev_mod_i_flagellum")));
         }
     }
 }

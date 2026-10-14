@@ -152,20 +152,21 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>
         /// The share of the free-stream current at (x, y): 0 at the ground, rising linearly to 1 at the top of the boundary
         /// layer; inside a rock 0; in a rock's wake (downstream, within its height band) it recovers linearly from 0 at the
-        /// rock to 1 at <see cref="SeabedSettings.WakeLength"/> radii. The current flows along +x.
+        /// rock to 1 at <see cref="SeabedSettings.WakeLength"/> radii. The current flows along +x (<paramref name="flow"/> 1)
+        /// or back along -x (-1, the ebbing tide): the wake is on its downstream side.
         /// </summary>
-        public double CurrentFactor(double x, double y)
+        public double CurrentFactor(double x, double y, double flow = 1.0)
         {
             double h = y - GroundY;
             if (h <= 0.0)
                 return 0.0;
             double f = Math.Min(1.0, h / Settings.BoundaryLayer);
             double reach = Settings.RockRadiusMax * (Settings.WakeLength + 1.0);
-            Stretches(x - reach, x + Settings.RockRadiusMax, out long first, out long last);
+            Stretches(x - reach, x + reach, out long first, out long last);
             for (long k = first; k <= last; k++)
             foreach (var r in Stretch(k))
             {
-                double dx = x - r.X, dy = y - r.Y;
+                double dx = (x - r.X) * flow, dy = y - r.Y;
                 if (dx * dx + dy * dy <= r.Radius * r.Radius)
                     return 0.0;
                 if (dx > 0.0 && Math.Abs(dy) < r.Radius)

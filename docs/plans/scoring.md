@@ -155,3 +155,19 @@ growth 3 with engulfing starves on day 0.4.
 ## Still to do
 - Level 2's reference players (measured: see the level-2 table when run) and their fixtures.
 - A search over more seeds: one random sequence per player is all the test time allows.
+
+
+## Calibration 2026-10-14 (level 1: survive one day; 0.5 um packets; thrust and proton cost scaled; tidal current 0.2 um/s)
+Meters: survival empties after 0.6 of the day spent with every cell starving (10 points full); damage empties when the
+level adds 10% of a lethal load (5 points full). Stars at 5, 10 and 14 points. Reference players (LevelTests, about a
+minute each):
+
+| player | strategy | survival | damage | points | stars |
+|---|---|---|---|---|---|
+| left alone | nothing | 0 (starves) | 36 -> 2 | 2 | 0 |
+| mediocre | maintenance regulation by ATP when it unlocks | 47.7 -> 5 | 85.9 -> 4 | 9 | 1 |
+| great | + Glf x1.5, keeps still on food (gather) | 53.4 -> 5 | 94.3 -> 5 | 10 | 2 |
+| optimised | + Glf x2, gather, holds packets | 100 -> 10 | 96.3 -> 5 | 15 | 3 |
+
+Mediocre and great sit one point either side of the 2-star line: small content changes can move them; the LevelTests
+will flag it.

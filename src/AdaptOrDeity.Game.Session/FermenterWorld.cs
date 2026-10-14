@@ -162,9 +162,14 @@ namespace AdaptOrDeity.Game.Session
             // flagellar thrust scaled for play (content motility.thrust_scale); daughters inherit it with their parameters
             first.SetExternal("v_one_mod_i_flagellum",
                 first.External("v_one_mod_i_flagellum") * GameParameters.Default.Value("motility.thrust_scale"));
+            // and its proton cost per revolution with it (content motility.proton_cost_scale): the same efficiency
+            first.SetExternal("n_H_rev_mod_i_flagellum",
+                first.External("n_H_rev_mod_i_flagellum") * GameParameters.Default.Value("motility.proton_cost_scale"));
             _body = new CreatureBody(CellRadius, first.External("eta_mod_i_flagellum"), GameParameters.Default.Body());
-            _freeVx = _body.Body.CurrentVx;   // the current above the seabed's boundary layer
-            _freeVy = _body.Body.CurrentVy;
+            _tideX = _body.Body.CurrentVx;   // the tidal current's amplitude above the seabed's boundary layer
+            _tideY = _body.Body.CurrentVy;
+            _tidePeriod = GameParameters.Default.Value("environment.tide_period");
+            Tide(0.0);
             Seabed = new Seabed(GameParameters.Default.Seabed(), _body.Body.Y);
             _cellAt = i =>
             {
@@ -453,19 +458,34 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>True when the creature rested against the ground or a rock in the last step.</summary>
         public bool TouchingSeabed { get; private set; }
 
-        private readonly double _freeVx, _freeVy;
+        private double _freeVx, _freeVy;
+        private readonly double _tideX, _tideY, _tidePeriod;
+
+        /// <summary>The free current now [m/s] (above the boundary layer): the tide, flowing along its heading and back.</summary>
+        public double FreeCurrentX => _freeVx;
+
+        public double FreeCurrentY => _freeVy;
+
+        // The tidal current at time t: amplitude x cos(2 pi t / period).
+        private void Tide(double t)
+        {
+            double phase = Math.Cos(2.0 * Math.PI * t / _tidePeriod);
+            _freeVx = _tideX * phase;
+            _freeVy = _tideY * phase;
+        }
         private readonly Func<int, (double X, double Y)>? _cellAt;
 
         // A body's current: the free current scaled by the seabed's boundary layer and wakes at its position.
         private void CurrentAt(RigidBody2D body)
         {
-            double f = Seabed.CurrentFactor(body.X, body.Y);
+            double f = Seabed.CurrentFactor(body.X, body.Y, _freeVx * _tideX + _freeVy * _tideY >= 0.0 ? 1.0 : -1.0);
             body.CurrentVx = _freeVx * f;
             body.CurrentVy = _freeVy * f;
         }
 
         public void Step(double t, double dt)
         {
+            Tide(t);
             _time = t + dt;
             StepWorld(t, dt);
             // A level is passed when all its goals are met (content/timeline.json levels[].goals): its meters convert to
@@ -572,6 +592,7 @@ namespace AdaptOrDeity.Game.Session
             TouchingSeabed = Seabed.Collide(_body.Body, _cells.Count, _cellAt!, CellRadius);   // it rests against what it ran into
 
             var b = _body.Body;
+            _food.DriftBodies(Seabed, _freeVx, _freeVy);   // dead bodies drift with the tide around them
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
             _prey.Step(dt, b.X, b.Y, _freeVx, _freeVy);   // prey swim in the free current
             _food.KeepOutOf(Seabed);

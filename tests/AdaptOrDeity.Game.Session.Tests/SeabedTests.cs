@@ -32,7 +32,12 @@ namespace AdaptOrDeity.Game.Session.Tests
             var seabed = NewSeabed();
             var (body, f) = OneCell(Math.PI / 2.0);   // based on top: it pushes the cell downwards
             var b = body.Body;
-            double ux = b.CurrentVx;
+            var rocks = new List<Rock>();
+            double x0 = 0.0;
+            for (seabed.RocksBetween(x0 - 10e-6, x0 + 10e-6, rocks); rocks.Count > 0; seabed.RocksBetween(x0 - 10e-6, x0 + 10e-6, rocks))
+                x0 += 1e-6;   // above bare ground
+            b.Place(x0, 0.0, 0.0);
+            double ux = 0.0;   // still water: it falls straight down
             for (int k = 0; k < 600; k++)
             {
                 double c = seabed.CurrentFactor(b.X, b.Y);

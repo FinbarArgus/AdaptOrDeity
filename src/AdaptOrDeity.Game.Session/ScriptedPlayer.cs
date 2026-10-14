@@ -177,13 +177,15 @@ namespace AdaptOrDeity.Game.Session
         }
 
         /// <summary>
-        /// The mediocre player's regulation, and a sensible expression choice: half as much again of the glucose carrier
-        /// (Glf x1.5), so the cell takes up more of the sea's glucose and of a packet's face.
+        /// The mediocre player's regulation, a sensible expression choice (half as much again of the glucose carrier, Glf
+        /// x1.5, so the cell takes up more of the sea's glucose and of a packet's face), and a sensible habit: it keeps
+        /// still on food and swims when it has none (<see cref="SwimPolicy.Gather"/>).
         /// </summary>
         public static ScriptedPlayer Great()
         {
             var p = Rename(Mediocre(), "great");
             p.Traits["Glf_expression"] = 1.5;
+            p.Swim = SwimPolicy.Gather;   // stays on food, swims when it has none
             return p;
         }
 

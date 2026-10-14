@@ -44,8 +44,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             using var world = Quiet(0.1);   // a rich sea: the cell stays at rest
             Run(world, 0.0, 600.0);
             Assert.That((world.SurvivalMeter, world.StarvingShare), Is.EqualTo((100.0, 0.0)));
-            // a cell at rest carries a little damage, which its repair holds steady (about 1% of a lethal load)
-            Assert.That(world.DamageMeter, Is.GreaterThan(98.0).And.LessThanOrEqualTo(100.0 * (1.0 - world.Cell(0).Damage) + 1e-9));
+            // a cell at rest carries a little damage, which its repair holds steady: the level adds next to none
+            Assert.That(world.DamageMeter, Is.GreaterThan(98.0).And.LessThanOrEqualTo(100.0));
             Assert.That((world.SurvivalPointsNow, world.DamagePointsNow), Is.EqualTo((SurvivalAtFull, DamageAtFull)));
             Assert.That(world.SkillPoints, Is.EqualTo(0), "nothing until the level ends");
             world.DevEndLevel();
@@ -82,12 +82,16 @@ namespace AdaptOrDeity.Game.Session.Tests
         [Test]
         public void TheDamageMeterFollowsTheWorstLoadAndPointsAreInProportion()
         {
+            // the meter follows the damage the level has added (worst so far), emptying at scoring.damage_to_empty of a
+            // lethal load
             using var world = Quiet(0.1);
-            world.Cell(0).SetState("bio__D", 0.55);
+            double start = world.Cell(0).Damage, empty = GameParameters.Default.Value("scoring.damage_to_empty");
+            world.Cell(0).SetState("bio__D", start + 0.4 * empty);
             Run(world, 0.0, 0.1);
-            double worst = 100.0 * (1.0 - world.Cell(0).Damage);
+            double worst = 100.0 * (1.0 - (world.Cell(0).Damage - start) / empty);
+            Assert.That(worst, Is.InRange(50.0, 70.0));
             Assert.That(world.DamageMeter, Is.EqualTo(worst).Within(1e-9));
-            world.Cell(0).SetState("bio__D", 0.1);
+            world.Cell(0).SetState("bio__D", start);
             Run(world, 0.1, 0.1);
             Assert.That(world.DamageMeter, Is.EqualTo(worst).Within(1e-9), "repair does not refill it");
             Assert.That(world.DamagePointsNow, Is.EqualTo((int)Math.Round(DamageAtFull * worst / 100.0, MidpointRounding.AwayFromZero)));
