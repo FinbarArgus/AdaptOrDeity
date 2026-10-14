@@ -29,6 +29,9 @@ namespace AdaptOrDeity.Sim.World
 
         public bool Active { get; internal set; }
 
+        /// <summary>The last level the creature saw it in (0: not seen since it arrived); kept by the game.</summary>
+        public int SeenLevel { get; set; }
+
         internal double UntilTumble { get; set; }
     }
 
@@ -200,6 +203,7 @@ namespace AdaptOrDeity.Sim.World
             p.Glucose = Content;
             p.Free = Settings.FreeFraction * p.Glucose;
             p.UntilTumble = Exponential() * Settings.MeanRun;
+            p.SeenLevel = 0;
             p.Active = true;
         }
     }

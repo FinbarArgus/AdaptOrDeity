@@ -145,7 +145,7 @@ namespace AdaptOrDeity.Game.Session
             var env = _environment;
             // with the field's membrane correction for what the open share exchanged with it in the last step
             double r = CellRadius;
-            double openGlc = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? _fieldRelease[i] : 0.0);
+            double openGlc = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? _fieldRelease[i] + _contactRelease[i] : 0.0);
             double openLac = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? w * c.LactateRelease : 0.0);
             double openH = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? w * c.ProtonRelease : 0.0));
             for (int t = 0; t < env.TraceCount; t++)

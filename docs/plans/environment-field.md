@@ -81,12 +81,37 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
     (1%) of its departure from the open water (each change restarts the cell's integrator); cells step; each living
     cell's uptake through the faces comes out of those packets (`FoodField.Draw`, in cell order, then free organisms by
     id) and its other exchange (J_glc_e, J_lac_e, -J_H_lac) goes into the field; the field steps. Every mole leaving a
-    packet or a cell enters the field or a cell (tests: 1e-12). Food eaten (skill points) is all a cell takes from
+    packet or a cell enters the field or a cell (tests: 1e-12). Food eaten (a statistic) is all a cell takes from
     packets and vacuoles, and its field uptake's share above the ocean's glucose (sugar that leaked from packets).
+  - **Contact (2026-10-13):** what leaks from a packet that living cells touch comes out at the contact, on their
+    surface: it enters the field at each touching cell (equal shares) and each sees it in its membrane correction as its
+    own release (`FermenterWorld.AtContact`, `ContactGlucose`); untouched packets leak where they lie.
   - **Why faces:** sugar hydrolysed into open water reaches a cell with probability k/(k + 4 pi D a), k its carriers'
     clearance: ~0.05% for Glf (k ~ 5e-18 m³/s against 4 pi D a = 8e-15). With release into the water only, a level-1
     cell starved within minutes of the start. Through the face, the packet's free sugar (~50-70 mM) reaches ~5% of the
     membrane: a resting cell eats at its demand (~5e-19 mol/s), about the hydrolase's rate on one packet.
+  - **Can the face be wider? (designer, 2026-10-13, "Can we increase the 5% packet face?"; open question 19)** The
+    proposal: sugar hydrolysed at the contact spreads around the cell in milliseconds (a²/D = 1.5 ms), so all of the
+    membrane sees it. Worked through, the physics does not widen the face:
+    - The mean over a sphere's surface of the field of a point source Q on that surface (the sphere reflecting) is
+      exactly Q/(4 pi D a), the same as for a source at its centre (reciprocity: it equals the field at the source of a
+      uniform release from the surface). That is how the contact source now enters the cell's membrane correction.
+    - A membrane with uniform carriers of clearance k (uptake per concentration, linear at these concentrations) then
+      takes up k/(k + 4 pi D a) of Q, wherever on the surface Q comes out. The capture of ~1 for product released at the
+      surface (a/r, the Vetter et al. 1998 picture) holds for a perfectly absorbing cell, k >> 4 pi D a (Berg and Purcell:
+      a few thousand diffusion-limited absorbers). The kernel's carriers are far from that: measured clearance at low
+      glucose, Glf 4.5e-18 m³/s (k/(k + 4 pi D a) = 5e-4), Glf x4 1.7e-17 (0.2%), the H+ symporter at its largest share
+      1.7e-17 (0.2%), ABC 1.2e-16 (1.4%), PTS at its largest share 7.9e-16 (9%); 4 pi D a = 8.4e-15 m³/s. Attached marine
+      bacteria are indeed seen to release most of what they hydrolyse (Smith et al. 1992, hydrolysis-uptake uncoupling).
+    - So the contact's near field adds a Glf cell about 0.05% of what leaks at the contact; the ~5% cap facing the packet
+      (the sealed contact: the packet's free sugar, held at 50 mM, against that part of the membrane) stays what feeds a
+      touching cell. Effective share now: the cap, (1 - cos t)/2 = 5.2% for a fresh packet, plus k/(k + 4 pi D a) of the
+      leak (tested: ContactTests).
+    - What would feed a cell more, physically: a larger sealed contact (the cell spreading on the particle, as cells on
+      surfaces do), carriers with higher affinity (the PTS takes ~9% of the near field), a periplasm-like envelope that
+      keeps the product near the membrane (sugar entering it at the contact would reach all the carriers; its loss is
+      through the outer layer's permeability, not free diffusion), or engulfing (the vacuole lines most of the membrane).
+      A design choice for the designer.
   - **Frames:** `FieldExtent`, `FieldGlucose`, `FieldLactate` and `FieldPh` (64x64 floats centred on the creature over
     max(food window, 3 colony diameters), ground axes; codec ASN6). Unity draws them as the water overlays (F7 glucose,
     F8 lactate, F9 pH; `FieldView`), under the cells, coloured over the range in view (the legend shows it).
@@ -123,10 +148,10 @@ Background: docs/plans/parallel-and-gpu.md section 4; research: docs/research/fo
   cell touches gets the cell's full hydrolase rate (several touching packets are digested in parallel): a choice to
   revisit (share the enzyme by the faces?).
 - **A level-1 cell lives at its demand while it touches a packet** (~5e-19 mol/s), and its ATP runs out in the first
-  gap between packets longer than its reserve, for good (starvation is absorbing, open question 18). Whether a lone cell
-  starves on day 0.4 or day 6 hangs on the gaps: on the LevelTests' random draws, food at 3e-3 / 4e-3 / 5e-3 / 6e-3 /
-  7e-3 packets/s gave 1 / 6 / 6 / 3 / 21 points and ATP gone at day 0.43 / 1.9 / 1.7 / 0.8 / 6.1. Calibration
-  (2026-10-13): food 5e-3 packets/s at levels 1 and 2 (was 3e-3), `skills.glucose_per_point` 1.2e-14 mol (was 2e-14).
+  gap between packets longer than its reserve, for good (starvation is absorbing, open question 18). Held food now stays
+  against its cell as it shrinks (free-daughters.md, "Meals have mass"): before, a held packet lost contact as it shrank
+  and the cell starved holding food, so a cell now eats all it holds and gaps come only when everything held is eaten.
+  Calibration with the scripted players: docs/plans/scoring.md.
 - **Growth needs a vacuole:** the face's ~5% of membrane cannot carry growth's uptake (growth 3 needs ~1.9e-18 mol/s), a
   vacuole lining most of the membrane can. A level-2 cell at growth 3 starves in the gaps between swallowed packets (see
   the calibration below).

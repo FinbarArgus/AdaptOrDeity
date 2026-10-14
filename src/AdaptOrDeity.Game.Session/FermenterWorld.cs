@@ -78,7 +78,6 @@ namespace AdaptOrDeity.Game.Session
         private readonly TraitInfo[] _traits;
         private int _level = 1;
         private readonly bool[] _bought = new bool[GameFeatures.All.Count];
-        private readonly double _glucosePerPoint = GameParameters.Default.Value("skills.glucose_per_point");
         private int _pointsSpent;
         private double _time, _levelStart;
         private readonly FoodField _food;
@@ -160,10 +159,14 @@ namespace AdaptOrDeity.Game.Session
             _cellDensity = GameParameters.Default.Value("body.cell_density");
             // One rigid body in the water: each cell's mass from its volume, Stokes drag from the kernel's viscosity
             _cellMass = _cellDensity * first.AlgebraicValue("membrane__Vol");
+            // flagellar thrust scaled for play (content motility.thrust_scale); daughters inherit it with their parameters
+            first.SetExternal("v_one_mod_i_flagellum",
+                first.External("v_one_mod_i_flagellum") * GameParameters.Default.Value("motility.thrust_scale"));
             _body = new CreatureBody(CellRadius, first.External("eta_mod_i_flagellum"), GameParameters.Default.Body());
             AddToBody(0, _defaultAngles);
             _food.Populate(_body.Body.X, _body.Body.Y);
-            _food.BodyRange = OrganismRange;   // dead organisms' bodies stay as long as living ones would
+            _food.BodyRange = OrganismRange;   // dead organisms' bodies are simulated as far as living ones are
+            _food.MaxFrozenBodies = GameParameters.Default.Integer("organisms.frozen_bodies_max");
             _bodyTrace = BodyTrace();
             _environment = CreateEnvironment(first);
             first.StopAtMacroSteps = true;   // the field changes cells' inputs every macro step; daughters inherit it
@@ -293,6 +296,7 @@ namespace AdaptOrDeity.Game.Session
                 _traits[i] = new TraitInfo(traits[i].Id, traits[i].Label, traits[i].Protein, true, traits[i].Min,
                     traits[i].Max, traits[i].Kind == TraitKind.Expression, traits[i].Step, traits[i].Kind == TraitKind.Share,
                     traits[i].Feature);
+            ResetMeters();   // level 1 starts
         }
 
         public IReadOnlyList<OverlayInfo> Overlays => OverlayList;
@@ -325,6 +329,7 @@ namespace AdaptOrDeity.Game.Session
             {
                 _level = value;
                 _levelStart = _time;
+                ResetMeters();
                 ApplyControls();
                 // what the level's world supplies per second (content/timeline.json levels[].arrivals)
                 SetOcean(GameTimeline.Default.OceanGlucose(value));
@@ -438,13 +443,52 @@ namespace AdaptOrDeity.Game.Session
         {
             _time = t + dt;
             StepWorld(t, dt);
-            // A level lasts its simulated time (content/timeline.json levels[].duration_s); then the next begins.
-            if (LevelTimeLeft <= 0.0 && GameTimeline.Default.HasLevel(_level + 1))
+            // A level is passed when all its goals are met (content/timeline.json levels[].goals): its meters convert to
+            // skill points and the next begins.
+            if (LevelGoalsMet && GameTimeline.Default.HasLevel(_level + 1))
+            {
+                ScoreLevel();
                 Level = _level + 1;
+            }
         }
 
-        /// <summary>Simulated time left in the current level [s].</summary>
-        public double LevelTimeLeft => GameTimeline.Default.DurationOf(_level) - (_time - _levelStart);
+        /// <summary>Simulated time left until the level's survival goal [s] (0 once reached; infinite without one).</summary>
+        public double LevelTimeLeft => Math.Max(0.0, GameTimeline.Default.DurationOf(_level) - (_time - _levelStart));
+
+        /// <summary>
+        /// True when every goal of the current level is met: survive — a living cell once the level has run its seconds;
+        /// achievement — earned in this level.
+        /// </summary>
+        public bool LevelGoalsMet
+        {
+            get
+            {
+                var goals = GameTimeline.Default.GoalsOf(_level);
+                if (goals.Count == 0)
+                    return false;
+                for (int i = 0; i < goals.Count; i++)
+                {
+                    var goal = goals[i];
+                    if (goal.Kind == "survive" && (_time - _levelStart < goal.Seconds || !AnyCellAlive()))
+                        return false;
+                    if (goal.Kind == "achievement")
+                    {
+                        int a = GameAchievements.IndexOf(goal.Id);
+                        if (a < 0 || _achievedLevel[a] != _level)
+                            return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        private bool AnyCellAlive()
+        {
+            foreach (var c in _cells)
+                if (c.Alive)
+                    return true;
+            return false;
+        }
 
         private void StepWorld(double t, double dt)
         {
@@ -497,11 +541,13 @@ namespace AdaptOrDeity.Game.Session
                 fy += _forceY[i];
                 torque += _torque[i];
             }
+            LoadCreature();   // the food it holds weighs on it
             _body.Step(dt, fx, fy, torque);
 
             var b = _body.Body;
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
             _prey.Step(dt, b.X, b.Y, b.CurrentVx, b.CurrentVy);   // prey swim in the same water as the creature
+            FreezeAndThaw();
             MoveOrganisms();
             _cos = Math.Cos(b.Angle);
             _sin = Math.Sin(b.Angle);
@@ -524,13 +570,15 @@ namespace AdaptOrDeity.Game.Session
             AfterCells(dt);
             TakeUpFromVacuoles(dt);
             OrganismsEat(dt);
-            NoticeAtpDip();
+            bool hadFood = NoticeFoodGap(dt);
             if (Active(GameFeatures.AutoDivide) && Active(GameFeatures.GrowthAndDivision))
                 for (int i = 0; i < _cells.Count; i++)
                     if (_cells[i].Alive && _cells[i].GrowthProgress >= 1.0 && Room(_cellGroup[i]))
                         DivideCell(i);
             ApplyFixedSize();
             OrganismLives();
+            UpdateMeters(dt);
+            NoticeAchievementsAndSights(hadFood);
         }
 
         // Each cell's motors, and its flagella's force on the body from the last step's state (the motors' response to
@@ -613,7 +661,7 @@ namespace AdaptOrDeity.Game.Session
         public bool FeatureUnlocked(int feature)
         {
             var info = GameFeatures.All[feature];
-            if (info.UnlockLevel > _level || (info.Cost > 0 && !_bought[feature]) || (info.RequiresAtpBelow > 0.0 && !AtpDipped))
+            if (info.UnlockLevel > _level || (info.Cost > 0 && !_bought[feature]) || (info.RequiresFoodGap > 0.0 && !FoodGapMet))
                 return false;
             foreach (var other in info.Requires)
                 if (!FeatureUnlocked(GameFeatures.IndexOf(other)))
@@ -621,14 +669,15 @@ namespace AdaptOrDeity.Game.Session
             return true;
         }
 
-        /// <summary>Glucose the creature has eaten from food packets since the start [mol].</summary>
+        /// <summary>
+        /// Glucose the creature has eaten since the start [mol]: from packets, vacuoles, and its field uptake's share above
+        /// the open water's glucose. A statistic: points come from surviving (FermenterWorld.Scoring.cs) and reproducing.
+        /// </summary>
         public double FoodEaten { get; private set; }
 
-        /// <summary>Skill points to spend: food points and reproduction points, less those spent.</summary>
-        public int SkillPoints => FoodPoints + ReproductionPoints + _pointsGranted - _pointsSpent;
-
-        /// <summary>Points earned by eating: one per content skills.glucose_per_point of food eaten.</summary>
-        public int FoodPoints => (int)Math.Floor(FoodEaten / _glucosePerPoint);
+        /// <summary>Skill points to spend: the finished levels' survival and damage points and the reproduction points, less
+        /// those spent.</summary>
+        public int SkillPoints => SurvivalPoints + DamagePoints + ReproductionPoints + _pointsGranted - _pointsSpent;
 
         /// <summary>
         /// Points earned by reproducing: content skills.points_per_offspring for each daughter released in the creature's
@@ -641,7 +690,19 @@ namespace AdaptOrDeity.Game.Session
 
         private int _pointsGranted;
 
-        /// <summary>Development aid: adds skill points without food (to try features quickly; tests). Not for play.</summary>
+        /// <summary>
+        /// Development aid: ends the level now, as if its time had run out (its meters convert to points and the next level
+        /// begins). Not for play.
+        /// </summary>
+        public void DevEndLevel()
+        {
+            if (!GameTimeline.Default.HasLevel(_level + 1))
+                throw new InvalidOperationException($"level {_level} is the last");
+            ScoreLevel();
+            Level = _level + 1;
+        }
+
+        /// <summary>Development aid: adds skill points (to try features quickly; tests). Not for play.</summary>
         public void DevGrantPoints(int points)
         {
             if (points < 0)
@@ -768,6 +829,7 @@ namespace AdaptOrDeity.Game.Session
             var daughter = _cells[cell].Divide();
             if (daughter == null)
                 return;
+            _divisions++;
             if (!Active(GameFeatures.Multicellularity))
             {
                 // without multicellularity the daughter swims off on its own (FermenterWorld.Organisms.cs)

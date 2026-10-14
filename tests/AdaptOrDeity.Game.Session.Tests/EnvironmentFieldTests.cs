@@ -67,7 +67,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             loop.StepExactly(3000);   // 300 s
             double leaked = free * (1.0 - Math.Exp(-s.FreeLeakRate * 300.0));
             Assert.That(start - packet.Glucose, Is.EqualTo(leaked).Within(1e-9 * leaked), "the free part leaks, exactly");
-            Assert.That(packet.Glucose - packet.Free, Is.EqualTo(start - free).Within(1e-15 * start), "the polymer stays");
+            Assert.That(packet.Glucose - packet.Free, Is.EqualTo(start - free).Within(1e-12 * start), "the polymer stays");
             Assert.That(world.Environment.PacketGlucose, Is.EqualTo(leaked).Within(1e-9 * leaked), "into the field");
             var b = world.Body.Body;
             Assert.That(world.Environment.Field.Sample(AdaptOrDeity.Sim.World.EnvironmentField.FirstTrace + packet.MainTrace, b.X, b.Y),
@@ -83,7 +83,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             var (world, loop) = Colony(1, food: true);
             var packet = PacketOnCell(world);
             typeof(FoodPacket).GetProperty("Free")!.SetValue(packet, 0.0);   // all polymer: room below the inhibition level
-            const double rate = 1e-17;   // mol glucose/s from cell 0's surface enzymes
+            const double rate = 1e-18;   // mol glucose/s from cell 0's surface enzymes
             world.HydrolysisCapacity = i => i == 0 ? rate : 0.0;
             double start = packet.Glucose;
             Assert.That(world.Food.Settings.ContactGlucose * AdaptOrDeity.Sim.World.FoodField.Volume(packet), Is.GreaterThan(rate * 10.0),

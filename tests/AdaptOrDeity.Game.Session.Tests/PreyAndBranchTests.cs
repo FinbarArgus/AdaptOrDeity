@@ -280,7 +280,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(frame.Swallowed, Is.EqualTo(1));
             Assert.That((frame.Offspring, frame.OwnOffspring), Is.EqualTo((1, 1)));
             Assert.That(frame.ReproductionPoints, Is.EqualTo(world.ReproductionPoints));
-            Assert.That(frame.FoodPoints, Is.EqualTo(world.FoodPoints));
+            Assert.That(frame.SurvivalMeter, Is.EqualTo((float)world.SurvivalMeter));
             Assert.That(frame.PreyCount, Is.EqualTo(1));
             Assert.That(frame.PreyX[0], Is.EqualTo((float)10e-6).Within(1e-9f));
             Assert.That(frame.PreyHeading[0], Is.EqualTo(1f));
@@ -303,7 +303,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(back.Swallowed, Is.EqualTo(1));
             Assert.That((back.Offspring, back.OwnOffspring), Is.EqualTo((1, 1)));
             Assert.That(back.ReproductionPoints, Is.EqualTo(frame.ReproductionPoints));
-            Assert.That(back.FoodPoints, Is.EqualTo(frame.FoodPoints));
+            Assert.That(back.SurvivalMeter, Is.EqualTo(frame.SurvivalMeter));
             world.Dispose();
         }
 

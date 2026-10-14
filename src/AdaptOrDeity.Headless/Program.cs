@@ -34,6 +34,8 @@ namespace AdaptOrDeity.Headless
                 return FieldBench.Run(args.Skip(1).ToArray());
             if (args.Length > 0 && args[0] == "bench")
                 return Bench.Run(args.Skip(1).ToArray());
+            if (args.Length > 0 && args[0] == "bot")
+                return Bot(args.Skip(1).ToArray());
 
             double duration = args.Length > 0 ? double.Parse(args[0], CultureInfo.InvariantCulture) : 1.0;
             using var session = SimSession.CreateOneCell();
@@ -45,6 +47,51 @@ namespace AdaptOrDeity.Headless
             Console.WriteLine(FormattableString.Invariant(
                 $"sim_time={frame.SimTime:F3} s  cell {o2.Name}={frame.Channels[0][0] * o2.DisplayMultiplier:F2} {o2.DisplayUnit}"));
             PrintRejections(session);
+            return 0;
+        }
+
+        // bot left|mediocre|great|NAME [level=n] [food=packets/s] [ocean=mol/m3] [key=value ...]: a scripted player through one level (the
+        // named reference player, or NAME with the settings, ScriptedPlayer.Parse); prints its outcome.
+        private static int Bot(string[] args)
+        {
+            string name = args.Length > 0 ? args[0] : "left";
+            var rest = args.Skip(1).ToList();
+            int level = 1;
+            double food = double.NaN, ocean = double.NaN;
+            foreach (var a in rest.ToList())
+            {
+                if (a.StartsWith("ocean=", StringComparison.Ordinal))
+                {
+                    ocean = double.Parse(a.Substring(6), CultureInfo.InvariantCulture);
+                    rest.Remove(a);
+                    continue;
+                }
+                if (a.StartsWith("level=", StringComparison.Ordinal))
+                    level = int.Parse(a.Substring(6), CultureInfo.InvariantCulture);
+                else if (a.StartsWith("food=", StringComparison.Ordinal))
+                    food = double.Parse(a.Substring(5), CultureInfo.InvariantCulture);
+                else
+                    continue;
+                rest.Remove(a);
+            }
+            var player = name switch
+            {
+                "left" => Bots.LeftAlone(),
+                "mediocre" => Bots.Mediocre(),
+                "great" => Bots.Great(),
+                _ => ScriptedPlayer.Parse(name, rest),
+            };
+            using var world = new FermenterWorld { Workers = 1 };
+            if (level != 1)
+                world.Level = level;
+            if (!double.IsNaN(food))
+                world.Food.SetArrivals(food, world.Food.Settings.CarriedShare);
+            if (!double.IsNaN(ocean))
+                world.BathConcentration = ocean;
+            bool trace = Environment.GetEnvironmentVariable("AOD_BOT_TRACE") == "1";
+            Console.WriteLine(BotOutcome.Play(player, world, report: trace ? (w, t) => Console.WriteLine(FormattableString.Invariant(
+                $"t {t / 3600:F0} h ATP {w.Cell(0).Atp:F2} X {w.Body.Body.X:R} gap {w.TimeWithoutFood:F0} eaten {w.FoodEaten:G4} survival {w.SurvivalMeter:F1} damage {w.DamageMeter:F1} reg {w.FoodGapMetAt:F0}"))
+                : null));
             return 0;
         }
 

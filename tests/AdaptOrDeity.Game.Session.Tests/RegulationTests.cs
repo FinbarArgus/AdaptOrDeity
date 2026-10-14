@@ -1,13 +1,14 @@
 using System;
 using System.Linq;
 using AdaptOrDeity.Sim.Physiology;
+using AdaptOrDeity.Sim.World;
 using NUnit.Framework;
 
 namespace AdaptOrDeity.Game.Session.Tests
 {
     /// <summary>
-    /// Regulation by falling metabolites (feature Regulation): it unlocks when a cell's ATP first falls below half its
-    /// resting level; then each group's switches (per trait and growth, per species) set the kernel's reg_on_* parameters
+    /// Regulation by falling metabolites (feature Regulation): it unlocks when the creature first goes the feature's gap
+    /// without touching or holding food; then each group's switches (per trait and growth, per species) set the kernel's reg_on_* parameters
     /// of its cells, daughters and released organisms inherit them, and frames carry them.
     /// </summary>
     public class RegulationTests
@@ -43,15 +44,23 @@ namespace AdaptOrDeity.Game.Session.Tests
             Steps[world] = done;
         }
 
-        // Starves the world's cells until regulation unlocks (ATP below half its resting level: about a minute).
+        private static double Gap => GameFeatures.All[Feature(GameFeatures.Regulation)].RequiresFoodGap;
+
+        // Runs a world without food until regulation unlocks (the feature's gap without food).
         private static void Unlock(FermenterWorld world)
         {
-            double ocean = world.BathConcentration;
-            world.BathConcentration = 0.0;
-            for (int k = 0; k < 3000 && !world.AtpDipped; k++)
+            for (int k = 0; k < 3000 && !world.FoodGapMet; k++)
                 Run(world, world.MacroDt);
-            Assert.That(world.AtpDipped, Is.True);
-            world.BathConcentration = ocean;
+            Assert.That(world.FoodGapMet, Is.True);
+        }
+
+        // A fresh packet on cell 0 (it touches it from the next step).
+        private static FoodPacket PacketOnCell(FermenterWorld world)
+        {
+            world.CellPosition(0, out double x, out double y);
+            var p = world.Food.AddBody(x + world.CellRadius, y, 0.0, 0.0, world.Food.PacketRadius,
+                world.Food.Settings.PacketAmount, world.Food.Settings.FreeFraction * world.Food.Settings.PacketAmount, 0);
+            return p;
         }
 
         private static int Trait(FermenterWorld world, string id) => world.Traits.ToList().FindIndex(t => t.Id == id);
@@ -62,33 +71,56 @@ namespace AdaptOrDeity.Game.Session.Tests
             var info = GameFeatures.All[Feature(GameFeatures.Regulation)];
             Assert.That(info.UnlockLevel, Is.EqualTo(1));
             Assert.That(info.Cost, Is.EqualTo(0), "free: unlocked by the energy shortage itself");
-            Assert.That(info.RequiresAtpBelow, Is.EqualTo(0.5));
+            Assert.That(info.RequiresFoodGap, Is.EqualTo(30.0), "s: half a minute without food");
             Assert.That(SessionSchema.RegulationSpecies.Select(s => s.Id), Is.EqualTo(FermenterCell.RegulationSpecies));
         }
 
         [Test]
-        public void ItUnlocksWhenAtpFirstFallsBelowHalfItsRestingLevelAndNotBefore()
+        public void ItUnlocksAfterTheFirstGapWithoutFoodAndNotBefore()
         {
             int f = Feature(GameFeatures.Regulation);
-            using var fed = Quiet(ocean: 0.1);
-            Run(fed, 120.0);
-            Assert.That(fed.Cell(0).RestingAtp, Is.EqualTo(9.6).Within(1e-12), "mol/m³, upstream's resting ATP");
-            Assert.That(fed.Cell(0).Atp, Is.GreaterThan(9.0));
-            Assert.That(fed.FeatureUnlocked(f), Is.False, "a fed cell at rest never unlocks it");
-            Assert.Throws<InvalidOperationException>(() => fed.SetRegulation(0, 0, 0, true));
+            // touching food for twice the gap: locked, the gap stays 0
+            using var world = Quiet(ocean: 0.1);
+            var packet = PacketOnCell(world);
+            Run(world, 2.0 * Gap);
+            Assert.That(packet.Active, Is.True);
+            Assert.That(world.TimeWithoutFood, Is.EqualTo(0.0));
+            Assert.That(world.FeatureUnlocked(f), Is.False, "fed: never unlocked");
+            Assert.Throws<InvalidOperationException>(() => world.SetRegulation(0, 0, 0, true));
 
-            // starving: locked while ATP stays above half its resting level, unlocked the step it falls below
-            using var starving = Quiet();
-            bool below = false;
-            for (int k = 0; k < 3000 && !below; k++)
+            // the food goes: locked until the gap has passed, unlocked on the step it reaches it
+            world.Food.Remove(packet);
+            int steps = 0;
+            while (!world.FeatureUnlocked(f) && steps < 3000)
             {
-                Assert.That(starving.FeatureUnlocked(f), Is.False, $"step {k}: ATP {starving.Cell(0).Atp:G4} mM");
-                Run(starving, starving.MacroDt);
-                below = starving.Cell(0).Atp < 0.5 * 9.6;
+                Assert.That(world.TimeWithoutFood, Is.LessThan(Gap));
+                Run(world, world.MacroDt);
+                steps++;
             }
-            Assert.That(below, Is.True);
-            Assert.That(starving.FeatureUnlocked(f), Is.True);
-            Assert.That(starving.FeatureEnabled(f), Is.True, "on by default once unlocked");
+            Assert.That(steps * world.MacroDt, Is.EqualTo(Gap).Within(world.MacroDt + 1e-9));
+            Assert.That(world.FoodGapMet, Is.True);
+            Assert.That(world.FeatureEnabled(f), Is.True, "on by default once unlocked");
+
+            // food again and another gap: it stays unlocked, and the gap restarts with the food
+            PacketOnCell(world);
+            Run(world, 1.0);
+            Assert.That(world.TimeWithoutFood, Is.EqualTo(0.0));
+            Assert.That(world.FeatureUnlocked(f), Is.True);
+        }
+
+        [Test]
+        public void FoodInAVacuoleCountsAsFood()
+        {
+            int f = Feature(GameFeatures.Regulation);
+            using var world = Quiet(level: 2, ocean: 0.1);
+            var packet = PacketOnCell(world);
+            // engulfing is on at level 2: a packet smaller than the cell is swallowed and digested for minutes
+            Run(world, 1.0);
+            Assert.That(packet.Active, Is.False, "swallowed");
+            Assert.That(world.VacuoleOf(0), Is.Not.Null);
+            Run(world, 2.0 * Gap);
+            Assert.That(world.VacuoleOf(0), Is.Not.Null, "still digesting");
+            Assert.That(world.FeatureUnlocked(f), Is.False);
         }
 
         [Test]

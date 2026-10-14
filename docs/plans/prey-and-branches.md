@@ -51,7 +51,7 @@ that leave). Built on branch feat/prey-branch.
   of the membrane lining the vacuole, (r_v/R)² as spheres, sees the vacuole's concentration and the rest sees the
   outside; the carriers' uptake splits in the same proportion (as the level-4 sectors do). The vacuole's
   concentration is stepped implicitly in the uptake (its tiny volume would otherwise oscillate). What the cell takes
-  from it is food eaten (skill points). Nothing leaves a vacuole to the water; a vacuole emptied below 1% of a prey cell
+  from it is food eaten (a statistic since 2026-10-13: points come from surviving, docs/plans/scoring.md). Nothing leaves a vacuole to the water; a vacuole emptied below 1% of a prey cell
   is removed (the remainder counted as egested).
 - Bookkeeping, tested to 1e-12: engulfed = taken up + egested + still held.
 - `Swallowed` counts prey cells only (packets are not organisms). Frames carry it and each cell's vacuole
@@ -66,10 +66,11 @@ that leave). Built on branch feat/prey-branch.
   exclude each other (`excludes` in content/timeline.json, mirrored in `GameFeatures`, checked by
   `FeatureTableMatchesTheTimeline`). `FermenterWorld.WhyNotForSale` says why a feature cannot be bought.
 - Without multicellularity a daughter leaves at division: it is not added to the creature, `Offspring` counts it, and
-  it earns **reproduction points** (`skills.points_per_offspring`), on top of food points. It lives on as a free
+  it earns **reproduction points** (`skills.points_per_offspring`), on top of the survival and damage points
+  (docs/plans/scoring.md). It lives on as a free
   organism in the same water ([free-daughters.md](free-daughters.md)); its daughters, any generation, count and earn
   the same. With multicellularity the
-  daughter stays (the colony) and earns none. Frames carry `FoodPoints`, `ReproductionPoints`, `Offspring`.
+  daughter stays (the colony) and earns none. Frames carry `ReproductionPoints`, `Offspring`.
 - Later colony features need multicellularity (`requires`): boundary and inner cells, the extracellular matrix,
   several groups, a fixed body size.
 - **Mitochondria do nothing yet**: buying them closes multicellularity and is recorded; respiration inside the cell is

@@ -61,6 +61,12 @@ namespace AdaptOrDeity.Game.Session
         public double DiedAt { get; internal set; } = double.NaN;
 
         /// <summary>
+        /// True while it is out of range and frozen (<see cref="FermenterWorld.FrozenOrganisms"/>): kept exactly as it was,
+        /// not moved or integrated, until the creature comes back.
+        /// </summary>
+        public bool Frozen { get; internal set; }
+
+        /// <summary>
         /// The food packet its body became when it died (<see cref="PacketKind.Body"/>), or null while it lives. The slot is
         /// reused for other food once the body is eaten or gone (inactive).
         /// </summary>
@@ -113,6 +119,12 @@ namespace AdaptOrDeity.Game.Session
 
         internal double FieldRelease { get; set; }
 
+        // the last level the creature saw it in
+        internal int SeenLevel { get; set; }
+
+        // glucose leaking from the packets it touches this step, entering the field at it [mol/s]
+        internal double ContactRelease { get; set; }
+
         internal double[] Traces { get; }
     }
 
@@ -124,9 +136,13 @@ namespace AdaptOrDeity.Game.Session
     /// environment field where the field covers it, divides by itself if it was released with growth and automatic
     /// division on (its daughters are the creature's lineage: each earns reproduction points), and dies at a lethal damage
     /// load. At its death its body becomes food where it lies (<see cref="PacketKind.Body"/>, eaten by the packets' rules)
-    /// and it leaves the list. One farther than organisms.range_view_widths view widths from the creature is no longer
-    /// simulated, nor is a dead body; at most organisms.max organisms are (a new daughter replaces the farthest). Each organism's motion and integration run on the workers, and what organisms share (packets,
-    /// the field) is settled afterwards in id order, so results do not depend on the number of workers.
+    /// and it leaves the list. One farther than organisms.range_view_widths view widths from the creature is frozen: kept
+    /// with its whole state (cell, body, random numbers, vacuole, the bodies it holds) but not moved or integrated, until the
+    /// creature comes back within range; dead bodies out of range freeze the same way (<see cref="FoodPacket.Frozen"/>). At
+    /// most organisms.max organisms are simulated (a new daughter freezes the farthest) and organisms.frozen_max are kept
+    /// frozen (beyond it the farthest is forgotten). Each organism's motion and integration run on the workers, and what
+    /// organisms share (packets, the field) is settled afterwards in id order, so results do not depend on the number of
+    /// workers.
     /// </summary>
     public sealed partial class FermenterWorld
     {
@@ -137,13 +153,25 @@ namespace AdaptOrDeity.Game.Session
         private int _bodyTrace = -1;
         private readonly int _motilitySeed = GameParameters.Default.Integer("motility.seed");
         private readonly int _maxOrganisms = GameParameters.Default.Integer("organisms.max");
+        private int _maxFrozen = GameParameters.Default.Integer("organisms.frozen_max");
+        private readonly List<FreeOrganism> _frozen = new List<FreeOrganism>();   // in id order
         private readonly double _rangeWidths = GameParameters.Default.Value("organisms.range_view_widths");
         private Action<int, int>? _organismMotion, _organismPass;
 
         /// <summary>Free organisms simulated now, in id order (all living: a dead one is food).</summary>
         public IReadOnlyList<FreeOrganism> Organisms => _organisms;
 
-        /// <summary>The free organism with this id, or null if it is not simulated (never released, or removed).</summary>
+        /// <summary>Free organisms frozen out of range, in id order: kept as they were until the creature comes back.</summary>
+        public IReadOnlyList<FreeOrganism> FrozenOrganisms => _frozen;
+
+        /// <summary>Most free organisms kept frozen (content organisms.frozen_max; settable for tests).</summary>
+        public int MaxFrozenOrganisms
+        {
+            get => _maxFrozen;
+            set => _maxFrozen = value >= 0 ? value : throw new ArgumentOutOfRangeException(nameof(value));
+        }
+
+        /// <summary>The free organism with this id, or null if it is not simulated (never released, frozen, or forgotten).</summary>
         public FreeOrganism? Organism(int id)
         {
             foreach (var o in _organisms)
@@ -162,7 +190,7 @@ namespace AdaptOrDeity.Game.Session
         public double OrganismRange => _rangeWidths * 2.0 * _food.HalfSize;
 
         /// <summary>Free organisms released so far (the creature's daughters and theirs), that died (their bodies became
-        /// food), and that went out of range or were replaced at the cap.</summary>
+        /// food), and that were forgotten (frozen beyond organisms.frozen_max).</summary>
         public int OrganismsReleased { get; private set; }
 
         public int OrganismsDied { get; private set; }
@@ -244,7 +272,7 @@ namespace AdaptOrDeity.Game.Session
             OrganismsReleased++;
         }
 
-        // At the cap: one that died this step becomes food now; else the organism farthest from the creature goes (the
+        // At the cap: one that died this step becomes food now; else the organism farthest from the creature is frozen (the
         // first of equals).
         private void MakeRoom()
         {
@@ -255,26 +283,77 @@ namespace AdaptOrDeity.Game.Session
                     _organisms.RemoveAt(k);
                     return;
                 }
-            int gone = -1;
+            int far = Farthest(_organisms);
+            var o = _organisms[far];
+            _organisms.RemoveAt(far);
+            Freeze(o);
+        }
+
+        // The index of the organism farthest from the creature (the first of equals).
+        private int Farthest(List<FreeOrganism> list)
+        {
+            int index = -1;
             var b = _body.Body;
             double far = -1.0;
-            for (int k = 0; k < _organisms.Count; k++)
+            for (int k = 0; k < list.Count; k++)
             {
-                var o = _organisms[k];
+                var o = list[k];
                 double d2 = (o.X - b.X) * (o.X - b.X) + (o.Y - b.Y) * (o.Y - b.Y);
                 if (d2 > far)
                 {
                     far = d2;
-                    gone = k;
+                    index = k;
                 }
             }
-            Remove(_organisms[gone]);
-            _organisms.RemoveAt(gone);
-            OrganismsGone++;
+            return index;
         }
 
-        // An organism leaves the simulation: the packets it held lie where they are, its vacuole's content goes with it.
-        private void Remove(FreeOrganism o)
+        // An organism out of range (or pushed out at the cap) is frozen as it is, with the bodies it holds; beyond the frozen
+        // cap the farthest frozen one is forgotten.
+        private void Freeze(FreeOrganism o)
+        {
+            o.Frozen = true;
+            _food.Freeze(o.Id);
+            InsertById(_frozen, o);
+            if (_frozen.Count > _maxFrozen)
+            {
+                int far = Farthest(_frozen);
+                var gone = _frozen[far];
+                _frozen.RemoveAt(far);
+                Forget(gone);
+                OrganismsGone++;
+            }
+        }
+
+        private static void InsertById(List<FreeOrganism> list, FreeOrganism o)
+        {
+            int k = list.Count;
+            while (k > 0 && list[k - 1].Id > o.Id)
+                k--;
+            list.Insert(k, o);
+        }
+
+        // Frozen organisms back within range resume where they were, in id order, while there is room under the cap.
+        private void Thaw()
+        {
+            if (_frozen.Count == 0)
+                return;
+            var b = _body.Body;
+            double range = OrganismRange;
+            for (int k = 0; k < _frozen.Count && _organisms.Count < _maxOrganisms; k++)
+            {
+                var o = _frozen[k];
+                if (Math.Abs(o.X - b.X) > range || Math.Abs(o.Y - b.Y) > range)
+                    continue;
+                _frozen.RemoveAt(k--);
+                o.Frozen = false;
+                _food.Thaw(o.Id);
+                InsertById(_organisms, o);
+            }
+        }
+
+        // A frozen organism is forgotten: the bodies it held stay frozen where they are, its vacuole's content goes with it.
+        private void Forget(FreeOrganism o)
         {
             _food.Release(o.Id);
             if (o.Vacuole != null)
@@ -329,6 +408,7 @@ namespace AdaptOrDeity.Game.Session
                 double flagella = _flagellaTrait >= 0 ? c.TraitValue(_flagellaTrait) : 0.0;
                 double thrust = c.Alive ? Math.Max(0.0, c.FlagellumThrust) : 0.0;
                 o.Body.CellForce(0, flagella, thrust, out double fx, out double fy, out double torque);
+                LoadOrganism(o);
                 o.Body.Step(dt, fx, fy, torque);
             }
         }
@@ -389,7 +469,7 @@ namespace AdaptOrDeity.Game.Session
             o.InField = env.Field.LevelAt(x, y) >= 0;
             if (o.InField)
             {
-                glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? o.FieldRelease : 0.0);
+                glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? o.FieldRelease + o.ContactRelease : 0.0);
                 lactate = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? c.LactateRelease : 0.0);
                 protons = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? c.ProtonRelease : 0.0));
             }
@@ -523,11 +603,28 @@ namespace AdaptOrDeity.Game.Session
             return 0;
         }
 
-        // Deaths (the body becomes food), divisions, and organisms out of range (no longer simulated).
-        private void OrganismLives()
+        // At the start of a step, once the creature has moved: organisms out of range freeze and frozen ones back in range
+        // thaw, so every organism simulated in the step is within range (and the field) as it starts.
+        private void FreezeAndThaw()
         {
             var b = _body.Body;
             double range = OrganismRange;
+            int kept = 0;
+            for (int k = 0; k < _organisms.Count; k++)
+            {
+                var o = _organisms[k];
+                if (o.Alive && (Math.Abs(o.X - b.X) > range || Math.Abs(o.Y - b.Y) > range))
+                    Freeze(o);
+                else
+                    _organisms[kept++] = o;
+            }
+            _organisms.RemoveRange(kept, _organisms.Count - kept);
+            Thaw();
+        }
+
+        // Deaths (the body becomes food) and divisions.
+        private void OrganismLives()
+        {
             _released.Clear();
             int kept = 0;
             for (int k = 0; k < _organisms.Count; k++)
@@ -537,12 +634,6 @@ namespace AdaptOrDeity.Game.Session
                 if (!c.Alive)
                 {
                     Die(o);
-                    continue;
-                }
-                if (Math.Abs(o.X - b.X) > range || Math.Abs(o.Y - b.Y) > range)
-                {
-                    Remove(o);
-                    OrganismsGone++;
                     continue;
                 }
                 if (o.AutoDivides && c.GrowthProgress >= 1.0)

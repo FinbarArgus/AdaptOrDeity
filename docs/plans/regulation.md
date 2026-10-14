@@ -19,8 +19,11 @@ species' drop lowers it; the function is hardcoded for now, experts will choose 
   are removed by ATP-dependent proteolysis with a 5 min half-life, within the proteases' capacity (5%/h of the cell's
   protein). Their amino acids go to a recycled pool that later building draws on first. In a famine the proteolysis
   stops once ATP is spent. Regulating the maintenance acts at once.
-- **Game**: feature `regulation` (level 1, free, optional, on by default once unlocked), unlocked the first time a cell
-  of the creature has its ATP below `requires_atp_below` (0.5) of its resting level (FermenterWorld.Regulation.cs). Each
+- **Game**: feature `regulation` (level 1, free, optional, on by default once unlocked), unlocked after the first gap
+  without food (designer, 2026-10-13: "Unlock after the first gap of not contacting food"): the first time the creature
+  goes `requires_food_gap_s` (content/timeline.json) without a living cell touching a packet, holding one, or with food
+  in its vacuole (`TimeWithoutFood`, `FoodGapMet`, FermenterWorld.Regulation.cs). The gap counts from the start of play;
+  its value is set against the famine reserve (docs/plans/scoring.md). Each
   group keeps a switch per regulated target (each trait, growth, then the maintenance: `FermenterCell.MaintenanceRegulation`)
   and species; ApplyControls pushes them to the group's cells as `reg_on_<species><suffix>_mod_<submodule>` (all 0 while
   the feature is locked or off). Daughters and released organisms copy their parent's kernel inputs, switches included.
@@ -40,9 +43,6 @@ species' drop lowers it; the function is hardcoded for now, experts will choose 
 - No food at all: ATP < 0.1 mM at ~100 s unregulated, ~170 s with the maintenance (and pumps and growth) regulated.
 
 ## Still to do
-- Unlock earlier or keep the creature alive to use it: at level 1 the unlocking dip is the crash itself. A higher
-  threshold (e.g. 0.8 of rest), or unlocking on the first long gap between packets, would let the player set regulation
-  before it is needed (designer's call).
 - Experts choose the function (n, K, or another form): a new version of cell/expression_regulation per function, and a
   game setting to pick it.
 - Show each target's present factor (R_reg) in the popup, and the cell's f per species.

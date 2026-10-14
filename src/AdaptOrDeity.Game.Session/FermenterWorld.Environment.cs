@@ -36,6 +36,8 @@ namespace AdaptOrDeity.Game.Session
         private double[] _packetShare = new double[0];   // per cell: share of its glucose uptake drawn from the packets it touches
         private double[] _fieldGlucose = new double[0];  // per cell: the field's glucose at its membrane [mol/m³]
         private double[] _fieldRelease = new double[0];  // per cell: glucose it exchanged with the field in the last step [mol/s]
+        private double[] _contactRelease = new double[0];  // per cell: glucose leaking from the packets it touches this step [mol/s]
+        private double _contactDt;
         private int _colonyCells;
         private double _inputTolerance = GameParameters.Default.Value("field.input_tolerance");   // 0 for the reference
 
@@ -50,6 +52,7 @@ namespace AdaptOrDeity.Game.Session
         }
         private double _colonyRadius;
         private Func<FoodPacket, double>? _hydrolysis;
+        private Func<FoodPacket, double, bool>? _atContact;
 
         /// <summary>The environment field: the water around the creature.</summary>
         public EnvironmentField Environment => _environment;
@@ -161,7 +164,63 @@ namespace AdaptOrDeity.Game.Session
             var b = _body.Body;
             _environment.Follow(b.X, b.Y, ColonyDiameter);
             _hydrolysis ??= Hydrolysis;
-            _environment.Dissolve(_food, dt, _hydrolysis);
+            _atContact ??= AtContact;
+            if (_contactRelease.Length < _cells.Count)
+                Array.Resize(ref _contactRelease, 2 * _cells.Count);
+            Array.Clear(_contactRelease, 0, _cells.Count);
+            foreach (var o in _organisms)
+                o.ContactRelease = 0.0;
+            _contactDt = dt;
+            _environment.Dissolve(_food, dt, _hydrolysis, LeakAtContact ? _atContact : null);
+        }
+
+        /// <summary>
+        /// Whether what leaks from a packet living cells touch enters the field at those cells (true: the game) or where the
+        /// packet lies (false: to measure the near field's share in tests).
+        /// </summary>
+        public bool LeakAtContact { get; set; } = true;
+
+        /// <summary>Glucose that leaked from packets at the cells touching them so far [mol] (part of the packets' release).</summary>
+        public double ContactGlucose { get; private set; }
+
+        // What leaks from a packet that living cells touch comes out at the contact, on their surface: it enters the field
+        // at each touching cell, in equal shares, and each sees it in its membrane correction as its own release (the mean
+        // over a sphere's surface of a source on that surface is the same as of one at its centre, Q / (4 pi D a)). A cell
+        // takes up its share of that near field, k / (k + 4 pi D a) of it for a clearance k; the rest spreads into the
+        // water. Returns false (the packet's own place) when no living cell touches it.
+        private bool AtContact(FoodPacket p, double mol)
+        {
+            int n = 0;
+            for (int i = 0; i < _cells.Count; i++)
+                if (_cells[i].Alive && TouchesCell(p, i))
+                    n++;
+            foreach (var o in _organisms)
+                if (o.Alive && _food.Touches(p, o.X, o.Y, CellRadius) && _environment.Field.LevelAt(o.X, o.Y) >= 0)
+                    n++;
+            if (n == 0)
+                return false;
+            double rate = mol / _contactDt / n;
+            for (int i = 0; i < _cells.Count; i++)
+                if (_cells[i].Alive && TouchesCell(p, i))
+                {
+                    _body.WorldPosition(i, out double x, out double y);
+                    _environment.Exchange(EnvironmentField.Glucose, x, y, rate);
+                    _contactRelease[i] += rate;
+                }
+            foreach (var o in _organisms)
+                if (o.Alive && _food.Touches(p, o.X, o.Y, CellRadius) && _environment.Field.LevelAt(o.X, o.Y) >= 0)
+                {
+                    _environment.Exchange(EnvironmentField.Glucose, o.X, o.Y, rate);
+                    o.ContactRelease += rate;
+                }
+            ContactGlucose += mol;
+            return true;
+        }
+
+        private bool TouchesCell(FoodPacket p, int i)
+        {
+            _body.WorldPosition(i, out double x, out double y);
+            return _food.Touches(p, x, y, CellRadius);
         }
 
         // Cell i at (x, y) reads the field at its membrane, corrected for what it exchanged with the field in the last step,
@@ -171,7 +230,7 @@ namespace AdaptOrDeity.Game.Session
             var env = _environment;
             var c = _cells[i];
             double r = CellRadius;
-            double glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? _fieldRelease[i] : 0.0);
+            double glucose = env.AtMembrane(EnvironmentField.Glucose, x, y, r, c.Alive ? _fieldRelease[i] + _contactRelease[i] : 0.0);
             double lactate = env.AtMembrane(EnvironmentField.Lactate, x, y, r, c.Alive ? c.LactateRelease : 0.0);
             double protons = env.Protons(env.AtMembrane(EnvironmentField.Acid, x, y, r, c.Alive ? c.ProtonRelease : 0.0));
             _fieldGlucose[i] = glucose;

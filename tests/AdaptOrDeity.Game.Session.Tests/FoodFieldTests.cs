@@ -182,12 +182,14 @@ namespace AdaptOrDeity.Game.Session.Tests
             double offset = Dist(packet.X, packet.Y);   // stuck where it touched
             loop.StepExactly(599);
             // the share of the membrane facing the packet sees its free sugar (its hydrolase keeps it near the
-            // product-inhibition level), the rest the water (the sea's 1 uM and what leaked)
+            // product-inhibition level), the rest the water (the level's sea and what leaked, less the cell's uptake)
             double w = FoodField.FaceShare(packet, world.CellRadius);
             Assert.That(w, Is.InRange(0.04, 0.06), "a fresh packet faces ~5% of the membrane");
             Assert.That(packet.Input, Is.GreaterThan(0.5 * food.Settings.ContactGlucose));
             Assert.That(world.Cell(0).External("C_glc_e_mod_membrane_face"),
-                Is.EqualTo(w * packet.Input).Within(0.02 * w * packet.Input + 0.01), "a touching cell sees the packet's free sugar on its face");
+                Is.EqualTo(w * packet.Input + (1.0 - w) * world.BathConcentration)
+                    .Within(0.02 * w * packet.Input + 0.01 + 0.5 * world.BathConcentration),
+                "a touching cell sees the packet's free sugar on its face");
             Assert.That(world.EatenFromPackets, Is.GreaterThan(0.0), "and takes it up as food");
             world.CellPosition(0, out double cx1, out double cy1);
             Assert.That(Math.Abs(cx1 - cx) + Math.Abs(cy1 - cy), Is.GreaterThan(1e-6), "the creature moved over the ground");
@@ -227,8 +229,11 @@ namespace AdaptOrDeity.Game.Session.Tests
             // Level 1: one flagellum at the back whose motor runs at random. During a run the body swims at ~15 um/s
             // (the kernel's thrust against Stokes drag) and turns a little (the thrust's random angle); in a pause only the
             // current carries it. Its mechanical power is a small share of the motor's proton-motive power; the rest and
-            // the drag's work end as heat. With swimming turned off the motors stay off.
+            // the drag's work end as heat. With swimming turned off the motors stay off. No food: a held meal would slow it.
             var world = new FermenterWorld();
+            world.Food.SetArrivals(0.0, 0.0);
+            foreach (var p in world.Food.Packets.Where(p => p.Active).ToList())
+                world.Food.Remove(p);
             var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             int on = 0, steps = 3000, runsStarted = 0;
             bool last = false;

@@ -26,8 +26,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             world.Food.SetArrivals(0.0, 0.0);
             foreach (var p in world.Food.Packets.Where(p => p.Active).ToList())
                 world.Food.Remove(p);
-            typeof(FermenterWorld).GetProperty(nameof(FermenterWorld.FoodEaten))!
-                .SetValue(world, 20 * GameParameters.Default.Value("skills.glucose_per_point"));
+            world.DevGrantPoints(20);
             world.Level = 2;
             world.SetFeature(GameFeatures.IndexOf(GameFeatures.Engulfing), false);   // packets on the cell stay outside it
             return world;
@@ -184,9 +183,9 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(rate, Is.GreaterThan(0.99 * cell.HydrolysisMax), "a fresh packet saturates the enzyme");
             double start = packet.Glucose, polymer0 = packet.Glucose - packet.Free;
             double released0 = world.Environment.PacketGlucose, eaten0 = world.EatenFromPackets, t = 0.0;
-            Run(world, 10.0, ref t);
+            Run(world, 1.0, ref t);   // within the time before the free sugar reaches the product-inhibition level
             double hydrolysed = polymer0 - (packet.Glucose - packet.Free);
-            Assert.That(hydrolysed, Is.EqualTo(rate * 10.0).Within(1e-4 * hydrolysed), "the hydrolase's rate over 10 s, into the packet's free sugar");
+            Assert.That(hydrolysed, Is.EqualTo(rate * 1.0).Within(1e-4 * hydrolysed), "the hydrolase's rate over 1 s, into the packet's free sugar");
             double leaked = world.Environment.PacketGlucose - released0, eaten = world.EatenFromPackets - eaten0;
             Assert.That(leaked, Is.GreaterThan(0.0), "which leaks into the field");
             Assert.That(eaten, Is.GreaterThan(0.0), "and the membrane facing the packet takes up");

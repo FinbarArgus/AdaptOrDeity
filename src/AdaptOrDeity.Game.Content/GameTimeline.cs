@@ -44,7 +44,19 @@ namespace AdaptOrDeity.Game.Content
                 var feature = (Dictionary<string, object?>)item!;
                 _explanations[(string)feature["id"]!] = feature.TryGetValue("explanation", out var e) ? (string)e! : "";
             }
+            if (root.TryGetValue("achievements", out var achievements) && achievements is List<object?> list)
+                foreach (var item in list)
+                {
+                    var a = (Dictionary<string, object?>)item!;
+                    _achievements.Add(((string)a["id"]!, (string)a["name"]!, (string)a["description"]!));
+                }
         }
+
+        private readonly List<(string Id, string Name, string Description)> _achievements =
+            new List<(string Id, string Name, string Description)>();
+
+        /// <summary>The achievements (content/timeline.json achievements[]), in order.</summary>
+        public IReadOnlyList<(string Id, string Name, string Description)> Achievements => _achievements;
 
         /// <summary>The embedded content/timeline.json.</summary>
         public static GameTimeline Default => _default ??= new GameTimeline(ContentFiles.Read("timeline.json"));
@@ -62,9 +74,38 @@ namespace AdaptOrDeity.Game.Content
             return new Arrivals(Number(arrivals["food_per_s"]), Number(arrivals["carried_share"]), Number(arrivals["prey_per_s"]));
         }
 
-        /// <summary>Simulated time a level lasts [s] (levels[].duration_s); the next level then begins.</summary>
-        public double DurationOf(int level) =>
-            _levels.TryGetValue(level, out var entry) ? Number(entry["duration_s"]) : double.PositiveInfinity;
+        /// <summary>
+        /// The simulated time the level's survival goal asks for [s] (levels[].goals, kind 'survive'), infinite without one.
+        /// </summary>
+        public double DurationOf(int level)
+        {
+            var goals = GoalsOf(level);
+            for (int i = 0; i < goals.Count; i++)
+                if (goals[i].Kind == "survive")
+                    return goals[i].Seconds;
+            return double.PositiveInfinity;
+        }
+
+        /// <summary>The goals that pass a level (levels[].goals): kind 'survive' (seconds) or 'achievement' (id).</summary>
+        public IReadOnlyList<(string Kind, string Name, double Seconds, string Id)> GoalsOf(int level)
+        {
+            if (_goals.TryGetValue(level, out var cached))
+                return cached;
+            var goals = new List<(string Kind, string Name, double Seconds, string Id)>();
+            if (_levels.TryGetValue(level, out var entry) && entry.TryGetValue("goals", out var g) && g is List<object?> list)
+                foreach (var item in list)
+                {
+                    var goal = (Dictionary<string, object?>)item!;
+                    goals.Add(((string)goal["kind"]!, (string)goal["name"]!,
+                        goal.TryGetValue("seconds", out var s) ? Number(s) : 0.0,
+                        goal.TryGetValue("id", out var id) ? (string)id! : ""));
+                }
+            _goals[level] = goals;
+            return goals;
+        }
+
+        private readonly Dictionary<int, IReadOnlyList<(string Kind, string Name, double Seconds, string Id)>> _goals =
+            new Dictionary<int, IReadOnlyList<(string Kind, string Name, double Seconds, string Id)>>();
 
         /// <summary>Glucose in the open water at this level [mol/m³] (levels[].ocean.glucose).</summary>
         public double OceanGlucose(int level) =>

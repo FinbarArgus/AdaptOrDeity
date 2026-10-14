@@ -147,9 +147,12 @@ namespace AdaptOrDeity.Sim.World
         /// into its free sugar (<see cref="FoodField.Hydrolyse"/>, held back at the product-inhibition level), its free sugar
         /// leaks into the field where it lies (<see cref="FoodField.Leak"/>) with its traces in proportion (the contact trace
         /// per contact glucose, times each trace's strength), and what it offers the membranes touching it over the step is
-        /// set (<see cref="FoodField.Predict"/>). Returns the glucose released into the field [mol].
+        /// set (<see cref="FoodField.Predict"/>). <paramref name="atContact"/>, if given, is offered each packet's leaked
+        /// glucose [mol] first: it returns true if it put it into the field itself (at the cells touching the packet, where
+        /// the sugar comes out); otherwise it enters where the packet lies. Returns the glucose released into the field [mol].
         /// </summary>
-        public double Dissolve(FoodField food, double dt, Func<FoodPacket, double> hydrolysis)
+        public double Dissolve(FoodField food, double dt, Func<FoodPacket, double> hydrolysis,
+            Func<FoodPacket, double, bool>? atContact = null)
         {
             double released = 0.0, tracePerGlucose = food.Settings.ContactTrace / food.Settings.ContactGlucose;
             var packets = food.Packets;
@@ -163,7 +166,7 @@ namespace AdaptOrDeity.Sim.World
                 food.Predict(p, dt);
                 if (mol <= 0.0)
                     continue;
-                if (!Field.Deposit(Glucose, p.X, p.Y, mol / dt))
+                if (!(atContact != null && atContact(p, mol)) && !Field.Deposit(Glucose, p.X, p.Y, mol / dt))
                     throw new InvalidOperationException("a food packet outside the environment field");
                 for (int t = 0; t < TraceCount; t++)
                     Field.Deposit(FirstTrace + t, p.X, p.Y, mol / dt * tracePerGlucose * p.Traces[t]);

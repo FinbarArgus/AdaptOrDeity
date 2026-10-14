@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Game.Session
     /// </summary>
     public static class SnapshotCodec
     {
-        private const int Magic = 0x41534E36;   // "ASN6"
+        private const int Magic = 0x41534E37;   // "ASN7"
 
         // Bytes before the frame's fields: the magic number and the shape (HeaderFields integers).
         private const int HeaderFields = 12, HeaderBytes = 4 + 4 * HeaderFields;
@@ -121,13 +121,31 @@ namespace AdaptOrDeity.Game.Session
             int swallowed = f.Swallowed; io.Value(ref swallowed); f.Swallowed = swallowed;
             int offspring = f.Offspring; io.Value(ref offspring); f.Offspring = offspring;
             int own = f.OwnOffspring; io.Value(ref own); f.OwnOffspring = own;
-            int foodPoints = f.FoodPoints; io.Value(ref foodPoints); f.FoodPoints = foodPoints;
+            int survivalPoints = f.SurvivalPoints; io.Value(ref survivalPoints); f.SurvivalPoints = survivalPoints;
+            int damagePoints = f.DamagePoints; io.Value(ref damagePoints); f.DamagePoints = damagePoints;
             int reproduction = f.ReproductionPoints; io.Value(ref reproduction); f.ReproductionPoints = reproduction;
+            float survivalMeter = f.SurvivalMeter; io.Value(ref survivalMeter); f.SurvivalMeter = survivalMeter;
+            float damageMeter = f.DamageMeter; io.Value(ref damageMeter); f.DamageMeter = damageMeter;
+            int survivalNow = f.SurvivalPointsNow; io.Value(ref survivalNow); f.SurvivalPointsNow = survivalNow;
+            int damageNow = f.DamagePointsNow; io.Value(ref damageNow); f.DamagePointsNow = damageNow;
+            float starving = f.StarvingShare; io.Value(ref starving); f.StarvingShare = starving;
+            float withoutFood = f.TimeWithoutFood; io.Value(ref withoutFood); f.TimeWithoutFood = withoutFood;
+            int scoredLevel = f.ScoredLevel; io.Value(ref scoredLevel); f.ScoredLevel = scoredLevel;
+            float scoredSurvival = f.ScoredSurvival; io.Value(ref scoredSurvival); f.ScoredSurvival = scoredSurvival;
+            float scoredDamage = f.ScoredDamage; io.Value(ref scoredDamage); f.ScoredDamage = scoredDamage;
+            int scoredSurvivalPoints = f.ScoredSurvivalPoints; io.Value(ref scoredSurvivalPoints); f.ScoredSurvivalPoints = scoredSurvivalPoints;
+            int scoredDamagePoints = f.ScoredDamagePoints; io.Value(ref scoredDamagePoints); f.ScoredDamagePoints = scoredDamagePoints;
+            int scoredReproduction = f.ScoredReproductionPoints; io.Value(ref scoredReproduction); f.ScoredReproductionPoints = scoredReproduction;
+            int scoredStars = f.ScoredStars; io.Value(ref scoredStars); f.ScoredStars = scoredStars;
+            int levelPoints = f.LevelPointsNow; io.Value(ref levelPoints); f.LevelPointsNow = levelPoints;
+            int starsNow = f.StarsNow; io.Value(ref starsNow); f.StarsNow = starsNow;
             int organisms = f.OrganismCount; io.Value(ref organisms); f.OrganismCount = organisms;
             int inspected = f.InspectedOrganism; io.Value(ref inspected); f.InspectedOrganism = inspected;
             int released = f.OrganismsReleased; io.Value(ref released); f.OrganismsReleased = released;
             int died = f.OrganismsDied; io.Value(ref died); f.OrganismsDied = died;
             int gone = f.OrganismsGone; io.Value(ref gone); f.OrganismsGone = gone;
+            int frozen = f.OrganismsFrozen; io.Value(ref frozen); f.OrganismsFrozen = frozen;
+            int bodiesFrozen = f.BodiesFrozen; io.Value(ref bodiesFrozen); f.BodiesFrozen = bodiesFrozen;
 
             Blocks(f.Channels, ref io);
             Blocks(f.Details, ref io);
@@ -142,6 +160,10 @@ namespace AdaptOrDeity.Game.Session
             io.Block(f.CellCanDivide);
             io.Block(f.FeatureUnlocked);
             io.Block(f.FeatureEnabled);
+            io.Block(f.ScoredUnlocked);
+            io.Block(f.Achieved);
+            io.Block(f.Seen);
+            io.Block(f.ScoredSeen);
             io.Block(f.CellSurface);
             io.Block(f.CellX);
             io.Block(f.CellY);

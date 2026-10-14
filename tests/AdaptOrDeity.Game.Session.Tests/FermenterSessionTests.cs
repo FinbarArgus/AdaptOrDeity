@@ -252,8 +252,8 @@ namespace AdaptOrDeity.Game.Session.Tests
                 Assert.That(f.Excludes, Is.EqualTo(Strings(json[i], "excludes")), f.Id + " excludes");
                 Assert.That(json[i].TryGetProperty("requires_swallowed", out var n) ? n.GetInt32() : 0, Is.EqualTo(f.RequiresSwallowed),
                     f.Id + " requires_swallowed");
-                Assert.That(json[i].TryGetProperty("requires_atp_below", out var atp) ? atp.GetDouble() : 0.0, Is.EqualTo(f.RequiresAtpBelow),
-                    f.Id + " requires_atp_below");
+                Assert.That(json[i].TryGetProperty("requires_food_gap_s", out var gap) ? gap.GetDouble() : 0.0, Is.EqualTo(f.RequiresFoodGap),
+                    f.Id + " requires_food_gap_s");
                 foreach (var other in f.Excludes)
                     Assert.That(GameFeatures.All[GameFeatures.IndexOf(other)].Excludes, Does.Contain(f.Id), $"{f.Id} and {other} exclude each other");
             }

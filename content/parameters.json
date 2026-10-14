@@ -66,11 +66,11 @@
    "note": "a packet's main trace species per its free sugar, as concentrations (per food.contact_glucose): it releases contact_trace / contact_glucose (2e-4) mol of its main trace with each mol of glucose that leaks into the water"
   },
   "food.packet_radius": {
-   "value": 8e-07,
+   "value": 5e-07,
    "units": "m",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "radius of a fresh packet (a dead cell or organic particle): smaller than the 1 um cell (user decision 2026-10-09), within the 0.5-2 um particles of docs/research/food-uptake-and-extracellular-space.md. Its amount is that of a sphere of this radius at the packet density (2.3 M glucose equivalents x 4/3 pi r^3 = 4.9e-15 mol); contact with a cell uses the disc of this radius in the plane (the sphere's equator). As it is eaten it keeps its density, so its radius goes as the cube root of what is left"
+   "note": "radius of a fresh packet: 0.5 um, smaller than the cell, so it holds about a quarter of a 0.8 um packet's food at the same density and runs out sooner (designer, 2026-10-14: smaller packets that run out faster); it shrinks as it is eaten"
   },
   "food.carrier_speed": {
    "value": 1e-06,
@@ -198,6 +198,13 @@
    "status": "design",
    "note": "standard deviation of each flagellum's thrust direction about straight away from its base: 10 degrees, normal, drawn per run (user decision 2026-10-09); it turns the body, so runs curve"
   },
+  "motility.thrust_scale": {
+   "value": 0.1,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "flagellar thrust as a share of the cell model's (v_one, a single flagellum's free-swimming speed, 15 um/s as for E. coli): 0.1, so the creature moves 10x slower (designer, 2026-10-14: the creature moved too fast); a game-side design choice, the physiology upstream keeps its sourced value"
+  },
   "motility.flagellum_spacing": {
    "value": 0.5,
    "units": "rad",
@@ -205,12 +212,54 @@
    "status": "design",
    "note": "where new flagella are placed by default: around the back of the cell, this far apart"
   },
-  "skills.glucose_per_point": {
-   "value": 1.2e-14,
-   "units": "mol",
+  "scoring.survival_points": {
+   "value": 10,
+   "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "glucose eaten per skill point: calibrated so a level-1 cell left alone for the week earns one 5-point transporter and one kept on food all week two (LevelTests). Re-measured 2026-10-13 with the environment field always on (touching packets feed the membrane facing them) and level-1 food at 5e-3 packets/s: left alone it ate 7.23e-14 mol (6 points; ATP gone at day 1.66, damage 0.55 by day 7); kept on food (1.5e-2 packets/s) 3.12e-13 mol (26 points). Was 2e-14 (field off: 1.69e-13 mol and 8 points left alone). The left-alone outcome hangs on the gaps between packets: on the same random draws, 3e-3 packets/s gave 1 point (ATP gone at 0.43 d), 4e-3 6 (1.91 d), 6e-3 3 (0.79 d), 7e-3 21 (6.1 d)"
+   "note": "skill points the survival meter converts to at 100/100 when a level ends (designer request 2026-10-13: no food points; survival and reproduction points). In proportion below, rounded. Calibrated 2026-10-14 with the scripted players (docs/plans/scoring.md): with damage 5 at full, a perfect level 1 earns 15 (three stars)"
+  },
+  "scoring.damage_points": {
+   "value": 5,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "skill points the damage meter converts to at 100/100 when a level ends; in proportion below, rounded. The damage meter is 100 x (1 - the worst mean damage load of the creature in the level), a dead cell counting as a lethal load"
+  },
+  "scoring.starving_atp_fraction": {
+   "value": 0.5,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "a living cell is starving while its ATP is below this fraction of its resting level; the survival meter falls in proportion to the share of the creature's living cells starving (all of it once none lives)"
+  },
+  "scoring.starvation_to_empty": {
+   "value": 0.143,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "starvation of the whole creature that empties the survival meter, in level durations: 0.143 is a day of starving in the 7-day level. Calibrated 2026-10-14 (docs/plans/scoring.md): the mediocre player's 1.2 days of famine leave 0, the great player's 0.36 day about two thirds"
+  },
+  "scoring.star_points_1": {
+   "value": 5,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "points a level must earn (its meters and its reproduction points) for star 1: 5 / 10 / 14 match the scripted players at level 1 (left alone 2, mediocre 5, great ~11, optimised 15; docs/plans/scoring.md, 2026-10-14)"
+  },
+  "scoring.star_points_2": {
+   "value": 10,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "points a level must earn (its meters and its reproduction points) for star 2: 5 / 10 / 14 match the scripted players at level 1 (left alone 2, mediocre 5, great ~11, optimised 15; docs/plans/scoring.md, 2026-10-14)"
+  },
+  "scoring.star_points_3": {
+   "value": 14,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "points a level must earn (its meters and its reproduction points) for star 3: 5 / 10 / 14 match the scripted players at level 1 (left alone 2, mediocre 5, great ~11, optimised 15; docs/plans/scoring.md, 2026-10-14)"
   },
   "skills.points_per_offspring": {
    "value": 1,
@@ -399,7 +448,21 @@
    "units": "1",
    "source": "definitional",
    "status": "design",
-   "note": "most free-living organisms (released daughters and their offspring) simulated at once; a new daughter beyond it replaces a dead one, else the one farthest from the creature (counted as gone). Measured cost: see docs/plans/free-daughters.md"
+   "note": "most free-living organisms (released daughters and their offspring) simulated at once; a new daughter beyond it replaces a dead one, else freezes the one farthest from the creature (kept as it was: organisms.frozen_max). Measured cost: see docs/plans/free-daughters.md"
+  },
+  "organisms.frozen_max": {
+   "value": 256,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "most free organisms kept frozen out of range (designer request 2026-10-13: far organisms and bodies are remembered and frozen until the creature comes back). Each holds its cell (measured ~80 kB of memory with its integrator), so 256 take ~20 MB; beyond it the frozen organism farthest from the creature is forgotten (counted as gone)"
+  },
+  "organisms.frozen_bodies_max": {
+   "value": 1024,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "most dead bodies kept frozen out of range (a few hundred bytes each); beyond it the frozen body farthest from the creature is forgotten (FoodField.BodiesGone)"
   },
   "organisms.range_view_widths": {
    "value": 2,
