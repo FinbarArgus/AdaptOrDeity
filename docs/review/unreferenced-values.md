@@ -21,6 +21,7 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `controls.expression_min` | 0.25 | 1 | unreferenced_placeholder | design | lowest expression a player can choose (two octaves below the calibrated cell; user decision 2026-10-08) |
 | `controls.expression_max` | 4 | 1 | unreferenced_placeholder | design | highest expression a player can choose (two octaves above) |
 | `environment.current_speed` | 2e-06 | m/s | unreferenced_placeholder | placeholder | drift of the water over the ground, which carries the creature: a slow near-bed current, 2 um/s (a cell moves with its water; over the sea floor the f |
+| `motility.thrust_scale` | 0.1 | 1 | unreferenced_placeholder | design | flagellar thrust as a share of the cell model's (designer: the creature moved too fast) |
 | `motility.mean_run` | 2 | s | unreferenced_placeholder | placeholder | mean length of a run with the motor on (random, exponential; E. coli runs ~1 s between tumbles) |
 | `motility.mean_pause` | 4 | s | unreferenced_placeholder | placeholder | mean pause with the motor off between runs (random, exponential); each run sets off in a random direction |
 | `scoring.survival_points` | 10 | 1 | unreferenced_placeholder | design | skill points the survival meter converts to at 100/100 when a level ends (designer 2026-10-13); calibrated with the scripted players (docs/plans/scoring.md) |

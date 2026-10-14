@@ -21,10 +21,17 @@
    },
    "regions": [],
    "reviewed": false,
-   "duration_s": 604800.0,
    "ocean": {
     "glucose": 0.035
-   }
+   },
+   "goals": [
+    {
+     "kind": "survive",
+     "seconds": 86400.0,
+     "name": "Survive one day",
+     "reviewed": false
+    }
+   ]
   },
   {
    "level": 2,
@@ -47,10 +54,17 @@
    },
    "regions": [],
    "reviewed": false,
-   "duration_s": 604800.0,
    "ocean": {
     "glucose": 0.001
-   }
+   },
+   "goals": [
+    {
+     "kind": "survive",
+     "seconds": 86400.0,
+     "name": "Survive one day",
+     "reviewed": false
+    }
+   ]
   },
   {
    "level": 3,
@@ -68,10 +82,17 @@
    },
    "regions": [],
    "reviewed": false,
-   "duration_s": 604800.0,
    "ocean": {
     "glucose": 0.001
-   }
+   },
+   "goals": [
+    {
+     "kind": "survive",
+     "seconds": 86400.0,
+     "name": "Survive one day",
+     "reviewed": false
+    }
+   ]
   },
   {
    "level": 4,
@@ -88,10 +109,17 @@
    },
    "regions": [],
    "reviewed": false,
-   "duration_s": 604800.0,
    "ocean": {
     "glucose": 0.001
-   }
+   },
+   "goals": [
+    {
+     "kind": "survive",
+     "seconds": 86400.0,
+     "name": "Survive one day",
+     "reviewed": false
+    }
+   ]
   },
   {
    "level": 5,
@@ -106,10 +134,17 @@
    },
    "regions": [],
    "reviewed": false,
-   "duration_s": 604800.0,
    "ocean": {
     "glucose": 0.001
-   }
+   },
+   "goals": [
+    {
+     "kind": "survive",
+     "seconds": 86400.0,
+     "name": "Survive one day",
+     "reviewed": false
+    }
+   ]
   },
   {
    "level": 6,
@@ -126,10 +161,17 @@
    },
    "regions": [],
    "reviewed": false,
-   "duration_s": 604800.0,
    "ocean": {
     "glucose": 0.001
-   }
+   },
+   "goals": [
+    {
+     "kind": "survive",
+     "seconds": 86400.0,
+     "name": "Survive one day",
+     "reviewed": false
+    }
+   ]
   },
   {
    "level": 7,
@@ -146,13 +188,20 @@
    },
    "regions": [],
    "reviewed": false,
-   "duration_s": 604800.0,
    "ocean": {
     "glucose": 0.001
-   }
+   },
+   "goals": [
+    {
+     "kind": "survive",
+     "seconds": 86400.0,
+     "name": "Survive one day",
+     "reviewed": false
+    }
+   ]
   }
  ],
- "levels_note": "Draft level sequence (2026-10-08) for open question 3 in adapting_plan.md; dates follow the protein and event entries below. Each level lasts duration_s of simulated time (level 1: one week, enough to start starving; later levels' durations are placeholders), then the next level begins and the skill window opens.",
+ "levels_note": "Draft level sequence (2026-10-08) for open question 3 in adapting_plan.md; dates follow the protein and event entries below. A level is passed when all its goals are met (levels[].goals): 'survive' — a living cell when the level has run 'seconds' of simulated time; 'achievement' — an achievement ('id') earned in this level. Then its meters convert to skill points and the next level begins. Level 1: survive one day (designer, 2026-10-14); later levels' goals are placeholders. Sublevels are groups of goals (not yet).",
  "arrivals_note": "What appears in the world per second at each level, constant whatever is already there: food packets (food_per_s; carried_share of them brought by other creatures, the rest lying on the ground and coming into view) and prey cells (prey_per_s, none at level 1; food once a cell engulfs them, level 2), later enemies and friends. A level's regions may override them (regions[].arrivals), to set scarcity or abundance. Calibrated 2026-10-12 with packets at a cell's density (4.9e-15 mol): food 3e-3 packets/s, so an untouched level-1 cell eats 1.69e-13 mol and its ATP runs out on day 4 (the outcome hangs on the gaps between packets: in probes 3e-3 to 3.5e-3 ran out on days 1.5-4 depending on the random sequence, 4e-3 never). Prey 2e-4/s from level 2, so a creature that engulfs swallows about 10 in the level's week only with luck or effort: the untouched creature (starving since level 1) swallows 4 and dies at the end of level 2; a fed cell starting level 2 swallows 7 (other seeds: 11; 6 with 3 flagella). Later levels copy level 2 until tuned.",
  "features": [
   {

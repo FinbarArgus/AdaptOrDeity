@@ -159,6 +159,9 @@ namespace AdaptOrDeity.Game.Session
             _cellDensity = GameParameters.Default.Value("body.cell_density");
             // One rigid body in the water: each cell's mass from its volume, Stokes drag from the kernel's viscosity
             _cellMass = _cellDensity * first.AlgebraicValue("membrane__Vol");
+            // flagellar thrust scaled for play (content motility.thrust_scale); daughters inherit it with their parameters
+            first.SetExternal("v_one_mod_i_flagellum",
+                first.External("v_one_mod_i_flagellum") * GameParameters.Default.Value("motility.thrust_scale"));
             _body = new CreatureBody(CellRadius, first.External("eta_mod_i_flagellum"), GameParameters.Default.Body());
             AddToBody(0, _defaultAngles);
             _food.Populate(_body.Body.X, _body.Body.Y);
@@ -440,17 +443,52 @@ namespace AdaptOrDeity.Game.Session
         {
             _time = t + dt;
             StepWorld(t, dt);
-            // A level lasts its simulated time (content/timeline.json levels[].duration_s): its meters convert to skill
-            // points and the next begins.
-            if (LevelTimeLeft <= 0.0 && GameTimeline.Default.HasLevel(_level + 1))
+            // A level is passed when all its goals are met (content/timeline.json levels[].goals): its meters convert to
+            // skill points and the next begins.
+            if (LevelGoalsMet && GameTimeline.Default.HasLevel(_level + 1))
             {
                 ScoreLevel();
                 Level = _level + 1;
             }
         }
 
-        /// <summary>Simulated time left in the current level [s].</summary>
-        public double LevelTimeLeft => GameTimeline.Default.DurationOf(_level) - (_time - _levelStart);
+        /// <summary>Simulated time left until the level's survival goal [s] (0 once reached; infinite without one).</summary>
+        public double LevelTimeLeft => Math.Max(0.0, GameTimeline.Default.DurationOf(_level) - (_time - _levelStart));
+
+        /// <summary>
+        /// True when every goal of the current level is met: survive — a living cell once the level has run its seconds;
+        /// achievement — earned in this level.
+        /// </summary>
+        public bool LevelGoalsMet
+        {
+            get
+            {
+                var goals = GameTimeline.Default.GoalsOf(_level);
+                if (goals.Count == 0)
+                    return false;
+                for (int i = 0; i < goals.Count; i++)
+                {
+                    var goal = goals[i];
+                    if (goal.Kind == "survive" && (_time - _levelStart < goal.Seconds || !AnyCellAlive()))
+                        return false;
+                    if (goal.Kind == "achievement")
+                    {
+                        int a = GameAchievements.IndexOf(goal.Id);
+                        if (a < 0 || _achievedLevel[a] != _level)
+                            return false;
+                    }
+                }
+                return true;
+            }
+        }
+
+        private bool AnyCellAlive()
+        {
+            foreach (var c in _cells)
+                if (c.Alive)
+                    return true;
+            return false;
+        }
 
         private void StepWorld(double t, double dt)
         {

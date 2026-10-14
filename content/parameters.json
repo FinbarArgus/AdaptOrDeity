@@ -66,11 +66,11 @@
    "note": "a packet's main trace species per its free sugar, as concentrations (per food.contact_glucose): it releases contact_trace / contact_glucose (2e-4) mol of its main trace with each mol of glucose that leaks into the water"
   },
   "food.packet_radius": {
-   "value": 8e-07,
+   "value": 5e-07,
    "units": "m",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "radius of a fresh packet (a dead cell or organic particle): smaller than the 1 um cell (user decision 2026-10-09), within the 0.5-2 um particles of docs/research/food-uptake-and-extracellular-space.md. Its amount is that of a sphere of this radius at the packet density (2.3 M glucose equivalents x 4/3 pi r^3 = 4.9e-15 mol); contact with a cell uses the disc of this radius in the plane (the sphere's equator). As it is eaten it keeps its density, so its radius goes as the cube root of what is left"
+   "note": "radius of a fresh packet: 0.5 um, smaller than the cell, so it holds about a quarter of a 0.8 um packet's food at the same density and runs out sooner (designer, 2026-10-14: smaller packets that run out faster); it shrinks as it is eaten"
   },
   "food.carrier_speed": {
    "value": 1e-06,
@@ -197,6 +197,13 @@
    "source": "definitional",
    "status": "design",
    "note": "standard deviation of each flagellum's thrust direction about straight away from its base: 10 degrees, normal, drawn per run (user decision 2026-10-09); it turns the body, so runs curve"
+  },
+  "motility.thrust_scale": {
+   "value": 0.1,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "flagellar thrust as a share of the cell model's (v_one, a single flagellum's free-swimming speed, 15 um/s as for E. coli): 0.1, so the creature moves 10x slower (designer, 2026-10-14: the creature moved too fast); a game-side design choice, the physiology upstream keeps its sourced value"
   },
   "motility.flagellum_spacing": {
    "value": 0.5,

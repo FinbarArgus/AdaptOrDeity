@@ -232,8 +232,8 @@ namespace AdaptOrDeity.UI
             if (bridge.Schema.Features.Count > 0)
             {
                 // Development control until the evolutionary time bar sets the level: features unlock by level.
-                GUILayout.Label(new GUIContent($"Level {frame.Level} · {FormatTime(System.Math.Max(0.0, frame.LevelTimeLeft))} left",
-                    "the next level begins when this level's time runs out"), GUILayout.Width(170));
+                GUILayout.Label(new GUIContent($"Level {frame.Level} · {GoalText(frame)}",
+                    "the next level begins when all its goals are met"), GUILayout.Width(220));
                 if (GUILayout.Button("−", GUILayout.Width(24)) && frame.Level > 1)
                     bridge.Send(SimCommands.SetLevel(frame.Level - 1));
                 if (GUILayout.Button("+", GUILayout.Width(24)))
@@ -300,6 +300,20 @@ namespace AdaptOrDeity.UI
             GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.2f, 0.2f), 0f, 0f);
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(meter / 100f), bar.height), Texture2D.whiteTexture,
                 ScaleMode.StretchToFill, false, 0f, LevelEndWindow.MeterColour(meter), 0f, 0f);
+        }
+
+        // The level's goals: a survival goal shows the time still to survive.
+        private static string GoalText(SnapshotFrame frame)
+        {
+            var goals = AdaptOrDeity.Game.Content.GameTimeline.Default.GoalsOf(frame.Level);
+            if (goals.Count == 0)
+                return "no goal";
+            var parts = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < goals.Count; i++)
+                parts.Add(goals[i].Kind == "survive" && frame.LevelTimeLeft > 0.0
+                    ? $"{goals[i].Name}: {FormatTime(frame.LevelTimeLeft)} to go"
+                    : goals[i].Name);
+            return string.Join(", ", parts);
         }
 
         private void DrawLegend(OverlayInfo info)
