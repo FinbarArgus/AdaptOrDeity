@@ -167,6 +167,9 @@ namespace AdaptOrDeity.Presentation
             field.transform.SetParent(transform, false);
             FieldView = field.AddComponent<FieldView>();
             FieldView.Initialise(this);
+            var seabed = new GameObject("Seabed");
+            seabed.transform.SetParent(transform, false);
+            seabed.AddComponent<SeabedView>().Initialise(this);
             gameObject.AddComponent<MotionView>().Initialise(this);
             SyncViews();
         }

@@ -477,6 +477,55 @@
    "source": "definitional",
    "status": "design",
    "note": "free organisms the first snapshot frames have room for; frames grow when there are more"
+  },
+  "seabed.ground_depth": {
+   "value": 4e-05,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "height of the ground below where the creature starts (the world is a vertical slice of water, y upwards): 40 um, clear of the tallest structure (a stack of three 7 um rocks stands ~25 um) and of the 15 um food window, so the creature starts in open water and swims down to reach the seabed"
+  },
+  "seabed.boundary_layer": {
+   "value": 1e-05,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "the current grows linearly from zero at the ground (no slip) to full speed at this height"
+  },
+  "seabed.stretch_width": {
+   "value": 4e-05,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "each stretch of seabed this wide holds one structure (a boulder, a stack of rocks or an arch)"
+  },
+  "seabed.rock_radius_min": {
+   "value": 2e-06,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "smallest rock radius"
+  },
+  "seabed.rock_radius_max": {
+   "value": 7e-06,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "largest rock radius"
+  },
+  "seabed.wake_length": {
+   "value": 4.0,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "length of the sheltered wake behind a rock, in rock radii (the current recovers linearly over it)"
+  },
+  "seabed.seed": {
+   "value": 11,
+   "units": "1",
+   "source": "definitional",
+   "status": "design",
+   "note": "seed of the seabed's structures"
   }
  },
  "trace_species": [

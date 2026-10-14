@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Game.Session
     /// </summary>
     public static class SnapshotCodec
     {
-        private const int Magic = 0x41534E37;   // "ASN7"
+        private const int Magic = 0x41534E38;   // "ASN8"
 
         // Bytes before the frame's fields: the magic number and the shape (HeaderFields integers).
         private const int HeaderFields = 12, HeaderBytes = 4 + 4 * HeaderFields;
@@ -116,6 +116,8 @@ namespace AdaptOrDeity.Game.Session
             float vx = f.CreatureVx; io.Value(ref vx); f.CreatureVx = vx;
             float vy = f.CreatureVy; io.Value(ref vy); f.CreatureVy = vy;
             int packets = f.PacketCount; io.Value(ref packets); f.PacketCount = packets;
+            float ground = f.GroundY; io.Value(ref ground); f.GroundY = ground;
+            int rocks = f.RockCount; io.Value(ref rocks); f.RockCount = rocks;
             float fieldExtent = f.FieldExtent; io.Value(ref fieldExtent); f.FieldExtent = fieldExtent;
             int prey = f.PreyCount; io.Value(ref prey); f.PreyCount = prey;
             int swallowed = f.Swallowed; io.Value(ref swallowed); f.Swallowed = swallowed;
@@ -167,6 +169,9 @@ namespace AdaptOrDeity.Game.Session
             io.Block(f.CellSurface);
             io.Block(f.CellX);
             io.Block(f.CellY);
+            io.Block(f.RockX);
+            io.Block(f.RockY);
+            io.Block(f.RockRadius);
             io.Block(f.PacketX);
             io.Block(f.PacketY);
             io.Block(f.PacketRadius);

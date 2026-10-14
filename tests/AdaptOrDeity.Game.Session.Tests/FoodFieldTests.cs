@@ -184,7 +184,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             // the share of the membrane facing the packet sees its free sugar (its hydrolase keeps it near the
             // product-inhibition level), the rest the water (the level's sea and what leaked, less the cell's uptake)
             double w = FoodField.FaceShare(packet, world.CellRadius);
-            Assert.That(w, Is.InRange(0.04, 0.06), "a fresh packet faces ~5% of the membrane");
+            Assert.That(w, Is.InRange(0.02, 0.035), "a fresh 0.5 um packet faces ~2.8% of the membrane");
             Assert.That(packet.Input, Is.GreaterThan(0.5 * food.Settings.ContactGlucose));
             Assert.That(world.Cell(0).External("C_glc_e_mod_membrane_face"),
                 Is.EqualTo(w * packet.Input + (1.0 - w) * world.BathConcentration)
@@ -254,7 +254,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             double share = (double)on / steps;
             Assert.That(share, Is.InRange(0.15, 0.55), "runs 2 s, pauses 4 s on average: on about a third of the time");
             Assert.That(runsStarted, Is.GreaterThan(20));
-            Assert.That(maxSwim, Is.InRange(10e-6, 20e-6), "one flagellum at the resting PMF swims ~15 um/s");
+            double scale = GameParameters.Default.Value("motility.thrust_scale");
+            Assert.That(maxSwim, Is.InRange(10e-6 * scale, 25e-6 * scale), "one flagellum swims ~15-20 um/s (bacteria: up to ~30), scaled for play");
             Assert.That(maxEfficiency, Is.InRange(1e-4, 0.02), "flagellar propulsion is ~0.1-2% efficient");
             Assert.That(Math.Abs(b.Angle), Is.GreaterThan(1e-3), "the random thrust angle turns the body");
             Assert.That(b.Work, Is.EqualTo(b.KineticEnergy + b.Dissipated).Within(1e-9 * b.Work), "energy is conserved");

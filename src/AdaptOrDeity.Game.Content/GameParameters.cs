@@ -146,6 +146,18 @@ namespace AdaptOrDeity.Game.Content
             };
         }
 
+        /// <summary>The seabed (content seabed.*).</summary>
+        public AdaptOrDeity.Sim.World.SeabedSettings Seabed() => new AdaptOrDeity.Sim.World.SeabedSettings
+        {
+            GroundDepth = Value("seabed.ground_depth"),
+            BoundaryLayer = Value("seabed.boundary_layer"),
+            StretchWidth = Value("seabed.stretch_width"),
+            RockRadiusMin = Value("seabed.rock_radius_min"),
+            RockRadiusMax = Value("seabed.rock_radius_max"),
+            WakeLength = Value("seabed.wake_length"),
+            Seed = Integer("seabed.seed"),
+        };
+
         /// <summary>A rigid body in water flowing over the ground at the current (content environment.current_*).</summary>
         public RigidBody2D Body()
         {

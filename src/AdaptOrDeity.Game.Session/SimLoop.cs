@@ -1,4 +1,5 @@
 using System;
+using AdaptOrDeity.Sim.World;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using AdaptOrDeity.Sim.Core;
@@ -225,6 +226,27 @@ namespace AdaptOrDeity.Game.Session
 
         private int PreyInView => World is IFoodWorld f ? f.Prey.ActiveCount : 0;
 
+        private readonly List<Rock> _rocks = new List<Rock>();
+
+        // The ground's height and the rocks within two food windows of the creature, relative to it.
+        private void WriteSeabed(FermenterWorld world, SnapshotFrame frame)
+        {
+            frame.GroundY = (float)(world.Seabed.GroundY - frame.CreatureY);
+            double reach = 2.0 * Math.Max(Schema.FieldHalfSize, 30e-6);
+            world.Seabed.RocksBetween(frame.CreatureX - reach, frame.CreatureX + reach, _rocks);
+            int n = 0;
+            foreach (var r in _rocks)
+            {
+                if (n >= SnapshotFrame.MaxRocks)
+                    break;
+                frame.RockX[n] = (float)(r.X - frame.CreatureX);
+                frame.RockY[n] = (float)(r.Y - frame.CreatureY);
+                frame.RockRadius[n] = (float)r.Radius;
+                n++;
+            }
+            frame.RockCount = n;
+        }
+
         private static int Capacity(int cells)
         {
             int c = 1;
@@ -312,6 +334,7 @@ namespace AdaptOrDeity.Game.Session
                     frame.MotorOn = fw.MotorOn && fw.FeatureEnabled(GameFeatures.IndexOf(GameFeatures.Swimming));
                     frame.MotorPower = (float)fw.MotorPower;
                     WriteField(fw, frame);
+                    WriteSeabed(fw, frame);
                     WriteOrganisms(fw, frame);
                 }
                 int n = 0;

@@ -34,6 +34,9 @@ namespace AdaptOrDeity.Game.Session
             CellX = new float[cellCapacity];
             CellY = new float[cellCapacity];
             PacketX = new float[packetCapacity];
+            RockX = new float[MaxRocks];
+            RockY = new float[MaxRocks];
+            RockRadius = new float[MaxRocks];
             PacketY = new float[packetCapacity];
             PacketRadius = new float[packetCapacity];
             PacketFill = new float[packetCapacity];
@@ -239,6 +242,22 @@ namespace AdaptOrDeity.Game.Session
         public float[] CellX { get; }
 
         public float[] CellY { get; }
+
+        /// <summary>Most rocks a frame carries (those around the creature).</summary>
+        public const int MaxRocks = 64;
+
+        /// <summary>Height of the seabed's ground relative to the creature [m] (the world's y grows upwards).</summary>
+        public float GroundY { get; internal set; }
+
+        /// <summary>The rocks around the creature; only the first <see cref="RockCount"/> are valid. Positions relative to the
+        /// creature and radii [m].</summary>
+        public int RockCount { get; internal set; }
+
+        public float[] RockX { get; }
+
+        public float[] RockY { get; }
+
+        public float[] RockRadius { get; }
 
         /// <summary>Food packets around the creature; only the first <see cref="PacketCount"/> are valid. Positions relative
         /// to the creature and radii [m].</summary>

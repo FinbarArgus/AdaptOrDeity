@@ -615,6 +615,12 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
     mediocre (maintenance regulated by ATP): 1.2 d of famines survived, 5 points, one star; great (also Glf x1.5): 0.36 d,
     ~11, two; optimised (Glf x2, gathering): never starves, 15, three. Glf x2 alone also never starves (open question 22).
 
+- **2026-10-14** The world is a vertical slice of water with a seabed (Sim.World Seabed; content seabed.*): a ground
+  line below the creature's start, and endless, seeded structures of rock discs on it (boulders, stacks, arches) that
+  bodies rest against and swim around or under. The current slows in a boundary layer over the ground (no slip,
+  linear to 10 µm) and in the wake behind rocks, so swimming down or sheltering behind a rock beats the drift. Food and
+  prey stay out of it. Not yet: rocks do not block diffusion in the environment field.
+
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.

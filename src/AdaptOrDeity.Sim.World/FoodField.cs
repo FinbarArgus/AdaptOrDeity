@@ -312,6 +312,22 @@ namespace AdaptOrDeity.Sim.World
         /// the creature at (cx, cy) moving at (vx, vy), retires packets that left it or are spent, and releases new ones at
         /// its boundary.
         /// </summary>
+        /// <summary>Moves packets that are not held by a cell out of the ground and rocks they overlap.</summary>
+        public void KeepOutOf(Seabed seabed)
+        {
+            foreach (var p in _packets)
+            {
+                if (!p.Active || p.Stuck)
+                    continue;
+                double x = p.X, y = p.Y;
+                if (seabed.PushOut(ref x, ref y, p.Radius, out _, out _))
+                {
+                    p.X = x;
+                    p.Y = y;
+                }
+            }
+        }
+
         public void Step(double dt, double cx = 0.0, double cy = 0.0, double vx = 0.0, double vy = 0.0, double angle = 0.0)
         {
             CentreX = cx;

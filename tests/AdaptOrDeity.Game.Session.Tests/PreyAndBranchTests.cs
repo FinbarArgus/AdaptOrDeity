@@ -67,7 +67,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             var food = new FermenterWorld().Food.Settings;
             double r = food.PacketRadius;
             Assert.That(food.PacketAmount, Is.EqualTo(density * 4.0 / 3.0 * Math.PI * r * r * r).Within(1e-12 * food.PacketAmount));
-            Assert.That(food.PacketAmount, Is.EqualTo(4.9e-15).Within(0.1e-15), "0.8 um: about 8x less than the old 4e-14 mol");
+            Assert.That(food.PacketAmount, Is.EqualTo(1.2e-15).Within(0.05e-15), "0.5 um: about 1.2e-15 mol");
             var prey = GameParameters.Default.Prey();
             Assert.That(new PreyField(prey).Content, Is.EqualTo(food.SphereAmount(prey.Radius)).Within(1e-27), "prey at the same density");
         }

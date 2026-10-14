@@ -94,6 +94,22 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Prey slots; only <see cref="Prey.Active"/> ones are in the window.</summary>
         public IReadOnlyList<Prey> Prey => _prey;
 
+        /// <summary>Moves prey out of the ground and rocks they swam into.</summary>
+        public void KeepOutOf(Seabed seabed)
+        {
+            foreach (var p in _prey)
+            {
+                if (!p.Active)
+                    continue;
+                double x = p.X, y = p.Y;
+                if (seabed.PushOut(ref x, ref y, p.Radius, out _, out _))
+                {
+                    p.X = x;
+                    p.Y = y;
+                }
+            }
+        }
+
         /// <summary>Glucose equivalents in a fresh prey cell [mol]: a sphere of its radius at the packet density.</summary>
         public double Content => Settings.Density * 4.0 / 3.0 * Math.PI * Math.Pow(Settings.Radius, 3);
 

@@ -26,7 +26,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             free.Step(0.1, force, 0.0, 0.0);
             loaded.Step(0.1, force, 0.0, 0.0);
             Assert.That(free.Body.Vx, Is.EqualTo(force / xi).Within(1e-12 * force / xi));
-            Assert.That(loaded.Body.Vx / free.Body.Vx, Is.EqualTo(xi / (xi + xiMeal)).Within(1e-12), "1/1.8 for a fresh packet");
+            Assert.That(loaded.Body.Vx / free.Body.Vx, Is.EqualTo(xi / (xi + xiMeal)).Within(1e-12), "1/1.8 for a 0.8 um meal on a 1 um cell");
             loaded.SetLoad(0.0, 0.0, 0.0, 0.0);
             Assert.That((loaded.Body.Mass, loaded.Body.Drag), Is.EqualTo((free.Body.Mass, free.Body.Drag)), "unloaded");
             // a cell joining keeps the load
@@ -64,11 +64,12 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(world.Body.LoadDrag, Is.EqualTo(6.0 * Math.PI * eta * meal.Radius).Within(1e-4 * xiCell));
             Assert.That(world.Body.LoadMass, Is.EqualTo(density * FoodField.Volume(meal)).Within(1e-3 * world.Body.LoadMass));
             Assert.That(body.Drag, Is.EqualTo(xiCell + world.Body.LoadDrag).Within(1e-12 * xiCell));
-            // the speed through the water is the flagella's force over the drag, meal included: 1/1.8 of the cell's alone
+            // the speed through the water is the flagella's force over the drag, meal included: R/(R + r) of the cell's alone
             Assert.That(Math.Sqrt(body.Vx * body.Vx + body.Vy * body.Vy) * body.Drag,
                 Is.EqualTo(Math.Sqrt(world.Body.ForceX * world.Body.ForceX + world.Body.ForceY * world.Body.ForceY))
                     .Within(1e-6 * Math.Sqrt(world.Body.ForceX * world.Body.ForceX + world.Body.ForceY * world.Body.ForceY) + 1e-30));
-            Assert.That(xiCell / body.Drag, Is.EqualTo(1.0 / 1.8).Within(1e-4), "a fresh packet: 0.8 µm against the 1 µm cell");
+            double r = world.Food.Settings.PacketRadius;
+            Assert.That(xiCell / body.Drag, Is.EqualTo(world.CellRadius / (world.CellRadius + r)).Within(1e-3), "a fresh packet against the 1 µm cell");
             // eaten (here: taken away), the load goes and the speed is the cell's again
             world.Food.Remove(meal);
             world.Step(0.2, world.MacroDt);
@@ -88,7 +89,8 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(v, Is.Not.Null);
             Assert.That(meal.Active, Is.False, "swallowed");
             double density = GameParameters.Default.Value("body.cell_density");
-            Assert.That(world.Body.LoadMass, Is.EqualTo(density * v!.Glucose / GameParameters.Default.PacketDensity).Within(1e-3 * world.Body.LoadMass));
+            // (the load is set before the step's digestion: a 0.5 um meal is digested ~0.1% a step)
+            Assert.That(world.Body.LoadMass, Is.EqualTo(density * v!.Glucose / GameParameters.Default.PacketDensity).Within(3e-3 * world.Body.LoadMass));
             Assert.That(world.Body.LoadDrag, Is.EqualTo(0.0), "inside the cell");
         }
 

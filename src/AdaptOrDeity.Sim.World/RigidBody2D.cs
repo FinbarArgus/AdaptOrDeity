@@ -89,6 +89,26 @@ namespace AdaptOrDeity.Sim.World
             Y += dy;
         }
 
+        /// <summary>Moves the body by (dx, dy) over the ground [m] (out of something solid it ran into).</summary>
+        public void Push(double dx, double dy)
+        {
+            X += dx;
+            Y += dy;
+        }
+
+        /// <summary>
+        /// Stops motion into a surface with outward normal (nx, ny): the body's velocity over the ground (current plus its
+        /// velocity through the water) loses any component into the surface, so it rests against it.
+        /// </summary>
+        public void StopInto(double nx, double ny)
+        {
+            double into = (CurrentVx + Vx) * nx + (CurrentVy + Vy) * ny;
+            if (into >= 0.0)
+                return;
+            Vx -= into * nx;
+            Vy -= into * ny;
+        }
+
         /// <summary>Places the body at (x, y) over the ground [m], turned by <paramref name="angle"/> [rad], at rest in the water.</summary>
         public void Place(double x, double y, double angle)
         {

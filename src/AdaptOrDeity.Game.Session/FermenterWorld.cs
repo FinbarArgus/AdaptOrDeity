@@ -163,6 +163,14 @@ namespace AdaptOrDeity.Game.Session
             first.SetExternal("v_one_mod_i_flagellum",
                 first.External("v_one_mod_i_flagellum") * GameParameters.Default.Value("motility.thrust_scale"));
             _body = new CreatureBody(CellRadius, first.External("eta_mod_i_flagellum"), GameParameters.Default.Body());
+            _freeVx = _body.Body.CurrentVx;   // the current above the seabed's boundary layer
+            _freeVy = _body.Body.CurrentVy;
+            Seabed = new Seabed(GameParameters.Default.Seabed(), _body.Body.Y);
+            _cellAt = i =>
+            {
+                _body.WorldPosition(i, out double x, out double y);
+                return (x, y);
+            };
             AddToBody(0, _defaultAngles);
             _food.Populate(_body.Body.X, _body.Body.Y);
             _food.BodyRange = OrganismRange;   // dead organisms' bodies are simulated as far as living ones are
@@ -439,6 +447,20 @@ namespace AdaptOrDeity.Game.Session
             _space = null;
         }
 
+        /// <summary>The ground and rocks at the bottom of the world.</summary>
+        public Seabed Seabed { get; }
+
+        private readonly double _freeVx, _freeVy;
+        private readonly Func<int, (double X, double Y)>? _cellAt;
+
+        // A body's current: the free current scaled by the seabed's boundary layer and wakes at its position.
+        private void CurrentAt(RigidBody2D body)
+        {
+            double f = Seabed.CurrentFactor(body.X, body.Y);
+            body.CurrentVx = _freeVx * f;
+            body.CurrentVy = _freeVy * f;
+        }
+
         public void Step(double t, double dt)
         {
             _time = t + dt;
@@ -542,11 +564,15 @@ namespace AdaptOrDeity.Game.Session
                 torque += _torque[i];
             }
             LoadCreature();   // the food it holds weighs on it
+            CurrentAt(_body.Body);   // slower in the seabed's boundary layer and behind rocks
             _body.Step(dt, fx, fy, torque);
+            Seabed.Collide(_body.Body, _cells.Count, _cellAt!, CellRadius);   // it rests against what it ran into
 
             var b = _body.Body;
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
-            _prey.Step(dt, b.X, b.Y, b.CurrentVx, b.CurrentVy);   // prey swim in the same water as the creature
+            _prey.Step(dt, b.X, b.Y, _freeVx, _freeVy);   // prey swim in the free current
+            _food.KeepOutOf(Seabed);
+            _prey.KeepOutOf(Seabed);
             FreezeAndThaw();
             MoveOrganisms();
             _cos = Math.Cos(b.Angle);
