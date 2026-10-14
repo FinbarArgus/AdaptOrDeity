@@ -256,7 +256,9 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(runsStarted, Is.GreaterThan(20));
             double scale = GameParameters.Default.Value("motility.thrust_scale");
             Assert.That(maxSwim, Is.InRange(10e-6 * scale, 25e-6 * scale), "one flagellum swims ~15-20 um/s (bacteria: up to ~30), scaled for play");
-            Assert.That(maxEfficiency, Is.InRange(1e-4, 0.02), "flagellar propulsion is ~0.1-2% efficient");
+            // bacteria's flagellar propulsion is ~0.1-2% efficient; thrust scaled for play (force and speed both scale) at the
+            // motor's full proton cost lowers it by the scale squared
+            Assert.That(maxEfficiency, Is.InRange(1e-4 * scale * scale, 0.02 * scale * scale), "flagellar efficiency, scaled");
             Assert.That(Math.Abs(b.Angle), Is.GreaterThan(1e-3), "the random thrust angle turns the body");
             Assert.That(b.Work, Is.EqualTo(b.KineticEnergy + b.Dissipated).Within(1e-9 * b.Work), "energy is conserved");
 
