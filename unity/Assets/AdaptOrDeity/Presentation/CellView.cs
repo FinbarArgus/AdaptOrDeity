@@ -105,8 +105,6 @@ namespace AdaptOrDeity.Presentation
 
         private float _drawnRadius;
         private readonly SpriteRenderer[] _handles = new SpriteRenderer[8];
-        private LineRenderer[] _arcs;
-        private const int ArcPoints = 24;
 
         private Material LineMaterial() => _lineMaterial != null ? _lineMaterial : (_lineMaterial = new Material(Shader.Find("Sprites/Default")));
 
@@ -188,47 +186,58 @@ namespace AdaptOrDeity.Presentation
         }
 
         /// <summary>
-        /// The membrane proteins: each adaptable protein that sits in the membrane as an arc of the cell's rim, its length
-        /// the share of the cell's surface its copies take (so it grows with expression), in its legend colour. Arcs sit
-        /// end to end from the body's front, turning with the body.
+        /// The membrane proteins as channels through the membrane: each adaptable protein that sits in the membrane is a
+        /// set of short ticks across the rim, in its legend colour, spread evenly around the whole cell and interleaved with
+        /// the other proteins' ticks (each protein starts at its own golden-angle offset). The number of ticks follows the
+        /// share of the cell's surface its copies take (one tick per <see cref="TickShare"/>, at least one while any is
+        /// expressed), so it grows and shrinks with expression; they turn with the body.
         /// </summary>
         private void DrawMembrane(AdaptOrDeity.Game.Session.SnapshotFrame frame, float radius)
         {
             int n = frame.TraitArea.Length;
-            if (_arcs == null)
+            if (_ticks == null)
             {
-                _arcs = new LineRenderer[n];
+                _ticks = new LineRenderer[n][];
                 for (int t = 0; t < n; t++)
-                {
-                    var l = NewLine($"Protein {t}", 1);
-                    l.startWidth = l.endWidth = 0.014f;
-                    var c = ProteinColours.For(t);
-                    l.startColor = l.endColor = c;
-                    _arcs[t] = l;
-                }
+                    _ticks[t] = new LineRenderer[MaxTicks];   // made as they are first needed
             }
             float surface = frame.CellSurface[_cellIndex];
-            float start = _bridge.DisplayOrientation;
-            const float gap = 0.04f;   // rad between arcs
+            float front = _bridge.DisplayOrientation;
+            float inner = radius * 0.9f, outer = radius * 1.06f;   // across the membrane
             for (int t = 0; t < n; t++)
             {
                 float share = surface > 0f && frame.CellAlive[_cellIndex] ? frame.TraitArea[t][_cellIndex] / surface : 0f;
-                var l = _arcs[t];
-                if (t == _flagellaTrait || share <= 0f)
+                int count = t == _flagellaTrait || share <= 0f ? 0 : Mathf.Clamp(Mathf.RoundToInt(share / TickShare), 1, MaxTicks);
+                float phase = front + GoldenAngle * t;
+                for (int j = 0; j < MaxTicks; j++)
                 {
-                    l.positionCount = 0;   // flagella show as tails; cytosolic proteins take no membrane
-                    continue;
+                    var l = _ticks[t][j];
+                    if (j >= count)
+                    {
+                        if (l != null)
+                            l.positionCount = 0;   // flagella show as tails; cytosolic proteins take no membrane
+                        continue;
+                    }
+                    if (l == null)
+                    {
+                        l = _ticks[t][j] = NewLine($"Protein {t} channel {j}", 1);
+                        l.startWidth = l.endWidth = 0.016f;
+                        l.startColor = l.endColor = ProteinColours.For(t);
+                        l.numCapVertices = 2;
+                    }
+                    float a = phase + 2f * Mathf.PI * j / count;
+                    float ca = Mathf.Cos(a), sa = Mathf.Sin(a);
+                    l.positionCount = 2;
+                    l.SetPosition(0, new Vector3(ca * inner, sa * inner, 0.1f));
+                    l.SetPosition(1, new Vector3(ca * outer, sa * outer, 0.1f));
                 }
-                float sweep = 2f * Mathf.PI * share;
-                l.positionCount = ArcPoints;
-                for (int k = 0; k < ArcPoints; k++)
-                {
-                    float a = start + sweep * k / (ArcPoints - 1);
-                    l.SetPosition(k, new Vector3(Mathf.Cos(a) * radius, Mathf.Sin(a) * radius, 0.1f));
-                }
-                start += sweep + gap;
             }
         }
+
+        private LineRenderer[][] _ticks;
+        private const int MaxTicks = 24;
+        private const float TickShare = 0.002f;                 // share of the cell's surface one tick stands for
+        private static readonly float GoldenAngle = Mathf.PI * (3f - Mathf.Sqrt(5f));
 
         private SpriteRenderer _vacuole;
         private static readonly Color FoodVacuole = new Color(0.95f, 0.78f, 0.40f, 0.85f);
