@@ -40,6 +40,8 @@ namespace AdaptOrDeity.UI
             bridge.RightPanelWidth = RightInset();
             HandleInput(bridge, frame);
             DrawTopBar(bridge, frame);
+            if (bridge.Schema.Features.Count > 0)
+                DrawMeters(frame);
             if (bridge.ActiveOverlay >= 0)
                 DrawLegend(bridge.Schema.Overlays[bridge.ActiveOverlay]);
             else if (bridge.ActiveField >= 0 && frame.FieldExtent > 0f && bridge.FieldView != null)
@@ -72,7 +74,7 @@ namespace AdaptOrDeity.UI
                 return;
             var info = features[_announced];
             float w = Mathf.Min(560f, Screen.width - RightInset() - 24f);
-            var rect = new Rect(12f, BarHeight + 8f, w, _announcedDetails ? 380f : 120f);
+            var rect = new Rect(12f, BarHeight + 66f, w, _announcedDetails ? 380f : 120f);   // below the meters
             GUILayout.BeginArea(rect, GUI.skin.box);
             GUILayout.Label($"New: {info.Name}", new GUIStyle(GUI.skin.label) { fontStyle = FontStyle.Bold, fontSize = 14 });
             var wrap = new GUIStyle(GUI.skin.label) { wordWrap = true, fontSize = 12 };
@@ -240,12 +242,6 @@ namespace AdaptOrDeity.UI
                     bridge.Send(SimCommands.SetLevel(frame.Level + 1));
                 if (GUILayout.Button(new GUIContent("End", "development: end the level now and score it"), GUILayout.Width(40)))
                     bridge.Send(SimCommands.DevEndLevel());
-                DrawMeter("Survival", frame.SurvivalMeter, frame.SurvivalPointsNow,
-                    "falls while your cells are starving (ATP below half its resting level)" +
-                    (frame.StarvingShare > 0f ? $"; starving now: {frame.StarvingShare * 100f:F0}% of your cells" : "") +
-                    $"; {frame.TimeWithoutFood:F0} s since your creature last had food");
-                DrawMeter("Damage", frame.DamageMeter, frame.DamagePointsNow,
-                    "100 less the worst damage your cells have carried this level (share of a lethal load)");
                 GUILayout.Label(new GUIContent(new string('★', frame.StarsNow) + new string('☆', 3 - Mathf.Clamp(frame.StarsNow, 0, 3)),
                     $"this level's points so far: {frame.LevelPointsNow} (meters and reproduction); stars at the level's end"),
                     GUILayout.Width(44));
@@ -289,14 +285,30 @@ namespace AdaptOrDeity.UI
         }
 
         // A meter in the top bar: its value as a small bar and its worth in points if the level ended now.
+        // The survival and damage meters, in their own panel under the top bar on the left (always visible from level 1).
+        private static void DrawMeters(SnapshotFrame frame)
+        {
+            GUILayout.BeginArea(new Rect(8f, BarHeight + 6f, 250f, 52f), GUI.skin.box);
+            DrawMeter("Survival", frame.SurvivalMeter, frame.SurvivalPointsNow,
+                "falls while your cells are starving (ATP below half its resting level)" +
+                (frame.StarvingShare > 0f ? $"; starving now: {frame.StarvingShare * 100f:F0}% of your cells" : "") +
+                $"; {frame.TimeWithoutFood:F0} s since your creature last had food");
+            DrawMeter("Damage", frame.DamageMeter, frame.DamagePointsNow,
+                "100 less the worst damage your cells have carried this level (share of a lethal load)");
+            GUILayout.EndArea();
+        }
+
         private static void DrawMeter(string name, float meter, int points, string tip)
         {
-            GUILayout.Label(new GUIContent($"{name} {meter:F0}", $"{name} meter {meter:F0}/100, worth {points} points now: {tip}"),
-                GUILayout.Width(82));
-            var bar = GUILayoutUtility.GetRect(40f, 10f, GUILayout.Width(40f));
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(new GUIContent($"{name} {meter:F0}/100", $"{name} meter {meter:F0}/100, worth {points} points now: {tip}"),
+                GUILayout.Width(110));
+            var bar = GUILayoutUtility.GetRect(120f, 14f, GUILayout.Width(120f));
+            GUILayout.EndHorizontal();
             if (Event.current.type != EventType.Repaint)
                 return;
-            bar.y += 8f;
+            bar.y += 4f;
+            bar.height = 10f;
             GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.2f, 0.2f), 0f, 0f);
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * Mathf.Clamp01(meter / 100f), bar.height), Texture2D.whiteTexture,
                 ScaleMode.StretchToFill, false, 0f, LevelEndWindow.MeterColour(meter), 0f, 0f);

@@ -12,7 +12,7 @@ namespace AdaptOrDeity.UI
     /// </summary>
     public sealed class OrganismPanel : MonoBehaviour
     {
-        private const float Width = 340f, Top = 44f;
+        private const float Width = 340f, Top = 104f;   // below the top bar and the meters
 
         private Vector2 _scroll;
         private GUIStyle _header, _small, _right;
