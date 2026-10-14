@@ -289,6 +289,7 @@ namespace AdaptOrDeity.Game.Session
             Add(new DetailInfo("v", state, "Membrane potential", "V", "mV", 1e3), c => 1e-3 * c.State("membrane__V"));
             Add(new DetailInfo("ph", state, "Cytosol pH", "pH", "", 1.0), c => c.AlgebraicValue("H__pH_i"));
             Add(new DetailInfo("atp", state, "ATP", "mol/m³", "mM", 1.0), c => c.State("cytosol__C_ATP"));
+            Add(new DetailInfo("glucose_inside", state, "Glucose inside", "mol/m³", "mM", 1.0), c => c.State("cytosol__C_glc"));
             Add(new DetailInfo("atp_free_energy", state, "ATP free energy", "J/mol", "kJ/mol", 1e-3),
                 c => c.AlgebraicValue("cytosol__A_hyd"));
             Add(new DetailInfo("na", state, "Na⁺", "mol/m³", "mM", 1.0), c => c.State("Na_K__Nai"));

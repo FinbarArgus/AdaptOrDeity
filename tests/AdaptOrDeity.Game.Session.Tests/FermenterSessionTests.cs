@@ -58,6 +58,24 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(frame.CellAlive[0], Is.True);
         }
 
+        [Test]
+        public void EnergyBalanceBarsAddUpToTheCellsAtpMadeAndUsed()
+        {
+            var loop = NewLoop(out var world);
+            loop.InspectedCell = 0;
+            var frame = loop.CreateFrame();
+            loop.StepExactly(60);
+            loop.WriteSnapshot(frame);
+            var details = loop.Schema.Details;
+            double Sum(string group) => Enumerable.Range(0, details.Count)
+                .Where(d => details[d].Group == group && details[d].Id != "atp_net").Sum(d => frame.Details[d][0]);
+            var budget = world.Cell(0).Budget();
+            Assert.That(Sum("ATP made"), Is.EqualTo(budget.AtpProduced).Within(1e-9 * budget.AtpProduced));
+            Assert.That(Sum("ATP used"), Is.EqualTo(budget.AtpConsumed).Within(1e-9 * budget.AtpConsumed));
+            int glucose = Detail(loop, "glucose_inside");
+            Assert.That(frame.Details[glucose][0], Is.EqualTo(world.Cell(0).State("cytosol__C_glc")));
+        }
+
         private static SimLoop Swimming(int cells, out FermenterWorld world)
         {
             var loop = NewLoop(out world);

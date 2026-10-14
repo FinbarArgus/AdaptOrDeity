@@ -31,11 +31,23 @@ namespace AdaptOrDeity.UI
             ["atp_growth"] = new Color(0.55f, 0.90f, 0.40f),
             ["atp_storage"] = new Color(0.80f, 0.65f, 0.45f),
             ["atp_carriers"] = new Color(0.45f, 0.60f, 0.95f),
+            ["atp_matrix"] = new Color(0.75f, 0.85f, 0.55f),
             ["atp_other"] = new Color(0.60f, 0.65f, 0.70f),
         };
 
+        // Colours of the ATP sources in the energy balance, by detail id.
+        private static readonly Dictionary<string, Color> SourceColours = new Dictionary<string, Color>
+        {
+            ["atp_glycolysis"] = new Color(0.30f, 0.80f, 0.45f),
+            ["atp_from_glycogen"] = new Color(0.80f, 0.65f, 0.45f),
+            ["atp_recycled_protein"] = new Color(0.55f, 0.75f, 0.95f),
+        };
+
+        private static readonly Color Good = new Color(0.55f, 0.90f, 0.55f), Watch = new Color(1f, 0.80f, 0.35f),
+            Bad = new Color(1f, 0.45f, 0.40f);
+
         private Vector2 _scroll;
-        private bool _showProteinTurnover;
+        private bool _showProteinTurnover, _showRates, _showState, _showAtpItems, _showSwimming, _showExpressionHelp, _showTools;
         private bool _showFeatures = true;
         private float[] _sliders = new float[0];
         private float[] _controls = new float[0];
@@ -91,21 +103,36 @@ namespace AdaptOrDeity.UI
                 GUILayout.Label("This cell died: damage reached a lethal load.", _small);
             _scroll = GUILayout.BeginScrollView(_scroll);
 
-            DrawMetabolicRate(schema, frame, cell);
-            DrawGroup(schema, frame, cell, "ATP made");
-            DrawGroup(schema, frame, cell, "ATP used");
-            _showProteinTurnover = Foldout(_showProteinTurnover, "Protein turnover by protein");
-            if (_showProteinTurnover)
-                DrawGroup(schema, frame, cell, "Protein turnover", header: false);
+            DrawVitals(schema, frame, cell);
+            DrawEnergyBalance(schema, frame, cell);
+            DrawLeakHint(schema, frame, cell);
             if (Unlocked(schema, frame, GameFeatures.GrowthAndDivision))
                 DrawGrowth(bridge, schema, frame, cell);
-            DrawGroup(schema, frame, cell, "Cell state");
-            DrawLeakHint(schema, frame, cell);
-            DrawSwimming(frame);
+
+            _showAtpItems = Foldout(_showAtpItems, "ATP made and used, item by item");
+            if (_showAtpItems)
+            {
+                DrawGroup(schema, frame, cell, "ATP made");
+                DrawGroup(schema, frame, cell, "ATP used");
+            }
+            _showProteinTurnover = Foldout(_showProteinTurnover, "Protein upkeep, protein by protein");
+            if (_showProteinTurnover)
+                DrawGroup(schema, frame, cell, "Protein turnover", header: false);
+            _showRates = Foldout(_showRates, "Metabolic rate, uptake and heat");
+            if (_showRates)
+                DrawMetabolicRate(schema, frame, cell);
+            _showState = Foldout(_showState, "Ions and cell state");
+            if (_showState)
+                DrawGroup(schema, frame, cell, "Cell state", header: false);
+            _showSwimming = Foldout(_showSwimming, "Swimming");
+            if (_showSwimming)
+                DrawSwimming(frame);
 
             GUILayout.Space(10);
             GUILayout.Label("Protein expression", _header);
-            GUILayout.Label("Copies relative to the baseline cell, for every cell in this group; a carrier you evolved is " +
+            _showExpressionHelp = Foldout(_showExpressionHelp, "How expression works");
+            if (_showExpressionHelp)
+                GUILayout.Label("Copies relative to the baseline cell, for every cell in this group; a carrier you evolved is " +
                             "set as its share of the membrane's room for proteins. New copies cost ATP to build (shown " +
                             "under ATP used) and a little each second to keep. The membrane holds only so many proteins. " +
                             "Each membrane protein shows as an arc of the cell's rim in its colour, as long as the share " +
@@ -132,7 +159,8 @@ namespace AdaptOrDeity.UI
                 DrawFeatures(bridge, schema, frame);
 
             GUILayout.Space(6);
-            if (GUILayout.Button("Export creature model (module array)"))
+            _showTools = Foldout(_showTools, "Tools");
+            if (_showTools && GUILayout.Button("Export creature model (module array)"))
                 bridge.ExportModel();
             if (bridge.LastExport != null)
                 GUILayout.Label($"Written to {bridge.LastExport}", _small);
@@ -267,6 +295,94 @@ namespace AdaptOrDeity.UI
             GUILayout.EndHorizontal();
         }
 
+        // The cell's vital signs, always shown: ATP, glucose inside and at the membrane, pH, membrane potential, damage,
+        // each coloured by how far it is from a healthy cell's.
+        private void DrawVitals(SessionSchema schema, SnapshotFrame frame, int cell)
+        {
+            GUILayout.Label("Vital signs", _header);
+            double V(string id) { int d = Find(schema, id); return d >= 0 ? Display(schema, frame, cell, d) : double.NaN; }
+            double atp = V("atp"), glcIn = V("glucose_inside"), glcOut = V("medium_glucose"), ph = V("ph"), v = V("v"), damage = V("damage");
+            Vital("ATP", $"{atp:F2} mM", atp >= 8.0 ? Good : atp >= 5.0 ? Watch : Bad,
+                "the energy currency; a healthy fermenter holds ~10 mM. Below half that its cells count as starving; at zero it cannot restart glycolysis");
+            Vital("Glucose", $"{glcIn:G3} mM inside · {glcOut:G3} mM at the membrane", glcIn > 0.01 ? Good : glcIn > 0.001 ? Watch : Bad,
+                "glucose inside the cell (what glycolysis uses) and in the water at its membrane");
+            Vital("pH", $"{ph:F2}", ph >= 7.2 ? Good : ph >= 6.8 ? Watch : Bad,
+                "the cytosol's pH (healthy ~7.6); lactic acid and failing H⁺ pumps lower it");
+            Vital("Membrane potential", $"{v:F0} mV", v <= -80.0 ? Good : v <= -40.0 ? Watch : Bad,
+                "inside negative (healthy ~ -100 mV); when the pumps stop it runs down towards 0 as ions leak");
+            Vital("Damage", $"{damage:F0}% of lethal", damage < 30.0 ? Good : damage < 70.0 ? Watch : Bad,
+                "the cell dies at 100%; repair keeps it low");
+            GUILayout.Space(4);
+        }
+
+        private void Vital(string name, string value, Color colour, string tip)
+        {
+            GUILayout.BeginHorizontal();
+            var dot = GUILayoutUtility.GetRect(10, 18, GUILayout.Width(10));
+            if (Event.current.type == EventType.Repaint)
+                GUI.DrawTexture(new Rect(dot.x, dot.y + 5, 8, 8), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, colour, 0f, 4f);
+            GUILayout.Label(new GUIContent(name, tip), GUILayout.Width(140));
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(new GUIContent(value, tip), _right);
+            GUILayout.EndHorizontal();
+        }
+
+        // ATP made and used as two stacked bars on one scale (the larger fills the width), each split by where it comes
+        // from or goes, and the balance: how starved the cell is at a glance.
+        private void DrawEnergyBalance(SessionSchema schema, SnapshotFrame frame, int cell)
+        {
+            GUILayout.Label("Energy balance", _header);
+            double made = 0.0, used = 0.0;
+            for (int d = 0; d < schema.Details.Count; d++)
+            {
+                if (InBalance(schema.Details[d], "ATP made"))
+                    made += System.Math.Max(0.0, frame.Details[d][cell]);
+                if (InBalance(schema.Details[d], "ATP used"))
+                    used += System.Math.Max(0.0, frame.Details[d][cell]);
+            }
+            double scale = System.Math.Max(made, used);
+            int any = Find(schema, "atp_turnover");
+            double perSecond = any >= 0 ? schema.Details[any].DisplayMultiplier : 1.0;   // mol/s -> ATP/s
+            BalanceBar(schema, frame, cell, "Made", "ATP made", SourceColours, made, scale, perSecond);
+            BalanceBar(schema, frame, cell, "Used", "ATP used", SinkColours, used, scale, perSecond);
+            double net = (made - used) * perSecond;
+            var old = GUI.color;
+            GUI.color = net >= 0.0 ? Good : Bad;
+            GUILayout.Label(net >= 0.0 ? $"Surplus {Format(net)} ATP/s" : $"Deficit {Format(-net)} ATP/s: living off its reserves",
+                _small);
+            GUI.color = old;
+            GUILayout.Space(4);
+        }
+
+        // An item of the energy balance: every detail of its group but the net.
+        private static bool InBalance(DetailInfo detail, string group) => detail.Group == group && detail.Id != "atp_net";
+
+        private void BalanceBar(SessionSchema schema, SnapshotFrame frame, int cell, string label, string group,
+            Dictionary<string, Color> colours, double total, double scale, double perSecond)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(label, GUILayout.Width(44));
+            var bar = GUILayoutUtility.GetRect(Width - 170, 16, GUILayout.Width(Width - 170));
+            GUILayout.Label($"{Format(total * perSecond)}", _right, GUILayout.Width(80));
+            GUILayout.EndHorizontal();
+            if (Event.current.type != EventType.Repaint)
+                return;
+            GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.22f, 0.25f), 0f, 0f);
+            if (!(scale > 0.0))
+                return;
+            float x = bar.x;
+            for (int d = 0; d < schema.Details.Count; d++)
+            {
+                if (!InBalance(schema.Details[d], group))
+                    continue;
+                var colour = colours.TryGetValue(schema.Details[d].Id, out var c) ? c : new Color(0.6f, 0.65f, 0.7f);
+                float w = (float)(System.Math.Max(0.0, frame.Details[d][cell]) / scale) * bar.width;
+                GUI.DrawTexture(new Rect(x, bar.y, w, bar.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f,
+                    colour, 0f, 0f);
+                x += w;
+            }
+        }
+
         private void DrawMetabolicRate(SessionSchema schema, SnapshotFrame frame, int cell)
         {
             GUILayout.Label("Metabolic rate", _header);
@@ -343,7 +459,8 @@ namespace AdaptOrDeity.UI
                 if ((group == "ATP used" || group == "ATP made") && schema.Details[d].Id != "atp_net"
                     && frame.Details[d][cell] == 0.0)
                     continue;
-                Color? swatch = SinkColours.TryGetValue(schema.Details[d].Id, out var c) ? c : (Color?)null;
+                Color? swatch = SinkColours.TryGetValue(schema.Details[d].Id, out var c) ? c
+                    : SourceColours.TryGetValue(schema.Details[d].Id, out var m) ? m : (Color?)null;
                 Row(schema, frame, cell, d, swatch);
             }
         }
