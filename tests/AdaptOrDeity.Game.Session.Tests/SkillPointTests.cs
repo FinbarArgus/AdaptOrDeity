@@ -160,7 +160,9 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That((frame.SurvivalPoints, frame.DamagePoints), Is.EqualTo((world.SurvivalPoints, world.DamagePoints)));
             Assert.That((frame.SurvivalMeter, frame.DamageMeter), Is.EqualTo(((float)world.SurvivalMeter, (float)world.DamageMeter)));
             Assert.That((frame.SurvivalPointsNow, frame.DamagePointsNow), Is.EqualTo((world.SurvivalPointsNow, world.DamagePointsNow)));
-            Assert.That(frame.DamageMeter, Is.LessThan(51f));
+            double toEmpty = GameParameters.Default.Value("scoring.damage_to_empty");
+            Assert.That(frame.DamageMeter, Is.EqualTo((float)(100.0 * (1.0 - 0.2 / toEmpty))).Within(1f),
+                "the level added 0.2 of a lethal load");
             Assert.That((frame.ScoredLevel, frame.ScoredDamage, frame.ScoredDamagePoints),
                 Is.EqualTo((1, (float)world.LastScore!.Damage, world.LastScore.DamagePoints)));
             Assert.That(frame.ScoredDamage, Is.LessThan(71f));

@@ -254,6 +254,9 @@ namespace AdaptOrDeity.Game.Session
                 c => c.Budget().AtpProteinBreakdown);
             Add(new DetailInfo("atp_rna", used, "RNA turnover and ribosomes", "mol/s", "ATP/s", avogadro,
                 "mRNA lasts about 5 min; ribosome RNA upkeep"), c => c.Budget().AtpRna);
+            Add(new DetailInfo("atp_ribosome_rebuild", used, "Rebuilding ribosomes", "mol/s", "ATP/s", avogadro,
+                "making new ribosomes, their RNA and proteins from glucose (about 440,000 ATP each), to replace those " +
+                "lost while their upkeep was cut"), c => c.Budget().AtpRibosomeRebuild);
             Add(new DetailInfo("atp_lipids", used, "Membrane lipids", "mol/s", "ATP/s", avogadro,
                 "lipid turnover; scales with membrane area"), c => c.Budget().AtpLipids);
             Add(new DetailInfo("atp_repair", used, "Repair", "mol/s", "ATP/s", avogadro), c => c.Budget().AtpRepair);
@@ -304,12 +307,17 @@ namespace AdaptOrDeity.Game.Session
             Add(new DetailInfo("damage", state, "Damage", "", "% of lethal", 100.0,
                 "the sum of its four types; the cell dies at 100%"), c => c.Damage);
             Add(new DetailInfo("damage_physical", state, "Physical damage", "", "% of lethal", 100.0,
-                "to the envelope (membrane and wall), from attacks; envelope repair mends it"), c => c.DamagePhysical);
+                "to the envelope (membrane and wall), from attacks and from membrane lipids left unrenewed while the " +
+                "lipid upkeep is cut; envelope repair mends it"), c => c.DamagePhysical);
             Add(new DetailInfo("damage_radiation", state, "Radiation damage", "", "% of lethal", 100.0,
                 "DNA lesions from radiation; DNA repair mends them"), c => c.DamageRadiation);
             Add(new DetailInfo("damage_ribosome", state, "Ribosome damage", "", "% of lethal", 100.0,
                 "wear of ribosomes and proteins, Ca²⁺ overload pushing off the Mg²⁺ that holds ribosomes together, and " +
-                "K⁺ falling below the ~100 mM ribosomes need; rebuilding them mends it"), c => c.DamageRibosome);
+                "K⁺ falling below the ~100 mM ribosomes need, and misfolded proteins and stalled ribosomes piling up " +
+                "while the other maintenance (quality control) is cut; rebuilding them mends it"), c => c.DamageRibosome);
+            Add(new DetailInfo("ribosomes", state, "Ribosomes", "", "% of rest", 100.0,
+                "lost while the RNA upkeep is cut, and rebuilt slowly (about an hour) once it is paid again; the cell " +
+                "builds protein in proportion to them"), c => c.Ribosomes);
             Add(new DetailInfo("damage_energy", state, "De-energisation damage", "", "% of lethal", 100.0,
                 "proteins aggregating once ATP falls below ~1 mM and chaperones can no longer refold them; disaggregases " +
                 "mend it, but only with ATP"), c => c.DamageEnergy);

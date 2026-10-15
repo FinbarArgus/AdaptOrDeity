@@ -79,6 +79,7 @@ namespace AdaptOrDeity.Headless
                 "left" => Bots.LeftAlone(),
                 "mediocre" => Bots.Mediocre(),
                 "great" => Bots.Great(),
+                "optimised" => Bots.Optimised(),
                 _ => ScriptedPlayer.Parse(name, rest),
             };
             using var world = new FermenterWorld { Workers = 1 };

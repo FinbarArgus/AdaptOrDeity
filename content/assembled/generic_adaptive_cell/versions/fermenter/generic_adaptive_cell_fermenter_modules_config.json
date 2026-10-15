@@ -7,7 +7,7 @@
   "component_type": "cell",
   "default_instance": "default",
   "licence": "CC0-1.0",
-  "assembled_from": "circulatory-autogen-modules homogenisation-checks 5cea85e6 + damage types (uncommitted), cell/generic_adaptive_cell/versions/fermenter, assembled by libcuflynx 2026-10-14",
+  "assembled_from": "circulatory-autogen-modules homogenisation-checks b0127a6a, cell/generic_adaptive_cell/versions/fermenter, assembled by libcuflynx 2026-10-15",
   "entrance_ports": [],
   "exit_ports": [],
   "general_ports": [],
@@ -853,6 +853,12 @@
     "constant"
    ],
    [
+    "L_rRNA_mod_ribosomes",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "N_A_mod_bio",
     "per_mol",
     "access",
@@ -956,6 +962,12 @@
    ],
    [
     "N_A_mod_protein",
+    "per_mol",
+    "access",
+    "constant"
+   ],
+   [
+    "N_A_mod_ribosomes",
     "per_mol",
     "access",
     "constant"
@@ -1129,6 +1141,12 @@
     "constant"
    ],
    [
+    "aa_ribo_mod_ribosomes",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "alpha_NaCa_mod_i_NaCa",
     "dimensionless",
     "access",
@@ -1219,12 +1237,6 @@
     "variable"
    ],
    [
-    "bio__J_ribo",
-    "mol_per_s",
-    "access",
-    "variable"
-   ],
-   [
     "bio__M_build_bio",
     "mole",
     "access",
@@ -1250,6 +1262,24 @@
    ],
    [
     "bio__R_dmg_energy",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_dmg_lipid",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_dmg_phys",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_dmg_qc",
     "per_s",
     "access",
     "variable"
@@ -1387,13 +1417,37 @@
     "variable"
    ],
    [
+    "bio__u_upkeep",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "bio__x_ATP",
     "dimensionless",
     "access",
     "variable"
    ],
    [
-    "build_capacity_mod_protein",
+    "bio__x_unpaid",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__x_unpaid_raw",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "build_capacity_rest_mod_protein",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "c_aa_build_mod_ribosomes",
     "dimensionless",
     "access",
     "constant"
@@ -1501,7 +1555,19 @@
     "constant"
    ],
    [
+    "c_nt_denovo_mod_ribosomes",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "c_nt_recycle_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "c_nt_recycle_mod_ribosomes",
     "dimensionless",
     "access",
     "constant"
@@ -3001,7 +3067,19 @@
     "constant"
    ],
    [
+    "k_lipid_dmg_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
     "k_lipid_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "k_qc_dmg_mod_bio",
     "per_s",
     "access",
     "constant"
@@ -3013,7 +3091,13 @@
     "constant"
    ],
    [
-    "k_ribo_mod_bio",
+    "k_ribo_build_mod_ribosomes",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "k_ribo_mod_ribosomes",
     "per_s",
     "access",
     "constant"
@@ -3577,7 +3661,25 @@
     "constant"
    ],
    [
+    "n_ribo_build_mod_ribosomes",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "n_ribo_init_mod_ribosomes",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
     "n_ribo_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "n_ribo_rest_mod_ribosomes",
     "dimensionless",
     "access",
     "constant"
@@ -6115,6 +6217,12 @@
     "variable"
    ],
    [
+    "protein__build_capacity",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "protein__f_area",
     "dimensionless",
     "access",
@@ -6767,6 +6875,60 @@
     "per_um2",
     "access",
     "constant"
+   ],
+   [
+    "ribosomes__J_ATP_ribo",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "ribosomes__J_ribo",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "ribosomes__J_ribo_build",
+    "mol_per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "ribosomes__R_ribo_build",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "ribosomes__R_ribo_loss",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "ribosomes__c_ribo_build",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "ribosomes__n_ribo",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "ribosomes__u_upkeep",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "ribosomes__x_ribo",
+    "dimensionless",
+    "access",
+    "variable"
    ],
    [
     "s_target_mod_pool_ABC",

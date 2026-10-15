@@ -141,6 +141,7 @@
     <variable name="L_mod_pool_Trk" units="dimensionless" public_interface="in"/>
     <variable name="L_mod_pool_proteome" units="dimensionless" public_interface="in"/>
     <variable name="L_rRNA_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="L_rRNA_mod_ribosomes" units="dimensionless" public_interface="in"/>
     <variable name="N_A_mod_bio" units="per_mol" public_interface="in"/>
     <variable name="N_A_mod_hydrolase" units="per_mol" public_interface="in"/>
     <variable name="N_A_mod_i_flagellum" units="per_mol" public_interface="in"/>
@@ -159,6 +160,7 @@
     <variable name="N_A_mod_pool_Trk" units="per_mol" public_interface="in"/>
     <variable name="N_A_mod_pool_proteome" units="per_mol" public_interface="in"/>
     <variable name="N_A_mod_protein" units="per_mol" public_interface="in"/>
+    <variable name="N_A_mod_ribosomes" units="per_mol" public_interface="in"/>
     <variable name="N_aa_init_mod_protein" units="dimensionless" public_interface="in"/>
     <variable name="Na_K__E_K" units="milliV" public_interface="out"/>
     <variable name="Na_K__E_Na" units="milliV" public_interface="out"/>
@@ -187,6 +189,7 @@
     <variable name="V_store_max_mod_cytosol" units="millimolar_per_s" public_interface="in"/>
     <variable name="a_init_mod_i_flagellum" units="dimensionless" public_interface="in"/>
     <variable name="a_motor_mod_i_flagellum" units="dimensionless" public_interface="in"/>
+    <variable name="aa_ribo_mod_ribosomes" units="dimensionless" public_interface="in"/>
     <variable name="alpha_NaCa_mod_i_NaCa" units="dimensionless" public_interface="in"/>
     <variable name="area_max_fraction_mod_protein" units="dimensionless" public_interface="in"/>
     <variable name="area_per_lipid_mod_bio" units="um2" public_interface="in"/>
@@ -202,12 +205,14 @@
     <variable name="bio__J_growth_used" units="mol_per_s" public_interface="out"/>
     <variable name="bio__J_lipid" units="mol_per_s" public_interface="out"/>
     <variable name="bio__J_repair" units="mol_per_s" public_interface="out"/>
-    <variable name="bio__J_ribo" units="mol_per_s" public_interface="out"/>
     <variable name="bio__M_build_bio" units="mole" public_interface="out"/>
     <variable name="bio__M_build_protein" units="mole" public_interface="out"/>
     <variable name="bio__M_daughter" units="mole" public_interface="out"/>
     <variable name="bio__P_growth" units="mole" public_interface="out" initial_value="P_init_mod_bio"/>
     <variable name="bio__R_dmg_energy" units="per_s" public_interface="out"/>
+    <variable name="bio__R_dmg_lipid" units="per_s" public_interface="out"/>
+    <variable name="bio__R_dmg_phys" units="per_s" public_interface="out"/>
+    <variable name="bio__R_dmg_qc" units="per_s" public_interface="out"/>
     <variable name="bio__R_dmg_rad" units="per_s" public_interface="out"/>
     <variable name="bio__R_dmg_ribo" units="per_s" public_interface="out"/>
     <variable name="bio__R_reg" units="dimensionless" public_interface="out"/>
@@ -230,8 +235,12 @@
     <variable name="bio__j_Pi_bio" units="mol_per_s" public_interface="out"/>
     <variable name="bio__n_lipid" units="dimensionless" public_interface="out"/>
     <variable name="bio__throttle" units="dimensionless" public_interface="out"/>
+    <variable name="bio__u_upkeep" units="dimensionless" public_interface="out"/>
     <variable name="bio__x_ATP" units="dimensionless" public_interface="out"/>
-    <variable name="build_capacity_mod_protein" units="dimensionless" public_interface="in"/>
+    <variable name="bio__x_unpaid" units="dimensionless" public_interface="out"/>
+    <variable name="bio__x_unpaid_raw" units="dimensionless" public_interface="out"/>
+    <variable name="build_capacity_rest_mod_protein" units="dimensionless" public_interface="in"/>
+    <variable name="c_aa_build_mod_ribosomes" units="dimensionless" public_interface="in"/>
     <variable name="c_deg_mod_pool_ABC" units="dimensionless" public_interface="in"/>
     <variable name="c_deg_mod_pool_Flagellum" units="dimensionless" public_interface="in"/>
     <variable name="c_deg_mod_pool_GalP" units="dimensionless" public_interface="in"/>
@@ -249,7 +258,9 @@
     <variable name="c_lipid_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="c_m_mod_membrane" units="uF_per_cm2" public_interface="in"/>
     <variable name="c_nt_denovo_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="c_nt_denovo_mod_ribosomes" units="dimensionless" public_interface="in"/>
     <variable name="c_nt_recycle_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="c_nt_recycle_mod_ribosomes" units="dimensionless" public_interface="in"/>
     <variable name="c_poly_mod_pool_ABC" units="dimensionless" public_interface="in"/>
     <variable name="c_poly_mod_pool_Flagellum" units="dimensionless" public_interface="in"/>
     <variable name="c_poly_mod_pool_GalP" units="dimensionless" public_interface="in"/>
@@ -499,9 +510,12 @@
     <variable name="k_deg_mod_pool_Trk" units="per_s" public_interface="in"/>
     <variable name="k_deg_mod_pool_proteome" units="per_s" public_interface="in"/>
     <variable name="k_energy_dmg_mod_bio" units="per_s" public_interface="in"/>
+    <variable name="k_lipid_dmg_mod_bio" units="per_s" public_interface="in"/>
     <variable name="k_lipid_mod_bio" units="per_s" public_interface="in"/>
+    <variable name="k_qc_dmg_mod_bio" units="per_s" public_interface="in"/>
     <variable name="k_rad_dmg_mod_bio" units="per_gray" public_interface="in"/>
-    <variable name="k_ribo_mod_bio" units="per_s" public_interface="in"/>
+    <variable name="k_ribo_build_mod_ribosomes" units="per_s" public_interface="in"/>
+    <variable name="k_ribo_mod_ribosomes" units="per_s" public_interface="in"/>
     <variable name="k_unbind_Ca_mod_Ca" units="per_s" public_interface="in"/>
     <variable name="kcat_mod_hydrolase" units="per_s" public_interface="in"/>
     <variable name="m_init_mod_pool_ABC" units="dimensionless" public_interface="in"/>
@@ -595,7 +609,10 @@
     <variable name="n_half_mod_i_flagellum" units="dimensionless" public_interface="in"/>
     <variable name="n_mRNA_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="n_reg_mod_reg" units="dimensionless" public_interface="in"/>
+    <variable name="n_ribo_build_mod_ribosomes" units="dimensionless" public_interface="in"/>
+    <variable name="n_ribo_init_mod_ribosomes" units="dimensionless" public_interface="in"/>
     <variable name="n_ribo_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="n_ribo_rest_mod_ribosomes" units="dimensionless" public_interface="in"/>
     <variable name="pmf_ref_mod_i_flagellum" units="milliV" public_interface="in"/>
     <variable name="pool_ABC__A_protein" units="um2" public_interface="out"/>
     <variable name="pool_ABC__J_ATP" units="mol_per_s" public_interface="out"/>
@@ -1018,6 +1035,7 @@
     <variable name="protein__Q_aa_use_total" units="per_s" public_interface="out"/>
     <variable name="protein__Q_prot_demand_total" units="per_s" public_interface="out"/>
     <variable name="protein__R_reg" units="dimensionless" public_interface="out"/>
+    <variable name="protein__build_capacity" units="dimensionless" public_interface="out"/>
     <variable name="protein__f_area" units="dimensionless" public_interface="out"/>
     <variable name="protein__j_ADP_prot" units="mol_per_s" public_interface="out"/>
     <variable name="protein__j_ATP_prot" units="mol_per_s" public_interface="out"/>
@@ -1127,6 +1145,15 @@
     <variable name="rho_leak_Ca_mod_i_leak_Ca" units="per_um2" public_interface="in"/>
     <variable name="rho_leak_K_mod_i_K_Trk" units="per_um2" public_interface="in"/>
     <variable name="rho_leak_Na_mod_i_leak_Na" units="per_um2" public_interface="in"/>
+    <variable name="ribosomes__J_ATP_ribo" units="mol_per_s" public_interface="out"/>
+    <variable name="ribosomes__J_ribo" units="mol_per_s" public_interface="out"/>
+    <variable name="ribosomes__J_ribo_build" units="mol_per_s" public_interface="out"/>
+    <variable name="ribosomes__R_ribo_build" units="per_s" public_interface="out"/>
+    <variable name="ribosomes__R_ribo_loss" units="per_s" public_interface="out"/>
+    <variable name="ribosomes__c_ribo_build" units="dimensionless" public_interface="out"/>
+    <variable name="ribosomes__n_ribo" units="dimensionless" public_interface="out" initial_value="n_ribo_init_mod_ribosomes"/>
+    <variable name="ribosomes__u_upkeep" units="dimensionless" public_interface="out"/>
+    <variable name="ribosomes__x_ribo" units="dimensionless" public_interface="out"/>
     <variable name="s_target_mod_pool_ABC" units="dimensionless" public_interface="in"/>
     <variable name="s_target_mod_pool_GalP" units="dimensionless" public_interface="in"/>
     <variable name="s_target_mod_pool_Glf" units="dimensionless" public_interface="in"/>
@@ -3317,6 +3344,68 @@
       </apply>
       <apply>
         <eq />
+        <ci>bio__x_unpaid_raw</ci>
+        <apply>
+          <plus />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <ci>K_m_ATP_bio_mod_bio</ci>
+              <apply>
+                <minus />
+                <ci>ATP_ref_mod_bio</ci>
+                <ci>cytosol__C_ATP</ci>
+              </apply>
+            </apply>
+            <apply>
+              <times />
+              <apply>
+                <plus />
+                <ci>K_m_ATP_bio_mod_bio</ci>
+                <ci>cytosol__C_ATP</ci>
+              </apply>
+              <ci>ATP_ref_mod_bio</ci>
+            </apply>
+          </apply>
+          <apply>
+            <times />
+            <ci>bio__f_ATP_bio</ci>
+            <apply>
+              <minus />
+              <cn cellml:units="dimensionless">1.0</cn>
+              <ci>bio__R_reg_upkeep</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__x_unpaid</ci>
+        <apply>
+          <divide />
+          <apply>
+            <plus />
+            <ci>bio__x_unpaid_raw</ci>
+            <apply>
+              <abs />
+              <ci>bio__x_unpaid_raw</ci>
+            </apply>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__u_upkeep</ci>
+        <apply>
+          <minus />
+          <cn cellml:units="dimensionless">1.0</cn>
+          <ci>bio__x_unpaid</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
         <ci>bio__J_RNA</ci>
         <apply>
           <times />
@@ -3338,28 +3427,7 @@
             </apply>
             <ci>N_A_mod_bio</ci>
           </apply>
-          <ci>bio__f_ATP_bio</ci>
-          <ci>bio__R_reg_upkeep</ci>
-        </apply>
-      </apply>
-      <apply>
-        <eq />
-        <ci>bio__J_ribo</ci>
-        <apply>
-          <times />
-          <apply>
-            <divide />
-            <apply>
-              <times />
-              <ci>n_ribo_mod_bio</ci>
-              <ci>L_rRNA_mod_bio</ci>
-              <ci>c_nt_recycle_mod_bio</ci>
-              <ci>k_ribo_mod_bio</ci>
-            </apply>
-            <ci>N_A_mod_bio</ci>
-          </apply>
-          <ci>bio__f_ATP_bio</ci>
-          <ci>bio__R_reg_upkeep</ci>
+          <ci>bio__u_upkeep</ci>
         </apply>
       </apply>
       <apply>
@@ -3377,8 +3445,7 @@
             </apply>
             <ci>N_A_mod_bio</ci>
           </apply>
-          <ci>bio__f_ATP_bio</ci>
-          <ci>bio__R_reg_upkeep</ci>
+          <ci>bio__u_upkeep</ci>
         </apply>
       </apply>
       <apply>
@@ -3480,6 +3547,37 @@
       </apply>
       <apply>
         <eq />
+        <ci>bio__R_dmg_lipid</ci>
+        <apply>
+          <times />
+          <ci>k_lipid_dmg_mod_bio</ci>
+          <ci>bio__x_unpaid</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_dmg_phys</ci>
+        <apply>
+          <plus />
+          <ci>r_dmg_phys_mod_bio</ci>
+          <ci>bio__R_dmg_lipid</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_dmg_qc</ci>
+        <apply>
+          <times />
+          <ci>k_qc_dmg_mod_bio</ci>
+          <apply>
+            <minus />
+            <cn cellml:units="dimensionless">1.0</cn>
+            <ci>cytosol__R_reg</ci>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
         <ci>bio__R_dmg_ribo</ci>
         <apply>
           <plus />
@@ -3498,6 +3596,7 @@
             <ci>k_K_dmg_mod_bio</ci>
             <ci>bio__f_K_dmg</ci>
           </apply>
+          <ci>bio__R_dmg_qc</ci>
         </apply>
       </apply>
       <apply>
@@ -3821,7 +3920,7 @@
         <apply>
           <plus />
           <ci>bio__J_RNA</ci>
-          <ci>bio__J_ribo</ci>
+          <ci>ribosomes__J_ATP_ribo</ci>
           <ci>bio__J_lipid</ci>
           <ci>bio__J_repair</ci>
           <ci>bio__J_growth_used</ci>
@@ -3890,7 +3989,7 @@
         </apply>
         <apply>
           <minus />
-          <ci>r_dmg_phys_mod_bio</ci>
+          <ci>bio__R_dmg_phys</ci>
           <ci>bio__R_rep_phys</ci>
         </apply>
       </apply>
@@ -3949,6 +4048,146 @@
           <ci>bio__P_growth</ci>
         </apply>
         <ci>bio__J_growth_used</ci>
+      </apply>
+    </math>
+  
+<math xmlns="http://www.w3.org/1998/Math/MathML" xmlns:cellml="http://www.cellml.org/cellml/1.1#">
+      <apply>
+        <eq />
+        <ci>ribosomes__u_upkeep</ci>
+        <apply>
+          <minus />
+          <cn cellml:units="dimensionless">1.0</cn>
+          <ci>bio__x_unpaid</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>ribosomes__x_ribo</ci>
+        <apply>
+          <divide />
+          <ci>ribosomes__n_ribo</ci>
+          <ci>n_ribo_rest_mod_ribosomes</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>ribosomes__R_ribo_loss</ci>
+        <apply>
+          <times />
+          <ci>k_ribo_mod_ribosomes</ci>
+          <ci>ribosomes__n_ribo</ci>
+          <ci>bio__x_unpaid</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>ribosomes__R_ribo_build</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <ci>k_ribo_build_mod_ribosomes</ci>
+              <apply>
+                <plus />
+                <apply>
+                  <minus />
+                  <ci>n_ribo_rest_mod_ribosomes</ci>
+                  <ci>ribosomes__n_ribo</ci>
+                </apply>
+                <apply>
+                  <abs />
+                  <apply>
+                    <minus />
+                    <ci>n_ribo_rest_mod_ribosomes</ci>
+                    <ci>ribosomes__n_ribo</ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+            <cn cellml:units="dimensionless">2.0</cn>
+          </apply>
+          <apply>
+            <power />
+            <ci>ribosomes__u_upkeep</ci>
+            <ci>n_ribo_build_mod_ribosomes</ci>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>ribosomes__c_ribo_build</ci>
+        <apply>
+          <plus />
+          <apply>
+            <times />
+            <ci>L_rRNA_mod_ribosomes</ci>
+            <ci>c_nt_denovo_mod_ribosomes</ci>
+          </apply>
+          <apply>
+            <times />
+            <ci>aa_ribo_mod_ribosomes</ci>
+            <ci>c_aa_build_mod_ribosomes</ci>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>ribosomes__J_ribo</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <ci>ribosomes__n_ribo</ci>
+              <ci>L_rRNA_mod_ribosomes</ci>
+              <ci>c_nt_recycle_mod_ribosomes</ci>
+              <ci>k_ribo_mod_ribosomes</ci>
+            </apply>
+            <ci>N_A_mod_ribosomes</ci>
+          </apply>
+          <ci>ribosomes__u_upkeep</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>ribosomes__J_ribo_build</ci>
+        <apply>
+          <divide />
+          <apply>
+            <times />
+            <ci>ribosomes__R_ribo_build</ci>
+            <ci>ribosomes__c_ribo_build</ci>
+          </apply>
+          <ci>N_A_mod_ribosomes</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>ribosomes__J_ATP_ribo</ci>
+        <apply>
+          <plus />
+          <ci>ribosomes__J_ribo</ci>
+          <ci>ribosomes__J_ribo_build</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <apply>
+          <diff />
+          <bvar>
+            <ci>t</ci>
+          </bvar>
+          <ci>ribosomes__n_ribo</ci>
+        </apply>
+        <apply>
+          <minus />
+          <ci>ribosomes__R_ribo_build</ci>
+          <ci>ribosomes__R_ribo_loss</ci>
+        </apply>
       </apply>
     </math>
   
@@ -4265,10 +4504,19 @@
       </apply>
       <apply>
         <eq />
+        <ci>protein__build_capacity</ci>
+        <apply>
+          <times />
+          <ci>build_capacity_rest_mod_protein</ci>
+          <ci>ribosomes__x_ribo</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
         <ci>protein__J_cap</ci>
         <apply>
           <times />
-          <ci>build_capacity_mod_protein</ci>
+          <ci>protein__build_capacity</ci>
           <ci>J_ref_mod_protein</ci>
           <ci>protein__throttle</ci>
           <ci>protein__R_reg</ci>

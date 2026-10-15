@@ -92,7 +92,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             int trait = cell.Traits.ToList().FindIndex(t => t.Id == "H_ATPase_expression");
             double n = cell.External("n_0_mod_pool_H_ATPase"), l = cell.External("L_mod_pool_H_ATPase");
             double cBuild = cell.External("c_syn_mod_pool_H_ATPase") + cell.External("c_poly_mod_pool_H_ATPase");
-            double cap = cell.External("build_capacity_mod_protein") * cell.RestingTurnover;
+            double cap = cell.External("build_capacity_rest_mod_protein") * cell.RestingTurnover;
             cell.Step(GameDt);
             // upkeep per unit of the ATP factor (synthesis slows a little as ATP moves)
             double upkeep0 = cell.AlgebraicValue("pool_H_ATPase__J_keep") / Math.Min(cell.AlgebraicValue("pool_H_ATPase__f_ATP"), 1.0);
@@ -297,7 +297,8 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
                 cell.Step(GameDt);
             }
             Assert.That(cell.DamageRibosome - before, Is.InRange(0.02, 0.03), "60 s at ~4.4e-4/s");
-            Assert.That(cell.DamagePhysical + cell.DamageRadiation, Is.EqualTo(0.0));
+            Assert.That(cell.DamageRadiation, Is.EqualTo(0.0));
+            Assert.That(cell.DamagePhysical, Is.LessThan(1e-6), "only the sliver of lipid upkeep unpaid while ATP dips");
         }
 
         [Test]

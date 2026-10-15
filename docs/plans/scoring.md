@@ -51,7 +51,7 @@ cell (FoodField.KeepAgainstCell), so a cell eats all it holds.
 ## Calibration with scripted players (headless bots)
 `ScriptedPlayer` applies a strategy each step (trait targets and controls at the start, regulation switched on when it
 unlocks, a swimming policy); `Bots` holds the reference players; `BotOutcome.Play` plays one level;
-`dotnet run -c Release --project src/AdaptOrDeity.Headless -- bot left|mediocre|great|NAME key=value ... [food=x]
+`dotnet run -c Release --project src/AdaptOrDeity.Headless -- bot left|mediocre|great|optimised|NAME key=value ... [food=x]
 [level=n]` runs one (AOD_BOT_TRACE=1 prints every simulated hour). One level-1 week takes ~8-12 minutes on one core.
 The LevelTests fixtures (LevelOneLeftAlone, LevelOneMediocre, LevelOneGreat, LevelOneOptimised) play each once,
 in parallel, each under 10 minutes, and check the stars.
@@ -61,7 +61,7 @@ in parallel, each under 10 minutes, and check the stars.
 | left alone | nothing |
 | mediocre | regulation on when it unlocks: falling ATP lowers all four parts of the maintenance (`Bots.SavingRegulation`) |
 | great | the mediocre regulation; Glf x1.5 (more of the glucose carrier) |
-| optimised | the best found by the search below: the mediocre regulation, Glf x2, swimming to gather a store (on while it holds less than two fresh packets' worth) |
+| optimised | the best found by the search below: falling ATP lowers protein synthesis, the upkeep and the maintenance ATPase but not repair (`Bots.RepairingRegulation`), Glf x2, swimming to gather a store (on while it holds less than two fresh packets' worth) |
 
 ## Calibration (2026-10-14, on the fast-expression cell of m0-skeleton 4bdc712)
 Content chosen: level 1's open water at **0.035 mM** glucose (timeline `levels[1].ocean.glucose`, was 1 µM) and food at
@@ -176,3 +176,48 @@ minute each):
 
 Mediocre and great sit one point either side of the 2-star line: small content changes can move them; the LevelTests
 will flag it.
+
+## Calibration 2026-10-15 (cutting maintenance costs damage and ribosomes)
+Cutting maintenance is no longer free (upstream homogenisation-checks: unpaid RNA and lipid upkeep loses ribosomes,
+rebuilt at de novo cost once the upkeep is paid, and damages the envelope; a cut maintenance ATPase damages ribosomes
+and proteins). Re-measured with the four reference players; the content changed to keep the designer's targets:
+
+- upstream rates (placeholders, chosen here): unpaid lipid upkeep adds 2% of a lethal load per hour at a full cut
+  (`lipid_damage_lethal_fraction` 0.5; 0.2 left the mediocre player dead at 17 h), a fully cut maintenance ATPase a
+  lethal load in two days (`qc_lapse_lethal_time`; one day killed the mediocre player at 18 h), and ribosomes are
+  rebuilt only once the upkeep is (nearly) fully paid (`ribosome_rebuild_steepness` 8: with linear gating a cell
+  rebuilt during the famine what it was losing, and cutting the upkeep lowered its ATP);
+- `scoring.damage_to_empty` 0.1 -> **0.5**: a player who regulates its maintenance by ATP now adds 7-16% of a lethal
+  load in the level, which emptied the old meter for every player;
+- `scoring.starving_atp_fraction` 0.5 -> **0.4**: a cell regulating its maintenance holds about 4 mM ATP through a gap
+  (the line at 4.8 mM cut through that plateau: the great player's survival moved between 17 and 100 with it);
+- `scoring.star_points_2` 10 -> **12**;
+- the optimised player keeps repairing (the same regulation without repair scores 15; with the mediocre regulation
+  it scored 14). Keeping repair does not help the great player: it dies at 23 h (repair costs ATP it cannot spare).
+
+| player | strategy | survival | damage | points | stars |
+|---|---|---|---|---|---|
+| left alone | nothing | - (dies at 9.1 h) | - | - | 0 |
+| mediocre | all four parts of the maintenance regulated by ATP | 65.6 -> 7 | 76.3 -> 4 | 11 | 1 |
+| great | + Glf x1.5, gather | 100 -> 10 | 68.2 -> 3 | 13 | 2 |
+| optimised | protein synthesis, upkeep and maintenance ATPase regulated (repair kept), Glf x2, gather, hold | 100 -> 10 | 95.1 -> 5 | 15 | 3 |
+
+Every player sits one point from a star line (12 for mediocre and great, 14 for great and optimised): one food
+sequence per player, and the level's outcome is chaotic in it (small changes move the meals), so the LevelTests will
+flag content changes that move them.
+
+What each cut costs (upstream fermenter, 6 h at 0.05 mM glucose then 6 h at 10 mM, regulated by falling ATP;
+tools: tests/test_expression_regulation.py):
+
+| cut | famine ATP | envelope damage | ribosome damage | ribosomes lost | after food returns |
+|---|---|---|---|---|---|
+| all four parts | 4.08 mM | 5.4% | +7.2% | 3.6% | rebuilt (90% in 2.3 h) for 6.9e8 ATP; damage repaired for 2.3e9 ATP |
+| all but the upkeep | 3.87 mM | 0.1% | +7.6% | 0.02% | repair 1.5e9 ATP |
+| all but the maintenance ATPase | 4.03 mM | 5.6% | +1.1% | 3.7% | rebuilt for 7.1e8 ATP; repair 1.5e9 ATP |
+| none | runs out (0 mM) | dead | | | |
+
+Cutting the upkeep raises famine ATP by 0.2 mM and costs about 1.4e9 ATP after the famine (rebuilding and repair:
+~44 min of the resting turnover); with the upkeep already cut, cutting the maintenance ATPase too saves another
+5e8 ATP over the famine but raises famine ATP by only 0.05 mM, and costs ~0.8e9 ATP of repair. Resting turnover is
+5.5e5 ATP/s.
+

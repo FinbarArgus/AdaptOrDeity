@@ -189,13 +189,20 @@ namespace AdaptOrDeity.Game.Session
             return p;
         }
 
+        /// <summary>Regulation that saves energy without letting damage build up: falling ATP lowers protein synthesis, the
+        /// RNA and lipid upkeep and the maintenance ATPase, but repair carries on.</summary>
+        public static readonly (string, string)[] RepairingRegulation =
+            { ("protein_synthesis", "ATP"), ("upkeep", "ATP"), ("maintenance_atpase", "ATP") };
+
         /// <summary>
-        /// The best found by the search in docs/plans/scoring.md: the mediocre player's regulation, Glf x2, and swimming to
-        /// gather a store of food (on while it holds less than two fresh packets' worth).
+        /// The best found by the search in docs/plans/scoring.md: regulation that keeps repairing
+        /// (<see cref="RepairingRegulation"/>), Glf x2, and swimming to gather a store of food (on while it holds less than
+        /// two fresh packets' worth).
         /// </summary>
         public static ScriptedPlayer Optimised()
         {
-            var p = Rename(Mediocre(), "optimised");
+            var p = new ScriptedPlayer("optimised");
+            p.Regulation.AddRange(RepairingRegulation);
             p.Traits["Glf_expression"] = 2.0;
             p.Swim = SwimPolicy.Gather;
             p.HoldTarget = 2e-14;

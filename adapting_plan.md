@@ -31,8 +31,6 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
 After the prey, engulfing and multicellularity/mitochondria features land and the designer has tested them in Unity,
 no new features until:
 1. **Solidify:** fix what testing finds; retire stand-ins (content/upstream copies once upstream is pushed).
-   Cutting maintenance must cost something (ribosomes lost and rebuilt, envelope damage, lapsed quality control):
-   handover in [docs/plans/maintenance-downsides.md](docs/plans/maintenance-downsides.md).
 2. **Check every module:** each upstream module passes cam_testing's full set (every test under 10 minutes); each
    game-side native element has its analytic and conservation tests; goldens current; every value without a checked
    source is in docs/review/unreferenced-values.md, to go through with the designer.
@@ -77,6 +75,7 @@ no new features until:
 | Fitness | Pluggable heuristics, global fixed weights, total ∈ [0,1] renormalised over active heuristics. Mass, extremity muscle mass, sensing, cell damage, famine resistance, environmental tolerance, reproductive output; each activates when its physiology exists. |
 | Failure | Starving cells accumulate damage → necrosis on a Damage overlay; damage lowers fitness. |
 | New cells | Start at their CellType's baseline steady state. |
+| Level tests | Every level has a set of **3-5 reference models** (a creature and the scripted way it is played) that the level runs as its tests (LevelTests) and that calibrate its scoring (docs/plans/scoring.md); a level is not done without them. Level 1's are four players of the same cell (left alone, mediocre, great, optimised). As levels advance the models grow more diverse: different body plans, cell types, unlocked features and strategies, not only better or worse play of one creature. |
 | UX | Oxygen Not Included style: hotkeyed overlay tabs, legends, hover tooltips, category build menu, speed controls, warnings, level report; live plots on click; flux arrows; educational parameter inspector; stylised 2D art; the evolutionary time bar on top. |
 
 ### Optimising a group with libcuflynx, for evolution points (designer, 2026-10-13; not started)
@@ -635,6 +634,22 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   at the worst it has reached (repair does not lower the mark); at 100% (every cell dead) the evolutionary pathway ends:
   time stops and a window offers a new start. Values in docs/review/unreferenced-values.md. Still to add: something that
   attacks or irradiates.
+
+- **2026-10-15** Cutting maintenance costs something (upstream homogenisation-checks, new module cell/ribosomes). The
+  RNA and lipid upkeep is paid at u = 1 - max(0, 1 - f_ATP R_reg); the unpaid share loses ribosomes (k_ribo, 1%/h at
+  a full cut), rebuilt with a 1 h time constant at de novo cost (~440,000 ATP each) only once the upkeep is (nearly)
+  fully paid, and protein synthesis builds in proportion to them; it also leaves lipids unrenewed, envelope damage at
+  2% of a lethal load per hour at a full cut. A cut maintenance ATPase lapses quality control: ribosome and protein
+  damage, a lethal load in two days at a full cut. The mRNA count stays fixed (each protein pool already follows its
+  own mRNA lifetime). At rest nothing moves. In a 6 h famine regulated by ATP the cell holds 4.1 mM ATP and pays ~1.4e9
+  ATP afterwards for the upkeep cut and ~0.8e9 for the maintenance ATPase cut (docs/plans/scoring.md). The cell panel
+  shows Ribosomes (% of rest) and Rebuilding ribosomes under ATP used. Level 1 recalibrated: damage meter empties at
+  0.5 of a lethal load (was 0.1), a cell is starving below 0.4 of its resting ATP (was 0.5), two stars at 12 points
+  (was 10), and the optimised player keeps repairing; the four reference players earn 0, 1, 2 and 3 stars. New values
+  in docs/review/unreferenced-values.md.
+
+- **2026-10-15** Every level has a set of 3-5 reference models (a creature and the scripted way it is played) that it
+  runs as its tests and that calibrate its scoring; they grow more diverse as levels advance (Game design, Level tests).
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?

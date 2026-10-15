@@ -42,6 +42,10 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>mRNA turnover (minutes) and ribosome upkeep.</summary>
         public double AtpRna;
 
+        /// <summary>Rebuilding ribosomes lost while their upkeep went unpaid, at the full cost of their RNA and
+        /// proteins.</summary>
+        public double AtpRibosomeRebuild;
+
         /// <summary>Membrane lipid turnover; scales with membrane area.</summary>
         public double AtpLipids;
 
@@ -68,8 +72,9 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public double AtpProduced => AtpGlycolysis + AtpFromGlycogen + AtpRecycledProtein;
 
-        public double AtpConsumed => AtpPumps + AtpSwimming + AtpProteinTurnover + AtpProteinBuild + AtpProteinBreakdown + AtpRna + AtpLipids + AtpRepair
-                                     + AtpGrowth + AtpStorage + AtpMatrix + AtpCarriers + AtpOtherMaintenance;
+        public double AtpConsumed => AtpPumps + AtpSwimming + AtpProteinTurnover + AtpProteinBuild + AtpProteinBreakdown + AtpRna
+                                     + AtpRibosomeRebuild + AtpLipids + AtpRepair + AtpGrowth + AtpStorage + AtpMatrix
+                                     + AtpCarriers + AtpOtherMaintenance;
     }
 
     /// <summary>
@@ -95,14 +100,15 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly int[] _eCarrierGlucose, _aCarrierUptake;   // Glf, PTS, ABC, GalP: medium glucose input, J_glc
         private readonly int _aHydrolysisMax, _eHydrolysisKm, _aPtsCost, _aAbcCost;
         private readonly int _growthLevel, _storeAlloc, _repairLevel, _matrixAlloc, _jRef;
-        private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aSaved, _aBreakdown, _aRecycled, _aRna, _aRibo, _aLipid, _aRepair;
+        private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aSaved, _aBreakdown, _aRecycled, _aRna, _aRibo, _aRiboBuild, _aLipid, _aRepair;
         private readonly int _aGrowthUsed, _aHeat, _aVol, _aSurface, _aAreaMax, _aDaughter, _aProgress, _aGlycProgress;
         private readonly int _aGlycAtp, _aThrust, _aFlagPower, _eMotor, _sAminoAcids, _aFlagProtons;
         private readonly double _pumpProtonsPerAtp;
         private readonly int _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
         private readonly int _aMatrix, _aAtpMatrix;
         private readonly int _sDamagePhysical, _sDamageRadiation, _sDamageRibosome, _sDamageEnergy, _sGrowth, _sGlycogen, _sAtp;
-        private readonly int _ePhysicalDamage, _eDoseRate;
+        private readonly int _ePhysicalDamage, _eDoseRate, _sRibosomes;
+        private readonly double _restingRibosomes;
         private readonly int[] _regulationSwitch;   // per regulated target (traits, growth, maintenance), per species
         private readonly int[] _regulationFactor;   // per regulated target: its R_reg
 
@@ -230,7 +236,10 @@ namespace AdaptOrDeity.Sim.Physiology
             _aRecycled = Alg("protein__J_recycled");
             _sAminoAcids = St("protein__N_aa");
             _aRna = Alg("bio__J_RNA");
-            _aRibo = Alg("bio__J_ribo");
+            _aRibo = Alg("ribosomes__J_ribo");
+            _aRiboBuild = Alg("ribosomes__J_ribo_build");
+            _sRibosomes = St("ribosomes__n_ribo");
+            _restingRibosomes = starting["n_ribo_rest_mod_ribosomes"];
             _aLipid = Alg("bio__J_lipid");
             _aRepair = Alg("bio__J_repair");
             _aGrowthUsed = Alg("bio__J_growth_used");
@@ -416,6 +425,12 @@ namespace AdaptOrDeity.Sim.Physiology
         /// ribosomes need to translate.
         /// </summary>
         public double DamageRibosome => Batch.States[_sDamageRibosome][0];
+
+        /// <summary>
+        /// The cell's ribosomes relative to rest (1 at rest): lost while the RNA upkeep goes unpaid, rebuilt towards rest
+        /// once it is paid again. Protein synthesis can build in proportion to them.
+        /// </summary>
+        public double Ribosomes => Batch.States[_sRibosomes][0] / _restingRibosomes;
 
         /// <summary>De-energisation damage: proteins aggregating once ATP falls too low for chaperones to refold them.</summary>
         public double DamageEnergy => Batch.States[_sDamageEnergy][0];
@@ -783,6 +798,7 @@ namespace AdaptOrDeity.Sim.Physiology
                 AtpProteinBreakdown = a[_aBreakdown][0],
                 AtpRecycledProtein = a[_aRecycled][0],
                 AtpRna = a[_aRna][0] + a[_aRibo][0],
+                AtpRibosomeRebuild = a[_aRiboBuild][0],
                 AtpLipids = a[_aLipid][0],
                 AtpRepair = a[_aRepair][0],
                 AtpGrowth = a[_aGrowthUsed][0],

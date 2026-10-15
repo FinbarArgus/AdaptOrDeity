@@ -27,17 +27,17 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `seabed.rock_radius_min` | 2e-06 | m | unreferenced_placeholder | design | smallest rock radius |
 | `seabed.rock_radius_max` | 7e-06 | m | unreferenced_placeholder | design | largest rock radius |
 | `seabed.wake_length` | 4 | 1 | unreferenced_placeholder | design | length of the sheltered wake behind a rock, in rock radii (the current recovers linearly over it) |
-| `scoring.damage_to_empty` | 0.1 | 1 | unreferenced_placeholder | design | the damage meter empties when the level has added this much damage, as a share of a lethal load (mean over the creature's cells, a dead one counting as a full load) |
+| `scoring.damage_to_empty` | 0.5 | 1 | unreferenced_placeholder | design | the damage meter empties when the level has added this much damage, as a share of a lethal load (mean over the creature's cells, a dead one counting as a full load); 0.5 since maintenance cuts cost damage (2026-10-15) |
 | `motility.proton_cost_scale` | 0.01 | 1 | unreferenced_placeholder | design | protons per flagellar revolution as a share of the cell model's (n_H_rev): the thrust scale squared, since the mechanical power of a scaled thrust (force x speed) scales with its square, so swimming keeps a bacterium's ~0.1-2% efficiency (designer, 2026-10-14: bring the flagella cost down with the thrust; stronger flagella proteins later raise both) |
 | `motility.thrust_scale` | 0.1 | 1 | unreferenced_placeholder | design | flagellar thrust as a share of the cell model's (designer: the creature moved too fast) |
 | `motility.mean_run` | 2 | s | unreferenced_placeholder | placeholder | mean length of a run with the motor on (random, exponential; E. coli runs ~1 s between tumbles) |
 | `motility.mean_pause` | 4 | s | unreferenced_placeholder | placeholder | mean pause with the motor off between runs (random, exponential); each run sets off in a random direction |
 | `scoring.survival_points` | 10 | 1 | unreferenced_placeholder | design | skill points the survival meter converts to at 100/100 when a level ends (designer 2026-10-13); calibrated with the scripted players (docs/plans/scoring.md) |
 | `scoring.damage_points` | 5 | 1 | unreferenced_placeholder | design | skill points the damage meter converts to at 100/100 |
-| `scoring.starving_atp_fraction` | 0.5 | 1 | unreferenced_placeholder | design | a living cell is starving while its ATP is below this fraction of its resting level |
+| `scoring.starving_atp_fraction` | 0.4 | 1 | unreferenced_placeholder | design | a living cell is starving while its ATP is below this fraction of its resting level; 0.4 since a cell regulating its maintenance by ATP holds about 4 mM through a gap (2026-10-15) |
 | `scoring.starvation_to_empty` | 0.143 | 1 | unreferenced_placeholder | design | starvation of the whole creature that empties the survival meter, in level durations |
 | `scoring.star_points_1` | 5 | 1 | unreferenced_placeholder | design | a level's points for one star (a mediocre player; set from the scripted players) |
-| `scoring.star_points_2` | 10 | 1 | unreferenced_placeholder | design | points for two stars (a great player) |
+| `scoring.star_points_2` | 12 | 1 | unreferenced_placeholder | design | points for two stars (a great player) |
 | `scoring.star_points_3` | 14 | 1 | unreferenced_placeholder | design | points for three stars (the best strategy found) |
 | `skills.points_per_offspring` | 1 | 1 | unreferenced_placeholder | design | reproduction points: skill points per daughter released in the creature's lineage (its own daughters at division without multicellularity, and its free organisms' daughters, any generation |
 | `field.diffusivity.lactate` | 1e-09 | m2/s | unreferenced_placeholder | placeholder | lactate anion in water: ~1.0e-9 m2/s, typical of small organic anions; needs a measured value |
@@ -128,6 +128,7 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 - Damage types (homogenisation-checks, uncommitted, 2026-10-15): damage is the sum of four types, each repaired by its own
   machinery at the existing repair capacity and cost (r_rep_max, K_D and C_repair, all placeholders, shared by every type):
   - Physical (envelope) damage, from attacks: an input (`r_dmg_phys`, 0 by default); nothing in the game attacks yet.
+    Unpaid lipid upkeep adds to it (below).
   - Radiation (DNA) damage: `k_rad_dmg` 1/300 per Gy (a lethal load at 300 Gy). E. coli's gamma-ray D10 is ~0.14-0.7 kGy
     across studies (Deinococcus radiodurans ~10 kGy); D10 includes repair during the dose, so this is order of magnitude
     only. The dose rate is an input (0 by default; natural background ~1e-10 Gy/s is negligible); nothing in the game
@@ -141,6 +142,22 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
   - De-energisation damage: `k_energy_dmg` (lethal in 30 min at no ATP) x (1 - ATP/1 mM)^2 below 1 mM, for proteins
     aggregating once chaperones and disaggregases lack ATP (ATP-dependent aggregation in dormant bacteria: Pu et al. 2019,
     from memory, unchecked). Both values are placeholders. Repair needs ATP, so a de-energised cell mends nothing.
+- Costs of cutting maintenance (homogenisation-checks, 2026-10-15; all placeholders in
+  modules/cell/generic_adaptive_cell/parameters.json):
+  - `lipid_damage_lethal_fraction` 0.5: half the membrane's lipids left unrenewed is a lethal load of envelope damage,
+    so unpaid lipid upkeep adds k_lipid / 0.5 = 2% of a lethal load per hour (with `k_lipid` 1%/h, itself a
+    placeholder). No source for either the lethal share or lipid damage as a damage load; chosen with the level-1
+    reference players (0.2 left the mediocre player dead within the day).
+  - `qc_lapse_lethal_time` 2 days: a cell whose maintenance ATPase is cut completely accumulates a lethal load of
+    ribosome and protein damage in two days (12.5% in 6 h). The maintenance ATPase is the cell's unitemised upkeep;
+    treating its cut share as lapsed quality control (chaperones, proteases, tmRNA rescue) is a modelling choice, not a
+    measured link. One day killed the mediocre player within level 1.
+  - Ribosomes lost at the unpaid share of rRNA turnover, `k_ribo` 1%/h (placeholder, as before). Starving E. coli degrade
+    much of their rRNA within hours (Zundel et al. 2009, from memory, unchecked), faster than this.
+  - `ribosome_rebuild_time` 1 h: lost ribosomes are rebuilt with a 1 h time constant once the upkeep is paid; the order of
+    a starved bacterium's lag before regrowth (from memory).
+  - `aa_per_ribosome` 7,500: amino acids in the ~54 proteins of an E. coli ribosome (from memory). A rebuilt ribosome
+    costs 4,566 nt x `c_nt_denovo` 50 (placeholder) + 7,500 x 28 ~P, about 440,000 ATP.
 - Floor food (2026-10-15): `levels[].arrivals.floor_food_per_s` 0.001 packets/s in every level (content/timeline.json),
   settling on the ground where it is in view, beside the water's arrivals. A design guess: marine snow and detritus do
   collect on the seabed, but no rate per area is sourced, and food does not build up on the floor while the creature is

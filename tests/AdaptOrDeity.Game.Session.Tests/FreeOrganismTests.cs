@@ -222,6 +222,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         public void ADeadOrganismsBodyIsFoodWhereItLiesAndStaysUntilEaten()
         {
             using var world = Quiet(engulfing: true);
+            world.BathConcentration = 1.0;   // the creature lives through the hour it takes to find the body
             var o = Release(world);
             world.SetFeature(Feature(GameFeatures.Engulfing), false);   // only the organism engulfs
             var swallowed = PacketAt(world, o.X, o.Y, 0.5 * world.CellRadius);

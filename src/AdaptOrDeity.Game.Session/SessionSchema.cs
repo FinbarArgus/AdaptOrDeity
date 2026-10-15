@@ -262,10 +262,13 @@ namespace AdaptOrDeity.Game.Session
             ("protein_synthesis", "Protein synthesis",
                 "replacing degraded proteins and building new ones: turned down, the cell saves their turnover but loses " +
                 "its proteins slowly (about 1% an hour) and builds nothing"),
-            ("upkeep", "RNA and lipid upkeep", "remaking mRNA, ribosomal RNA and membrane lipids as they turn over"),
+            ("upkeep", "RNA and lipid upkeep",
+                "remaking mRNA, ribosomal RNA and membrane lipids as they turn over: turned down, the cell loses " +
+                "ribosomes (rebuilt slowly and at full cost once it is paid again) and its envelope is damaged"),
             ("repair", "Repair", "turned down, damage builds up"),
             ("maintenance_atpase", "Other maintenance",
-                "everything else a resting cell spends (the maintenance ATPase): starving bacteria cut it far down"),
+                "everything else a resting cell spends (the maintenance ATPase): starving bacteria cut it far down, but " +
+                "its quality control lapses and ribosomes and proteins are damaged"),
         };
 
         /// <summary>The regulated target that is maintenance entry <paramref name="k"/> of <see cref="MaintenanceRegulation"/>.</summary>

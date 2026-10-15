@@ -103,9 +103,10 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             // regulation ATP runs out and stays out (hexokinase needs ATP to restart glycolysis), and regulating the pumps,
             // exchangers, flagellum and hydrolase by ATP does not help: their copies are removed within minutes (the
             // H+-ATPase to about half), the membrane depolarises and ATP still runs out. With the maintenance regulated by
-            // ATP (protein synthesis, RNA and lipid upkeep, repair, the maintenance ATPase), ATP holds above 4 mM; when
-            // food returns the cell rebuilds the protein it lost while synthesis was cut, mostly from the recycled amino
-            // acids, and ATP returns towards rest.
+            // ATP (protein synthesis, RNA and lipid upkeep, repair, the maintenance ATPase), ATP holds above 4 mM, at the
+            // cost of some envelope and ribosome damage and ribosomes; when food returns the cell rebuilds the protein it
+            // lost while synthesis was cut, mostly from the recycled amino acids, and repairs the damage, which takes most
+            // of the resting medium's small headroom: ATP climbs back towards rest over hours.
             string[] pumps = { "H_ATPase_expression", "NhaA_expression", "KefC_expression", "Trk_expression",
                 "NCX_expression", "flagella", "Hydrolase_expression" };
             var plain = NewCell();
@@ -140,8 +141,12 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
                                   $"V {maintained.State("membrane__V"):F1} mV");
             Assert.That(plain.Atp, Is.LessThan(1e-3), "the trap: food is back but glycolysis cannot restart");
             Assert.That(pumped.Atp, Is.LessThan(1e-3));
-            Assert.That(maintained.Atp, Is.GreaterThan(9.0), "back near the resting 9.6 mM within the hour");
+            Assert.That(maintained.Atp, Is.GreaterThan(6.0), "climbing back within the hour, while it repairs");
             Assert.That(maintained.State("membrane__V"), Is.LessThan(-100.0));
+            double damage = maintained.DamagePhysical;
+            Run(maintained, 3.0 * 3600.0);
+            Assert.That(maintained.Atp, Is.GreaterThan(8.3), "near the resting 9.6 mM in four hours");
+            Assert.That(maintained.DamagePhysical, Is.LessThan(0.6 * damage), "the envelope damage repaired");
         }
     }
 }

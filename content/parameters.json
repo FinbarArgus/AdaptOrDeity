@@ -241,11 +241,11 @@
    "note": "skill points the damage meter converts to at 100/100 when a level ends; in proportion below, rounded. The damage meter is 100 x (1 - the worst mean damage load of the creature in the level), a dead cell counting as a lethal load"
   },
   "scoring.starving_atp_fraction": {
-   "value": 0.5,
+   "value": 0.4,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "a living cell is starving while its ATP is below this fraction of its resting level; the survival meter falls in proportion to the share of the creature's living cells starving (all of it once none lives)"
+   "note": "a living cell is starving while its ATP is below this fraction of its resting level; the survival meter falls in proportion to the share of the creature's living cells starving (all of it once none lives). 0.4 (was 0.5, 2026-10-15): a cell regulating its maintenance by ATP holds about 4 mM through a gap between meals, and holding it is coping, not starving (docs/plans/scoring.md)"
   },
   "scoring.starvation_to_empty": {
    "value": 0.6,
@@ -255,32 +255,32 @@
    "note": "the survival meter empties after this share of the level's survival time spent with every cell starving (0.6 of a day at level 1); it falls in proportion to the share of cells starving"
   },
   "scoring.damage_to_empty": {
-   "value": 0.1,
+   "value": 0.5,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "the damage meter empties when the level has added this much damage, as a share of a lethal load (mean over the creature's cells, a dead one counting as a full load)"
+   "note": "the damage meter empties when the level has added this much damage, as a share of a lethal load (mean over the creature's cells, a dead one counting as a full load). 0.5 (was 0.1, 2026-10-15): cutting maintenance through famines now costs envelope and ribosome damage, about a fifth of a lethal load in level 1 for a player who regulates it by ATP (docs/plans/scoring.md)"
   },
   "scoring.star_points_1": {
    "value": 5,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "points a level must earn (its meters and its reproduction points) for star 1: 5 / 10 / 14 match the scripted players at level 1 (left alone 2, mediocre 5, great ~11, optimised 15; docs/plans/scoring.md, 2026-10-14)"
+   "note": "points a level must earn (its meters and its reproduction points) for star 1: 5 / 12 / 14 match the scripted players at level 1 (left alone dies, mediocre 11, great 13, optimised 15; docs/plans/scoring.md, 2026-10-15)"
   },
   "scoring.star_points_2": {
-   "value": 10,
+   "value": 12,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "points a level must earn (its meters and its reproduction points) for star 2: 5 / 10 / 14 match the scripted players at level 1 (left alone 2, mediocre 5, great ~11, optimised 15; docs/plans/scoring.md, 2026-10-14)"
+   "note": "points a level must earn (its meters and its reproduction points) for star 2: 5 / 12 / 14 match the scripted players at level 1 (left alone dies, mediocre 11, great 13, optimised 15; docs/plans/scoring.md, 2026-10-15)"
   },
   "scoring.star_points_3": {
    "value": 14,
    "units": "1",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "points a level must earn (its meters and its reproduction points) for star 3: 5 / 10 / 14 match the scripted players at level 1 (left alone 2, mediocre 5, great ~11, optimised 15; docs/plans/scoring.md, 2026-10-14)"
+   "note": "points a level must earn (its meters and its reproduction points) for star 3: 5 / 12 / 14 match the scripted players at level 1 (left alone dies, mediocre 11, great 13, optimised 15; docs/plans/scoring.md, 2026-10-15)"
   },
   "skills.points_per_offspring": {
    "value": 1,

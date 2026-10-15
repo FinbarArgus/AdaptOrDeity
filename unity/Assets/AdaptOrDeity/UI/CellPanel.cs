@@ -27,6 +27,7 @@ namespace AdaptOrDeity.UI
             ["atp_protein_build"] = new Color(0.70f, 0.50f, 0.95f),
             ["atp_protein_breakdown"] = new Color(0.85f, 0.40f, 0.85f),
             ["atp_rna"] = new Color(0.35f, 0.85f, 0.75f),
+            ["atp_ribosome_rebuild"] = new Color(0.20f, 0.60f, 0.55f),
             ["atp_lipids"] = new Color(0.95f, 0.85f, 0.35f),
             ["atp_repair"] = new Color(0.95f, 0.45f, 0.55f),
             ["atp_growth"] = new Color(0.55f, 0.90f, 0.40f),

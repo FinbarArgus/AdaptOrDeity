@@ -130,6 +130,7 @@ L_mod_pool_PTS,dimensionless,1306.0,from the supermodule default instance,no
 L_mod_pool_Trk,dimensionless,2798.0,from the supermodule default instance,no
 L_mod_pool_proteome,dimensionless,300.0,from the supermodule default instance,no
 L_rRNA_mod_bio,dimensionless,4566.0,from the supermodule default instance,no
+L_rRNA_mod_ribosomes,dimensionless,4566.0,from the supermodule default instance,no
 N_A_mod_bio,per_mol,6.02214076e+23,from the supermodule default instance,no
 N_A_mod_hydrolase,per_mol,6.02214076e+23,from the supermodule default instance,no
 N_A_mod_i_flagellum,per_mol,6.02214076e+23,from the supermodule default instance,no
@@ -148,6 +149,7 @@ N_A_mod_pool_PTS,per_mol,6.02214076e+23,from the supermodule default instance,no
 N_A_mod_pool_Trk,per_mol,6.02214076e+23,from the supermodule default instance,no
 N_A_mod_pool_proteome,per_mol,6.02214076e+23,from the supermodule default instance,no
 N_A_mod_protein,per_mol,6.02214076e+23,from the supermodule default instance,no
+N_A_mod_ribosomes,per_mol,6.02214076e+23,from the supermodule default instance,no
 N_aa_init_mod_protein,dimensionless,0.0,from the supermodule default instance,no
 Nai_init_mod_Na_K,millimolar,20.0,from the supermodule default instance,no
 Nao_mod_Na_K,millimolar,469.0,from the supermodule default instance,no
@@ -172,11 +174,13 @@ V_rest_approx_mod_membrane,milliV,-105.0,from the supermodule default instance,n
 V_store_max_mod_cytosol,millimolar_per_s,0.05050073093349957,from the supermodule default instance,no
 a_init_mod_i_flagellum,dimensionless,0.0,from the supermodule default instance,no
 a_motor_mod_i_flagellum,dimensionless,0.0,from the supermodule default instance,no
+aa_ribo_mod_ribosomes,dimensionless,7500.0,from the supermodule default instance,no
 alpha_NaCa_mod_i_NaCa,dimensionless,1.2,from the supermodule default instance,no
 area_max_fraction_mod_protein,dimensionless,0.15,from the supermodule default instance,no
 area_per_lipid_mod_bio,um2,5e-07,from the supermodule default instance,no
 beta_H_mod_H,millimolar,50.0,from the supermodule default instance,no
-build_capacity_mod_protein,dimensionless,9.02267970403271,from the supermodule default instance,no
+build_capacity_rest_mod_protein,dimensionless,9.02267970403271,from the supermodule default instance,no
+c_aa_build_mod_ribosomes,dimensionless,28.0,from the supermodule default instance,no
 c_deg_mod_pool_ABC,dimensionless,1.0,from the supermodule default instance,no
 c_deg_mod_pool_Flagellum,dimensionless,1.0,from the supermodule default instance,no
 c_deg_mod_pool_GalP,dimensionless,1.0,from the supermodule default instance,no
@@ -194,7 +198,9 @@ c_deg_mod_pool_proteome,dimensionless,1.0,from the supermodule default instance,
 c_lipid_mod_bio,dimensionless,100.0,from the supermodule default instance,no
 c_m_mod_membrane,uF_per_cm2,1.0,from the supermodule default instance,no
 c_nt_denovo_mod_bio,dimensionless,50.0,from the supermodule default instance,no
+c_nt_denovo_mod_ribosomes,dimensionless,50.0,from the supermodule default instance,no
 c_nt_recycle_mod_bio,dimensionless,2.0,from the supermodule default instance,no
+c_nt_recycle_mod_ribosomes,dimensionless,2.0,from the supermodule default instance,no
 c_poly_mod_pool_ABC,dimensionless,4.0,from the supermodule default instance,no
 c_poly_mod_pool_Flagellum,dimensionless,4.0,from the supermodule default instance,no
 c_poly_mod_pool_GalP,dimensionless,4.0,from the supermodule default instance,no
@@ -308,9 +314,12 @@ k_deg_mod_pool_PTS,per_s,2.777777777777778e-06,from the supermodule default inst
 k_deg_mod_pool_Trk,per_s,2.777777777777778e-06,from the supermodule default instance,no
 k_deg_mod_pool_proteome,per_s,2.777777777777778e-06,from the supermodule default instance,no
 k_energy_dmg_mod_bio,per_s,0.0005555555555555556,from the supermodule default instance,no
+k_lipid_dmg_mod_bio,per_s,5.555555555555556e-06,from the supermodule default instance,no
 k_lipid_mod_bio,per_s,2.777777777777778e-06,from the supermodule default instance,no
+k_qc_dmg_mod_bio,per_s,5.787037037037037e-06,from the supermodule default instance,no
 k_rad_dmg_mod_bio,per_gray,0.0033333333333333335,from the supermodule default instance,no
-k_ribo_mod_bio,per_s,2.777777777777778e-06,from the supermodule default instance,no
+k_ribo_build_mod_ribosomes,per_s,0.0002777777777777778,from the supermodule default instance,no
+k_ribo_mod_ribosomes,per_s,2.777777777777778e-06,from the supermodule default instance,no
 k_unbind_Ca_mod_Ca,per_s,8000.0,from the supermodule default instance,no
 kcat_mod_hydrolase,per_s,1000.0,from the supermodule default instance,no
 m_init_mod_pool_ABC,dimensionless,0.0,from the supermodule default instance,no
@@ -356,7 +365,10 @@ n_P_mod_glc_ABC,dimensionless,2.0,from the supermodule default instance,no
 n_half_mod_i_flagellum,dimensionless,2.0,from the supermodule default instance,no
 n_mRNA_mod_bio,dimensionless,8670.79572390783,from the supermodule default instance,no
 n_reg_mod_reg,dimensionless,4.0,from the supermodule default instance,no
+n_ribo_build_mod_ribosomes,dimensionless,8.0,from the supermodule default instance,no
+n_ribo_init_mod_ribosomes,dimensionless,43982.2971502571,from the supermodule default instance,no
 n_ribo_mod_bio,dimensionless,43982.2971502571,from the supermodule default instance,no
+n_ribo_rest_mod_ribosomes,dimensionless,43982.2971502571,from the supermodule default instance,no
 pmf_ref_mod_i_flagellum,milliV,122.44926189223139,from the supermodule default instance,no
 r_H_ATPase_mod_i_H_ATPase,per_s,100.0,from the supermodule default instance,no
 r_NaCa_mod_i_NaCa,per_s,5000.0,from the supermodule default instance,no
