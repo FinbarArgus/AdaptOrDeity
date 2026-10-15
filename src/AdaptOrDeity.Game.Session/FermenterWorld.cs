@@ -506,6 +506,10 @@ namespace AdaptOrDeity.Game.Session
 
         public double FreeCurrentY => _freeVy;
 
+        /// <summary>Whether the creature lives on land, where the background flow is wind, rather than in water, where it is
+        /// a current. Every level so far is in water.</summary>
+        public bool OnLand { get; set; }
+
         // The tidal current at time t: amplitude x cos(2 pi t / period).
         private void Tide(double t)
         {
@@ -627,7 +631,9 @@ namespace AdaptOrDeity.Game.Session
                 torque += _torque[i];
             }
             LoadCreature();   // the food it holds weighs on it
+            StepLuck(dt);
             CurrentAt(_body.Body);   // slower in the seabed's boundary layer and behind rocks
+            AddLuck(_body.Body);     // and Luck's current where she blows one
             _body.Step(dt, fx, fy, torque);
             TouchingSeabed = Seabed.Collide(_body.Body, _cells.Count, _cellAt!, CellRadius);   // it rests against what it ran into
 
@@ -635,6 +641,8 @@ namespace AdaptOrDeity.Game.Session
             _food.DriftBodies(Seabed, _freeVx, _freeVy);   // dead bodies drift with the tide around them
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
             _prey.Step(dt, b.X, b.Y, _freeVx, _freeVy);   // prey swim in the free current
+            _food.Push(_luckCurrent, b.X, b.Y, dt);       // Luck's current carries loose food and prey
+            _prey.Push(_luckCurrent, b.X, b.Y, dt);
             _food.KeepOutOf(Seabed);
             _food.ArriveOnFloor(Seabed, dt);
             _prey.KeepOutOf(Seabed);
@@ -670,6 +678,7 @@ namespace AdaptOrDeity.Game.Session
             OrganismLives();
             UpdateMeters(dt);
             NoticeAchievementsAndSights(hadFood);
+            Explore();
         }
 
         // Each cell's motors, and its flagella's force on the body from the last step's state (the motors' response to

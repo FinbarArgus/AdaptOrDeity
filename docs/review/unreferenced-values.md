@@ -27,6 +27,15 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `seabed.rock_radius_min` | 2e-06 | m | unreferenced_placeholder | design | smallest rock radius |
 | `seabed.rock_radius_max` | 7e-06 | m | unreferenced_placeholder | design | largest rock radius |
 | `seabed.wake_length` | 4 | 1 | unreferenced_placeholder | design | length of the sheltered wake behind a rock, in rock radii (the current recovers linearly over it) |
+| `minimap.tile_size` | 5e-06 | m | unreferenced_placeholder | design | side of a minimap tile: the map remembers, per tile the creature has had in view, the water it saw there (glucose, lactate, pH) and whether it is rock or ground; 5 um, a few cell widths, so the 30 um view covers 6 x 6 tiles |
+| `minimap.sample_interval` | 1 | s | unreferenced_placeholder | design | simulated time between updates of the minimap's memory from the creature's view |
+| `luck.max` | 100 | 1 | unreferenced_placeholder | design | the most luck points Luck can hold (adapting_plan.md, Luck) |
+| `luck.start` | 50 | 1 | unreferenced_placeholder | design | luck points at the start of a game |
+| `luck.rate` | 0.009259 | 1/s | unreferenced_placeholder | design | luck points gained per second of game time: empty to full in 3 h |
+| `luck.cost_rate` | 1 | 1/s | unreferenced_placeholder | design | luck points a current costs per second at full strength (in proportion below): a full store blows for 100 s |
+| `luck.max_speed` | 2e-06 | m/s | unreferenced_placeholder | design | flow of Luck's current on its axis at full strength: 2 um/s, faster than the creature swims (~1.5 um/s) and 10x the tide |
+| `luck.half_width` | 4e-06 | m | unreferenced_placeholder | design | half the width of the band of water Luck's current flows along (a few cell radii) |
+| `luck.full_length` | 3e-05 | m | unreferenced_placeholder | design | length of the aimed arrow that gives full strength (the view's width); shorter arrows blow in proportion |
 | `scoring.damage_to_empty` | 0.5 | 1 | unreferenced_placeholder | design | the damage meter empties when the level has added this much damage, as a share of a lethal load (mean over the creature's cells, a dead one counting as a full load); 0.5 since maintenance cuts cost damage (2026-10-15) |
 | `motility.proton_cost_scale` | 0.01 | 1 | unreferenced_placeholder | design | protons per flagellar revolution as a share of the cell model's (n_H_rev): the thrust scale squared, since the mechanical power of a scaled thrust (force x speed) scales with its square, so swimming keeps a bacterium's ~0.1-2% efficiency (designer, 2026-10-14: bring the flagella cost down with the thrust; stronger flagella proteins later raise both) |
 | `motility.thrust_scale` | 0.1 | 1 | unreferenced_placeholder | design | flagellar thrust as a share of the cell model's (designer: the creature moved too fast) |

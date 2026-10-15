@@ -94,6 +94,28 @@ targets, which then take effect at the normal expression rates. Design points to
   selection over generations, not design).
 - Ties in with the scripted reference players (docs/plans/scoring.md), whose "optimised" strategy is the same search.
 
+### Luck, a second character the player controls (designer, 2026-10-16; first skill in)
+In: luck points (content luck.*: 50 at start, 100 at most, full in 3 h) and her current
+(FermenterWorld.Luck.cs, Sim.World DirectedCurrent): L to aim, press on the view's edge and drag; a thick shaded arrow
+shows it; it carries the creature, free organisms, loose food and prey, costing 1 point/s at full strength. Still to
+do: the current does not yet carry the water's solutes (advection in the environment field), luck does not touch
+scoring, no new skills, and no luck-using reference model.
+Besides adapting the creature, the player controls **Luck** (she), a character who acts on the environment, not on
+the creature's physiology. She spends **luck points**, which build up over time (a rate per second of game time, a cap;
+both content values to set when calibrating). To start with she can make a **current** flow through the environment:
+in level 1 she pushes food towards the creature, or pushes the creature itself in a direction she chooses. As levels
+advance she can learn new skills (bought like features; which ones is still open). Design points to settle:
+- Physics: her current is an extra flow field added to the background current (the tide), local and short-lived,
+  felt by food, prey, organisms, the creature and the water's solutes alike, so pushing food also moves the glucose
+  leaking from it; it must stay within what the world's transport can integrate (advection in the environment field).
+- Controls: aim and strength with the mouse (drag an arrow in the world view), a cost per use scaling with strength,
+  area and duration; the luck meter and its build-up shown in the HUD beside the survival and damage meters.
+- Scoring: what she spends is not the creature's achievement; decide whether luck used lowers a level's points or
+  stars, so the reference players (LevelTests) still measure the creature's adaptations (add a luck-using reference
+  model to each level's set).
+- Teaching: Luck stands for chance in evolution (where currents and food happen to go); her texts carry reviewed flags
+  like other player-facing content.
+
 ### Organelles visible in the cell (designer, 2026-10-13; not started)
 Once organelles are in the cell model (mitochondria first, from the level-2 branch; later others such as a nucleus,
 vacuoles beyond today's food vacuole, and a cytoskeleton), the player sees them inside each cell in Unity: drawn
@@ -111,8 +133,10 @@ or detail rows in the cell panel, like the membrane carriers' arcs today.
   - food lying on the ground streams past; food carried by another creature moves on its own path and shows its
     carrier as a dark body.
   Cells grow visibly as they build a daughter (drawn up to double area; the kernel keeps the starting geometry) and draw
-  their flagella, beating while the motors run. Still to add: landmarks (dark patches and occluders, which hiding
-  needs) and a minimap (with memory, later).
+  their flagella, beating while the motors run. The minimap (bottom left, 2026-10-16) remembers every 5 um tile the
+  creature has had in view and the water it saw there (glucose, lactate or pH; rock and ground solid; older sightings
+  faded), with the background current (or wind on land) as an arrow below it. Still to add: landmarks (dark patches
+  and occluders, which hiding needs), food seen on the map, and a map zoomed out beyond 320 um.
 - **Swimming (level 1, 2026-10-09).** Propulsion comes only from flagella. The cell starts with one; a whole-number
   trait (1–8, `pool_Flagellum`) adds more, each costing its ~1×10⁷ amino acids to build (~3×10⁸ ATP, needs food).
   The motor is CellML (`cell/ion_channels/i_H_flagellum` MotAB): rotation proportional to the proton motive force
@@ -650,6 +674,11 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
 
 - **2026-10-15** Every level has a set of 3-5 reference models (a creature and the scripted way it is played) that it
   runs as its tests and that calibrate its scoring; they grow more diverse as levels advance (Game design, Level tests).
+
+- **2026-10-16** The player also controls Luck, a character who spends luck points (built up over time) to act on the
+  environment: first a current she directs (in level 1, pushing food towards the creature or the creature itself),
+  later skills she learns (Game design, Luck). Her current is aimed from the view's edge as a thick shaded arrow and
+  is anchored to the creature, as the view is; it carries bodies, not yet solutes.
 
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?

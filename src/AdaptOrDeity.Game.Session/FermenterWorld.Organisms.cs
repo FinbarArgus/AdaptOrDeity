@@ -410,6 +410,7 @@ namespace AdaptOrDeity.Game.Session
                 o.Body.CellForce(0, flagella, thrust, out double fx, out double fy, out double torque);
                 LoadOrganism(o);
                 CurrentAt(o.Body.Body);
+                AddLuck(o.Body.Body);
                 o.Body.Step(dt, fx, fy, torque);
                 o.Body.WorldPosition(0, out double ox, out double oy);
                 Seabed.CollideOne(o.Body.Body, ox, oy, CellRadius);

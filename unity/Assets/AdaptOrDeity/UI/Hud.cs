@@ -17,11 +17,12 @@ namespace AdaptOrDeity.UI
         private static readonly string[] SpeedLabels = { "II", "1x", "10x", "100x", "1000x" };
 
         private int _lastRunningSpeed = 1;
-        private Material _lineMaterial;
         private GUIStyle _tooltipStyle;
         private bool[] _wasUnlocked;         // per feature, as of the last frame (null before the first)
         private int _announced = -1;         // the feature whose unlocking is shown, or -1
         private bool _announcedDetails;
+        private int _noticeGeneration = -1;   // the session the unlock notice is for (SessionBridge.Generation)
+        private int _noticeLevel = -1;        // and its level
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
@@ -50,6 +51,8 @@ namespace AdaptOrDeity.UI
                 DrawLegend(new OverlayInfo(info.Id, info.Name, info.Hotkey, info.SiUnit, info.DisplayUnit, 1.0,
                     bridge.FieldView.RangeMin, bridge.FieldView.RangeMax));
             }
+            DrawCurrent(frame);
+            _minimap.Draw(frame, _currentArea.y - 6f);
             DrawProbePlot(bridge, frame);
             DrawTooltip(bridge, frame);
             DrawUnlockNotice(bridge, frame);
@@ -97,6 +100,22 @@ namespace AdaptOrDeity.UI
         private void DrawUnlockNotice(SessionBridge bridge, SnapshotFrame frame)
         {
             var features = bridge.Schema.Features;
+            if (_noticeGeneration != bridge.Generation)
+            {
+                // a new game: nothing of the last one is announced, and what it starts with is not news
+                _noticeGeneration = bridge.Generation;
+                _noticeLevel = frame.Level;
+                _announced = -1;
+                _announcedDetails = false;
+                _wasUnlocked = null;
+            }
+            else if (_noticeLevel != frame.Level)
+            {
+                // a new level: the last level's notice goes (what unlocks in this one is still announced)
+                _noticeLevel = frame.Level;
+                _announced = -1;
+                _announcedDetails = false;
+            }
             if (_wasUnlocked == null || _wasUnlocked.Length != frame.FeatureUnlocked.Length)
                 _wasUnlocked = (bool[])frame.FeatureUnlocked.Clone();
             for (int f = 0; f < features.Count; f++)
@@ -132,6 +151,8 @@ namespace AdaptOrDeity.UI
         private void HandleInput(SessionBridge bridge, SnapshotFrame frame)
         {
             var e = Event.current;
+            if (HandleLuck(bridge, e))
+                return;
             if (e.type == EventType.KeyDown)
             {
                 var overlays = bridge.Schema.Overlays;
@@ -185,7 +206,9 @@ namespace AdaptOrDeity.UI
                 e.Use();
             }
             else if (e.type == EventType.MouseDown && e.mousePosition.y > BarHeight
-                     && e.mousePosition.x < Screen.width - RightInset() && !OrganismPanel.Covers(e.mousePosition))
+                     && e.mousePosition.x < Screen.width - RightInset() && !OrganismPanel.Covers(e.mousePosition)
+                     && !ProbePlotCovers(e.mousePosition) && !_currentArea.Contains(e.mousePosition)
+                     && !_minimap.Covers(e.mousePosition))
             {
                 var cell = CellUnderMouse(e.mousePosition);
                 var organism = cell == null ? bridge.OrganismAt(MouseWorld(e.mousePosition)) : null;
@@ -438,26 +461,209 @@ namespace AdaptOrDeity.UI
             GUI.Box(new Rect(mouse.x + 16, mouse.y + 16, size.x, size.y), content, _tooltipStyle);
         }
 
+        // The background flow, bottom left of the view: an arrow along the current (in water) or the wind (on land), its
+        // speed, and the speed where the creature is when the seabed or a rock shelters it.
+        private static readonly Color CurrentColour = new Color(0.45f, 0.75f, 1f), WindColour = new Color(0.92f, 0.9f, 0.8f);
+        private Texture2D _arrow;
+        private readonly MinimapPanel _minimap = new MinimapPanel();
+        private GUIStyle _currentText;
+        private Rect _currentArea;
+
+        private void DrawCurrent(SnapshotFrame frame)
+        {
+            _currentText ??= new GUIStyle(GUI.skin.label) { fontSize = 12, wordWrap = true, richText = true };
+            _arrow ??= ArrowTexture();
+            _currentArea = new Rect(8, Screen.height - 110, 220, 102);
+            GUI.Box(_currentArea, GUIContent.none);
+            float free = Mathf.Sqrt(frame.FreeCurrentX * frame.FreeCurrentX + frame.FreeCurrentY * frame.FreeCurrentY);
+            float local = Mathf.Sqrt(frame.LocalCurrentX * frame.LocalCurrentX + frame.LocalCurrentY * frame.LocalCurrentY);
+            string name = frame.OnLand ? "Wind" : "Current";
+            var square = new Rect(_currentArea.x + 6, _currentArea.y + 6, 64, 64);
+            if (free > 1e-9f)   // above a nanometre per second
+            {
+                // world y grows upwards, GUI y downwards
+                float degrees = -Mathf.Atan2(frame.FreeCurrentY, frame.FreeCurrentX) * Mathf.Rad2Deg;
+                var saved = GUI.matrix;
+                GUIUtility.RotateAroundPivot(degrees, square.center);
+                GUI.DrawTexture(square, _arrow, ScaleMode.ScaleToFit, true, 0f, frame.OnLand ? WindColour : CurrentColour, 0f, 0f);
+                GUI.matrix = saved;
+            }
+            string text = free > 1e-9f
+                ? $"<b>{name}</b> {1e6f * free:0.00} \u00B5m/s"
+                : $"<b>{name}</b> slack" + (frame.OnLand ? "" : " (the tide is turning)");
+            if (free > 1e-9f && local < 0.9f * free)
+                text += $"\nhere {1e6f * local:0.00} \u00B5m/s, " + (frame.OnLand ? "sheltered" : "sheltered by the seabed or a rock");
+            GUI.Label(new Rect(square.xMax + 6, _currentArea.y + 6, _currentArea.width - 82, 64), text, _currentText);
+            DrawLuck(frame, new Rect(_currentArea.x + 6, _currentArea.y + 74, _currentArea.width - 12, 24));
+        }
+
+        // Luck's points as a bar, and how to use them
+        private void DrawLuck(SnapshotFrame frame, Rect r)
+        {
+            if (frame.LuckMax <= 0f)
+                return;
+            float share = Mathf.Clamp01(frame.Luck / frame.LuckMax);
+            var bar = new Rect(r.x, r.y + 2, 90, 12);
+            GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0f, 0f, 0f, 0.5f), 0f, 0f);
+            GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * share, bar.height), Texture2D.whiteTexture, ScaleMode.StretchToFill,
+                false, 0f, frame.LuckOn ? new Color(1f, 0.92f, 0.5f) : new Color(1f, 0.78f, 0.25f), 0f, 0f);
+            string hint = LuckView.Aiming ? "aiming: press on the edge" : "L: aim her current";
+            GUI.Label(new Rect(bar.xMax + 6, r.y - 2, r.width - 96, 20),
+                new GUIContent($"Luck {frame.Luck:0} \u00B7 {hint}",
+                    "Luck's points build up over time. Press L, then press on the edge of the view and drag: she blows a " +
+                    "current from there towards the mouse, as strong as the arrow is long, for as long as you hold it, " +
+                    "spending her points. It carries food, prey and your creature. L, Esc or a right-click stops aiming."),
+                _currentText);
+        }
+
+        // Luck's current: L toggles aiming; pressing in the view starts an arrow at the nearest edge of the view, dragging
+        // guides its head, releasing stops the current. The arrow is sent relative to the creature.
+        private Vector2 _luckSentHead;
+
+        private bool HandleLuck(SessionBridge bridge, Event e)
+        {
+            if (e.type == EventType.KeyDown && e.keyCode == KeyCode.L)
+            {
+                LuckView.Aiming = !LuckView.Aiming;
+                if (!LuckView.Aiming)
+                    StopLuck(bridge);
+                e.Use();
+                return true;
+            }
+            if (!LuckView.Aiming)
+                return false;
+            var view = new Rect(0f, BarHeight, Screen.width - RightInset(), Screen.height - BarHeight);
+            if ((e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape) || (e.type == EventType.MouseDown && e.button == 1))
+            {
+                LuckView.Aiming = false;
+                StopLuck(bridge);
+                e.Use();
+                return true;
+            }
+            if (e.type == EventType.MouseDown && e.button == 0 && view.Contains(e.mousePosition) && !CoversUi(e.mousePosition))
+            {
+                LuckView.AimTail = CreatureRelative(bridge, NearestEdge(view, e.mousePosition));
+                LuckView.AimHead = CreatureRelative(bridge, e.mousePosition);
+                LuckView.Dragging = true;
+                SendLuck(bridge);
+                e.Use();
+                return true;
+            }
+            if (LuckView.Dragging && e.type == EventType.MouseDrag)
+            {
+                var p = new Vector2(Mathf.Clamp(e.mousePosition.x, view.xMin, view.xMax), Mathf.Clamp(e.mousePosition.y, view.yMin, view.yMax));
+                LuckView.AimHead = CreatureRelative(bridge, p);
+                if ((LuckView.AimHead - _luckSentHead).magnitude > 0.2e-6f)   // re-aim every 0.2 um the head moves
+                    SendLuck(bridge);
+                e.Use();
+                return true;
+            }
+            if (LuckView.Dragging && e.type == EventType.MouseUp)
+            {
+                StopLuck(bridge);
+                e.Use();
+                return true;
+            }
+            return false;
+        }
+
+        private void SendLuck(SessionBridge bridge)
+        {
+            _luckSentHead = LuckView.AimHead;
+            Vector2 t = LuckView.AimTail, h = LuckView.AimHead;
+            bridge.Send(SimCommands.LuckBlow(t.x, t.y, h.x, h.y));
+        }
+
+        private static void StopLuck(SessionBridge bridge)
+        {
+            if (LuckView.Dragging)
+                bridge.Send(SimCommands.LuckStop());
+            LuckView.Dragging = false;
+        }
+
+        private bool CoversUi(Vector2 p) =>
+            OrganismPanel.Covers(p) || ProbePlotCovers(p) || _currentArea.Contains(p) || _minimap.Covers(p);
+
+        // The point on the view's edge nearest a GUI point
+        private static Vector2 NearestEdge(Rect view, Vector2 p)
+        {
+            float left = p.x - view.xMin, right = view.xMax - p.x, top = p.y - view.yMin, bottom = view.yMax - p.y;
+            float m = Mathf.Min(Mathf.Min(left, right), Mathf.Min(top, bottom));
+            if (m == left)
+                return new Vector2(view.xMin, p.y);
+            if (m == right)
+                return new Vector2(view.xMax, p.y);
+            return m == top ? new Vector2(p.x, view.yMin) : new Vector2(p.x, view.yMax);
+        }
+
+        // A GUI point as a position relative to the creature [m], as the snapshot has it
+        private static Vector2 CreatureRelative(SessionBridge bridge, Vector2 guiPoint) =>
+            (MouseWorld(guiPoint) - bridge.Shift) / CellView.UnitsPerMetre;
+
+        // A white arrow pointing right (+x), 64 x 64, for tinting and rotating
+        private static Texture2D ArrowTexture()
+        {
+            const int n = 64;
+            var t = new Texture2D(n, n, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
+            var pixels = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float dy = Mathf.Abs(y - (n - 1) / 2f);
+                    bool shaft = x >= 8 && x < 40 && dy <= 4f;
+                    bool head = x >= 36 && x <= 58 && dy <= (58 - x) * 0.9f;
+                    pixels[y * n + x] = shaft || head ? new Color32(255, 255, 255, 255) : new Color32(0, 0, 0, 0);
+                }
+            t.SetPixels32(pixels);
+            t.Apply(false);
+            return t;
+        }
+
+        // The clicked cell's probe trace, under a drop-down at the bottom right of the view: closed by default.
+        private bool _showProbePlot;
+        private Texture2D _plotTexture;
+        private Color32[] _plotPixels;
+        private static Rect _probeArea;   // where the plot (or its closed header) was drawn: clicks there are not world clicks
+
+        /// <summary>Whether the probe plot or its header covers a screen point (GUI coordinates).</summary>
+        public static bool ProbePlotCovers(Vector2 point) => _probeArea.Contains(point);
+
         private void DrawProbePlot(SessionBridge bridge, SnapshotFrame frame)
         {
+            _probeArea = default;
             if (frame.ProbeCount == 0)
                 return;
             var probe = frame.Probes[0];
             if (probe.Count < 2)
                 return;
             var info = bridge.Schema.Overlays[probe.Channel];
+            string title = $"Cell {probe.Cell}: {info.Name} ({info.DisplayUnit})";
+            float left = Screen.width - RightInset() - 420;
+            if (!_showProbePlot)
+            {
+                _probeArea = new Rect(left, Screen.height - 30, 410, 24);
+                GUI.Box(_probeArea, GUIContent.none);
+                _showProbePlot = GUI.Toggle(new Rect(left + 6, Screen.height - 28, 398, 20), false, "\u25B8 " + title, GUI.skin.label);
+                return;
+            }
 
-            var area = new Rect(Screen.width - RightInset() - 420, Screen.height - 240, 410, 230);
-            GUI.Box(area, $"Cell {probe.Cell}: {info.Name} ({info.DisplayUnit})");
+            var area = new Rect(left, Screen.height - 240, 410, 230);
+            _probeArea = area;
+            GUI.Box(area, GUIContent.none);
+            _showProbePlot = GUI.Toggle(new Rect(area.x + 6, area.y + 2, 398, 20), true, "\u25BE " + title, GUI.skin.label);
             var plot = new Rect(area.x + 50, area.y + 28, area.width - 64, area.height - 58);
 
             float min = float.MaxValue, max = float.MinValue;
             for (int i = 0; i < probe.Count; i++)
             {
                 float v = probe.Values[i] * (float)info.DisplayMultiplier;
+                if (float.IsNaN(v) || float.IsInfinity(v))
+                    continue;
                 min = Mathf.Min(min, v);
                 max = Mathf.Max(max, v);
             }
+            if (min > max)
+                return;
             float pad = Mathf.Max(1e-3f, 0.05f * (max - min));
             min -= pad;
             max += pad;
@@ -467,34 +673,68 @@ namespace AdaptOrDeity.UI
             GUI.Label(new Rect(area.x + 4, plot.yMax - 12, 46, 20), $"{min:G4}");
             GUI.Label(new Rect(plot.x, plot.yMax + 4, 150, 20), FormatTime(t0));
             GUI.Label(new Rect(plot.xMax - 90, plot.yMax + 4, 90, 20), FormatTime(t1));
-
             if (Event.current.type != EventType.Repaint)
                 return;
-            if (_lineMaterial == null)
+
+            // the trace is drawn into a texture shown in the plot rect, so it shares the GUI's coordinates (GL's pixel
+            // matrix follows the camera viewport, which stops at the cell panel)
+            int w = Mathf.Max(2, (int)plot.width), h = Mathf.Max(2, (int)plot.height);
+            if (_plotTexture == null || _plotTexture.width != w || _plotTexture.height != h)
             {
-                _lineMaterial = new Material(Shader.Find("Hidden/Internal-Colored")) { hideFlags = HideFlags.HideAndDontSave };
+                if (_plotTexture != null)
+                    Destroy(_plotTexture);
+                _plotTexture = new Texture2D(w, h, TextureFormat.RGBA32, false)
+                    { filterMode = FilterMode.Point, hideFlags = HideFlags.HideAndDontSave };
+                _plotPixels = new Color32[w * h];
             }
-            _lineMaterial.SetPass(0);
-            GL.PushMatrix();
-            GL.LoadPixelMatrix();
-            GL.Begin(GL.LINES);
-            GL.Color(Colormap.Evaluate(0.8f));
-            Vector2 previous = default;
+            System.Array.Clear(_plotPixels, 0, _plotPixels.Length);
+            Color32 colour = Colormap.Evaluate(0.8f);
+            double span = System.Math.Max(t1 - t0, 1e-12);
+            int px = -1, py = -1;
             for (int i = 0; i < probe.Count; i++)
             {
-                float x = plot.x + (float)((probe.Times[i] - t0) / System.Math.Max(t1 - t0, 1e-12)) * plot.width;
                 float v = probe.Values[i] * (float)info.DisplayMultiplier;
-                float y = plot.yMax - (v - min) / (max - min) * plot.height;
-                var point = new Vector2(x, Screen.height - y); // GUI y-down → pixel y-up
-                if (i > 0)
+                if (float.IsNaN(v) || float.IsInfinity(v))
                 {
-                    GL.Vertex3(previous.x, previous.y, 0f);
-                    GL.Vertex3(point.x, point.y, 0f);
+                    px = -1;
+                    continue;
                 }
-                previous = point;
+                int x = Mathf.Clamp((int)System.Math.Round((probe.Times[i] - t0) / span * (w - 1)), 0, w - 1);
+                int y = Mathf.Clamp(Mathf.RoundToInt((v - min) / (max - min) * (h - 1)), 0, h - 1);   // texture rows go up
+                if (px >= 0)
+                    PlotLine(px, py, x, y, w, colour);
+                else
+                    _plotPixels[y * w + x] = colour;
+                px = x;
+                py = y;
             }
-            GL.End();
-            GL.PopMatrix();
+            _plotTexture.SetPixels32(_plotPixels);
+            _plotTexture.Apply(false);
+            GUI.DrawTexture(plot, _plotTexture, ScaleMode.StretchToFill, true);
+        }
+
+        // Bresenham line into the plot's pixels, one pixel thick
+        private void PlotLine(int x0, int y0, int x1, int y1, int w, Color32 colour)
+        {
+            int dx = System.Math.Abs(x1 - x0), dy = -System.Math.Abs(y1 - y0);
+            int sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1, err = dx + dy;
+            while (true)
+            {
+                _plotPixels[y0 * w + x0] = colour;
+                if (x0 == x1 && y0 == y1)
+                    return;
+                int e2 = 2 * err;
+                if (e2 >= dy)
+                {
+                    err += dy;
+                    x0 += sx;
+                }
+                if (e2 <= dx)
+                {
+                    err += dx;
+                    y0 += sy;
+                }
+            }
         }
 
         private void DrawPacketTooltip(SessionBridge bridge, SnapshotFrame frame, Vector2 mouse)
@@ -627,8 +867,11 @@ namespace AdaptOrDeity.UI
 
         private void OnDestroy()
         {
-            if (_lineMaterial != null)
-                Destroy(_lineMaterial);
+            if (_plotTexture != null)
+                Destroy(_plotTexture);
+            if (_arrow != null)
+                Destroy(_arrow);
+            _minimap.Dispose();
         }
     }
 }

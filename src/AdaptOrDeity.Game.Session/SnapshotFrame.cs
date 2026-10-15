@@ -244,6 +244,42 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>The creature's velocity over the ground [m/s].</summary>
         public float CreatureVx { get; internal set; }
 
+        /// <summary>The background flow [m/s]: the free current (the tide, above the seabed's boundary layer), or the wind
+        /// on land (<see cref="OnLand"/>).</summary>
+        public float FreeCurrentX { get; internal set; }
+
+        public float FreeCurrentY { get; internal set; }
+
+        /// <summary>The flow where the creature is [m/s]: the free one slowed in the seabed's boundary layer and behind
+        /// rocks.</summary>
+        public float LocalCurrentX { get; internal set; }
+
+        public float LocalCurrentY { get; internal set; }
+
+        /// <summary>Whether the creature lives on land (the flow is wind) rather than in water (a current).</summary>
+        public bool OnLand { get; internal set; }
+
+        /// <summary>Luck's points now and the most she can hold.</summary>
+        public float Luck { get; internal set; }
+
+        public float LuckMax { get; internal set; }
+
+        /// <summary>Whether Luck's current flows, its arrow (tail to head, relative to the creature [m]), its band's half
+        /// width [m] and its strength (0-1).</summary>
+        public bool LuckOn { get; internal set; }
+
+        public float LuckTailX { get; internal set; }
+
+        public float LuckTailY { get; internal set; }
+
+        public float LuckHeadX { get; internal set; }
+
+        public float LuckHeadY { get; internal set; }
+
+        public float LuckHalfWidth { get; internal set; }
+
+        public float LuckStrength { get; internal set; }
+
         public float CreatureVy { get; internal set; }
 
         /// <summary>
@@ -397,6 +433,41 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>The water's pH around the creature, on the raster of <see cref="FieldGlucose"/>.</summary>
         public float[] FieldPh { get; } = new float[FieldRasterSize * FieldRasterSize];
+
+        /// <summary>Tiles along each side of the minimap raster, centred on the creature's tile.</summary>
+        public const int MinimapSize = 64;
+
+        /// <summary>Side of a minimap tile [m]; 0 when the world keeps no minimap.</summary>
+        public float MinimapTile { get; internal set; }
+
+        /// <summary>Lower-left corner of the minimap raster relative to the creature [m] (the world's y grows upwards).</summary>
+        public float MinimapOriginX { get; internal set; }
+
+        public float MinimapOriginY { get; internal set; }
+
+        /// <summary>Tiles the creature has had in view in this game, on the map or not.</summary>
+        public int ExploredTiles { get; internal set; }
+
+        /// <summary>
+        /// Whether the creature has had each tile in view: <see cref="MinimapSize"/>² tiles row by row from the raster's
+        /// lower-left corner. The other minimap arrays hold what it saw there when it last did.
+        /// </summary>
+        public bool[] MinimapExplored { get; } = new bool[MinimapSize * MinimapSize];
+
+        /// <summary>Rock or ground (the tile's centre is below the ground line or inside a rock).</summary>
+        public bool[] MinimapSolid { get; } = new bool[MinimapSize * MinimapSize];
+
+        /// <summary>Glucose seen in the water of each tile [mol/m³] (NaN where unexplored or solid).</summary>
+        public float[] MinimapGlucose { get; } = new float[MinimapSize * MinimapSize];
+
+        /// <summary>Lactate seen in the water of each tile [mol/m³] (NaN where unexplored or solid).</summary>
+        public float[] MinimapLactate { get; } = new float[MinimapSize * MinimapSize];
+
+        /// <summary>The water's pH seen in each tile (NaN where unexplored or solid).</summary>
+        public float[] MinimapPh { get; } = new float[MinimapSize * MinimapSize];
+
+        /// <summary>Simulated time since each tile was last seen [s] (0 where unexplored).</summary>
+        public float[] MinimapAge { get; } = new float[MinimapSize * MinimapSize];
 
         private static T[][] Allocate<T>(int rows, int cells)
         {

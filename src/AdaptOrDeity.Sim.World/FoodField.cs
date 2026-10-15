@@ -358,6 +358,24 @@ namespace AdaptOrDeity.Sim.World
         /// its boundary.
         /// </summary>
         /// <summary>
+        /// Packets loose in the water (not held, stuck to a cell or carried) move with a directed current anchored at
+        /// (<paramref name="anchorX"/>, <paramref name="anchorY"/>) over <paramref name="dt"/>, on top of their drift.
+        /// </summary>
+        public void Push(DirectedCurrent current, double anchorX, double anchorY, double dt)
+        {
+            if (!current.On)
+                return;
+            foreach (var p in _packets)
+            {
+                if (!p.Active || p.Frozen || p.Stuck || p.Kind == PacketKind.Carried)
+                    continue;
+                current.At(p.X - anchorX, p.Y - anchorY, out double ux, out double uy);
+                p.X += ux * dt;
+                p.Y += uy * dt;
+            }
+        }
+
+        /// <summary>
         /// Dead bodies no cell holds drift with the water around them: each takes the seabed's current at its position
         /// (<paramref name="vx"/>, <paramref name="vy"/>: the free current; scaled by <see cref="Seabed.CurrentFactor"/>).
         /// </summary>

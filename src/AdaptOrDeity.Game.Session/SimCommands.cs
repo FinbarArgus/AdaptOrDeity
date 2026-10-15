@@ -35,6 +35,8 @@ namespace AdaptOrDeity.Game.Session
         SetRegulation = 18,
         DevEndLevel = 19,
         ReseedSeabed = 20,
+        LuckBlow = 21,
+        LuckStop = 22,
     }
 
     /// <summary>
@@ -110,6 +112,19 @@ namespace AdaptOrDeity.Game.Session
                     return;
                 case SimCommandKind.ReseedSeabed:
                     Fermenter(loop, "this world has no seabed").ReseedSeabed(A);
+                    break;
+                case SimCommandKind.LuckBlow:
+                {
+                    // the arrow as text, "tailX tailY headX headY" in metres relative to the creature (round-trip format)
+                    var parts = (Text1 ?? "").Split(' ');
+                    if (parts.Length != 4)
+                        throw new FormatException($"LuckBlow wants four numbers, got '{Text1}'");
+                    double Number(int i) => double.Parse(parts[i], System.Globalization.CultureInfo.InvariantCulture);
+                    Fermenter(loop, "this world has no Luck").LuckBlow(Number(0), Number(1), Number(2), Number(3));
+                    break;
+                }
+                case SimCommandKind.LuckStop:
+                    Fermenter(loop, "this world has no Luck").LuckStop();
                     break;
                 case SimCommandKind.SetLevel:
                     if (A < 1)
@@ -216,6 +231,13 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>A new seabed from <paramref name="seed"/>: a new game's random floor.</summary>
         public static SimCommand ReseedSeabed(int seed) => new SimCommand(SimCommandKind.ReseedSeabed, seed);
+
+        /// <summary>Luck blows (or re-aims) her current from the tail to the head, relative to the creature [m].</summary>
+        public static SimCommand LuckBlow(double tailX, double tailY, double headX, double headY) =>
+            new SimCommand(SimCommandKind.LuckBlow, text1: FormattableString.Invariant($"{tailX:R} {tailY:R} {headX:R} {headY:R}"));
+
+        /// <summary>Luck stops her current.</summary>
+        public static SimCommand LuckStop() => new SimCommand(SimCommandKind.LuckStop);
 
         /// <summary>Development aid: completes <paramref name="cell"/>'s daughter without charging its ATP (not for play).</summary>
         public static SimCommand DevCompleteDaughter(int cell) => new SimCommand(SimCommandKind.DevCompleteDaughter, cell);

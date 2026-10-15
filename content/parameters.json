@@ -541,6 +541,69 @@
    "status": "design",
    "note": "length of the sheltered wake behind a rock, in rock radii (the current recovers linearly over it)"
   },
+  "minimap.tile_size": {
+   "value": 5e-06,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "side of a minimap tile: the map remembers, per tile the creature has had in view, the water it saw there (glucose, lactate, pH) and whether it is rock or ground; 5 um, a few cell widths, so the 30 um view covers 6 x 6 tiles"
+  },
+  "minimap.sample_interval": {
+   "value": 1.0,
+   "units": "s",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "simulated time between updates of the minimap's memory from the creature's view"
+  },
+  "luck.max": {
+   "value": 100.0,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "the most luck points Luck can hold (adapting_plan.md, Luck)"
+  },
+  "luck.start": {
+   "value": 50.0,
+   "units": "1",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "luck points at the start of a game"
+  },
+  "luck.rate": {
+   "value": 0.009259259259259259,
+   "units": "1/s",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "luck points gained per second of game time: empty to full in 3 h"
+  },
+  "luck.cost_rate": {
+   "value": 1.0,
+   "units": "1/s",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "luck points a current costs per second at full strength (in proportion below): a full store blows for 100 s"
+  },
+  "luck.max_speed": {
+   "value": 2e-06,
+   "units": "m/s",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "flow of Luck's current on its axis at full strength: 2 um/s, faster than the creature swims (~1.5 um/s) and 10x the tide"
+  },
+  "luck.half_width": {
+   "value": 4e-06,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "half the width of the band of water Luck's current flows along (a few cell radii)"
+  },
+  "luck.full_length": {
+   "value": 3e-05,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "length of the aimed arrow that gives full strength (the view's width); shorter arrows blow in proportion"
+  },
   "seabed.seed": {
    "value": 11,
    "units": "1",

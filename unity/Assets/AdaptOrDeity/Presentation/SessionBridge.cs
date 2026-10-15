@@ -169,6 +169,7 @@ namespace AdaptOrDeity.Presentation
             seabed.transform.SetParent(transform, false);
             seabed.AddComponent<SeabedView>().Initialise(this);
             gameObject.AddComponent<MotionView>().Initialise(this);
+            gameObject.AddComponent<LuckView>().Initialise(this);
             SyncViews();
         }
 

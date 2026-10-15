@@ -59,6 +59,35 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
+        public void FramesCarryTheBackgroundCurrentAndTheCurrentAtTheCreature()
+        {
+            // in open water the creature drifts in the free current (the tide); down in the seabed's boundary layer it
+            // feels less of it, and the frame says so; on land the same flow is the wind
+            var loop = NewLoop(out var world);
+            var frame = loop.CreateFrame();
+            loop.StepExactly(10);
+            loop.WriteSnapshot(frame);
+            Assert.That(frame.FreeCurrentX, Is.EqualTo((float)world.FreeCurrentX));
+            Assert.That(frame.FreeCurrentY, Is.EqualTo((float)world.FreeCurrentY));
+            Assert.That(Math.Abs(frame.FreeCurrentX) + Math.Abs(frame.FreeCurrentY), Is.GreaterThan(0f));
+            Assert.That(frame.LocalCurrentX, Is.EqualTo(frame.FreeCurrentX).Within(1e-6f * Math.Abs(frame.FreeCurrentX)),
+                "in open water, far above the seabed");
+            Assert.That(frame.OnLand, Is.False, "every level so far is in water");
+
+            var body = world.Body.Body;
+            body.Place(body.X, world.Seabed.GroundY + 2e-6, body.Angle);   // a fifth of the way up the boundary layer
+            loop.StepExactly(1);
+            loop.WriteSnapshot(frame);
+            Assert.That(Math.Abs(frame.LocalCurrentX), Is.LessThan(0.5f * Math.Abs(frame.FreeCurrentX)));
+            Assert.That(frame.LocalCurrentX, Is.EqualTo((float)body.CurrentVx));
+
+            world.OnLand = true;
+            loop.StepExactly(1);
+            loop.WriteSnapshot(frame);
+            Assert.That(frame.OnLand, Is.True);
+        }
+
+        [Test]
         public void EnergyBalanceBarsAddUpToTheCellsAtpMadeAndUsed()
         {
             var loop = NewLoop(out var world);

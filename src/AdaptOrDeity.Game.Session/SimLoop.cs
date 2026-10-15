@@ -222,6 +222,31 @@ namespace AdaptOrDeity.Game.Session
             frame.FieldExtent = (float)extent;
         }
 
+        // The minimap: what the creature has seen of the tiles around its own, centred on it.
+        private static void WriteMinimap(FermenterWorld world, SnapshotFrame frame)
+        {
+            int m = SnapshotFrame.MinimapSize;
+            double size = world.TileSize;
+            var (ci, cj) = world.TileOf(frame.CreatureX, frame.CreatureY);
+            long i0 = ci - m / 2, j0 = cj - m / 2;
+            frame.MinimapTile = (float)size;
+            frame.MinimapOriginX = (float)(i0 * size - frame.CreatureX);
+            frame.MinimapOriginY = (float)(j0 * size - frame.CreatureY);
+            frame.ExploredTiles = world.ExploredTileCount;
+            for (int j = 0; j < m; j++)
+                for (int i = 0; i < m; i++)
+                {
+                    int k = j * m + i;
+                    bool seen = world.TryGetExplored(i0 + i, j0 + j, out var tile);
+                    frame.MinimapExplored[k] = seen;
+                    frame.MinimapSolid[k] = seen && tile.Solid;
+                    frame.MinimapGlucose[k] = seen ? tile.Glucose : float.NaN;
+                    frame.MinimapLactate[k] = seen ? tile.Lactate : float.NaN;
+                    frame.MinimapPh[k] = seen ? tile.Ph : float.NaN;
+                    frame.MinimapAge[k] = seen ? (float)(frame.SimTime - tile.SeenAt) : 0f;
+                }
+        }
+
         private int PacketsInField => World is IFoodWorld f ? f.Food.ActiveCount : 0;
 
         private int PreyInView => World is IFoodWorld f ? f.Prey.ActiveCount : 0;
@@ -337,7 +362,23 @@ namespace AdaptOrDeity.Game.Session
                 {
                     frame.MotorOn = fw.MotorOn && fw.FeatureEnabled(GameFeatures.IndexOf(GameFeatures.Swimming));
                     frame.MotorPower = (float)fw.MotorPower;
+                    frame.FreeCurrentX = (float)fw.FreeCurrentX;
+                    frame.FreeCurrentY = (float)fw.FreeCurrentY;
+                    frame.LocalCurrentX = (float)body.CurrentVx;
+                    frame.LocalCurrentY = (float)body.CurrentVy;
+                    frame.OnLand = fw.OnLand;
+                    var luck = fw.LuckCurrent;
+                    frame.Luck = (float)fw.Luck;
+                    frame.LuckMax = (float)fw.LuckMax;
+                    frame.LuckOn = luck.On;
+                    frame.LuckTailX = (float)luck.TailX;
+                    frame.LuckTailY = (float)luck.TailY;
+                    frame.LuckHeadX = (float)luck.HeadX;
+                    frame.LuckHeadY = (float)luck.HeadY;
+                    frame.LuckHalfWidth = (float)luck.HalfWidth;
+                    frame.LuckStrength = (float)fw.LuckStrength;
                     WriteField(fw, frame);
+                    WriteMinimap(fw, frame);
                     WriteSeabed(fw, frame);
                     WriteOrganisms(fw, frame);
                 }

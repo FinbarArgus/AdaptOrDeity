@@ -94,6 +94,22 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Prey slots; only <see cref="Prey.Active"/> ones are in the window.</summary>
         public IReadOnlyList<Prey> Prey => _prey;
 
+        /// <summary>Prey are carried by a directed current anchored at (<paramref name="anchorX"/>, <paramref name="anchorY"/>)
+        /// over <paramref name="dt"/>, on top of their swimming.</summary>
+        public void Push(DirectedCurrent current, double anchorX, double anchorY, double dt)
+        {
+            if (!current.On)
+                return;
+            foreach (var p in _prey)
+            {
+                if (!p.Active)
+                    continue;
+                current.At(p.X - anchorX, p.Y - anchorY, out double ux, out double uy);
+                p.X += ux * dt;
+                p.Y += uy * dt;
+            }
+        }
+
         /// <summary>Moves prey out of the ground and rocks they swam into.</summary>
         public void KeepOutOf(Seabed seabed)
         {
