@@ -13,8 +13,17 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>ATP made from glycogen.</summary>
         public double AtpFromGlycogen;
 
-        /// <summary>F1Fo H+-ATPase pumping protons out.</summary>
+        /// <summary>
+        /// F1Fo H+-ATPase pumping protons out, less <see cref="AtpSwimming"/>: what holds the gradient against the leaks
+        /// and the exchangers.
+        /// </summary>
         public double AtpPumps;
+
+        /// <summary>
+        /// Swimming: the flagellar motors run on protons flowing in, and the H+-ATPase spends this much ATP pumping them
+        /// back out (the motors' proton flux over the pump's H+ per ATP; at most all the pumping).
+        /// </summary>
+        public double AtpSwimming;
 
         /// <summary>Turning over (degrading and remaking) the cell's proteins.</summary>
         public double AtpProteinTurnover;
@@ -59,7 +68,7 @@ namespace AdaptOrDeity.Sim.Physiology
 
         public double AtpProduced => AtpGlycolysis + AtpFromGlycogen + AtpRecycledProtein;
 
-        public double AtpConsumed => AtpPumps + AtpProteinTurnover + AtpProteinBuild + AtpProteinBreakdown + AtpRna + AtpLipids + AtpRepair
+        public double AtpConsumed => AtpPumps + AtpSwimming + AtpProteinTurnover + AtpProteinBuild + AtpProteinBreakdown + AtpRna + AtpLipids + AtpRepair
                                      + AtpGrowth + AtpStorage + AtpMatrix + AtpCarriers + AtpOtherMaintenance;
     }
 
@@ -88,7 +97,8 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly int _growthLevel, _storeAlloc, _repairLevel, _matrixAlloc, _jRef;
         private readonly int _aGly, _aMob, _aStore, _aMaint, _aPump, _aKeep, _aBuild, _aSaved, _aBreakdown, _aRecycled, _aRna, _aRibo, _aLipid, _aRepair;
         private readonly int _aGrowthUsed, _aHeat, _aVol, _aSurface, _aAreaMax, _aDaughter, _aProgress, _aGlycProgress;
-        private readonly int _aGlycAtp, _aThrust, _aFlagPower, _eMotor, _sAminoAcids;
+        private readonly int _aGlycAtp, _aThrust, _aFlagPower, _eMotor, _sAminoAcids, _aFlagProtons;
+        private readonly double _pumpProtonsPerAtp;
         private readonly int _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
         private readonly int _aMatrix, _aAtpMatrix;
         private readonly int _sDamagePhysical, _sDamageRadiation, _sDamageRibosome, _sDamageEnergy, _sGrowth, _sGlycogen, _sAtp;
@@ -211,6 +221,8 @@ namespace AdaptOrDeity.Sim.Physiology
             _aStore = Alg("cytosol__J_ATP_store");
             _aMaint = Alg("cytosol__J_ATP_maint");
             _aPump = Alg("i_H_ATPase__v_ATP_H");
+            _aFlagProtons = Alg("i_flagellum__j_H_flag");
+            _pumpProtonsPerAtp = starting["n_H_mod_i_H_ATPase"];
             _aKeep = Alg("protein__J_keep_total");
             _aBuild = Alg("protein__J_build_total");
             _aSaved = Alg("protein__J_saved_total");
@@ -758,11 +770,14 @@ namespace AdaptOrDeity.Sim.Physiology
         {
             EnsureVariables();
             double[][] a = Batch.Algebraic;
+            double pumping = a[_aPump][0];
+            double swimming = Math.Min(Math.Max(0.0, pumping), Math.Abs(a[_aFlagProtons][0]) / _pumpProtonsPerAtp);
             return new EnergyBudget
             {
                 AtpGlycolysis = a[_aGly][0],
                 AtpFromGlycogen = a[_aMob][0],
-                AtpPumps = a[_aPump][0],
+                AtpPumps = pumping - swimming,
+                AtpSwimming = swimming,
                 AtpProteinTurnover = a[_aKeep][0],
                 AtpProteinBuild = a[_aBuild][0] + a[_aSaved][0],
                 AtpProteinBreakdown = a[_aBreakdown][0],

@@ -434,12 +434,18 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             var cell = NewCell();
             cell.Step(GameDt);
             double pumps0 = cell.Budget().AtpPumps;
+            Assert.That(cell.Budget().AtpSwimming, Is.EqualTo(0.0), "no swimming with the motor off");
             cell.SetExternal("a_motor_mod_i_flagellum", 1.0);
             Run(cell, 60.0);
             double j = cell.AlgebraicValue("i_flagellum__j_H_flag") * Na(cell);
             Assert.That(j, Is.InRange(0.8e5, 1.6e5), "H+/s through one motor");
             // the H+-ATPase speeds up as the cytosol acidifies; the H+ leak and exchangers carry less as the PMF drops
-            Assert.That(cell.Budget().AtpPumps, Is.GreaterThan(pumps0 * 1.02), "pumping replaces the protons the motor uses");
+            var budget = cell.Budget();
+            Assert.That(budget.AtpPumps + budget.AtpSwimming, Is.GreaterThan(pumps0 * 1.02), "pumping replaces the protons the motor uses");
+            // swimming's line is the motor's protons pumped back out at 10 H+ per 3 ATP, taken from the pump's line
+            Assert.That(budget.AtpSwimming, Is.EqualTo(cell.AlgebraicValue("i_flagellum__j_H_flag") * 0.3).Within(1e-9 * budget.AtpSwimming));
+            Assert.That(budget.AtpPumps + budget.AtpSwimming,
+                Is.EqualTo(cell.AlgebraicValue("i_H_ATPase__v_ATP_H")).Within(1e-12 * budget.AtpConsumed));
             double v1 = cell.AlgebraicValue("i_flagellum__v_swim");
             Assert.That(v1, Is.InRange(10e-6, 20e-6));
             int f = cell.Traits.ToList().FindIndex(t => t.Id == "flagella");

@@ -34,6 +34,7 @@ namespace AdaptOrDeity.Game.Session
         InspectOrganism = 17,
         SetRegulation = 18,
         DevEndLevel = 19,
+        ReseedSeabed = 20,
     }
 
     /// <summary>
@@ -107,6 +108,9 @@ namespace AdaptOrDeity.Game.Session
                 case SimCommandKind.BuyFeature:
                     Inspectable(loop).BuyFeature(A);
                     return;
+                case SimCommandKind.ReseedSeabed:
+                    Fermenter(loop, "this world has no seabed").ReseedSeabed(A);
+                    break;
                 case SimCommandKind.SetLevel:
                     if (A < 1)
                         throw new ArgumentOutOfRangeException("level", "levels start at 1");
@@ -209,6 +213,9 @@ namespace AdaptOrDeity.Game.Session
 
         /// <summary>Sets the level being played (unlocks features); a development control until the time bar drives it.</summary>
         public static SimCommand SetLevel(int level) => new SimCommand(SimCommandKind.SetLevel, level);
+
+        /// <summary>A new seabed from <paramref name="seed"/>: a new game's random floor.</summary>
+        public static SimCommand ReseedSeabed(int seed) => new SimCommand(SimCommandKind.ReseedSeabed, seed);
 
         /// <summary>Development aid: completes <paramref name="cell"/>'s daughter without charging its ATP (not for play).</summary>
         public static SimCommand DevCompleteDaughter(int cell) => new SimCommand(SimCommandKind.DevCompleteDaughter, cell);

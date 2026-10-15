@@ -49,20 +49,27 @@ namespace AdaptOrDeity.Sim.World
     /// <summary>
     /// The ground at the bottom of the world and the rocks on it, for bodies to swim towards, knock into, shelter behind
     /// and climb over. The world is a vertical slice of water: x along the current, y upwards; the ground is the line
-    /// y = <see cref="GroundY"/>, solid below. Each stretch of seabed (<see cref="SeabedSettings.StretchWidth"/>) holds one
-    /// structure built of rock discs, drawn from the seed and the stretch's index, so the seabed is endless and the same
-    /// every time: a boulder, a stack of rocks, or an arch (two pillars and a lintel) to swim under. The current slows in
+    /// y = <see cref="GroundY"/>, solid below. Each stretch of seabed (<see cref="SeabedSettings.StretchWidth"/>) holds
+    /// none, one or two structures built of rock discs, drawn from the seed and the stretch's index, so the seabed is
+    /// endless and the same for a seed (a new game draws a new one): a boulder, a stack of rocks, an arch (two pillars and
+    /// a lintel) to swim under, or an outcrop of boulders heaped together. No rock comes near where the creature starts. The current slows in
     /// the boundary layer over the ground and in the wake behind each rock (<see cref="CurrentFactor"/>). Bodies do not
     /// enter the ground or rocks (<see cref="PushOut"/>); chemicals in the environment field are not blocked by them.
     /// </summary>
     public sealed class Seabed
     {
         private readonly Dictionary<long, Rock[]> _stretches = new Dictionary<long, Rock[]>();
+        private readonly double _startX, _startY;
 
-        public Seabed(SeabedSettings settings, double startY)
+        /// <summary>Clearance kept between any rock and where the creature starts [m].</summary>
+        public const double StartClearance = 4e-6;
+
+        public Seabed(SeabedSettings settings, double startY, double startX = 0.0)
         {
             Settings = settings;
             GroundY = startY - settings.GroundDepth;
+            _startX = startX;
+            _startY = startY;
             for (long k = -PrebuiltStretches; k <= PrebuiltStretches; k++)
                 Stretch(k);   // the seabed near the start is built up front, so stepping there allocates nothing
         }
@@ -107,46 +114,75 @@ namespace AdaptOrDeity.Sim.World
                 int seed = Settings.Seed * 486187739 + (int)k * 16777619 + (int)(k >> 32);
                 var random = new Random(seed);
                 double w = Settings.StretchWidth, rMin = Settings.RockRadiusMin, rMax = Settings.RockRadiusMax;
-                double x = (k + 0.2 + 0.6 * random.NextDouble()) * w;
-                double r = rMin + (rMax - rMin) * random.NextDouble();
                 var list = new List<Rock>();
-                switch (random.Next(3))
+                double draw = random.NextDouble();
+                int count = draw < 0.2 ? 0 : draw < 0.75 ? 1 : 2;
+                for (int n = 0; n < count; n++)
                 {
-                    case 0:   // a boulder, partly sunk into the ground
-                        list.Add(new Rock(x, GroundY + 0.6 * r, r));
-                        break;
-                    case 1:   // a stack: discs of shrinking size, each resting on the one below
-                    {
-                        double y = GroundY + 0.6 * r;
-                        int n = 2 + random.Next(2);
-                        for (int i = 0; i < n; i++)
-                        {
-                            list.Add(new Rock(x, y, r));
-                            double next = 0.7 * r;
-                            y += 0.85 * (r + next);
-                            r = next;
-                        }
-                        break;
-                    }
-                    default:   // an arch: two pillars and a lintel across them, a gap to swim under
-                    {
-                        double pr = Math.Max(rMin, 0.5 * r), span = 3.0 * r, height = 2.0 * r;
-                        for (double y = GroundY + pr; y <= GroundY + height; y += 1.5 * pr)
-                        {
-                            list.Add(new Rock(x - 0.5 * span, y, pr));
-                            list.Add(new Rock(x + 0.5 * span, y, pr));
-                        }
-                        double top = GroundY + height + pr;
-                        for (double lx = x - 0.5 * span; lx <= x + 0.5 * span + 1e-12; lx += 1.5 * pr)
-                            list.Add(new Rock(lx, top, pr));
-                        break;
-                    }
+                    // one structure anywhere in the stretch; two, one in each half
+                    double lo = count == 1 ? 0.2 : 0.1 + 0.5 * n, span = count == 1 ? 0.6 : 0.3;
+                    double x = (k + lo + span * random.NextDouble()) * w;
+                    double r = rMin + (rMax - rMin) * random.NextDouble();
+                    Structure(list, random, x, r);
                 }
+                // nothing where the creature starts
+                list.RemoveAll(q => (q.X - _startX) * (q.X - _startX) + (q.Y - _startY) * (q.Y - _startY)
+                                    < (q.Radius + StartClearance) * (q.Radius + StartClearance));
                 rocks = list.ToArray();
             }
             lock (_stretches)
                 _stretches[k] = rocks;
             return rocks;
+        }
+
+        // A structure of rock discs about x, of size r: a boulder, a stack, an arch or an outcrop.
+        private void Structure(List<Rock> list, Random random, double x, double r)
+        {
+            double rMin = Settings.RockRadiusMin;
+            switch (random.Next(4))
+            {
+                case 0:   // a boulder, partly sunk into the ground
+                    list.Add(new Rock(x, GroundY + (0.4 + 0.4 * random.NextDouble()) * r, r));
+                    break;
+                case 1:   // a stack: discs of shrinking size, each resting on the one below, leaning a little
+                {
+                    double y = GroundY + 0.6 * r;
+                    int n = 2 + random.Next(3);
+                    for (int i = 0; i < n && r >= 0.5 * rMin; i++)
+                    {
+                        list.Add(new Rock(x, y, r));
+                        double next = (0.6 + 0.2 * random.NextDouble()) * r;
+                        y += 0.85 * (r + next);
+                        x += (random.NextDouble() - 0.5) * 0.5 * next;
+                        r = next;
+                    }
+                    break;
+                }
+                case 2:   // an arch: two pillars and a lintel across them, a gap to swim under
+                {
+                    double pr = Math.Max(rMin, 0.5 * r), span = (2.5 + random.NextDouble()) * r, height = (1.6 + 0.8 * random.NextDouble()) * r;
+                    for (double y = GroundY + pr; y <= GroundY + height; y += 1.5 * pr)
+                    {
+                        list.Add(new Rock(x - 0.5 * span, y, pr));
+                        list.Add(new Rock(x + 0.5 * span, y, pr));
+                    }
+                    double top = GroundY + height + pr;
+                    for (double lx = x - 0.5 * span; lx <= x + 0.5 * span + 1e-12; lx += 1.5 * pr)
+                        list.Add(new Rock(lx, top, pr));
+                    break;
+                }
+                default:   // an outcrop: boulders of mixed sizes heaped together
+                {
+                    int n = 3 + random.Next(3);
+                    for (int i = 0; i < n; i++)
+                    {
+                        double ri = Math.Max(rMin, (0.35 + 0.65 * random.NextDouble()) * r);
+                        double xi = x + (random.NextDouble() - 0.5) * 2.0 * r;
+                        list.Add(new Rock(xi, GroundY + (0.3 + 0.9 * random.NextDouble()) * ri, ri));
+                    }
+                    break;
+                }
+            }
         }
 
         /// <summary>

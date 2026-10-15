@@ -7,8 +7,9 @@ namespace AdaptOrDeity.Game.Content
     /// <summary>What appears in the world per second (content/timeline.json levels[].arrivals).</summary>
     public readonly struct Arrivals
     {
-        public Arrivals(double foodPerSecond, double carriedShare, double preyPerSecond = 0.0)
+        public Arrivals(double foodPerSecond, double carriedShare, double preyPerSecond = 0.0, double floorFoodPerSecond = 0.0)
         {
+            FloorFoodPerSecond = floorFoodPerSecond;
             FoodPerSecond = foodPerSecond;
             CarriedShare = carriedShare;
             PreyPerSecond = preyPerSecond;
@@ -19,6 +20,9 @@ namespace AdaptOrDeity.Game.Content
 
         /// <summary>Food packets arriving per second [1/s], whatever is already in the field.</summary>
         public double FoodPerSecond { get; }
+
+        /// <summary>Food packets settling on the floor per second where the ground is in view [1/s] (floor_food_per_s).</summary>
+        public double FloorFoodPerSecond { get; }
 
         /// <summary>Share of them brought by other creatures; the rest lie on the ground and come into view.</summary>
         public double CarriedShare { get; }
@@ -71,7 +75,8 @@ namespace AdaptOrDeity.Game.Content
                 foreach (var r in list)
                     if (r is Dictionary<string, object?> d && Equals(d["id"], region) && d.TryGetValue("arrivals", out var own))
                         arrivals = Merge(arrivals, (Dictionary<string, object?>)own!);
-            return new Arrivals(Number(arrivals["food_per_s"]), Number(arrivals["carried_share"]), Number(arrivals["prey_per_s"]));
+            return new Arrivals(Number(arrivals["food_per_s"]), Number(arrivals["carried_share"]), Number(arrivals["prey_per_s"]),
+                arrivals.TryGetValue("floor_food_per_s", out var floor) ? Number(floor) : 0.0);
         }
 
         /// <summary>

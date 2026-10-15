@@ -16,6 +16,7 @@
    ],
    "arrivals": {
     "food_per_s": 0.003,
+    "floor_food_per_s": 0.001,
     "carried_share": 0.8,
     "prey_per_s": 0.0
    },
@@ -49,6 +50,7 @@
    ],
    "arrivals": {
     "food_per_s": 0.005,
+    "floor_food_per_s": 0.001,
     "carried_share": 0.8,
     "prey_per_s": 0.0002
    },
@@ -77,6 +79,7 @@
    "note": "Historically these exist from the game's start: bacterial chemotaxis evolved from two-component systems after the three domains split, well before 2 Ga (Wuichet & Zhulin 2010). Level 3 is a pacing choice.",
    "arrivals": {
     "food_per_s": 0.003,
+    "floor_food_per_s": 0.001,
     "carried_share": 0.8,
     "prey_per_s": 0.0002
    },
@@ -104,6 +107,7 @@
    ],
    "arrivals": {
     "food_per_s": 0.003,
+    "floor_food_per_s": 0.001,
     "carried_share": 0.8,
     "prey_per_s": 0.0002
    },
@@ -129,6 +133,7 @@
    "unlocks": [],
    "arrivals": {
     "food_per_s": 0.003,
+    "floor_food_per_s": 0.001,
     "carried_share": 0.8,
     "prey_per_s": 0.0002
    },
@@ -156,6 +161,7 @@
    ],
    "arrivals": {
     "food_per_s": 0.003,
+    "floor_food_per_s": 0.001,
     "carried_share": 0.8,
     "prey_per_s": 0.0002
    },
@@ -183,6 +189,7 @@
    ],
    "arrivals": {
     "food_per_s": 0.003,
+    "floor_food_per_s": 0.001,
     "carried_share": 0.8,
     "prey_per_s": 0.0002
    },

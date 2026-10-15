@@ -179,6 +179,7 @@ namespace AdaptOrDeity.Presentation
             Debug.Log($"Simulation: {where}");
             _session.TryGetFrame(out var first);
             Frame = first;
+            _session.Enqueue(SimCommands.ReseedSeabed(new System.Random().Next()));   // every game a new floor
             _session.Start();
             Generation++;
         }

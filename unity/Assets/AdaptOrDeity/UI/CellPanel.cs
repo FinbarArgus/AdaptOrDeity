@@ -22,6 +22,7 @@ namespace AdaptOrDeity.UI
         private static readonly Dictionary<string, Color> SinkColours = new Dictionary<string, Color>
         {
             ["atp_pumps"] = new Color(0.95f, 0.55f, 0.25f),
+            ["atp_swimming"] = new Color(0.30f, 0.75f, 0.95f),
             ["atp_protein_turnover"] = new Color(0.40f, 0.70f, 0.95f),
             ["atp_protein_build"] = new Color(0.70f, 0.50f, 0.95f),
             ["atp_protein_breakdown"] = new Color(0.85f, 0.40f, 0.85f),

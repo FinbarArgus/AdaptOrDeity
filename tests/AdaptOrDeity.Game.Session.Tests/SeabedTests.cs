@@ -111,6 +111,98 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
+        public void ANewSeedDrawsANewFloorAndNoRockIsNearTheStart()
+        {
+            var settings = GameParameters.Default.Seabed();
+            var layouts = new List<string>();
+            for (int seed = 1; seed <= 40; seed++)
+            {
+                settings.Seed = seed;
+                var seabed = new Seabed(settings, 3e-6, -2e-6);
+                var rocks = new List<Rock>();
+                seabed.RocksBetween(-2000e-6, 2000e-6, rocks);
+                layouts.Add(string.Join(";", rocks.Select(r => $"{r.X:G6},{r.Y:G6},{r.Radius:G6}")));
+                foreach (var r in rocks)
+                {
+                    double d = Math.Sqrt((r.X + 2e-6) * (r.X + 2e-6) + (r.Y - 3e-6) * (r.Y - 3e-6));
+                    Assert.That(d, Is.GreaterThanOrEqualTo(r.Radius + Seabed.StartClearance - 1e-15), $"seed {seed}: clear start");
+                }
+            }
+            Assert.That(layouts.Distinct().Count(), Is.EqualTo(layouts.Count), "every seed its own floor");
+
+            // over many stretches: some bare, some with one structure, some with two, of every kind
+            settings.Seed = 7;
+            var many = new List<Rock>();
+            new Seabed(settings, 0.0).RocksBetween(-20000e-6, 20000e-6, many);
+            int bare = 0;
+            for (double x = -19000e-6; x < 19000e-6; x += settings.StretchWidth)
+                if (!many.Any(r => r.X >= x && r.X < x + settings.StretchWidth))
+                    bare++;
+            Assert.That(bare, Is.InRange(100, 400), "about a fifth of ~950 stretches bare");
+        }
+
+        [Test]
+        public void TheReseedCommandGivesTheWorldANewFloor()
+        {
+            using var world = new FermenterWorld();
+            var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
+            var before = new List<Rock>();
+            world.Seabed.RocksBetween(-500e-6, 500e-6, before);
+            loop.Enqueue(SimCommands.ReseedSeabed(12345));
+            loop.ApplyCommands();
+            var after = new List<Rock>();
+            world.Seabed.RocksBetween(-500e-6, 500e-6, after);
+            Assert.That(after.Select(r => r.X), Is.Not.EqualTo(before.Select(r => r.X)));
+            Assert.That(world.Seabed.GroundY, Is.EqualTo(new FermenterWorld().Seabed.GroundY), "the same ground line");
+            loop.StepExactly(10);
+        }
+
+        [Test]
+        public void FoodSettlesOnTheFloorAtItsOwnRateBesideTheWaters()
+        {
+            // the floor's arrivals are their own Poisson stream: the water's arrivals are the same with or without them
+            var settings = GameParameters.Default.Food(0.1);
+            settings.ArrivalsPerSecond = 0.01;
+            settings.FloorArrivalsPerSecond = 0.0;
+            var plain = new FoodField(settings);
+            var floorSettings = GameParameters.Default.Food(0.1);
+            floorSettings.ArrivalsPerSecond = 0.01;
+            floorSettings.FloorArrivalsPerSecond = 0.02;
+            var withFloor = new FoodField(floorSettings);
+            // the ground 10 um below the window's centre, in view (the window reaches 15 um)
+            var seabed = new Seabed(GameParameters.Default.Seabed(), GameParameters.Default.Value("seabed.ground_depth") - 10e-6);
+            const double dt = 0.1;
+            for (int k = 0; k < 100000; k++)   // ~2.8 h
+            {
+                plain.Step(dt);
+                withFloor.Step(dt);
+                withFloor.ArriveOnFloor(seabed, dt);
+            }
+            Assert.That(withFloor.Arrived, Is.EqualTo(plain.Arrived), "the water's arrivals unchanged");
+            Assert.That(withFloor.ArrivedOnFloor, Is.EqualTo(0.02 * 1e4).Within(4 * Math.Sqrt(200.0)), "Poisson at 0.02/s");
+            int onFloor = 0;
+            foreach (var p in withFloor.Packets.Where(p => p.Active && p.Kind == PacketKind.Lying))
+            {
+                double x = p.X, y = p.Y;
+                bool resting = Math.Abs(y - (seabed.GroundY + p.FullRadius)) < 1e-12
+                               || seabed.PushOut(ref x, ref y, p.FullRadius + 1e-9, out _, out _);
+                if (resting)
+                    onFloor++;
+            }
+            Assert.That(onFloor, Is.GreaterThan(0), "packets lie on the ground or on a rock");
+
+            // with the ground out of view, nothing settles where the creature can see
+            var high = new FoodField(floorSettings);
+            var deep = new Seabed(GameParameters.Default.Seabed(), 0.0);   // the ground 40 um below
+            for (int k = 0; k < 10000; k++)
+            {
+                high.Step(dt);
+                high.ArriveOnFloor(deep, dt);
+            }
+            Assert.That(high.ArrivedOnFloor, Is.EqualTo(0));
+        }
+
+        [Test]
         public void FoodAndPreyStayOutOfTheSeabedAndFramesCarryIt()
         {
             using var world = new FermenterWorld();

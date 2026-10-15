@@ -170,7 +170,9 @@ namespace AdaptOrDeity.Game.Session
             _tideY = _body.Body.CurrentVy;
             _tidePeriod = GameParameters.Default.Value("environment.tide_period");
             Tide(0.0);
-            Seabed = new Seabed(GameParameters.Default.Seabed(), _body.Body.Y);
+            _seabedStartX = _body.Body.X;
+            _seabedStartY = _body.Body.Y;
+            Seabed = new Seabed(GameParameters.Default.Seabed(), _seabedStartY, _seabedStartX);
             _cellAt = i =>
             {
                 _body.WorldPosition(i, out double x, out double y);
@@ -236,7 +238,11 @@ namespace AdaptOrDeity.Game.Session
                 "amino acids of removed protein: reused to build new copies (saving about 23 ATP each against making them " +
                 "from glucose) or broken down for a little ATP"), c => c.Budget().AtpRecycledProtein);
             Add(new DetailInfo("atp_pumps", used, "H⁺-ATPase pumping", "mol/s", "ATP/s", avogadro,
-                "powers the proton gradient that drives NhaA, Trk and KefC"), c => c.Budget().AtpPumps);
+                "holds the proton gradient that drives NhaA, Trk and KefC, against the leaks (the pumping for swimming " +
+                "is its own line)"), c => c.Budget().AtpPumps);
+            Add(new DetailInfo("atp_swimming", used, "Swimming (flagella)", "mol/s", "ATP/s", avogadro,
+                "the flagellar motors run on protons flowing in; the H⁺-ATPase spends this pumping them back out " +
+                "(10 H⁺ per 3 ATP)"), c => c.Budget().AtpSwimming);
             Add(new DetailInfo("atp_protein_turnover", used, "Protein turnover", "mol/s", "ATP/s", avogadro,
                 "remaking degraded protein at the ribosomes (1%/h), all proteins including the unmodelled ones"),
                 c => c.Budget().AtpProteinTurnover);
@@ -360,6 +366,7 @@ namespace AdaptOrDeity.Game.Session
                 SetOcean(GameTimeline.Default.OceanGlucose(value));
                 var arrivals = GameTimeline.Default.ArrivalsAt(value);
                 _food.SetArrivals(arrivals.FoodPerSecond, arrivals.CarriedShare);
+                _food.SetFloorArrivals(arrivals.FloorFoodPerSecond);
                 _prey.SetArrivals(arrivals.PreyPerSecond);
             }
         }
@@ -465,7 +472,20 @@ namespace AdaptOrDeity.Game.Session
         }
 
         /// <summary>The ground and rocks at the bottom of the world.</summary>
-        public Seabed Seabed { get; }
+        public Seabed Seabed { get; private set; }
+
+        private readonly double _seabedStartX, _seabedStartY;
+
+        /// <summary>
+        /// Draws a new seabed from <paramref name="seed"/> (a new game's random floor; content seabed.seed otherwise),
+        /// around where the creature started. Bodies and food in the new rocks are pushed out on the next step.
+        /// </summary>
+        public void ReseedSeabed(int seed)
+        {
+            var settings = GameParameters.Default.Seabed();
+            settings.Seed = seed;
+            Seabed = new Seabed(settings, _seabedStartY, _seabedStartX);
+        }
 
         /// <summary>True when the creature rested against the ground or a rock in the last step.</summary>
         public bool TouchingSeabed { get; private set; }
@@ -608,6 +628,7 @@ namespace AdaptOrDeity.Game.Session
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
             _prey.Step(dt, b.X, b.Y, _freeVx, _freeVy);   // prey swim in the free current
             _food.KeepOutOf(Seabed);
+            _food.ArriveOnFloor(Seabed, dt);
             _prey.KeepOutOf(Seabed);
             FreezeAndThaw();
             MoveOrganisms();

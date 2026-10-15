@@ -204,6 +204,12 @@ namespace AdaptOrDeity.Sim.World
         /// <summary>Random seed (determinism).</summary>
         public int Seed { get; set; }
 
+        /// <summary>
+        /// Food settling on the floor per second [1/s] where the ground is in view: packets lying on the ground (or on a
+        /// rock), beside those arriving in the water (<see cref="ArrivalsPerSecond"/>). From a random stream of its own.
+        /// </summary>
+        public double FloorArrivalsPerSecond { get; set; }
+
         public IReadOnlyList<TraceSpecies> TraceSpecies { get; set; } = Array.Empty<TraceSpecies>();
     }
 
@@ -231,6 +237,45 @@ namespace AdaptOrDeity.Sim.World
             for (int i = 0; i < settings.InitialPacketCapacity; i++)
                 _packets.Add(NewSlot());
             _untilNext = Exponential() / Math.Max(settings.ArrivalsPerSecond, 1e-300);
+            _floorRandom = new Random(unchecked(settings.Seed * 31 + 0x5F100D));
+            _untilNextFloor = FloorInterval();
+        }
+
+        private readonly Random _floorRandom;
+        private double _untilNextFloor;
+
+        private double FloorInterval() => Settings.FloorArrivalsPerSecond > 0.0
+            ? -Math.Log(1.0 - _floorRandom.NextDouble()) / Settings.FloorArrivalsPerSecond : double.PositiveInfinity;
+
+        /// <summary>Food packets that have settled on the floor since the field was made (diagnostics).</summary>
+        public long ArrivedOnFloor { get; private set; }
+
+        /// <summary>The rate food settles on the floor changes (a new level or region).</summary>
+        public void SetFloorArrivals(double perSecond)
+        {
+            Settings.FloorArrivalsPerSecond = perSecond;
+            _untilNextFloor = FloorInterval();
+        }
+
+        /// <summary>
+        /// Food settling on the floor, at <see cref="FoodSettings.FloorArrivalsPerSecond"/>, Poisson: each packet lies on
+        /// the ground (or the rock there) at a random place across the window. None arrives while the ground is out of
+        /// view (the creature well above it).
+        /// </summary>
+        public void ArriveOnFloor(Seabed seabed, double dt)
+        {
+            _untilNextFloor -= dt;
+            while (_untilNextFloor <= 0.0)
+            {
+                _untilNextFloor += FloorInterval();
+                double r = PacketRadius, x = CentreX + (2.0 * _floorRandom.NextDouble() - 1.0) * HalfSize;
+                double y = seabed.GroundY + r;
+                seabed.PushOut(ref x, ref y, r, out _, out _);
+                if (Beyond(x, y, HalfSize))
+                    continue;
+                Fill(FreeSlot(), PacketKind.Lying, x, y, 0.0, 0.0, _floorRandom);
+                ArrivedOnFloor++;
+            }
         }
 
         public FoodSettings Settings { get; }
@@ -408,7 +453,9 @@ namespace AdaptOrDeity.Sim.World
         }
 
         // Whether packet p is farther than reach from the window's centre (the creature) along either ground axis.
-        private bool Beyond(FoodPacket p, double reach) => Math.Abs(p.X - CentreX) > reach || Math.Abs(p.Y - CentreY) > reach;
+        private bool Beyond(FoodPacket p, double reach) => Beyond(p.X, p.Y, reach);
+
+        private bool Beyond(double x, double y, double reach) => Math.Abs(x - CentreX) > reach || Math.Abs(y - CentreY) > reach;
 
         private static void Freeze(FoodPacket p)
         {
@@ -798,7 +845,7 @@ namespace AdaptOrDeity.Sim.World
             Fill(slot, carried ? PacketKind.Carried : PacketKind.Lying, x, y, pvx, pvy);
         }
 
-        private void Fill(FoodPacket slot, PacketKind kind, double x, double y, double vx, double vy)
+        private void Fill(FoodPacket slot, PacketKind kind, double x, double y, double vx, double vy, Random? random = null)
         {
             slot.Kind = kind;
             slot.X = x;
@@ -808,7 +855,7 @@ namespace AdaptOrDeity.Sim.World
             slot.Radius = slot.FullRadius = PacketRadius;
             slot.Glucose = slot.Amount = Settings.PacketAmount;
             slot.Free = Settings.FreeFraction * Settings.PacketAmount;
-            slot.MainTrace = _random.Next(TraceSpecies.Count);
+            slot.MainTrace = (random ?? _random).Next(TraceSpecies.Count);
             for (int i = 0; i < slot.Traces.Length; i++)
                 slot.Traces[i] = i == slot.MainTrace ? 1.0 : Settings.PacketTraceMinorShare;   // relative strengths
             slot.Stuck = false;

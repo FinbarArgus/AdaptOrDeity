@@ -113,6 +113,7 @@ namespace AdaptOrDeity.Game.Content
             InitialPacketCapacity = Integer("food.initial_packet_capacity"),
             ArrivalsPerSecond = GameTimeline.Default.ArrivalsAt(1).FoodPerSecond,
             CarriedShare = GameTimeline.Default.ArrivalsAt(1).CarriedShare,
+            FloorArrivalsPerSecond = GameTimeline.Default.ArrivalsAt(1).FloorFoodPerSecond,
             Seed = Integer("food.seed"),
             TraceSpecies = TraceSpecies,
         };

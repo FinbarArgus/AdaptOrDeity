@@ -141,6 +141,12 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
   - De-energisation damage: `k_energy_dmg` (lethal in 30 min at no ATP) x (1 - ATP/1 mM)^2 below 1 mM, for proteins
     aggregating once chaperones and disaggregases lack ATP (ATP-dependent aggregation in dormant bacteria: Pu et al. 2019,
     from memory, unchecked). Both values are placeholders. Repair needs ATP, so a de-energised cell mends nothing.
+- Floor food (2026-10-15): `levels[].arrivals.floor_food_per_s` 0.001 packets/s in every level (content/timeline.json),
+  settling on the ground where it is in view, beside the water's arrivals. A design guess: marine snow and detritus do
+  collect on the seabed, but no rate per area is sourced, and food does not build up on the floor while the creature is
+  away from it.
+- Seabed (2026-10-15): each 40 µm stretch holds 0 (20%), 1 (55%) or 2 (25%) structures (boulder, stack, arch or
+  outcrop, equally likely): design, not a measured seabed.
 
 ## Level 4: extracellular space (upstream homogenisation-checks a12d84a; copies in content/upstream while that branch is local)
 
