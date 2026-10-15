@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <model xmlns="http://www.cellml.org/cellml/1.1#" xmlns:cellml="http://www.cellml.org/cellml/1.1#" name="generic_adaptive_cell_fermenter">
   <component name="cell">
+    <variable name="ATP_dmg_mod_bio" units="millimolar" public_interface="in"/>
     <variable name="ATP_floor_mod_bio" units="millimolar" public_interface="in"/>
     <variable name="ATP_floor_mod_protein" units="millimolar" public_interface="in"/>
     <variable name="ATP_ref_mod_bio" units="millimolar" public_interface="in"/>
@@ -48,7 +49,10 @@
     <variable name="Cai_init_mod_Ca" units="millimolar" public_interface="in"/>
     <variable name="Cao_mod_i_NaCa" units="millimolar" public_interface="in"/>
     <variable name="Cao_mod_i_leak_Ca" units="millimolar" public_interface="in"/>
-    <variable name="D_init_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="D_energy_init_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="D_phys_init_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="D_rad_init_mod_bio" units="dimensionless" public_interface="in"/>
+    <variable name="D_ribo_init_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="F" units="C_per_mol" public_interface="in"/>
     <variable name="H__E_H" units="milliV" public_interface="out"/>
     <variable name="H__H_i" units="millimolar" public_interface="out" initial_value="H_i_init_mod_H"/>
@@ -73,12 +77,14 @@
     <variable name="K_ATP_mx_mod_cytosol" units="millimolar" public_interface="in"/>
     <variable name="K_ATP_reg_mod_reg" units="millimolar" public_interface="in"/>
     <variable name="K_ATP_store_mod_cytosol" units="millimolar" public_interface="in"/>
+    <variable name="K_Ca_dmg_mod_bio" units="millimolar" public_interface="in"/>
     <variable name="K_D_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="K_G6P_lg_mod_cytosol" units="millimolar" public_interface="in"/>
     <variable name="K_G6P_mx_mod_cytosol" units="millimolar" public_interface="in"/>
     <variable name="K_G6P_reg_mod_reg" units="millimolar" public_interface="in"/>
     <variable name="K_G6P_store_mod_cytosol" units="millimolar" public_interface="in"/>
     <variable name="K_H_reg_mod_reg" units="millimolar" public_interface="in"/>
+    <variable name="K_K_dmg_mod_bio" units="millimolar" public_interface="in"/>
     <variable name="K_Pi_PEP_mod_glc_PTS" units="millimolar" public_interface="in"/>
     <variable name="K_Pi_gly_mod_cytosol" units="millimolar" public_interface="in"/>
     <variable name="K_Pi_hyd_mod_cytosol" units="millimolar" public_interface="in"/>
@@ -185,7 +191,11 @@
     <variable name="area_max_fraction_mod_protein" units="dimensionless" public_interface="in"/>
     <variable name="area_per_lipid_mod_bio" units="um2" public_interface="in"/>
     <variable name="beta_H_mod_H" units="millimolar" public_interface="in"/>
-    <variable name="bio__D" units="dimensionless" public_interface="out" initial_value="D_init_mod_bio"/>
+    <variable name="bio__D" units="dimensionless" public_interface="out"/>
+    <variable name="bio__D_energy" units="dimensionless" public_interface="out" initial_value="D_energy_init_mod_bio"/>
+    <variable name="bio__D_phys" units="dimensionless" public_interface="out" initial_value="D_phys_init_mod_bio"/>
+    <variable name="bio__D_rad" units="dimensionless" public_interface="out" initial_value="D_rad_init_mod_bio"/>
+    <variable name="bio__D_ribo" units="dimensionless" public_interface="out" initial_value="D_ribo_init_mod_bio"/>
     <variable name="bio__J_ATP_bio" units="mol_per_s" public_interface="out"/>
     <variable name="bio__J_RNA" units="mol_per_s" public_interface="out"/>
     <variable name="bio__J_growth" units="mol_per_s" public_interface="out"/>
@@ -197,12 +207,22 @@
     <variable name="bio__M_build_protein" units="mole" public_interface="out"/>
     <variable name="bio__M_daughter" units="mole" public_interface="out"/>
     <variable name="bio__P_growth" units="mole" public_interface="out" initial_value="P_init_mod_bio"/>
+    <variable name="bio__R_dmg_energy" units="per_s" public_interface="out"/>
+    <variable name="bio__R_dmg_rad" units="per_s" public_interface="out"/>
+    <variable name="bio__R_dmg_ribo" units="per_s" public_interface="out"/>
     <variable name="bio__R_reg" units="dimensionless" public_interface="out"/>
     <variable name="bio__R_reg_repair" units="dimensionless" public_interface="out"/>
     <variable name="bio__R_reg_upkeep" units="dimensionless" public_interface="out"/>
+    <variable name="bio__R_rep_energy" units="per_s" public_interface="out"/>
+    <variable name="bio__R_rep_phys" units="per_s" public_interface="out"/>
+    <variable name="bio__R_rep_rad" units="per_s" public_interface="out"/>
+    <variable name="bio__R_rep_ribo" units="per_s" public_interface="out"/>
     <variable name="bio__R_repair" units="per_s" public_interface="out"/>
     <variable name="bio__f_ATP_bio" units="dimensionless" public_interface="out"/>
+    <variable name="bio__f_Ca_dmg" units="dimensionless" public_interface="out"/>
+    <variable name="bio__f_K_dmg" units="dimensionless" public_interface="out"/>
     <variable name="bio__f_T_dmg" units="dimensionless" public_interface="out"/>
+    <variable name="bio__f_energy_dmg" units="dimensionless" public_interface="out"/>
     <variable name="bio__glycogen_progress" units="dimensionless" public_interface="out"/>
     <variable name="bio__growth_progress" units="dimensionless" public_interface="out"/>
     <variable name="bio__j_ADP_bio" units="mol_per_s" public_interface="out"/>
@@ -335,6 +355,7 @@
     <variable name="dG0_store_mod_cytosol" units="J_per_mol" public_interface="in"/>
     <variable name="dT_Q10_mod_bio" units="kelvin" public_interface="in"/>
     <variable name="dT_Q10_mod_cytosol" units="kelvin" public_interface="in"/>
+    <variable name="dose_rate_mod_bio" units="gray_per_s" public_interface="in"/>
     <variable name="eta_mod_i_flagellum" units="pascal_second" public_interface="in"/>
     <variable name="f_ref_mod_i_flagellum" units="per_s" public_interface="in"/>
     <variable name="footprint_mod_pool_ABC" units="nm2" public_interface="in"/>
@@ -460,6 +481,8 @@
     <variable name="jmax_glc_mod_glc_PTS" units="mol_per_s_per_um2" public_interface="in"/>
     <variable name="jmax_glc_mod_membrane_face" units="mol_per_s_per_um2" public_interface="in"/>
     <variable name="jmax_lac_mod_membrane_face" units="mol_per_s_per_um2" public_interface="in"/>
+    <variable name="k_Ca_dmg_mod_bio" units="per_s" public_interface="in"/>
+    <variable name="k_K_dmg_mod_bio" units="per_s" public_interface="in"/>
     <variable name="k_bind_Ca_mod_Ca" units="per_millimolar_s" public_interface="in"/>
     <variable name="k_deg_mod_pool_ABC" units="per_s" public_interface="in"/>
     <variable name="k_deg_mod_pool_Flagellum" units="per_s" public_interface="in"/>
@@ -475,7 +498,9 @@
     <variable name="k_deg_mod_pool_PTS" units="per_s" public_interface="in"/>
     <variable name="k_deg_mod_pool_Trk" units="per_s" public_interface="in"/>
     <variable name="k_deg_mod_pool_proteome" units="per_s" public_interface="in"/>
+    <variable name="k_energy_dmg_mod_bio" units="per_s" public_interface="in"/>
     <variable name="k_lipid_mod_bio" units="per_s" public_interface="in"/>
+    <variable name="k_rad_dmg_mod_bio" units="per_gray" public_interface="in"/>
     <variable name="k_ribo_mod_bio" units="per_s" public_interface="in"/>
     <variable name="k_unbind_Ca_mod_Ca" units="per_s" public_interface="in"/>
     <variable name="kcat_mod_hydrolase" units="per_s" public_interface="in"/>
@@ -561,6 +586,7 @@
     <variable name="n_0_mod_pool_Trk" units="dimensionless" public_interface="in"/>
     <variable name="n_0_mod_pool_proteome" units="dimensionless" public_interface="in"/>
     <variable name="n_ATP_mx_mod_cytosol" units="dimensionless" public_interface="in"/>
+    <variable name="n_Ca_dmg_mod_bio" units="dimensionless" public_interface="in"/>
     <variable name="n_G6P_lg_mod_cytosol" units="dimensionless" public_interface="in"/>
     <variable name="n_H_mod_glc_GalP" units="dimensionless" public_interface="in"/>
     <variable name="n_H_mod_i_H_ATPase" units="dimensionless" public_interface="in"/>
@@ -1005,6 +1031,7 @@
     <variable name="r_H_ATPase_mod_i_H_ATPase" units="per_s" public_interface="in"/>
     <variable name="r_NaCa_mod_i_NaCa" units="per_s" public_interface="in"/>
     <variable name="r_dmg_mod_bio" units="per_s" public_interface="in"/>
+    <variable name="r_dmg_phys_mod_bio" units="per_s" public_interface="in"/>
     <variable name="r_rep_max_mod_bio" units="per_s" public_interface="in"/>
     <variable name="reg__f_ATP_reg" units="dimensionless" public_interface="out"/>
     <variable name="reg__f_G6P_reg" units="dimensionless" public_interface="out"/>
@@ -3356,7 +3383,144 @@
       </apply>
       <apply>
         <eq />
-        <ci>bio__R_repair</ci>
+        <ci>bio__f_Ca_dmg</ci>
+        <apply>
+          <divide />
+          <apply>
+            <power />
+            <ci>Ca__Cai</ci>
+            <ci>n_Ca_dmg_mod_bio</ci>
+          </apply>
+          <apply>
+            <plus />
+            <apply>
+              <power />
+              <ci>K_Ca_dmg_mod_bio</ci>
+              <ci>n_Ca_dmg_mod_bio</ci>
+            </apply>
+            <apply>
+              <power />
+              <ci>Ca__Cai</ci>
+              <ci>n_Ca_dmg_mod_bio</ci>
+            </apply>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__f_K_dmg</ci>
+        <apply>
+          <power />
+          <apply>
+            <divide />
+            <apply>
+              <plus />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <apply>
+                  <divide />
+                  <ci>Na_K__Ki</ci>
+                  <ci>K_K_dmg_mod_bio</ci>
+                </apply>
+              </apply>
+              <apply>
+                <abs />
+                <apply>
+                  <minus />
+                  <cn cellml:units="dimensionless">1.0</cn>
+                  <apply>
+                    <divide />
+                    <ci>Na_K__Ki</ci>
+                    <ci>K_K_dmg_mod_bio</ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+            <cn cellml:units="dimensionless">2.0</cn>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__f_energy_dmg</ci>
+        <apply>
+          <power />
+          <apply>
+            <divide />
+            <apply>
+              <plus />
+              <apply>
+                <minus />
+                <cn cellml:units="dimensionless">1.0</cn>
+                <apply>
+                  <divide />
+                  <ci>cytosol__C_ATP</ci>
+                  <ci>ATP_dmg_mod_bio</ci>
+                </apply>
+              </apply>
+              <apply>
+                <abs />
+                <apply>
+                  <minus />
+                  <cn cellml:units="dimensionless">1.0</cn>
+                  <apply>
+                    <divide />
+                    <ci>cytosol__C_ATP</ci>
+                    <ci>ATP_dmg_mod_bio</ci>
+                  </apply>
+                </apply>
+              </apply>
+            </apply>
+            <cn cellml:units="dimensionless">2.0</cn>
+          </apply>
+          <cn cellml:units="dimensionless">2.0</cn>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_dmg_ribo</ci>
+        <apply>
+          <plus />
+          <apply>
+            <times />
+            <ci>r_dmg_mod_bio</ci>
+            <ci>bio__f_T_dmg</ci>
+          </apply>
+          <apply>
+            <times />
+            <ci>k_Ca_dmg_mod_bio</ci>
+            <ci>bio__f_Ca_dmg</ci>
+          </apply>
+          <apply>
+            <times />
+            <ci>k_K_dmg_mod_bio</ci>
+            <ci>bio__f_K_dmg</ci>
+          </apply>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_dmg_energy</ci>
+        <apply>
+          <times />
+          <ci>k_energy_dmg_mod_bio</ci>
+          <ci>bio__f_energy_dmg</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_dmg_rad</ci>
+        <apply>
+          <times />
+          <ci>k_rad_dmg_mod_bio</ci>
+          <ci>dose_rate_mod_bio</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_rep_phys</ci>
         <apply>
           <times />
           <apply>
@@ -3365,16 +3529,107 @@
               <times />
               <ci>repair_level_mod_bio</ci>
               <ci>r_rep_max_mod_bio</ci>
-              <ci>bio__D</ci>
+              <ci>bio__D_phys</ci>
             </apply>
             <apply>
               <plus />
               <ci>K_D_mod_bio</ci>
-              <ci>bio__D</ci>
+              <ci>bio__D_phys</ci>
             </apply>
           </apply>
           <ci>bio__f_ATP_bio</ci>
           <ci>bio__R_reg_repair</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_rep_rad</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <ci>repair_level_mod_bio</ci>
+              <ci>r_rep_max_mod_bio</ci>
+              <ci>bio__D_rad</ci>
+            </apply>
+            <apply>
+              <plus />
+              <ci>K_D_mod_bio</ci>
+              <ci>bio__D_rad</ci>
+            </apply>
+          </apply>
+          <ci>bio__f_ATP_bio</ci>
+          <ci>bio__R_reg_repair</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_rep_ribo</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <ci>repair_level_mod_bio</ci>
+              <ci>r_rep_max_mod_bio</ci>
+              <ci>bio__D_ribo</ci>
+            </apply>
+            <apply>
+              <plus />
+              <ci>K_D_mod_bio</ci>
+              <ci>bio__D_ribo</ci>
+            </apply>
+          </apply>
+          <ci>bio__f_ATP_bio</ci>
+          <ci>bio__R_reg_repair</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_rep_energy</ci>
+        <apply>
+          <times />
+          <apply>
+            <divide />
+            <apply>
+              <times />
+              <ci>repair_level_mod_bio</ci>
+              <ci>r_rep_max_mod_bio</ci>
+              <ci>bio__D_energy</ci>
+            </apply>
+            <apply>
+              <plus />
+              <ci>K_D_mod_bio</ci>
+              <ci>bio__D_energy</ci>
+            </apply>
+          </apply>
+          <ci>bio__f_ATP_bio</ci>
+          <ci>bio__R_reg_repair</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__R_repair</ci>
+        <apply>
+          <plus />
+          <ci>bio__R_rep_phys</ci>
+          <ci>bio__R_rep_rad</ci>
+          <ci>bio__R_rep_ribo</ci>
+          <ci>bio__R_rep_energy</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <ci>bio__D</ci>
+        <apply>
+          <plus />
+          <ci>bio__D_phys</ci>
+          <ci>bio__D_rad</ci>
+          <ci>bio__D_ribo</ci>
+          <ci>bio__D_energy</ci>
         </apply>
       </apply>
       <apply>
@@ -3631,16 +3886,57 @@
           <bvar>
             <ci>t</ci>
           </bvar>
-          <ci>bio__D</ci>
+          <ci>bio__D_phys</ci>
         </apply>
         <apply>
           <minus />
-          <apply>
-            <times />
-            <ci>r_dmg_mod_bio</ci>
-            <ci>bio__f_T_dmg</ci>
-          </apply>
-          <ci>bio__R_repair</ci>
+          <ci>r_dmg_phys_mod_bio</ci>
+          <ci>bio__R_rep_phys</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <apply>
+          <diff />
+          <bvar>
+            <ci>t</ci>
+          </bvar>
+          <ci>bio__D_rad</ci>
+        </apply>
+        <apply>
+          <minus />
+          <ci>bio__R_dmg_rad</ci>
+          <ci>bio__R_rep_rad</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <apply>
+          <diff />
+          <bvar>
+            <ci>t</ci>
+          </bvar>
+          <ci>bio__D_ribo</ci>
+        </apply>
+        <apply>
+          <minus />
+          <ci>bio__R_dmg_ribo</ci>
+          <ci>bio__R_rep_ribo</ci>
+        </apply>
+      </apply>
+      <apply>
+        <eq />
+        <apply>
+          <diff />
+          <bvar>
+            <ci>t</ci>
+          </bvar>
+          <ci>bio__D_energy</ci>
+        </apply>
+        <apply>
+          <minus />
+          <ci>bio__R_dmg_energy</ci>
+          <ci>bio__R_rep_energy</ci>
         </apply>
       </apply>
       <apply>

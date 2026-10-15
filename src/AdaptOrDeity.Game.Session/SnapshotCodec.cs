@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Game.Session
     /// </summary>
     public static class SnapshotCodec
     {
-        private const int Magic = 0x41534E38;   // "ASN8"
+        private const int Magic = 0x41534E39;   // "ASN9"
 
         // Bytes before the frame's fields: the magic number and the shape (HeaderFields integers).
         private const int HeaderFields = 12, HeaderBytes = 4 + 4 * HeaderFields;
@@ -130,6 +130,12 @@ namespace AdaptOrDeity.Game.Session
             float damageMeter = f.DamageMeter; io.Value(ref damageMeter); f.DamageMeter = damageMeter;
             int survivalNow = f.SurvivalPointsNow; io.Value(ref survivalNow); f.SurvivalPointsNow = survivalNow;
             int damageNow = f.DamagePointsNow; io.Value(ref damageNow); f.DamagePointsNow = damageNow;
+            for (int k = 0; k < f.CreatureDamage.Length; k++)
+            {
+                float component = f.CreatureDamage[k]; io.Value(ref component); f.CreatureDamage[k] = component;
+            }
+            float worst = f.CreatureDamageWorst; io.Value(ref worst); f.CreatureDamageWorst = worst;
+            bool ended = f.PathwayEnded; io.Value(ref ended); f.PathwayEnded = ended;
             float starving = f.StarvingShare; io.Value(ref starving); f.StarvingShare = starving;
             float withoutFood = f.TimeWithoutFood; io.Value(ref withoutFood); f.TimeWithoutFood = withoutFood;
             int scoredLevel = f.ScoredLevel; io.Value(ref scoredLevel); f.ScoredLevel = scoredLevel;

@@ -626,6 +626,14 @@ alerts → fitness integrals and probes → clock tick (level-window end → lev
   (motility.proton_cost_scale 0.01), keeping a bacterium's propulsion efficiency; stronger-flagella proteins come later.
   Level 1 recalibrated (docs/plans/scoring.md): the four reference players earn 0, 1, 2 and 3 stars.
 
+- **2026-10-15** Damage has four parts, each repaired at ATP cost (upstream biosynthesis): physical (the envelope, from
+  attacks: an input), radiation (DNA, per gray: an input), ribosome (wear, Ca²⁺ overload displacing Mg²⁺, and K⁺ below
+  100 mM) and de-energisation (proteins aggregating below 1 mM ATP). A cell whose pumps stop now dies within about an
+  hour rather than lingering for days at +20 mV. The HUD shows the creature's damage as one bar of its parts with a mark
+  at the worst it has reached (repair does not lower the mark); at 100% (every cell dead) the evolutionary pathway ends:
+  time stops and a window offers a new start. Values in docs/review/unreferenced-values.md. Still to add: something that
+  attacks or irradiates.
+
 ## Open questions
 1. Is an erased cell's content released to its neighbours (conserved) or lost?
 2. Reproductive output / PopulationModel equation and the competitor tables per region and epoch.

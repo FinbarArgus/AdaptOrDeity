@@ -152,6 +152,17 @@ namespace AdaptOrDeity.Game.Session
 
         public int DamagePointsNow { get; internal set; }
 
+        /// <summary>
+        /// The creature's damage by component (FermenterWorld.DamageComponents: physical, radiation, ribosome,
+        /// de-energisation, dead cells), each a mean share of a lethal load over its cells; the highest total it has
+        /// reached (repair does not lower it); and whether its pathway has ended (the total reached 1: every cell dead).
+        /// </summary>
+        public float[] CreatureDamage { get; } = new float[5];
+
+        public float CreatureDamageWorst { get; internal set; }
+
+        public bool PathwayEnded { get; internal set; }
+
         /// <summary>Share of the creature's living cells starving now (0-1), and its time since it last had food [s].</summary>
         public float StarvingShare { get; internal set; }
 

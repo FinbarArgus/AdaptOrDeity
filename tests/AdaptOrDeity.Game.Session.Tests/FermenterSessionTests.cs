@@ -76,6 +76,55 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(frame.Details[glucose][0], Is.EqualTo(world.Cell(0).State("cytosol__C_glc")));
         }
 
+        [Test]
+        public void TheCreaturesDamageBarHasItsPartsAndAWorstMarkRepairDoesNotLower()
+        {
+            var loop = NewLoop(out var world);
+            world.BathConcentration = 1.0;   // food enough to pay for the repair
+            var cell = world.Cell(0);
+            cell.AddPhysicalDamage(0.3);
+            loop.StepExactly(10);
+            var frame = loop.CreateFrame();
+            loop.WriteSnapshot(frame);
+            Assert.That(frame.CreatureDamage[0], Is.EqualTo((float)cell.DamagePhysical).Within(1e-6f), "physical");
+            Assert.That(frame.CreatureDamage[2], Is.EqualTo((float)cell.DamageRibosome).Within(1e-6f), "ribosome (wear)");
+            Assert.That(frame.CreatureDamage.Sum(), Is.EqualTo((float)cell.Damage).Within(1e-6f));
+            float worst = frame.CreatureDamageWorst;
+            Assert.That(worst, Is.EqualTo((float)cell.Damage).Within(1e-4f));
+            loop.StepExactly(6000);   // ten minutes of repair
+            loop.WriteSnapshot(frame);
+            Assert.That(frame.CreatureDamage.Sum(), Is.LessThan(worst - 0.003f), "repair mends the damage");
+            Assert.That(frame.CreatureDamageWorst, Is.EqualTo(worst).Within(1e-6f), "but not the record");
+            Assert.That(frame.PathwayEnded, Is.False);
+        }
+
+        [Test]
+        public void WhenEveryCellHasDiedThePathwayEndsAndTimeStops()
+        {
+            var loop = NewLoop(out var world);
+            world.Cell(0).SetState("bio__D_energy", 0.6);
+            world.Cell(0).SetState("bio__D_ribo", 0.6);   // 1.2 of a lethal load: half and half
+            loop.StepExactly(2);
+            var frame = loop.CreateFrame();
+            loop.WriteSnapshot(frame);
+            Assert.That(world.PathwayEnded, Is.True);
+            Assert.That(frame.PathwayEnded, Is.True);
+            // the bar shows what killed it, as shares of the cells' damage at death
+            Assert.That(frame.CreatureDamage[3], Is.EqualTo(0.6f / 1.2f).Within(0.01f), "de-energisation");
+            Assert.That(frame.CreatureDamage[2], Is.EqualTo(0.6f / 1.2f).Within(0.01f), "ribosome");
+            Assert.That(frame.CreatureDamage.Sum(), Is.EqualTo(1f).Within(1e-5f));
+            double t = frame.SimTime;
+            loop.StepExactly(100);
+            loop.WriteSnapshot(frame);
+            Assert.That(frame.SimTime, Is.EqualTo(t), "time stops");
+            var bytes = new byte[SnapshotCodec.Size(frame)];
+            SnapshotCodec.Write(frame, bytes);
+            var copy = SnapshotCodec.NewFrameFor(bytes);
+            SnapshotCodec.Read(bytes, copy);
+            Assert.That((copy.PathwayEnded, copy.CreatureDamage[3], copy.CreatureDamageWorst),
+                Is.EqualTo((true, frame.CreatureDamage[3], 1f)));
+        }
+
         private static SimLoop Swimming(int cells, out FermenterWorld world)
         {
             var loop = NewLoop(out world);
@@ -235,7 +284,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             // Kill cell 1; growth resumes and a finished daughter takes its place, not a new slot.
             var dying = world.Cell(1);
             dying.RepairLevel = 0.0;
-            dying.SetState("bio__D", 1.0);
+            dying.SetState("bio__D_ribo", 1.0);
             loop.StepExactly(2);
             Assert.That(world.CellAlive(1), Is.False);
             Assert.That(world.Cell(0).GrowthFraction, Is.EqualTo(0.5).Within(1e-12));

@@ -79,6 +79,11 @@ after 30 s without food.
 (Rows measured with `starvation_to_empty` 0.03; survival points re-derived for 0.143; the LevelOne fixtures check the
 stars with the content as committed: see "Tests".)
 
+With the four damage types (2026-10-15) a cell left alone dies: its ATP runs out at 8.6 h, de-energisation damage kills
+it at 9.1 h and its evolutionary pathway ends (no score; the LevelOneLeftAlone fixture checks it ends within the day).
+Mediocre, great and optimised keep their 1, 2 and 3 stars (their ATP never falls below the 1 mM where de-energisation
+damage starts).
+
 Why these values:
 - In a full famine (a 1 µM sea) regulating the maintenance only delays the crash (ATP to 0.1 mM at 190 s instead of 124 s
   from rest), so a mediocre player could not differ from a cell left alone. With glucose in the open water a regulated

@@ -249,11 +249,91 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
             var cell = NewCell();
             Assert.That(cell.Damage, Is.InRange(0.005, 0.02), "steady damage at full repair");
             cell.RepairLevel = 0.0;
-            cell.SetState("bio__D", 0.999);   // 0.001 of a lethal load left: ~14 min at 20 C
+            cell.SetState("bio__D_ribo", 0.999);   // 0.001 of a lethal load left: ~14 min at 20 C
             for (int i = 0; i < 12000 && cell.Alive; i++)
                 cell.Step(GameDt);
             Assert.That(cell.Alive, Is.False);
             Assert.That(cell.Budget().AtpRepair, Is.EqualTo(0.0));
+        }
+
+        [Test]
+        public void EachDamageTypeIsRepairedAndTheyAddToTheTotal()
+        {
+            var cell = NewCell();
+            cell.MembraneGlucose = 1.0;   // repairing this much costs about half the resting ATP turnover: feed it
+            double wear = cell.DamageRibosome;
+            Assert.That((cell.DamagePhysical, cell.DamageRadiation), Is.EqualTo((0.0, 0.0)), "only wear at rest");
+            cell.AddPhysicalDamage(0.3);
+            cell.RadiationDoseRate = 1.0;   // 1 Gy/s for 30 s: 30 Gy, a tenth of a lethal load (300 Gy)
+            for (int i = 0; i < 300; i++)
+                cell.Step(GameDt);
+            cell.RadiationDoseRate = 0.0;
+            Assert.That(cell.DamageRadiation, Is.EqualTo(0.1).Within(0.001));
+            Assert.That(cell.Damage, Is.EqualTo(cell.DamagePhysical + cell.DamageRadiation + cell.DamageRibosome
+                                                + cell.DamageEnergy).Within(1e-15));
+            double physical = cell.DamagePhysical, radiation = cell.DamageRadiation;
+            for (int i = 0; i < 36000; i++)   // an hour of full repair
+                cell.Step(GameDt);
+            // each type is repaired by its own machinery at r_rep_max D/(K_D + D) (r_rep_max 1.16e-5/s, K_D 0.1)
+            Assert.That(physical - cell.DamagePhysical, Is.EqualTo(3600 * 1.16e-5 * 0.29 / 0.39).Within(0.006), "envelope repair");
+            Assert.That(radiation - cell.DamageRadiation, Is.EqualTo(3600 * 1.16e-5 * 0.09 / 0.19).Within(0.006), "DNA repair");
+            Assert.That(cell.Atp, Is.GreaterThan(0.5 * cell.RestingAtp));
+            Assert.That(cell.DamageRibosome, Is.EqualTo(wear).Within(0.01 * wear), "wear stays at its steady level");
+            Assert.That(cell.Budget().AtpRepair, Is.GreaterThan(0.0));
+        }
+
+        [Test]
+        public void CalciumOverloadDamagesTheRibosomes()
+        {
+            // at 1 mM free Ca2+ (twice K_Ca_dmg) ribosome damage accrues at 0.8 x 1/(30 min), far beyond repair: a lethal
+            // load in under an hour; at rest (90 nM) the Ca2+ term is ~1e-7 of the wear
+            var cell = NewCell();
+            cell.SetState("Ca__Cai", 1.0);
+            Assert.That(cell.AlgebraicValue("bio__f_Ca_dmg"), Is.EqualTo(0.8).Within(1e-9));
+            double before = cell.DamageRibosome;
+            for (int i = 0; i < 600; i++)
+            {
+                cell.SetState("Ca__Cai", 1.0);   // held there: the cell's buffer would take it up
+                cell.Step(GameDt);
+            }
+            Assert.That(cell.DamageRibosome - before, Is.InRange(0.02, 0.03), "60 s at ~4.4e-4/s");
+            Assert.That(cell.DamagePhysical + cell.DamageRadiation, Is.EqualTo(0.0));
+        }
+
+        [Test]
+        public void PotassiumLossDamagesTheRibosomesBelowItsThreshold()
+        {
+            // above K_K_dmg (100 mM) no K+ damage at all; at 50 mM (1 - 50/100)^2 = 1/4 of 1/(1 h)
+            var cell = NewCell();
+            cell.SetState("Na_K__Ki", 120.0);
+            Assert.That(cell.AlgebraicValue("bio__f_K_dmg"), Is.EqualTo(0.0));
+            cell.SetState("Na_K__Ki", 50.0);
+            Assert.That(cell.AlgebraicValue("bio__f_K_dmg"), Is.EqualTo(0.25).Within(1e-12));
+            double before = cell.DamageRibosome;
+            for (int i = 0; i < 600; i++)
+            {
+                cell.SetState("Na_K__Ki", 50.0);   // held there
+                cell.Step(GameDt);
+            }
+            Assert.That(cell.DamageRibosome - before, Is.EqualTo(60.0 * 0.25 / 3600.0).Within(0.002), "60 s at 6.9e-5/s");
+        }
+
+        [Test]
+        public void ADeEnergisedCellDiesWithinTheHour()
+        {
+            // no glucose: ATP runs out within minutes; below 1 mM proteins aggregate (lethal in 30 min at no ATP) and,
+            // without ATP, nothing is repaired
+            var cell = NewCell("famine");
+            Assert.That(cell.AlgebraicValue("bio__f_energy_dmg"), Is.EqualTo(0.0), "no damage while ATP is above 1 mM");
+            double t = 0.0;
+            while (cell.Alive && t < 3600.0)
+            {
+                cell.Step(GameDt);
+                t += GameDt;
+            }
+            Assert.That(cell.Alive, Is.False);
+            Assert.That(t, Is.InRange(1200.0, 3600.0));
+            Assert.That(cell.DamageEnergy, Is.GreaterThan(0.5 * cell.Damage), "de-energisation did most of it");
         }
 
         [Test]

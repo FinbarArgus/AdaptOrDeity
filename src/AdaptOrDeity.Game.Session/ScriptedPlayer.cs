@@ -233,6 +233,9 @@ namespace AdaptOrDeity.Game.Session
 
         public bool Alive { get; set; }
 
+        /// <summary>When every cell had died and the evolutionary pathway ended [s] (NaN if it did not; then no score).</summary>
+        public double EndedAt { get; set; } = double.NaN;
+
         public double FoodEaten { get; set; }
 
         /// <summary>Daughters released in the lineage and prey swallowed by the end of the level.</summary>
@@ -243,7 +246,7 @@ namespace AdaptOrDeity.Game.Session
         public double Seconds { get; set; }
 
         public override string ToString() => FormattableString.Invariant(
-            $"{Player}: points {Score?.Points} (survival {Score?.Survival:F1} -> {Score?.SurvivalPoints}, damage {Score?.Damage:F1} -> {Score?.DamagePoints}, reproduction {Score?.ReproductionPoints}), stars {Score?.Stars}; starving {TimeStarving / 86400:F2} d (last from day {StarvingFrom / 86400:F2}), regulation at {RegulationAt:F0} s, alive {Alive}, ate {FoodEaten:G3} mol, offspring {Offspring}, swallowed {Swallowed}; {Seconds:F0} s to run");
+            $"{Player}: points {Score?.Points} (survival {Score?.Survival:F1} -> {Score?.SurvivalPoints}, damage {Score?.Damage:F1} -> {Score?.DamagePoints}, reproduction {Score?.ReproductionPoints}), stars {Score?.Stars}; starving {TimeStarving / 86400:F2} d (last from day {StarvingFrom / 86400:F2}), regulation at {RegulationAt:F0} s, alive {Alive}, pathway ended at {EndedAt / 3600:F1} h, ate {FoodEaten:G3} mol, offspring {Offspring}, swallowed {Swallowed}; {Seconds:F0} s to run");
 
         /// <summary>
         /// Plays <paramref name="player"/> through the world's current level until the next begins (one level), from a fresh
@@ -262,7 +265,7 @@ namespace AdaptOrDeity.Game.Session
             try
             {
                 int level = world.Level;
-                double t = 0.0, dt = world.MacroDt, starving = 0.0, from = double.NaN;
+                double t = 0.0, dt = world.MacroDt, starving = 0.0, from = double.NaN, ended = double.NaN;
                 while (world.Level == level)
                 {
                     player.Act(world);
@@ -272,6 +275,11 @@ namespace AdaptOrDeity.Game.Session
                         report(world, t);
                     if (world.Level != level)
                         break;
+                    if (world.PathwayEnded)
+                    {
+                        ended = t;
+                        break;
+                    }
                     if (world.StarvingShare > 0.0)
                     {
                         starving += world.StarvingShare * dt;
@@ -284,7 +292,8 @@ namespace AdaptOrDeity.Game.Session
                 return new BotOutcome
                 {
                     Player = player.ToString(), Score = world.LastScore, RegulationAt = world.FoodGapMetAt,
-                    StarvingFrom = from, TimeStarving = starving, Alive = world.CellAlive(0), FoodEaten = world.FoodEaten,
+                    StarvingFrom = from, TimeStarving = starving, Alive = world.CellAlive(0), EndedAt = ended,
+                    FoodEaten = world.FoodEaten,
                     Offspring = world.Offspring, Swallowed = world.Swallowed,
                     Seconds = clock.Elapsed.TotalSeconds,
                 };

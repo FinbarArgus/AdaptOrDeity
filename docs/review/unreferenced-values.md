@@ -125,6 +125,22 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
     serine, threonine and alanine ~1 through acetate; most others give none without respiration (from memory).
   - `c_deg` 1 ATP per amino acid is now cited (Kenniston 2003: ~1 ATP per residue translocated by ClpXP), but the
     unfolding cost (10 to over 500 ATP per substrate) is not counted separately.
+- Damage types (homogenisation-checks, uncommitted, 2026-10-15): damage is the sum of four types, each repaired by its own
+  machinery at the existing repair capacity and cost (r_rep_max, K_D and C_repair, all placeholders, shared by every type):
+  - Physical (envelope) damage, from attacks: an input (`r_dmg_phys`, 0 by default); nothing in the game attacks yet.
+  - Radiation (DNA) damage: `k_rad_dmg` 1/300 per Gy (a lethal load at 300 Gy). E. coli's gamma-ray D10 is ~0.14-0.7 kGy
+    across studies (Deinococcus radiodurans ~10 kGy); D10 includes repair during the dose, so this is order of magnitude
+    only. The dose rate is an input (0 by default; natural background ~1e-10 Gy/s is negligible); nothing in the game
+    irradiates yet.
+  - Ribosome and protein damage: the wear of before (`damage_lifetime` 10 days, placeholder) plus Ca2+ overload,
+    `k_Ca_dmg` (lethal in 30 min at full overload) x Cai^2/(0.5 mM^2 + Cai^2), plus K+ loss, `k_K_dmg` (lethal in 1 h
+    at no K+) x (1 - Ki/100 mM)^2 below 100 mM. Ribosomes need Mg2+ (~170 per ribosome; 1-2 mM free in E. coli, Alatossava
+    1985) and K+ to hold together and translate; Ca2+ displacing Mg2+ at the ribosome is inferred (no direct source found:
+    calcium overload is known to be toxic to bacteria, which hold free Ca2+ at ~100 nM, but its mechanism there is
+    unverified). K_Ca_dmg 0.5 mM, n 2, the 100 mM K+ threshold and both lethal times are placeholders.
+  - De-energisation damage: `k_energy_dmg` (lethal in 30 min at no ATP) x (1 - ATP/1 mM)^2 below 1 mM, for proteins
+    aggregating once chaperones and disaggregases lack ATP (ATP-dependent aggregation in dormant bacteria: Pu et al. 2019,
+    from memory, unchecked). Both values are placeholders. Repair needs ATP, so a de-energised cell mends nothing.
 
 ## Level 4: extracellular space (upstream homogenisation-checks a12d84a; copies in content/upstream while that branch is local)
 

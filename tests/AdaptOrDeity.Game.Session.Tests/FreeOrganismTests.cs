@@ -204,7 +204,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         // Kills the organism (a lethal damage load) and steps once: its body becomes food. Returns the body.
         private static FoodPacket Kill(FermenterWorld world, FreeOrganism o)
         {
-            o.Cell.SetState("bio__D", 1.1);
+            o.Cell.SetState("bio__D_ribo", 1.1);
             Run(world, 0.1);
             Assert.That(o.Alive, Is.False);
             return o.Remains!;
@@ -538,7 +538,7 @@ namespace AdaptOrDeity.Game.Session.Tests
                     Release(world);
                 }
                 world.Organisms[2].Cell.SetState("bio__P_growth", world.Organisms[2].Cell.DaughterCost);
-                world.Organisms[4].Cell.SetState("bio__D", 1.1);   // its body is food among them
+                world.Organisms[4].Cell.SetState("bio__D_ribo", 1.1);   // its body is food among them
                 Run(world, 120.0);
                 var print = world.Organisms.SelectMany(o => new[]
                 {
@@ -574,7 +574,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(capacity, Is.EqualTo(GameParameters.Default.Integer("organisms.initial_capacity")));
             var o = Release(world);
             loop.StepExactly(50);
-            o.Cell.SetState("bio__D", 1.1);
+            o.Cell.SetState("bio__D_ribo", 1.1);
             loop.StepExactly(1);
             var body = o.Remains!;
             while (world.Organisms.Count <= capacity)

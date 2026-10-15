@@ -43,7 +43,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         public void ACreatureThatDiedDoesNotPass()
         {
             using var world = new FermenterWorld();
-            world.Cell(0).SetState("bio__D", 5.0);   // a lethal damage load
+            world.Cell(0).SetState("bio__D_ribo", 5.0);   // a lethal damage load
             Run(world, Day + 1.0);
             Assert.That(world.CellAlive(0), Is.False);
             Assert.That(world.Level, Is.EqualTo(1));
@@ -86,7 +86,7 @@ namespace AdaptOrDeity.Game.Session.Tests
         }
 
         [Test]
-        public void TheNextLevelBeginsWhenItsGoalsAreMet() => Assert.That(Outcome.Score!.Level, Is.EqualTo(1));
+        public virtual void TheNextLevelBeginsWhenItsGoalsAreMet() => Assert.That(Outcome.Score!.Level, Is.EqualTo(1));
     }
 
     [Parallelizable(ParallelScope.Self)]
@@ -94,11 +94,17 @@ namespace AdaptOrDeity.Game.Session.Tests
     {
         protected override ScriptedPlayer Player => Bots.LeftAlone();
 
+        // left alone, the cell's ATP runs out in a gap between packets and it dies of it within the day
         [Test]
-        public void ItStarvesWithinTheLevelAndEarnsNoStar()
+        public override void TheNextLevelBeginsWhenItsGoalsAreMet() =>
+            Assert.That(Outcome.Score, Is.Null, "it never reaches the next level");
+
+        [Test]
+        public void ItStarvesAndItsPathwayEndsWithinTheLevel()
         {
-            Assert.That(Outcome.StarvingFrom, Is.LessThan(GameTimeline.Default.DurationOf(1)), "starving at the end");
-            Assert.That(Outcome.Score!.Stars, Is.EqualTo(0), Outcome.ToString());
+            Assert.That(Outcome.StarvingFrom, Is.LessThan(GameTimeline.Default.DurationOf(1)), Outcome.ToString());
+            Assert.That(Outcome.EndedAt, Is.LessThan(GameTimeline.Default.DurationOf(1)), Outcome.ToString());
+            Assert.That(Outcome.Alive, Is.False);
         }
     }
 

@@ -310,10 +310,71 @@ namespace AdaptOrDeity.UI
                 "the cytosol's pH (healthy ~7.6); lactic acid and failing H⁺ pumps lower it");
             Vital("Membrane potential", $"{v:F0} mV", v <= -80.0 ? Good : v <= -40.0 ? Watch : Bad,
                 "inside negative (healthy ~ -100 mV); when the pumps stop it runs down towards 0 as ions leak");
-            Vital("Damage", $"{damage:F0}% of lethal", damage < 30.0 ? Good : damage < 70.0 ? Watch : Bad,
-                "the cell dies at 100%; repair keeps it low");
+            Vital("Damage", $"{damage:F0}% of lethal", DamageColour(damage),
+                "the sum of the parts in the bar below; the cell dies at 100%. Repair mends each part (and costs ATP)");
+            var parts = new double[DamageParts.Length];
+            for (int k = 0; k < DamageParts.Length; k++)
+            {
+                int d = Find(schema, DamageParts[k].Id);
+                parts[k] = d >= 0 ? frame.Details[d][cell] : 0.0;
+            }
+            DamageBar(GUILayoutUtility.GetRect(Width - 40, 14), parts, 1.0);
+            GUILayout.BeginHorizontal();
+            for (int k = 0; k < DamageParts.Length; k++)
+                if (parts[k] > 0.0005)
+                    Swatch(DamageParts[k].Colour, $"{DamageParts[k].Name} {100.0 * parts[k]:F1}%", DamageParts[k].Tip);
+            GUILayout.FlexibleSpace();
+            GUILayout.EndHorizontal();
             GUILayout.Space(4);
         }
+
+        /// <summary>The parts of a cell's damage, in the bar's order: detail id, name, colour, and what it is.</summary>
+        public static readonly (string Id, string Name, Color Colour, string Tip)[] DamageParts =
+        {
+            ("damage_physical", "Physical", new Color(0.90f, 0.55f, 0.30f), "the envelope (membrane and wall), from attacks"),
+            ("damage_radiation", "Radiation", new Color(0.85f, 0.85f, 0.35f), "DNA lesions from radiation"),
+            ("damage_ribosome", "Ribosome", new Color(0.75f, 0.45f, 0.90f),
+                "wear, Ca²⁺ overload and K⁺ loss: ribosomes need Mg²⁺ and K⁺ to hold together and translate"),
+            ("damage_energy", "De-energisation", new Color(0.95f, 0.35f, 0.40f),
+                "proteins aggregating once ATP runs out and chaperones stop refolding them"),
+        };
+
+        /// <summary>
+        /// A damage bar: each part (a share of a lethal load, in <see cref="DamageParts"/> order, then any extra parts in
+        /// grey) stacked from the left over a bar that is 100% at its right end; a white tick at <paramref name="worst"/>
+        /// when below 1.
+        /// </summary>
+        public static void DamageBar(Rect bar, IReadOnlyList<double> parts, double worst, Color? extra = null)
+        {
+            if (Event.current.type != EventType.Repaint)
+                return;
+            GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0.2f, 0.22f, 0.25f), 0f, 0f);
+            float x = bar.x;
+            for (int k = 0; k < parts.Count; k++)
+            {
+                float w = Mathf.Min(bar.xMax - x, (float)System.Math.Max(0.0, parts[k]) * bar.width);
+                var colour = k < DamageParts.Length ? DamageParts[k].Colour : extra ?? new Color(0.45f, 0.45f, 0.5f);
+                GUI.DrawTexture(new Rect(x, bar.y, w, bar.height), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f,
+                    colour, 0f, 0f);
+                x += w;
+            }
+            if (worst < 1.0)
+            {
+                float wx = bar.x + Mathf.Clamp01((float)worst) * bar.width;
+                GUI.DrawTexture(new Rect(wx - 1f, bar.y - 2f, 2f, bar.height + 4f), Texture2D.whiteTexture, ScaleMode.StretchToFill,
+                    false, 0f, Color.white, 0f, 0f);
+            }
+        }
+
+        private static void Swatch(Color colour, string text, string tip)
+        {
+            var dot = GUILayoutUtility.GetRect(10, 16, GUILayout.Width(10));
+            if (Event.current.type == EventType.Repaint)
+                GUI.DrawTexture(new Rect(dot.x, dot.y + 4, 8, 8), Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, colour, 0f, 0f);
+            GUILayout.Label(new GUIContent(text, tip), GUILayout.ExpandWidth(false));
+        }
+
+        private static Color DamageColour(double percent) => percent < 30.0 ? Good : percent < 70.0 ? Watch : Bad;
 
         private void Vital(string name, string value, Color colour, string tip)
         {
@@ -343,13 +404,18 @@ namespace AdaptOrDeity.UI
             double scale = System.Math.Max(made, used);
             int any = Find(schema, "atp_turnover");
             double perSecond = any >= 0 ? schema.Details[any].DisplayMultiplier : 1.0;   // mol/s -> ATP/s
-            BalanceBar(schema, frame, cell, "Made", "ATP made", SourceColours, made, scale, perSecond);
-            BalanceBar(schema, frame, cell, "Used", "ATP used", SinkColours, used, scale, perSecond);
+            BalanceBar(schema, frame, cell, "Generation", "ATP made", SourceColours, made, scale, perSecond);
+            BalanceBar(schema, frame, cell, "Usage", "ATP used", SinkColours, used, scale, perSecond);
             double net = (made - used) * perSecond;
             var old = GUI.color;
             GUI.color = net >= 0.0 ? Good : Bad;
-            GUILayout.Label(net >= 0.0 ? $"Surplus {Format(net)} ATP/s" : $"Deficit {Format(-net)} ATP/s: living off its reserves",
-                _small);
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(net >= 0.0 ? "Surplus" : "Deficit", _header, GUILayout.Width(84));
+            GUILayout.FlexibleSpace();
+            GUILayout.Label(net >= 0.0 ? $"+{Format(net)} ATP/s" : $"-{Format(-net)} ATP/s", _header);
+            GUILayout.EndHorizontal();
+            if (net < 0.0)
+                GUILayout.Label("using more than it makes: living off its reserves", _small);
             GUI.color = old;
             GUILayout.Space(4);
         }
@@ -361,9 +427,9 @@ namespace AdaptOrDeity.UI
             Dictionary<string, Color> colours, double total, double scale, double perSecond)
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label(label, GUILayout.Width(44));
-            var bar = GUILayoutUtility.GetRect(Width - 170, 16, GUILayout.Width(Width - 170));
-            GUILayout.Label($"{Format(total * perSecond)}", _right, GUILayout.Width(80));
+            GUILayout.Label(label, GUILayout.Width(84));
+            var bar = GUILayoutUtility.GetRect(Width - 230, 16, GUILayout.Width(Width - 230));
+            GUILayout.Label($"{Format(total * perSecond)} ATP/s", _right, GUILayout.Width(100));
             GUILayout.EndHorizontal();
             if (Event.current.type != EventType.Repaint)
                 return;

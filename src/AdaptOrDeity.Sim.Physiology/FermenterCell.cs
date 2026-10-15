@@ -91,7 +91,8 @@ namespace AdaptOrDeity.Sim.Physiology
         private readonly int _aGlycAtp, _aThrust, _aFlagPower, _eMotor, _sAminoAcids;
         private readonly int _aLacOut, _aHLac, _eLactate, _eHe, _eHo;
         private readonly int _aMatrix, _aAtpMatrix;
-        private readonly int _sDamage, _sGrowth, _sGlycogen, _sAtp;
+        private readonly int _sDamagePhysical, _sDamageRadiation, _sDamageRibosome, _sDamageEnergy, _sGrowth, _sGlycogen, _sAtp;
+        private readonly int _ePhysicalDamage, _eDoseRate;
         private readonly int[] _regulationSwitch;   // per regulated target (traits, growth, maintenance), per species
         private readonly int[] _regulationFactor;   // per regulated target: its R_reg
 
@@ -239,7 +240,12 @@ namespace AdaptOrDeity.Sim.Physiology
             _eHo = Ext("H_o_mod_H");
             _aMatrix = Alg("cytosol__J_mx");
             _aAtpMatrix = Alg("cytosol__J_ATP_mx");
-            _sDamage = St("bio__D");
+            _sDamagePhysical = St("bio__D_phys");
+            _sDamageRadiation = St("bio__D_rad");
+            _sDamageRibosome = St("bio__D_ribo");
+            _sDamageEnergy = St("bio__D_energy");
+            _ePhysicalDamage = Ext("r_dmg_phys_mod_bio");
+            _eDoseRate = Ext("dose_rate_mod_bio");
             _sGrowth = St("bio__P_growth");
             _sGlycogen = St("cytosol__C_glyc");
             _sAtp = St("cytosol__C_ATP");
@@ -384,8 +390,40 @@ namespace AdaptOrDeity.Sim.Physiology
         /// <summary>Kernel parameter holding the trait's target.</summary>
         public string TargetParameter(int trait) => PlayerParameters[trait];
 
-        /// <summary>Damage, 1 = lethal.</summary>
-        public double Damage => Batch.States[_sDamage][0];
+        /// <summary>Total damage, the sum of its four types; 1 = lethal.</summary>
+        public double Damage => DamagePhysical + DamageRadiation + DamageRibosome + DamageEnergy;
+
+        /// <summary>Physical damage to the envelope (membrane and wall), from attacks; repaired by envelope repair.</summary>
+        public double DamagePhysical => Batch.States[_sDamagePhysical][0];
+
+        /// <summary>Radiation damage to DNA; repaired by DNA repair.</summary>
+        public double DamageRadiation => Batch.States[_sDamageRadiation][0];
+
+        /// <summary>
+        /// Ribosome and protein damage: wear, Ca²⁺ overload displacing the ribosomes' Mg²⁺, and K⁺ falling below what
+        /// ribosomes need to translate.
+        /// </summary>
+        public double DamageRibosome => Batch.States[_sDamageRibosome][0];
+
+        /// <summary>De-energisation damage: proteins aggregating once ATP falls too low for chaperones to refold them.</summary>
+        public double DamageEnergy => Batch.States[_sDamageEnergy][0];
+
+        /// <summary>Physical damage the cell is taking [lethal loads/s], e.g. while attacked (0 by default).</summary>
+        public double PhysicalDamageRate
+        {
+            get => Batch.Externals[_ePhysicalDamage][0];
+            set => Batch.Externals[_ePhysicalDamage][0] = Math.Max(0.0, value);
+        }
+
+        /// <summary>Absorbed radiation dose rate [Gy/s] (0 by default).</summary>
+        public double RadiationDoseRate
+        {
+            get => Batch.Externals[_eDoseRate][0];
+            set => Batch.Externals[_eDoseRate][0] = Math.Max(0.0, value);
+        }
+
+        /// <summary>A blow: adds <paramref name="loads"/> of physical damage at once (a share of a lethal load).</summary>
+        public void AddPhysicalDamage(double loads) => SetState("bio__D_phys", DamagePhysical + Math.Max(0.0, loads));
 
         /// <summary>Glucose at the membrane [mol/m³] (input of every glucose carrier).</summary>
         public double MembraneGlucose

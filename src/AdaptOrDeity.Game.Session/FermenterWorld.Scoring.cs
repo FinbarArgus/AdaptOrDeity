@@ -101,6 +101,17 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>This level's damage meter (100 at its start; 100 x (1 - the worst mean damage load so far)).</summary>
         public double DamageMeter { get; private set; } = 100.0;
 
+        /// <summary>The components of <see cref="CreatureDamage"/>, in its order.</summary>
+        public static readonly string[] DamageComponents = { "Physical", "Radiation", "Ribosome", "De-energisation", "Dead" };
+
+        private readonly double[] _creatureDamage = new double[DamageComponents.Length];
+
+        public IReadOnlyList<double> CreatureDamage => _creatureDamage;
+
+        public double CreatureDamageWorst { get; private set; }
+
+        public bool PathwayEnded { get; private set; }
+
         /// <summary>Share of the creature's living cells starving now (ATP below the starving fraction of rest; 1 if none lives).</summary>
         public double StarvingShare { get; private set; }
 
@@ -125,19 +136,46 @@ namespace AdaptOrDeity.Game.Session
         {
             int living = 0, starving = 0;
             double damage = 0.0;
+            Array.Clear(_creatureDamage, 0, _creatureDamage.Length);
             foreach (var c in _cells)
             {
                 if (!c.Alive)
                 {
                     damage += 1.0;
+                    _creatureDamage[4] += 1.0;
                     continue;
                 }
+                _creatureDamage[0] += c.DamagePhysical;
+                _creatureDamage[1] += c.DamageRadiation;
+                _creatureDamage[2] += c.DamageRibosome;
+                _creatureDamage[3] += c.DamageEnergy;
                 living++;
                 if (c.Atp < _starvingAtp * c.RestingAtp)
                     starving++;
                 damage += Math.Min(1.0, Math.Max(0.0, c.Damage));
             }
             StarvingShare = living > 0 ? (double)starving / living : 1.0;
+            double total = 0.0;
+            for (int k = 0; k < _creatureDamage.Length; k++)
+                total += _creatureDamage[k] /= Math.Max(1, _cells.Count);
+            CreatureDamageWorst = Math.Max(CreatureDamageWorst, Math.Min(1.0, total));
+            if (living == 0 && _cells.Count > 0)
+            {
+                // the end: the parts show what killed the cells (each dead cell's damage at death, as shares of it)
+                PathwayEnded = true;
+                Array.Clear(_creatureDamage, 0, _creatureDamage.Length);
+                foreach (var c in _cells)
+                {
+                    double d = Math.Max(c.Damage, 1e-300);
+                    _creatureDamage[0] += c.DamagePhysical / d;
+                    _creatureDamage[1] += c.DamageRadiation / d;
+                    _creatureDamage[2] += c.DamageRibosome / d;
+                    _creatureDamage[3] += c.DamageEnergy / d;
+                }
+                for (int k = 0; k < _creatureDamage.Length; k++)
+                    _creatureDamage[k] /= _cells.Count;
+                CreatureDamageWorst = 1.0;
+            }
             double empty = _starvationToEmpty * GameTimeline.Default.DurationOf(_level);
             SurvivalMeter = Math.Max(0.0, SurvivalMeter - 100.0 * StarvingShare * dt / empty);
             // the damage the level added (mean over the cells, a dead cell counting as a full lethal load), against

@@ -101,6 +101,15 @@
     <unit units="m3"/>
     <unit exponent="-1" units="microm3"/>
   </units>
+  <units name="gray_per_s">
+    <unit units="joule"/>
+    <unit exponent="-1" units="kilogram"/>
+    <unit exponent="-1" units="second"/>
+  </units>
+  <units name="per_gray">
+    <unit units="kilogram"/>
+    <unit exponent="-1" units="joule"/>
+  </units>
   <units name="J_per_mol">
     <unit units="joule"/>
     <unit exponent="-1" units="mole"/>

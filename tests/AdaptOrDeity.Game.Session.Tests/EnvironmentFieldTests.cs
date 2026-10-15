@@ -169,11 +169,16 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(farther, Is.InRange(depleted, ocean), "less so farther out");
 
             for (int i = 0; i < world.CellCount; i++)
-                world.Cell(i).SetState("bio__D", 5.0);   // the colony dies: no more uptake
-            loop.StepExactly(100);
+                world.Cell(i).SetState("bio__D_ribo", 5.0);   // the colony dies: no more uptake
+            // the pathway has ended and the game's clock stops; the world's water still evolves, stepped directly
+            double t = loop.Clock.SimTime;
+            for (int i = 0; i < 100; i++, t += world.MacroDt)
+                world.Step(t, world.MacroDt);
             Assert.That(world.CellAlive(0), Is.False);
+            Assert.That(world.PathwayEnded, Is.True);
             double early = AtColony(world, g);
-            loop.StepExactly(3000);
+            for (int i = 0; i < 3000; i++, t += world.MacroDt)
+                world.Step(t, world.MacroDt);
             // in a 2D layer the deficit spreads out and thins slowly (as 1/t at the centre)
             Assert.That(AtColony(world, g), Is.GreaterThan(early), "the water recovers");
             Assert.That(ocean - AtColony(world, g), Is.LessThan(0.05 * (ocean - depleted)));

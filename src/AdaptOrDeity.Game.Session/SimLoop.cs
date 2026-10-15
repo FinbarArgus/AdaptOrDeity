@@ -299,6 +299,10 @@ namespace AdaptOrDeity.Game.Session
                 frame.DamageMeter = (float)inspect.DamageMeter;
                 frame.SurvivalPointsNow = inspect.SurvivalPointsNow;
                 frame.DamagePointsNow = inspect.DamagePointsNow;
+                for (int k = 0; k < frame.CreatureDamage.Length && k < inspect.CreatureDamage.Count; k++)
+                    frame.CreatureDamage[k] = (float)inspect.CreatureDamage[k];
+                frame.CreatureDamageWorst = (float)inspect.CreatureDamageWorst;
+                frame.PathwayEnded = inspect.PathwayEnded;
                 var score = inspect.LastScore;
                 frame.ScoredLevel = score?.Level ?? 0;
                 frame.ScoredSurvival = (float)(score?.Survival ?? 0.0);
@@ -478,6 +482,8 @@ namespace AdaptOrDeity.Game.Session
 
         private void StepOnce(double dt)
         {
+            if (World is IInspectableWorld { PathwayEnded: true })
+                return;   // the creature is dead: the game is over and time stops
             World.Step(Clock.SimTime, dt);
             if (Clock.Advance(dt))
                 _events.Enqueue(new CheckpointReached(Clock.SimTime, Clock.CheckpointIndex));

@@ -295,7 +295,18 @@ namespace AdaptOrDeity.Game.Session
             Add(new DetailInfo("na", state, "Na⁺", "mol/m³", "mM", 1.0), c => c.State("Na_K__Nai"));
             Add(new DetailInfo("k", state, "K⁺", "mol/m³", "mM", 1.0), c => c.State("Na_K__Ki"));
             Add(new DetailInfo("ca", state, "Ca²⁺ (free)", "mol/m³", "µM", 1e3), c => c.State("Ca__Cai"));
-            Add(new DetailInfo("damage", state, "Damage", "", "% of lethal", 100.0), c => c.Damage);
+            Add(new DetailInfo("damage", state, "Damage", "", "% of lethal", 100.0,
+                "the sum of its four types; the cell dies at 100%"), c => c.Damage);
+            Add(new DetailInfo("damage_physical", state, "Physical damage", "", "% of lethal", 100.0,
+                "to the envelope (membrane and wall), from attacks; envelope repair mends it"), c => c.DamagePhysical);
+            Add(new DetailInfo("damage_radiation", state, "Radiation damage", "", "% of lethal", 100.0,
+                "DNA lesions from radiation; DNA repair mends them"), c => c.DamageRadiation);
+            Add(new DetailInfo("damage_ribosome", state, "Ribosome damage", "", "% of lethal", 100.0,
+                "wear of ribosomes and proteins, Ca²⁺ overload pushing off the Mg²⁺ that holds ribosomes together, and " +
+                "K⁺ falling below the ~100 mM ribosomes need; rebuilding them mends it"), c => c.DamageRibosome);
+            Add(new DetailInfo("damage_energy", state, "De-energisation damage", "", "% of lethal", 100.0,
+                "proteins aggregating once ATP falls below ~1 mM and chaperones can no longer refold them; disaggregases " +
+                "mend it, but only with ATP"), c => c.DamageEnergy);
             Add(new DetailInfo("recycled_amino_acids", state, "Recycled amino acids", "", "amino acids", 1.0,
                 "freed by removing protein above a lowered target; built into new protein first, the rest slowly broken " +
                 "down"), c => c.RecycledAminoAcids);

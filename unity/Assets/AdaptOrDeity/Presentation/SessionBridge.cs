@@ -151,15 +151,13 @@ namespace AdaptOrDeity.Presentation
         /// <summary>Zooms by scroll steps (positive = out); the HUD forwards wheel events that are not over the panel.</summary>
         public void Zoom(float steps) => _pendingScroll += steps;
 
+        /// <summary>Counts the sessions started (1 for the first); windows that remember a session's progress reset when it changes.</summary>
+        public int Generation { get; private set; }
+
         private void Awake()
         {
             Instance = this;
-            // The simulation library (NativeAOT: modern .NET, threaded) when it loads, else the managed simulation.
-            _session = Sessions.CreateFermenter(preferNative: true, out string where);
-            Debug.Log($"Simulation: {where}");
-            _session.TryGetFrame(out var first);
-            Frame = first;
-            _session.Start();
+            StartSession();
 
             _camera = EnsureCamera();
             gameObject.AddComponent<BackgroundView>().Initialise(this, _camera);
@@ -171,6 +169,27 @@ namespace AdaptOrDeity.Presentation
             seabed.transform.SetParent(transform, false);
             seabed.AddComponent<SeabedView>().Initialise(this);
             gameObject.AddComponent<MotionView>().Initialise(this);
+            SyncViews();
+        }
+
+        // The simulation library (NativeAOT: modern .NET, threaded) when it loads, else the managed simulation.
+        private void StartSession()
+        {
+            _session = Sessions.CreateFermenter(preferNative: true, out string where);
+            Debug.Log($"Simulation: {where}");
+            _session.TryGetFrame(out var first);
+            Frame = first;
+            _session.Start();
+            Generation++;
+        }
+
+        /// <summary>Ends this session and starts a new game from level 1 (after the evolutionary pathway has ended).</summary>
+        public void Restart()
+        {
+            _session?.Dispose();
+            _selectedCell = -1;
+            _selectedOrganism = -1;
+            StartSession();
             SyncViews();
         }
 

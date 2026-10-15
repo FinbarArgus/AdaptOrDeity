@@ -18,6 +18,7 @@ namespace AdaptOrDeity.UI
 
         private bool _open;
         private int _shownLevel;    // the last scored level the window opened for (0: none yet)
+        private int _generation;    // the session it is for (SessionBridge.Generation)
         private Vector2 _scroll;
         private GUIStyle _wrap, _title, _stars;
         private Texture2D _disc, _ring;
@@ -48,6 +49,12 @@ namespace AdaptOrDeity.UI
             var frame = bridge != null ? bridge.Frame : null;
             if (frame == null || bridge.Schema.Features.Count == 0)
                 return;
+            if (_generation != bridge.Generation)
+            {
+                _generation = bridge.Generation;
+                _shownLevel = 0;
+                _open = false;
+            }
             if (frame.ScoredLevel > _shownLevel)
             {
                 _shownLevel = frame.ScoredLevel;

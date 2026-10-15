@@ -7,11 +7,17 @@
   "component_type": "cell",
   "default_instance": "default",
   "licence": "CC0-1.0",
-  "assembled_from": "",
+  "assembled_from": "circulatory-autogen-modules homogenisation-checks 5cea85e6 + damage types (uncommitted), cell/generic_adaptive_cell/versions/fermenter, assembled by libcuflynx 2026-10-14",
   "entrance_ports": [],
   "exit_ports": [],
   "general_ports": [],
   "variables_and_units": [
+   [
+    "ATP_dmg_mod_bio",
+    "millimolar",
+    "access",
+    "constant"
+   ],
    [
     "ATP_floor_mod_bio",
     "millimolar",
@@ -295,7 +301,25 @@
     "constant"
    ],
    [
-    "D_init_mod_bio",
+    "D_energy_init_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "D_phys_init_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "D_rad_init_mod_bio",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "D_ribo_init_mod_bio",
     "dimensionless",
     "access",
     "constant"
@@ -445,6 +469,12 @@
     "constant"
    ],
    [
+    "K_Ca_dmg_mod_bio",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
     "K_D_mod_bio",
     "dimensionless",
     "access",
@@ -476,6 +506,12 @@
    ],
    [
     "K_H_reg_mod_reg",
+    "millimolar",
+    "access",
+    "constant"
+   ],
+   [
+    "K_K_dmg_mod_bio",
     "millimolar",
     "access",
     "constant"
@@ -1123,6 +1159,30 @@
     "variable"
    ],
    [
+    "bio__D_energy",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__D_phys",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__D_rad",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__D_ribo",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "bio__J_ATP_bio",
     "mol_per_s",
     "access",
@@ -1189,6 +1249,24 @@
     "variable"
    ],
    [
+    "bio__R_dmg_energy",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_dmg_rad",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_dmg_ribo",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "bio__R_reg",
     "dimensionless",
     "access",
@@ -1207,6 +1285,30 @@
     "variable"
    ],
    [
+    "bio__R_rep_energy",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_rep_phys",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_rep_rad",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__R_rep_ribo",
+    "per_s",
+    "access",
+    "variable"
+   ],
+   [
     "bio__R_repair",
     "per_s",
     "access",
@@ -1219,7 +1321,25 @@
     "variable"
    ],
    [
+    "bio__f_Ca_dmg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__f_K_dmg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
     "bio__f_T_dmg",
+    "dimensionless",
+    "access",
+    "variable"
+   ],
+   [
+    "bio__f_energy_dmg",
     "dimensionless",
     "access",
     "variable"
@@ -2017,6 +2137,12 @@
     "constant"
    ],
    [
+    "dose_rate_mod_bio",
+    "gray_per_s",
+    "access",
+    "constant"
+   ],
+   [
     "eta_mod_i_flagellum",
     "pascal_second",
     "access",
@@ -2767,6 +2893,18 @@
     "constant"
    ],
    [
+    "k_Ca_dmg_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "k_K_dmg_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
     "k_bind_Ca_mod_Ca",
     "per_millimolar_s",
     "access",
@@ -2857,8 +2995,20 @@
     "constant"
    ],
    [
+    "k_energy_dmg_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
     "k_lipid_mod_bio",
     "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "k_rad_dmg_mod_bio",
+    "per_gray",
     "access",
     "constant"
    ],
@@ -3368,6 +3518,12 @@
    ],
    [
     "n_ATP_mx_mod_cytosol",
+    "dimensionless",
+    "access",
+    "constant"
+   ],
+   [
+    "n_Ca_dmg_mod_bio",
     "dimensionless",
     "access",
     "constant"
@@ -6032,6 +6188,12 @@
    ],
    [
     "r_dmg_mod_bio",
+    "per_s",
+    "access",
+    "constant"
+   ],
+   [
+    "r_dmg_phys_mod_bio",
     "per_s",
     "access",
     "constant"

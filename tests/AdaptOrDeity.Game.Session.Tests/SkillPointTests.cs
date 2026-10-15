@@ -86,12 +86,12 @@ namespace AdaptOrDeity.Game.Session.Tests
             // lethal load
             using var world = Quiet(0.1);
             double start = world.Cell(0).Damage, empty = GameParameters.Default.Value("scoring.damage_to_empty");
-            world.Cell(0).SetState("bio__D", start + 0.4 * empty);
+            world.Cell(0).SetState("bio__D_ribo", start + 0.4 * empty);
             Run(world, 0.0, 0.1);
             double worst = 100.0 * (1.0 - (world.Cell(0).Damage - start) / empty);
             Assert.That(worst, Is.InRange(50.0, 70.0));
             Assert.That(world.DamageMeter, Is.EqualTo(worst).Within(1e-9));
-            world.Cell(0).SetState("bio__D", start);
+            world.Cell(0).SetState("bio__D_ribo", start);
             Run(world, 0.1, 0.1);
             Assert.That(world.DamageMeter, Is.EqualTo(worst).Within(1e-9), "repair does not refill it");
             Assert.That(world.DamagePointsNow, Is.EqualTo((int)Math.Round(DamageAtFull * worst / 100.0, MidpointRounding.AwayFromZero)));
@@ -99,7 +99,7 @@ namespace AdaptOrDeity.Game.Session.Tests
             Assert.That(world.DamagePoints, Is.EqualTo((int)Math.Round(DamageAtFull * worst / 100.0, MidpointRounding.AwayFromZero)));
 
             // a dead creature: no damage points, and it starves
-            world.Cell(0).SetState("bio__D", 1.1);
+            world.Cell(0).SetState("bio__D_ribo", 1.1);
             Run(world, 0.2, 0.2);
             Assert.That(world.CellAlive(0), Is.False);
             Assert.That((world.DamageMeter, world.StarvingShare), Is.EqualTo((0.0, 1.0)));
@@ -149,10 +149,10 @@ namespace AdaptOrDeity.Game.Session.Tests
             var world = Quiet(0.1);
             var loop = new SimLoop(world, new SimLoopOptions { SpeedPresets = FermenterWorld.SpeedPresets });
             loop.StepExactly(10);
-            world.Cell(0).SetState("bio__D", 0.3);
+            world.Cell(0).SetState("bio__D_ribo", 0.3);
             loop.StepExactly(1);
             world.DevEndLevel();
-            world.Cell(0).SetState("bio__D", 0.5);
+            world.Cell(0).SetState("bio__D_ribo", 0.5);
             loop.StepExactly(1);
             var frame = loop.CreateFrame();
             loop.WriteSnapshot(frame);

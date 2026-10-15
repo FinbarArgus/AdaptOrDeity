@@ -89,6 +89,18 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>This level's damage meter (0-100): 100 x (1 - the worst mean damage load so far).</summary>
         double DamageMeter { get; }
 
+        /// <summary>
+        /// The creature's damage now by component (<see cref="FermenterWorld.DamageComponents"/>), each the mean share of a lethal load
+        /// over its cells; a dead cell counts as a whole lethal load under Dead. They sum to 1 once every cell is dead.
+        /// </summary>
+        IReadOnlyList<double> CreatureDamage { get; }
+
+        /// <summary>The highest total <see cref="CreatureDamage"/> the creature has reached: repair does not lower it.</summary>
+        double CreatureDamageWorst { get; }
+
+        /// <summary>The creature's damage reached 100% (every cell dead): the evolutionary pathway has ended; time stops.</summary>
+        bool PathwayEnded { get; }
+
         /// <summary>Points the meters would convert to if the level ended now.</summary>
         int SurvivalPointsNow { get; }
 

@@ -58,7 +58,7 @@ namespace AdaptOrDeity.Sim.Physiology.Tests
                     all.SetRegulated(target, s, true);
             Run(plain, 600.0);
             Run(all, 600.0);
-            foreach (var state in new[] { "cytosol__C_ATP", "membrane__V", "pool_H_ATPase__m", "pool_proteome__m", "bio__D" })
+            foreach (var state in new[] { "cytosol__C_ATP", "membrane__V", "pool_H_ATPase__m", "pool_proteome__m", "bio__D_ribo" })
                 Assert.That(all.State(state), Is.EqualTo(plain.State(state)).Within(1e-9 * Math.Abs(plain.State(state))), state);
         }
 

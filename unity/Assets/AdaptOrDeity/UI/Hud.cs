@@ -53,6 +53,44 @@ namespace AdaptOrDeity.UI
             DrawProbePlot(bridge, frame);
             DrawTooltip(bridge, frame);
             DrawUnlockNotice(bridge, frame);
+            if (frame.PathwayEnded)
+                DrawPathwayEnded(bridge, frame);
+        }
+
+        private GUIStyle _endTitle, _endText;
+
+        // Every cell of the creature has died: the game is over. What killed it, how far it got, and a new start.
+        private void DrawPathwayEnded(SessionBridge bridge, SnapshotFrame frame)
+        {
+            _endTitle ??= new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter,
+                wordWrap = true };
+            _endText ??= new GUIStyle(GUI.skin.label) { fontSize = 13, wordWrap = true };
+            if (Event.current.type == EventType.Repaint)
+                GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.whiteTexture, ScaleMode.StretchToFill,
+                    false, 0f, new Color(0f, 0f, 0f, 0.55f), 0f, 0f);
+            const float w = 460f, h = 300f;
+            var rect = new Rect((Screen.width - w) / 2f, (Screen.height - h) / 2f, w, h);
+            GUILayout.Window(0x5C113, rect, id =>
+            {
+                GUILayout.Space(8);
+                GUILayout.Label("Your evolutionary pathway has ended", _endTitle);
+                GUILayout.Space(8);
+                GUILayout.Label($"Every cell of your creature has died, in level {frame.Level} after {FormatTime(frame.SimTime)}.", _endText);
+                GUILayout.Space(6);
+                GUILayout.Label("What killed it:", _endText);
+                var bar = GUILayoutUtility.GetRect(w - 40f, 16f);
+                var values = new double[frame.CreatureDamage.Length];
+                for (int k = 0; k < values.Length; k++)
+                    values[k] = frame.CreatureDamage[k];
+                CellPanel.DamageBar(bar, values, 1.0);
+                for (int k = 0; k < CellPanel.DamageParts.Length && k < frame.CreatureDamage.Length; k++)
+                    if (frame.CreatureDamage[k] > 0.005f)
+                        GUILayout.Label($"{CellPanel.DamageParts[k].Name}: {100f * frame.CreatureDamage[k]:F0}% (" +
+                                        $"{CellPanel.DamageParts[k].Tip})", _endText);
+                GUILayout.FlexibleSpace();
+                if (GUILayout.Button("Start a new pathway", GUILayout.Height(32)))
+                    bridge.Restart();
+            }, "");
         }
 
         // Announces a feature the first frame it is unlocked (not those unlocked when the session starts).
@@ -293,9 +331,36 @@ namespace AdaptOrDeity.UI
                 "falls while your cells are starving (ATP below half its resting level)" +
                 (frame.StarvingShare > 0f ? $"; starving now: {frame.StarvingShare * 100f:F0}% of your cells" : "") +
                 $"; {frame.TimeWithoutFood:F0} s since your creature last had food");
-            DrawMeter("Damage", frame.DamageMeter, frame.DamagePointsNow,
-                "100 less the worst damage your cells have carried this level (share of a lethal load)");
+            DrawDamage(frame);
             GUILayout.EndArea();
+        }
+
+        // The creature's damage as one bar of its parts (physical, radiation, ribosome, de-energisation, dead cells), 100%
+        // at the right end; a white tick marks the worst it has reached, which repair does not undo.
+        private static void DrawDamage(SnapshotFrame frame)
+        {
+            float total = 0f;
+            for (int k = 0; k < frame.CreatureDamage.Length; k++)
+                total += frame.CreatureDamage[k];
+            var parts = new System.Text.StringBuilder();
+            for (int k = 0; k < frame.CreatureDamage.Length; k++)
+                if (frame.CreatureDamage[k] > 0.0005f)
+                    parts.Append($"; {(k < CellPanel.DamageParts.Length ? CellPanel.DamageParts[k].Name : "dead cells")} " +
+                                 $"{100f * frame.CreatureDamage[k]:F1}%");
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(new GUIContent($"Damage {100f * total:F0}%",
+                $"your creature's damage, the mean over its cells of each kind as a share of a lethal load{parts}. At 100% " +
+                $"your evolutionary pathway ends. The tick marks the worst it has reached ({100f * frame.CreatureDamageWorst:F0}%): " +
+                $"repair mends the damage but not the record. The damage this level added is worth {frame.DamagePointsNow} " +
+                "points now"), GUILayout.Width(110));
+            var bar = GUILayoutUtility.GetRect(120f, 14f, GUILayout.Width(120f));
+            GUILayout.EndHorizontal();
+            bar.y += 4f;
+            bar.height = 10f;
+            var values = new double[frame.CreatureDamage.Length];
+            for (int k = 0; k < values.Length; k++)
+                values[k] = frame.CreatureDamage[k];
+            CellPanel.DamageBar(bar, values, frame.CreatureDamageWorst, new Color(0.35f, 0.35f, 0.38f));
         }
 
         private static void DrawMeter(string name, float meter, int points, string tip)

@@ -29,7 +29,7 @@ LIBRARY = REPO / 'content' / 'assembled'
 CELL = LIBRARY / 'generic_adaptive_cell' / 'versions' / 'fermenter'
 BRIDGE = REPO / 'external' / 'circulatory-autogen-modules' / 'tools' / 'phlynx_bridge' / 'export_omex.mjs'
 PREFIX = 'creature'
-STATES_PER_CELL = 31   # with the recycled amino acids, protein__N_aa
+STATES_PER_CELL = 34   # with the recycled amino acids (protein__N_aa) and four damage types (bio__D_phys, _rad, _ribo, _energy)
 
 
 @pytest.fixture(scope='module')
