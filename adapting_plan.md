@@ -31,6 +31,8 @@ review). Review page for the first cell modules: https://claude.ai/artifact/UPtU
 After the prey, engulfing and multicellularity/mitochondria features land and the designer has tested them in Unity,
 no new features until:
 1. **Solidify:** fix what testing finds; retire stand-ins (content/upstream copies once upstream is pushed).
+   Cutting maintenance must cost something (ribosomes lost and rebuilt, envelope damage, lapsed quality control):
+   handover in [docs/plans/maintenance-downsides.md](docs/plans/maintenance-downsides.md).
 2. **Check every module:** each upstream module passes cam_testing's full set (every test under 10 minutes); each
    game-side native element has its analytic and conservation tests; goldens current; every value without a checked
    source is in docs/review/unreferenced-values.md, to go through with the designer.
