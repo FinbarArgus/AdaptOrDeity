@@ -95,11 +95,13 @@ targets, which then take effect at the normal expression rates. Design points to
 - Ties in with the scripted reference players (docs/plans/scoring.md), whose "optimised" strategy is the same search.
 
 ### Luck, a second character the player controls (designer, 2026-10-16; first skill in)
-In: luck points (content luck.*: 50 at start, 100 at most, full in 3 h) and her current
-(FermenterWorld.Luck.cs, Sim.World DirectedCurrent): L to aim, press on the view's edge and drag; a thick shaded arrow
-shows it; it carries the creature, free organisms, loose food and prey, costing 1 point/s at full strength. Still to
-do: the current does not yet carry the water's solutes (advection in the environment field), luck does not touch
-scoring, no new skills, and no luck-using reference model.
+In: luck points (content luck.*: 50 at start, 100 at most, full in 12 h) and her stream of current
+(FermenterWorld.Luck.cs, Sim.World DirectedCurrent): L to aim, press in the view and drag an arrow from the nearest
+edge (a preview); on release a stream goes along it, as strong as the arrow is long, paid when sent (10 points at full
+strength). It has inertia: it spins up (0.5 s), flows for 6 s and coasts down (3 s), drawn as a shaded band with a
+travelling wake, carrying the creature, free organisms, loose food and prey. Still to do: the stream does not yet
+carry the water's solutes (advection in the environment field), luck does not touch scoring, no new skills, and no
+luck-using reference model.
 Besides adapting the creature, the player controls **Luck** (she), a character who acts on the environment, not on
 the creature's physiology. She spends **luck points**, which build up over time (a rate per second of game time, a cap;
 both content values to set when calibrating). To start with she can make a **current** flow through the environment:

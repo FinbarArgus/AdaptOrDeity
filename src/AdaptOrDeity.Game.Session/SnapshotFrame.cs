@@ -264,8 +264,17 @@ namespace AdaptOrDeity.Game.Session
 
         public float LuckMax { get; internal set; }
 
-        /// <summary>Whether Luck's current flows, its arrow (tail to head, relative to the creature [m]), its band's half
-        /// width [m] and its strength (0-1).</summary>
+        /// <summary>Points a stream costs at full strength, the arrow length that gives full strength [m], and the flow at
+        /// full strength [m/s] (content luck.*): a stream along an arrow costs LuckStreamCost x min(1, length /
+        /// LuckFullLength).</summary>
+        public float LuckStreamCost { get; internal set; }
+
+        public float LuckFullLength { get; internal set; }
+
+        public float LuckMaxSpeed { get; internal set; }
+
+        /// <summary>Whether Luck's stream flows, its arrow (tail to head, relative to the creature [m]), its band's half
+        /// width [m] and its flow now as a share of <see cref="LuckMaxSpeed"/> (0-1: spinning up, flowing, coasting).</summary>
         public bool LuckOn { get; internal set; }
 
         public float LuckTailX { get; internal set; }

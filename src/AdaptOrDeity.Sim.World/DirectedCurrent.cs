@@ -10,7 +10,7 @@ namespace AdaptOrDeity.Sim.World
     /// </summary>
     public sealed class DirectedCurrent
     {
-        /// <summary>Whether it flows.</summary>
+        /// <summary>Whether it is aimed and flowing (at <see cref="Speed"/>, which may be spinning up or down).</summary>
         public bool On { get; private set; }
 
         public double TailX { get; private set; }
@@ -35,8 +35,11 @@ namespace AdaptOrDeity.Sim.World
             HeadX = headX;
             HeadY = headY;
             Speed = Math.Max(0.0, speed);
-            On = Length > 0.0 && Speed > 0.0;
+            On = Length > 0.0;   // aimed: it may start at rest and spin up (SetSpeed)
         }
+
+        /// <summary>Changes the flow on the axis, keeping the arrow (it spins up or down).</summary>
+        public void SetSpeed(double speed) => Speed = Math.Max(0.0, speed);
 
         public void Stop()
         {

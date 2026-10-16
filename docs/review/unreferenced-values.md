@@ -31,8 +31,11 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `minimap.sample_interval` | 1 | s | unreferenced_placeholder | design | simulated time between updates of the minimap's memory from the creature's view |
 | `luck.max` | 100 | 1 | unreferenced_placeholder | design | the most luck points Luck can hold (adapting_plan.md, Luck) |
 | `luck.start` | 50 | 1 | unreferenced_placeholder | design | luck points at the start of a game |
-| `luck.rate` | 0.009259 | 1/s | unreferenced_placeholder | design | luck points gained per second of game time: empty to full in 3 h |
-| `luck.cost_rate` | 1 | 1/s | unreferenced_placeholder | design | luck points a current costs per second at full strength (in proportion below): a full store blows for 100 s |
+| `luck.rate` | 0.002315 | 1/s | unreferenced_placeholder | design | luck points gained per second of game time: empty to full in 12 h |
+| `luck.stream_cost` | 10 | 1 | unreferenced_placeholder | design | luck points a stream of current costs at full strength, paid when it is sent (in proportion below): a full store sends 10 |
+| `luck.stream_time` | 6 | s | unreferenced_placeholder | design | how long Luck's stream flows before it coasts to a stop |
+| `luck.spin_up` | 0.5 | s | unreferenced_placeholder | design | time constant of a stream spinning up to its speed (its inertia) |
+| `luck.spin_down` | 3 | s | unreferenced_placeholder | design | time constant of a stream coasting to a stop once it has flowed for luck.stream_time |
 | `luck.max_speed` | 2e-06 | m/s | unreferenced_placeholder | design | flow of Luck's current on its axis at full strength: 2 um/s, faster than the creature swims (~1.5 um/s) and 10x the tide |
 | `luck.half_width` | 4e-06 | m | unreferenced_placeholder | design | half the width of the band of water Luck's current flows along (a few cell radii) |
 | `luck.full_length` | 3e-05 | m | unreferenced_placeholder | design | length of the aimed arrow that gives full strength (the view's width); shorter arrows blow in proportion |

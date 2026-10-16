@@ -370,6 +370,9 @@ namespace AdaptOrDeity.Game.Session
                     var luck = fw.LuckCurrent;
                     frame.Luck = (float)fw.Luck;
                     frame.LuckMax = (float)fw.LuckMax;
+                    frame.LuckStreamCost = (float)fw.LuckStreamCost;
+                    frame.LuckFullLength = (float)fw.LuckFullLength;
+                    frame.LuckMaxSpeed = (float)fw.LuckMaxSpeed;
                     frame.LuckOn = luck.On;
                     frame.LuckTailX = (float)luck.TailX;
                     frame.LuckTailY = (float)luck.TailY;

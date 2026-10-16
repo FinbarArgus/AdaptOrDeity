@@ -35,7 +35,7 @@ namespace AdaptOrDeity.Game.Session
         SetRegulation = 18,
         DevEndLevel = 19,
         ReseedSeabed = 20,
-        LuckBlow = 21,
+        LuckLaunch = 21,
         LuckStop = 22,
     }
 
@@ -113,14 +113,14 @@ namespace AdaptOrDeity.Game.Session
                 case SimCommandKind.ReseedSeabed:
                     Fermenter(loop, "this world has no seabed").ReseedSeabed(A);
                     break;
-                case SimCommandKind.LuckBlow:
+                case SimCommandKind.LuckLaunch:
                 {
                     // the arrow as text, "tailX tailY headX headY" in metres relative to the creature (round-trip format)
                     var parts = (Text1 ?? "").Split(' ');
                     if (parts.Length != 4)
-                        throw new FormatException($"LuckBlow wants four numbers, got '{Text1}'");
+                        throw new FormatException($"LuckLaunch wants four numbers, got '{Text1}'");
                     double Number(int i) => double.Parse(parts[i], System.Globalization.CultureInfo.InvariantCulture);
-                    Fermenter(loop, "this world has no Luck").LuckBlow(Number(0), Number(1), Number(2), Number(3));
+                    Fermenter(loop, "this world has no Luck").LuckLaunch(Number(0), Number(1), Number(2), Number(3));
                     break;
                 }
                 case SimCommandKind.LuckStop:
@@ -232,11 +232,11 @@ namespace AdaptOrDeity.Game.Session
         /// <summary>A new seabed from <paramref name="seed"/>: a new game's random floor.</summary>
         public static SimCommand ReseedSeabed(int seed) => new SimCommand(SimCommandKind.ReseedSeabed, seed);
 
-        /// <summary>Luck blows (or re-aims) her current from the tail to the head, relative to the creature [m].</summary>
-        public static SimCommand LuckBlow(double tailX, double tailY, double headX, double headY) =>
-            new SimCommand(SimCommandKind.LuckBlow, text1: FormattableString.Invariant($"{tailX:R} {tailY:R} {headX:R} {headY:R}"));
+        /// <summary>Luck sends a stream of current from the tail to the head, relative to the creature [m].</summary>
+        public static SimCommand LuckLaunch(double tailX, double tailY, double headX, double headY) =>
+            new SimCommand(SimCommandKind.LuckLaunch, text1: FormattableString.Invariant($"{tailX:R} {tailY:R} {headX:R} {headY:R}"));
 
-        /// <summary>Luck stops her current.</summary>
+        /// <summary>Luck stops her stream at once.</summary>
         public static SimCommand LuckStop() => new SimCommand(SimCommandKind.LuckStop);
 
         /// <summary>Development aid: completes <paramref name="cell"/>'s daughter without charging its ATP (not for play).</summary>

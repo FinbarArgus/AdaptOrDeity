@@ -122,6 +122,9 @@ namespace AdaptOrDeity.Game.Session
             bool onLand = f.OnLand; io.Value(ref onLand); f.OnLand = onLand;
             float luck = f.Luck; io.Value(ref luck); f.Luck = luck;
             float luckMax = f.LuckMax; io.Value(ref luckMax); f.LuckMax = luckMax;
+            float streamCost = f.LuckStreamCost; io.Value(ref streamCost); f.LuckStreamCost = streamCost;
+            float fullLength = f.LuckFullLength; io.Value(ref fullLength); f.LuckFullLength = fullLength;
+            float maxSpeed = f.LuckMaxSpeed; io.Value(ref maxSpeed); f.LuckMaxSpeed = maxSpeed;
             bool luckOn = f.LuckOn; io.Value(ref luckOn); f.LuckOn = luckOn;
             float luckTailX = f.LuckTailX; io.Value(ref luckTailX); f.LuckTailX = luckTailX;
             float luckTailY = f.LuckTailY; io.Value(ref luckTailY); f.LuckTailY = luckTailY;

@@ -507,26 +507,25 @@ namespace AdaptOrDeity.UI
             GUI.DrawTexture(bar, Texture2D.whiteTexture, ScaleMode.StretchToFill, false, 0f, new Color(0f, 0f, 0f, 0.5f), 0f, 0f);
             GUI.DrawTexture(new Rect(bar.x, bar.y, bar.width * share, bar.height), Texture2D.whiteTexture, ScaleMode.StretchToFill,
                 false, 0f, frame.LuckOn ? new Color(1f, 0.92f, 0.5f) : new Color(1f, 0.78f, 0.25f), 0f, 0f);
-            string hint = LuckView.Aiming ? "aiming: press on the edge" : "L: aim her current";
+            string hint = LuckView.Dragging ? $"release: {AimCost(frame):0.0} points"
+                : LuckView.Aiming ? "aiming: press and drag" : "L: send a stream";
             GUI.Label(new Rect(bar.xMax + 6, r.y - 2, r.width - 96, 20),
                 new GUIContent($"Luck {frame.Luck:0} \u00B7 {hint}",
-                    "Luck's points build up over time. Press L, then press on the edge of the view and drag: she blows a " +
-                    "current from there towards the mouse, as strong as the arrow is long, for as long as you hold it, " +
-                    "spending her points. It carries food, prey and your creature. L, Esc or a right-click stops aiming."),
+                    "Luck's points build up slowly over time. Press L, then press in the view and drag: an arrow runs from " +
+                    "the nearest edge of the view to the mouse. Release it and she sends a stream of current along it, as " +
+                    "strong as the arrow is long, paid for when it is sent; it speeds up, flows for a few seconds and coasts " +
+                    "to a stop, carrying food, prey and your creature. Right-click or Esc cancels; L stops aiming."),
                 _currentText);
         }
 
-        // Luck's current: L toggles aiming; pressing in the view starts an arrow at the nearest edge of the view, dragging
-        // guides its head, releasing stops the current. The arrow is sent relative to the creature.
-        private Vector2 _luckSentHead;
-
+        // Luck's stream: L toggles aiming; pressing in the view starts an arrow at the nearest edge of the view, dragging
+        // aims its head (a preview, nothing flows yet), releasing sends the stream along it. Sent relative to the creature.
         private bool HandleLuck(SessionBridge bridge, Event e)
         {
             if (e.type == EventType.KeyDown && e.keyCode == KeyCode.L)
             {
                 LuckView.Aiming = !LuckView.Aiming;
-                if (!LuckView.Aiming)
-                    StopLuck(bridge);
+                LuckView.Dragging = false;
                 e.Use();
                 return true;
             }
@@ -535,8 +534,11 @@ namespace AdaptOrDeity.UI
             var view = new Rect(0f, BarHeight, Screen.width - RightInset(), Screen.height - BarHeight);
             if ((e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape) || (e.type == EventType.MouseDown && e.button == 1))
             {
-                LuckView.Aiming = false;
-                StopLuck(bridge);
+                // a drag is cancelled first; otherwise aiming ends
+                if (LuckView.Dragging)
+                    LuckView.Dragging = false;
+                else
+                    LuckView.Aiming = false;
                 e.Use();
                 return true;
             }
@@ -545,7 +547,6 @@ namespace AdaptOrDeity.UI
                 LuckView.AimTail = CreatureRelative(bridge, NearestEdge(view, e.mousePosition));
                 LuckView.AimHead = CreatureRelative(bridge, e.mousePosition);
                 LuckView.Dragging = true;
-                SendLuck(bridge);
                 e.Use();
                 return true;
             }
@@ -553,32 +554,27 @@ namespace AdaptOrDeity.UI
             {
                 var p = new Vector2(Mathf.Clamp(e.mousePosition.x, view.xMin, view.xMax), Mathf.Clamp(e.mousePosition.y, view.yMin, view.yMax));
                 LuckView.AimHead = CreatureRelative(bridge, p);
-                if ((LuckView.AimHead - _luckSentHead).magnitude > 0.2e-6f)   // re-aim every 0.2 um the head moves
-                    SendLuck(bridge);
                 e.Use();
                 return true;
             }
             if (LuckView.Dragging && e.type == EventType.MouseUp)
             {
-                StopLuck(bridge);
+                LuckView.Dragging = false;
+                Vector2 t = LuckView.AimTail, h = LuckView.AimHead;
+                if ((h - t).magnitude > 0.5e-6f)   // a click without a drag sends nothing
+                    bridge.Send(SimCommands.LuckLaunch(t.x, t.y, h.x, h.y));
                 e.Use();
                 return true;
             }
             return false;
         }
 
-        private void SendLuck(SessionBridge bridge)
+        // What the aimed arrow would cost now (luck points)
+        private static float AimCost(SnapshotFrame frame)
         {
-            _luckSentHead = LuckView.AimHead;
-            Vector2 t = LuckView.AimTail, h = LuckView.AimHead;
-            bridge.Send(SimCommands.LuckBlow(t.x, t.y, h.x, h.y));
-        }
-
-        private static void StopLuck(SessionBridge bridge)
-        {
-            if (LuckView.Dragging)
-                bridge.Send(SimCommands.LuckStop());
-            LuckView.Dragging = false;
+            float length = (LuckView.AimHead - LuckView.AimTail).magnitude;
+            float strength = frame.LuckFullLength > 0f ? Mathf.Min(1f, length / frame.LuckFullLength) : 0f;
+            return Mathf.Min(frame.Luck, frame.LuckStreamCost * strength);
         }
 
         private bool CoversUi(Vector2 p) =>
