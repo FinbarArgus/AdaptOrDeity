@@ -273,19 +273,25 @@ namespace AdaptOrDeity.Game.Session
 
         public float LuckMaxSpeed { get; internal set; }
 
-        /// <summary>Whether Luck's stream flows, its arrow (tail to head, relative to the creature [m]), its band's half
-        /// width [m] and its flow now as a share of <see cref="LuckMaxSpeed"/> (0-1: spinning up, flowing, coasting).</summary>
+        /// <summary>Whether Luck's stream flows (a jet: Sim.World Jet). Its origin, where it entered the view, relative to
+        /// the creature [m]; its direction (a unit vector); the width of its profile across the axis (sigma) [m]; how far
+        /// its front has run from the origin along the axis and over what length it rises [m]; and its flow on the axis as a
+        /// share of <see cref="LuckMaxSpeed"/> (<see cref="LuckStrength"/>, 0-1).</summary>
         public bool LuckOn { get; internal set; }
 
-        public float LuckTailX { get; internal set; }
+        public float LuckOriginX { get; internal set; }
 
-        public float LuckTailY { get; internal set; }
+        public float LuckOriginY { get; internal set; }
 
-        public float LuckHeadX { get; internal set; }
+        public float LuckDirX { get; internal set; }
 
-        public float LuckHeadY { get; internal set; }
+        public float LuckDirY { get; internal set; }
 
-        public float LuckHalfWidth { get; internal set; }
+        public float LuckWidth { get; internal set; }
+
+        public float LuckFront { get; internal set; }
+
+        public float LuckFrontWidth { get; internal set; }
 
         public float LuckStrength { get; internal set; }
 

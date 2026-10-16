@@ -33,11 +33,13 @@ Generated 2026-10-12 from entries with status "placeholder", source "unreference
 | `luck.start` | 50 | 1 | unreferenced_placeholder | design | luck points at the start of a game |
 | `luck.rate` | 0.002315 | 1/s | unreferenced_placeholder | design | luck points gained per second of game time: empty to full in 12 h |
 | `luck.stream_cost` | 10 | 1 | unreferenced_placeholder | design | luck points a stream of current costs at full strength, paid when it is sent (in proportion below): a full store sends 10 |
-| `luck.stream_time` | 6 | s | unreferenced_placeholder | design | how long Luck's stream flows before it coasts to a stop |
+| `luck.stream_time` | 8 | s | unreferenced_placeholder | design | how long Luck drives her stream before it coasts (its front runs about 37 um in that time at full strength) |
 | `luck.spin_up` | 0.5 | s | unreferenced_placeholder | design | time constant of a stream spinning up to its speed (its inertia) |
-| `luck.spin_down` | 3 | s | unreferenced_placeholder | design | time constant of a stream coasting to a stop once it has flowed for luck.stream_time |
-| `luck.max_speed` | 2e-06 | m/s | unreferenced_placeholder | design | flow of Luck's current on its axis at full strength: 2 um/s, faster than the creature swims (~1.5 um/s) and 10x the tide |
-| `luck.half_width` | 4e-06 | m | unreferenced_placeholder | design | half the width of the band of water Luck's current flows along (a few cell radii) |
+| `luck.spread_time` | 3 | s | unreferenced_placeholder | design | once Luck stops driving it, the stream spreads at constant momentum (wider and slower) and its width doubles in this time (an eddy diffusivity: at the cell's scale water's own viscosity would spread it in microseconds) |
+| `luck.friction_time` | 6 | s | unreferenced_placeholder | design | time constant of friction taking a coasting stream's momentum (it ends below 1% of its speed) |
+| `luck.max_speed` | 5e-06 | m/s | unreferenced_placeholder | design | flow of Luck's stream on its axis at full strength: 5 um/s, faster than the creature swims (~1.5 um/s) and 25x the tide, so its front (which runs at the flow) crosses the 30 um view while driven |
+| `luck.jet_width` | 3e-06 | m | unreferenced_placeholder | design | width (sigma) of the Gaussian profile across Luck's stream while it is driven: about +-6 um of moving water |
+| `luck.front_width` | 2e-06 | m | unreferenced_placeholder | design | length over which the stream's front rises as it runs in from the edge (the water ahead is pushed aside there) |
 | `luck.full_length` | 3e-05 | m | unreferenced_placeholder | design | length of the aimed arrow that gives full strength (the view's width); shorter arrows blow in proportion |
 | `scoring.damage_to_empty` | 0.5 | 1 | unreferenced_placeholder | design | the damage meter empties when the level has added this much damage, as a share of a lethal load (mean over the creature's cells, a dead one counting as a full load); 0.5 since maintenance cuts cost damage (2026-10-15) |
 | `motility.proton_cost_scale` | 0.01 | 1 | unreferenced_placeholder | design | protons per flagellar revolution as a share of the cell model's (n_H_rev): the thrust scale squared, since the mechanical power of a scaled thrust (force x speed) scales with its square, so swimming keeps a bacterium's ~0.1-2% efficiency (designer, 2026-10-14: bring the flagella cost down with the thrust; stronger flagella proteins later raise both) |

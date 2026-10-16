@@ -4,14 +4,17 @@ using UnityEngine;
 namespace AdaptOrDeity.Presentation
 {
     /// <summary>
-    /// Draws Luck's stream. While the player aims (<see cref="Dragging"/>, set by the HUD) a faint thick arrow previews it.
-    /// Once sent, the stream is a shaded band as wide as the water it moves (brightest on its axis, fading to its edges as
-    /// the flow does, as bright as it is strong while it spins up, flows and coasts down), with streaks that travel along
-    /// it at its speed and leave fading tails: its wake. Positions are relative to the creature.
+    /// Draws Luck's stream. While the player aims (<see cref="Dragging"/>, set by the HUD) a faint thick arrow previews it,
+    /// with a fainter line on past its head (the stream runs on along it). Once sent, the stream is a jet along that line:
+    /// a band shaded as its Gaussian profile, coming from beyond the edge of the view and reaching to its front, which
+    /// moves on downstream and fades in over its length; as bright as it is strong (spinning up, driven, coasting as it
+    /// spreads), with streaks that travel along it at the flow where they are and leave fading tails: its wake. Positions
+    /// are relative to the creature.
     /// </summary>
     public sealed class LuckView : MonoBehaviour
     {
-        private const int Segments = 12, Lanes = 5, StreaksPerLane = 4;
+        private const int Segments = 12, AlongSegments = 40, Lanes = 5, StreaksPerLane = 6;
+        private static readonly float[] Across = { -3f, -2f, -1f, 0f, 1f, 2f, 3f };   // band columns, in sigmas
         private static readonly Color Gold = new Color(1f, 0.82f, 0.3f), Pale = new Color(1f, 0.96f, 0.78f);
 
         /// <summary>Whether the player is in Luck's aiming mode (the HUD's L key).</summary>
@@ -30,8 +33,8 @@ namespace AdaptOrDeity.Presentation
         private readonly List<Vector3> _v = new List<Vector3>();
         private readonly List<Color> _c = new List<Color>();
         private readonly List<int> _t = new List<int>();
+        private readonly float[] _phase = new float[Lanes];   // how far each lane's wake has travelled [world units]
         private double _lastSimTime;
-        private float _phase;   // how far the wake has travelled along the stream [world units]
 
         public void Initialise(SessionBridge bridge)
         {
@@ -59,26 +62,51 @@ namespace AdaptOrDeity.Presentation
             var f = _bridge.Frame;
             if (f == null)
                 return;
-            float u = CellView.UnitsPerMetre, w = Mathf.Max(f.LuckHalfWidth, 1e-7f) * u;
+            float u = CellView.UnitsPerMetre;
             var shift = _bridge.Shift;
             double dtSim = f.SimTime - _lastSimTime;
             _lastSimTime = f.SimTime;
+            float reach = ViewReach();
 
-            // the aim: a faint arrow, nothing flows yet
-            _previewRenderer.enabled = Dragging && Arrow(AimTail * u + shift, AimHead * u + shift, w, 0.28f, false, 0f);
+            // the aim: a faint arrow, and a fainter line on past its head; nothing flows yet
+            _previewRenderer.enabled = Dragging && Preview(AimTail * u + shift, AimHead * u + shift, 3f * f.LuckWidth * u, reach);
             if (_previewRenderer.enabled)
                 Apply(_preview);
 
-            // the stream: as bright as it is strong, its wake travelling along it at its speed
             bool flowing = f.LuckOn && f.LuckStrength > 0f;
-            if (flowing && dtSim > 0.0 && dtSim < 10.0)
-                _phase += (float)(f.LuckStrength * f.LuckMaxSpeed * u * dtSim);
-            float strength = Mathf.Clamp01(f.LuckStrength);
-            _streamRenderer.enabled = flowing && Arrow(new Vector2(f.LuckTailX, f.LuckTailY) * u + shift,
-                new Vector2(f.LuckHeadX, f.LuckHeadY) * u + shift, w, 0.15f + 0.45f * strength, true, strength);
+            if (!flowing)
+            {
+                _streamRenderer.enabled = false;
+                return;
+            }
+            float speed = f.LuckStrength * f.LuckMaxSpeed * u, sigma = f.LuckWidth * u;
+            if (dtSim > 0.0 && dtSim < 10.0)
+                for (int lane = 0; lane < Lanes; lane++)
+                    _phase[lane] += speed * Profile(LaneAcross(lane)) * (float)dtSim;
+            var origin = new Vector2(f.LuckOriginX, f.LuckOriginY) * u + shift;
+            var dir = new Vector2(f.LuckDirX, f.LuckDirY);
+            _streamRenderer.enabled = Jet(origin, dir, sigma, f.LuckFront * u, Mathf.Max(f.LuckFrontWidth * u, 1e-4f), reach,
+                Mathf.Clamp01(f.LuckStrength));
             if (_streamRenderer.enabled)
                 Apply(_stream);
         }
+
+        // Half the diagonal of what the camera shows, and a margin [world units], so lines can run from beyond the view
+        private static float ViewReach()
+        {
+            var cam = Camera.main;
+            if (cam == null || !cam.orthographic)
+                return 10f;
+            float h = cam.orthographicSize, w = h * cam.aspect;
+            return 1.2f * Mathf.Sqrt(h * h + w * w);
+        }
+
+        private static float Profile(float sigmas) => Mathf.Exp(-0.5f * sigmas * sigmas);
+
+        private static float LaneAcross(int lane) => ((lane + 0.5f) / Lanes * 2f - 1f) * 1.6f;   // -1.3..1.3 sigma
+
+        // The front's rise: 1 upstream, 0 beyond, as the flow (1 - tanh((s - front)/L))/2
+        private static float Rise(float s, float front, float l) => 0.5f * (1f - (float)System.Math.Tanh((s - front) / l));
 
         private void Apply(Mesh mesh)
         {
@@ -89,20 +117,31 @@ namespace AdaptOrDeity.Presentation
             mesh.RecalculateBounds();
         }
 
-        // A thick arrow from t to h (world units) into the vertex lists, with the wake's streaks when asked; false if too
-        // short to draw.
-        private bool Arrow(Vector2 t, Vector2 h, float w, float alpha, bool wake, float strength)
+        private bool Preview(Vector2 t, Vector2 h, float w, float reach)
         {
-            _v.Clear();
-            _c.Clear();
-            _t.Clear();
+            Clear();
             Vector2 d = h - t;
             float length = d.magnitude;
             if (length < 1e-4f)
                 return false;
             Vector2 e = d / length, n = new Vector2(-e.y, e.x);
+            Arrow(t, e, n, length, Mathf.Max(w, 0.05f), 0.28f);
+            // on past the head, out of the view: where the stream will run
+            float thin = 0.08f * Mathf.Max(w, 0.05f);
+            int k = _v.Count;
+            Vertex(h - n * thin, Gold, 0.18f);
+            Vertex(h + n * thin, Gold, 0.18f);
+            Vertex(h + e * reach - n * thin, Gold, 0f);
+            Vertex(h + e * reach + n * thin, Gold, 0f);
+            Quad(k, k + 2, k + 1, k + 3);
+            return true;
+        }
+
+        // A thick arrow of length `length` from t along e, half-width w, into the vertex lists
+        private void Arrow(Vector2 t, Vector2 e, Vector2 n, float length, float w, float alpha)
+        {
             float headLength = Mathf.Min(1.6f * w, 0.5f * length), shaft = length - headLength;
-            // shaft: transparent edges, coloured axis, brighter towards the head
+            int start = _v.Count;
             for (int i = 0; i <= Segments; i++)
             {
                 float s = (float)i / Segments;
@@ -114,51 +153,75 @@ namespace AdaptOrDeity.Presentation
                 if (i > 0)
                     for (int side = 0; side < 2; side++)
                     {
-                        int p = 3 * (i - 1) + side;
+                        int p = start + 3 * (i - 1) + side;
                         Quad(p, p + 3, p + 1, p + 4);
                     }
             }
-            // head
             Vector2 b = t + e * shaft;
             int k = _v.Count;
             Vertex(b - n * (1.6f * w), Gold, 0.6f * alpha);
-            Vertex(h, Pale, Mathf.Min(1f, 1.4f * alpha));
+            Vertex(t + e * length, Pale, Mathf.Min(1f, 1.4f * alpha));
             Vertex(b + n * (1.6f * w), Gold, 0.6f * alpha);
             _t.Add(k);
             _t.Add(k + 1);
             _t.Add(k + 2);
-            if (wake)
-                Wake(t, e, n, shaft, w, strength);
-            return true;
         }
 
-        // Streaks along lanes across the band, moving with the stream (by _phase) and fading at both ends of the shaft;
-        // each has a comet tail behind it. Lanes near the edges, where the flow is weaker, are fainter.
-        private void Wake(Vector2 t, Vector2 e, Vector2 n, float shaft, float w, float strength)
+        // The jet from beyond the view (s = -reach) to just past its front, its profile across, and its wake
+        private bool Jet(Vector2 origin, Vector2 e, float sigma, float front, float l, float reach, float strength)
         {
-            float spacing = shaft / StreaksPerLane, tail = Mathf.Min(0.6f * spacing, 3f * w), thick = 0.12f * w;
+            Clear();
+            if (sigma <= 0f)
+                return false;
+            Vector2 n = new Vector2(-e.y, e.x);
+            // where the line passes the creature (the view's centre): the band runs reach either side of that
+            float centre = Vector2.Dot(-origin, e);
+            float s0 = centre - reach, s1 = Mathf.Min(centre + reach, front + 3f * l);
+            if (s1 <= s0)
+                return false;
+            float alpha = 0.12f + 0.38f * strength;
+            int columns = Across.Length;
+            for (int i = 0; i <= AlongSegments; i++)
+            {
+                float s = Mathf.Lerp(s0, s1, (float)i / AlongSegments);
+                float rise = Rise(s, front, l);
+                for (int c = 0; c < columns; c++)
+                    Vertex(origin + e * s + n * (Across[c] * sigma), Gold, alpha * rise * Profile(Across[c]));
+                if (i > 0)
+                    for (int c = 0; c < columns - 1; c++)
+                    {
+                        int p = (i - 1) * columns + c;
+                        Quad(p, p + columns, p + 1, p + columns + 1);
+                    }
+            }
+            // the wake: streaks along lanes across the jet, each moving at the flow in its lane, fading in at the front
+            float span = s1 - s0, spacing = span / StreaksPerLane, tail = Mathf.Min(0.5f * spacing, 4f * sigma), thick = 0.08f * sigma;
             for (int lane = 0; lane < Lanes; lane++)
             {
-                float across = ((lane + 0.5f) / Lanes * 2f - 1f) * 0.8f;   // -0.8..0.8 of the half-width
-                float profile = Mathf.Cos(0.5f * Mathf.PI * across);
-                profile *= profile;
-                float offset = 0.37f * lane * spacing;   // lanes out of step
+                float across = LaneAcross(lane), profile = Profile(across);
                 for (int j = 0; j < StreaksPerLane; j++)
                 {
-                    float along = Mathf.Repeat(_phase * profile + offset + j * spacing, shaft);
-                    float fade = Mathf.Clamp01(along / (0.15f * shaft)) * Mathf.Clamp01((shaft - along) / (0.15f * shaft));
-                    float a = 0.9f * strength * profile * fade;
+                    float s = s0 + Mathf.Repeat(_phase[lane] + 0.37f * lane * spacing + j * spacing, span);
+                    float a = 0.9f * strength * profile * Rise(s, front, l) * Mathf.Clamp01((s - s0) / (0.1f * span));
                     if (a <= 0.01f)
                         continue;
-                    Vector2 front = t + e * along + n * (across * w), back = front - e * Mathf.Min(tail, along);
+                    Vector2 head = origin + e * s + n * (across * sigma), back = head - e * Mathf.Min(tail, s - s0);
                     int k = _v.Count;
                     Vertex(back - n * thick, Pale, 0f);
                     Vertex(back + n * thick, Pale, 0f);
-                    Vertex(front - n * thick, Pale, a);
-                    Vertex(front + n * thick, Pale, a);
+                    Vertex(head - n * thick, Pale, a);
+                    Vertex(head + n * thick, Pale, a);
                     Quad(k, k + 2, k + 1, k + 3);
                 }
             }
+            return true;
+        }
+
+        private void Clear()
+        {
+            _v.Clear();
+            _c.Clear();
+            _t.Clear();
         }
 
         private void Vertex(Vector2 p, Color colour, float alpha)

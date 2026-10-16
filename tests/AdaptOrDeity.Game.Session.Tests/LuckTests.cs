@@ -7,9 +7,9 @@ using NUnit.Framework;
 namespace AdaptOrDeity.Game.Session.Tests
 {
     /// <summary>
-    /// Luck (FermenterWorld.Luck.cs): her points build up over time; she spends them sending a stream of current along an
-    /// arrow she aims, relative to the creature (<see cref="DirectedCurrent"/>), which spins up, flows for a few seconds and
-    /// coasts to a stop, carrying the creature, loose food and prey.
+    /// Luck (FermenterWorld.Luck.cs): her points build up over time; she spends them sending a stream of current, a
+    /// <see cref="Jet"/>, into the view from its edge. The jet arrives from beyond the edge and runs on through the whole
+    /// field, conserving the water's mass (divergence-free) and its momentum (it spreads and slows as it coasts).
     /// </summary>
     public class LuckTests
     {
@@ -31,46 +31,96 @@ namespace AdaptOrDeity.Game.Session.Tests
 
         private static void Run(SimLoop loop, double seconds) => loop.StepExactly((long)Math.Round(seconds / 0.1));
 
-        // the stream's flow on its axis integrated over the steps taken [m]
-        private static double Flowed(SimLoop loop, FermenterWorld world, double seconds)
+        // a jet along +x through the origin, already at speed U with its front 30 um downstream
+        private static Jet Flowing(double speed = 2e-6, double width = 3e-6)
         {
-            double sum = 0.0;
-            for (long k = 0; k < (long)Math.Round(seconds / 0.1); k++)
-            {
-                loop.StepExactly(1);
-                sum += world.LuckCurrent.Speed * 0.1;
-            }
-            return sum;
+            var jet = new Jet { SpinUp = 1e-12, FrontWidth = 2e-6 };
+            jet.Launch(0.0, 0.0, 1.0, 0.0, speed, width, 1e3);
+            jet.Step(30e-6 / speed, 0.0, 0.0);   // spun up at once, its front 30 um on
+            return jet;
         }
 
         [Test]
-        public void TheCurrentFlowsAlongItsArrowAcrossABand()
+        public void TheJetConservesTheWatersMassEverywhere()
         {
-            // an arrow 20 um long along +x through the origin, band half-width 4 um, at 2 um/s
-            var c = new DirectedCurrent { HalfWidth = 4e-6 };
-            c.Blow(-10e-6, 0.0, 10e-6, 0.0, 2e-6);
-            c.At(0.0, 0.0, out double ux, out double uy);
-            Assert.That((ux, uy), Is.EqualTo((2e-6, 0.0)), "full speed on the axis, away from the head");
-            c.At(0.0, 2e-6, out ux, out _);
-            Assert.That(ux, Is.EqualTo(2e-6 * 0.5).Within(1e-18), "cos² across: half at half the half-width");
-            c.At(0.0, 4e-6, out ux, out _);
-            Assert.That(ux, Is.EqualTo(0.0), "nothing at the band's edge");
-            c.At(8e-6, 0.0, out ux, out _);
-            Assert.That(ux, Is.EqualTo(2e-6 * 0.5).Within(1e-18), "tapering over the last half-width to the head");
-            c.At(-11e-6, 0.0, out ux, out _);
-            Assert.That(ux, Is.EqualTo(0.0), "behind the tail");
-            c.At(11e-6, 0.0, out ux, out _);
-            Assert.That(ux, Is.EqualTo(0.0), "beyond the head");
-            c.Blow(0.0, -10e-6, 0.0, 10e-6, 2e-6);   // turned to +y
-            c.At(0.0, 0.0, out ux, out uy);
-            Assert.That(ux, Is.EqualTo(0.0).Within(1e-21));
-            Assert.That(uy, Is.EqualTo(2e-6));
-            c.SetSpeed(1e-6);
-            c.At(0.0, 0.0, out _, out uy);
-            Assert.That(uy, Is.EqualTo(1e-6), "spun down, same arrow");
-            c.Stop();
-            c.At(0.0, 0.0, out ux, out uy);
-            Assert.That((ux, uy), Is.EqualTo((0.0, 0.0)));
+            // the divergence of the flow, by central differences, is zero to round-off on a grid over the jet, its front
+            // and the water beside it (relative to the jet's own shear, U / sigma)
+            var jet = new Jet { SpinUp = 0.3, FrontWidth = 2e-6 };
+            jet.Launch(1e-6, -2e-6, 3.0, 4.0, 2e-6, 3e-6, 10.0);   // a slanted jet, spinning up
+            jet.Step(2.0, 0.1e-6, 0.0);
+            double h = 1e-9, scale = jet.Speed / jet.Width, worst = 0.0;
+            for (double s = -20e-6; s <= jet.Front + 10e-6; s += 0.7e-6)
+                for (double n = -15e-6; n <= 15e-6; n += 0.7e-6)
+                {
+                    double x = jet.OriginX + s * jet.DirX - n * jet.DirY, y = jet.OriginY + s * jet.DirY + n * jet.DirX;
+                    jet.At(x + h, y, out double uxp, out _);
+                    jet.At(x - h, y, out double uxm, out _);
+                    jet.At(x, y + h, out _, out double uyp);
+                    jet.At(x, y - h, out _, out double uym);
+                    worst = Math.Max(worst, Math.Abs((uxp - uxm + uyp - uym) / (2.0 * h)));
+                }
+            Assert.That(worst, Is.LessThan(1e-5 * scale));
+        }
+
+        [Test]
+        public void TheJetComesFromUpstreamAndRunsOnToItsFront()
+        {
+            var jet = Flowing();
+            jet.At(-50e-6, 0.0, out double ux, out double uy);
+            Assert.That(ux, Is.EqualTo(2e-6).Within(1e-12), "upstream of where it entered, beyond the edge, it already flows");
+            Assert.That(uy, Is.EqualTo(0.0).Within(1e-15));
+            jet.At(10e-6, 3e-6, out ux, out _);
+            Assert.That(ux, Is.EqualTo(2e-6 * Math.Exp(-0.5)).Within(1e-12), "a Gaussian profile across: e^-1/2 at one sigma");
+            jet.At(60e-6, 0.0, out ux, out uy);
+            Assert.That(Math.Abs(ux) + Math.Abs(uy), Is.LessThan(1e-15), "nothing beyond its front yet");
+            // the momentum it carries along: the flow integrated across, U sigma sqrt(2 pi)
+            double flux = 0.0;
+            for (double n = -30e-6; n <= 30e-6; n += 0.05e-6)
+            {
+                jet.At(0.0, n, out ux, out _);
+                flux += ux * 0.05e-6;
+            }
+            Assert.That(flux, Is.EqualTo(jet.FluxAcross).Within(1e-6 * jet.FluxAcross));
+            // the front pushes the water ahead of it aside, outwards on both sides
+            jet.At(jet.Front, 6e-6, out _, out double left);
+            jet.At(jet.Front, -6e-6, out _, out double right);
+            Assert.That(left, Is.GreaterThan(0.0));
+            Assert.That(right, Is.EqualTo(-left).Within(1e-12 * left));
+        }
+
+        [Test]
+        public void ACoastingJetKeepsItsMomentumAsItSpreadsAndDrifts()
+        {
+            double sigma = 3e-6, spread = 3.0 * sigma * sigma / (2.0 * 3.0);   // the width doubles in 3 s
+            var jet = new Jet { SpinUp = 0.5, Spread = spread, Friction = 1e12, FrontWidth = 2e-6 };
+            jet.Launch(0.0, 0.0, 0.0, 1.0, 2e-6, sigma, 2.0);   // up the y axis, driven for 2 s
+            double front = 0.0;
+            for (int k = 0; k < 20; k++)
+            {
+                jet.Step(0.1, 0.0, 0.0);
+                front += jet.Speed * 0.1;
+            }
+            Assert.That(jet.Speed, Is.EqualTo(2e-6 * (1.0 - Math.Exp(-4.0))).Within(1e-12), "spun up over 2 s");
+            Assert.That(jet.Width, Is.EqualTo(sigma), "it keeps its width while driven");
+            double momentum = jet.Speed * jet.Width;
+            for (int k = 0; k < 30; k++)
+            {
+                jet.Step(0.1, 0.3e-6, 0.0);   // coasting 3 s, drifting with water flowing along x
+                front += jet.Speed * 0.1;
+            }
+            Assert.That(jet.Width, Is.EqualTo(2.0 * sigma).Within(1e-12), "twice as wide");
+            Assert.That(jet.Speed * jet.Width, Is.EqualTo(momentum).Within(1e-9 * momentum), "momentum kept: half the speed");
+            Assert.That(jet.Front, Is.EqualTo(front).Within(1e-15), "its front runs at its speed");
+            Assert.That(jet.OriginX, Is.EqualTo(0.9e-6).Within(1e-15), "carried by the water it is in");
+            Assert.That(jet.On, Is.True);
+
+            var lossy = new Jet { SpinUp = 1e-12, Spread = 0.0, Friction = 2.0 };
+            lossy.Launch(0.0, 0.0, 1.0, 0.0, 2e-6, sigma, 0.1);
+            lossy.Step(0.1, 0.0, 0.0);
+            lossy.Step(2.0, 0.0, 0.0);
+            Assert.That(lossy.Speed, Is.EqualTo(2e-6 * Math.Exp(-1.0)).Within(1e-12), "friction takes its momentum");
+            lossy.Step(8.0, 0.0, 0.0);
+            Assert.That(lossy.On, Is.False, "it ends below 1% of its speed");
         }
 
         [Test]
@@ -86,47 +136,49 @@ namespace AdaptOrDeity.Game.Session.Tests
             double l = P("luck.full_length");
             world.Luck = 50.0;
             Assert.That(world.LuckCost(0.0, 30e-6, 0.5 * l, 30e-6), Is.EqualTo(0.5 * P("luck.stream_cost")).Within(1e-12));
-            world.LuckLaunch(0.0, 30e-6, 0.5 * l, 30e-6);   // half strength, well away from the creature: paid at once
+            world.LuckLaunch(0.0, 30e-6, 0.5 * l, 30e-6);   // half strength: paid at once
             Assert.That(world.Luck, Is.EqualTo(50.0 - 0.5 * P("luck.stream_cost")).Within(1e-12));
-            Assert.That(world.LuckCurrent.On, Is.True);
+            Assert.That(world.LuckJet.On, Is.True);
 
-            // short of points: a weaker stream, all she has
-            world.Luck = 0.3 * P("luck.stream_cost");
+            world.Luck = 0.3 * P("luck.stream_cost");   // short of points: a weaker stream, all she has
             world.LuckLaunch(0.0, 30e-6, l, 30e-6);
             Assert.That(world.Luck, Is.EqualTo(0.0));
-            Run(loop, 6.0);
+            Run(loop, P("luck.stream_time"));
             Assert.That(world.LuckStrength, Is.EqualTo(0.3).Within(1e-3), "spun up to 0.3 of full");
 
             world.LuckStop();
             world.Luck = 0.0;
             world.LuckLaunch(0.0, 30e-6, l, 30e-6);
-            Assert.That(world.LuckCurrent.On, Is.False, "no points, no stream");
+            Assert.That(world.LuckJet.On, Is.False, "no points, no stream");
             world.Luck = 1e9;
             Assert.That(world.Luck, Is.EqualTo(P("luck.max")), "capped");
         }
 
         [Test]
-        public void AStreamSpinsUpFlowsAFewSecondsAndCoastsToAStop()
+        public void AStreamSentFromTheEdgeRunsOnPastTheArrowToTheCreature()
         {
-            using var world = Quiet();
-            var loop = Loop(world);
-            double l = P("luck.full_length"), up = P("luck.spin_up"), down = P("luck.spin_down"), flow = P("luck.stream_time");
-            world.LuckLaunch(0.0, 30e-6, l, 30e-6);   // full strength, away from the creature
-            Assert.That(world.LuckStrength, Is.EqualTo(0.0), "it starts at rest");
-            Run(loop, up);
-            Assert.That(world.LuckStrength, Is.EqualTo(1.0 - Math.Exp(-1.0)).Within(1e-3), "one spin-up time: 63%");
-            Run(loop, flow - up);
-            Assert.That(world.LuckStrength, Is.GreaterThan(0.99));
-            Run(loop, down);
-            double coasting = (1.0 - Math.Exp(-flow / up)) * Math.Exp(-1.0);
-            Assert.That(world.LuckStrength, Is.EqualTo(coasting).Within(1e-3), "one spin-down time after it stops flowing: 37%");
-            Assert.That(world.LuckCurrent.On, Is.True, "still coasting");
-            Run(loop, down * Math.Log(100.0));
-            Assert.That(world.LuckCurrent.On, Is.False, "gone once below 1%");
+            // the arrow runs from 15 um to the creature's left to 5 um short of it; the stream enters there and its front
+            // runs on, past the arrow's head, and carries the creature along its line
+            using var pushed = Quiet();
+            using var still = Quiet();
+            var pushedLoop = Loop(pushed);
+            var stillLoop = Loop(still);
+            pushed.Luck = P("luck.max");
+            pushed.LuckLaunch(-15e-6, 0.0, -5e-6, 0.0);
+            var jet = pushed.LuckJet;
+            Assert.That((jet.OriginX - pushed.Body.Body.X, jet.DirX, jet.DirY), Is.EqualTo((-15e-6, 1.0, 0.0)));
+            Run(pushedLoop, 2.0);
+            Run(stillLoop, 2.0);
+            Assert.That(pushed.Body.Body.X - still.Body.Body.X, Is.LessThan(0.02e-6), "its front has not reached the creature");
+            Run(pushedLoop, 20.0);
+            Run(stillLoop, 20.0);
+            double dx = pushed.Body.Body.X - still.Body.Body.X, dy = pushed.Body.Body.Y - still.Body.Body.Y;
+            Assert.That(dx, Is.GreaterThan(1e-6), "carried on past the arrow's head");
+            Assert.That(Math.Abs(dy), Is.LessThan(0.1 * dx));
         }
 
         [Test]
-        public void AStreamCarriesFoodAlongItsAxisByTheFlowItHad()
+        public void AStreamCarriesFoodByTheFlowItMeets()
         {
             using var pushed = Quiet();
             using var still = Quiet();
@@ -134,35 +186,26 @@ namespace AdaptOrDeity.Game.Session.Tests
             var stillLoop = Loop(still);
             var s = pushed.Food.Settings;
             double r = s.PacketRadius, g = s.SphereAmount(r);
-            // a dead cell 10 um above the creature and 30 um to its left; a long arrow along that line, clear of the creature
+            // a dead cell 12 um above the creature and 10 um to its left, on a stream sent from 25 um to its left
             var b0 = pushed.Body.Body;
-            var a = pushed.Food.AddBody(b0.X - 30e-6, b0.Y + 10e-6, 0.0, 0.0, r, g, s.FreeFraction * g, 0);
-            var b = still.Food.AddBody(b0.X - 30e-6, b0.Y + 10e-6, 0.0, 0.0, r, g, s.FreeFraction * g, 0);
-            pushed.LuckLaunch(-40e-6, 10e-6, 30e-6, 10e-6);
-            double flowed = Flowed(pushedLoop, pushed, 20.0);
-            Run(stillLoop, 20.0);
-            Assert.That(pushed.LuckCurrent.On, Is.False, "the stream has ended");
-            Assert.That(flowed, Is.GreaterThan(10e-6), "a full stream moves things over 10 um");
-            double moved = (a.X - pushed.Body.Body.X) - (b.X - still.Body.Body.X);
-            Assert.That(moved, Is.EqualTo(flowed).Within(0.01 * flowed), "the flow on its axis, all the way");
-            Assert.That(pushed.Body.Body.X - still.Body.Body.X, Is.EqualTo(0.0).Within(1e-9), "the creature, off the band, stays");
-        }
-
-        [Test]
-        public void AStreamThroughTheCreatureCarriesIt()
-        {
-            using var pushed = Quiet();
-            using var still = Quiet();
-            var pushedLoop = Loop(pushed);
-            var stillLoop = Loop(still);
-            double l = P("luck.full_length");
-            pushed.LuckLaunch(-0.5 * l, 0.0, 0.5 * l, 0.0);   // through the creature, along +x
-            double flowed = Flowed(pushedLoop, pushed, 20.0);
-            Run(stillLoop, 20.0);
-            double dx = pushed.Body.Body.X - still.Body.Body.X, dy = pushed.Body.Body.Y - still.Body.Body.Y;
-            // anchored to the creature, it keeps carrying it; drag brings the body to most of the flow within a second
-            Assert.That(dx, Is.InRange(0.7 * flowed, 1.01 * flowed));
-            Assert.That(Math.Abs(dy), Is.LessThan(0.05 * dx));
+            var a = pushed.Food.AddBody(b0.X - 10e-6, b0.Y + 12e-6, 0.0, 0.0, r, g, s.FreeFraction * g, 0);
+            var b = still.Food.AddBody(b0.X - 10e-6, b0.Y + 12e-6, 0.0, 0.0, r, g, s.FreeFraction * g, 0);
+            pushed.Luck = P("luck.max");
+            pushed.LuckLaunch(-25e-6, 12e-6, 5e-6, 12e-6);
+            double expected = 0.0;
+            for (int k = 0; k < 300; k++)
+            {
+                pushed.LuckJet.At(a.X, a.Y, out double ux, out _);   // the flow where the packet is, this step
+                expected += ux * 0.1;
+                pushedLoop.StepExactly(1);
+            }
+            Run(stillLoop, 30.0);
+            double moved = a.X - b.X;
+            Assert.That(expected, Is.GreaterThan(5e-6), "the stream moved it several microns");
+            // (the world samples the flow after the jet and the drift have moved this step: first order in the step, which
+            // shows at the front)
+            Assert.That(moved, Is.EqualTo(expected).Within(0.06 * expected), "by the flow it met on the way");
+            Assert.That(pushed.Body.Body.X - still.Body.Body.X, Is.LessThan(0.05 * moved), "the creature, beside it, barely");
         }
 
         [Test]
@@ -170,24 +213,29 @@ namespace AdaptOrDeity.Game.Session.Tests
         {
             using var world = Quiet();
             var loop = Loop(world);
-            loop.Enqueue(SimCommands.LuckLaunch(-12.5e-6, 3.25e-6, 7.0e-6, -1.0e-6));
+            loop.Enqueue(SimCommands.LuckLaunch(-12.5e-6, 3.25e-6, 7.5e-6, 3.25e-6));
             loop.ApplyCommands();
-            var c = world.LuckCurrent;
-            Assert.That((c.On, c.TailX, c.TailY, c.HeadX, c.HeadY), Is.EqualTo((true, -12.5e-6, 3.25e-6, 7.0e-6, -1.0e-6)));
+            var jet = world.LuckJet;
+            var b = world.Body.Body;
+            Assert.That((jet.On, jet.OriginX - b.X, jet.OriginY - b.Y, jet.DirX, jet.DirY),
+                Is.EqualTo((true, -12.5e-6, 3.25e-6, 1.0, 0.0)));
             loop.StepExactly(5);
             var frame = loop.CreateFrame();
             loop.WriteSnapshot(frame);
             Assert.That(frame.LuckOn, Is.True);
-            Assert.That((frame.LuckTailX, frame.LuckHeadY), Is.EqualTo(((float)-12.5e-6, (float)-1.0e-6)));
-            Assert.That(frame.LuckHalfWidth, Is.EqualTo((float)P("luck.half_width")));
+            Assert.That(frame.LuckOriginX, Is.EqualTo((float)(jet.OriginX - b.X)));
+            Assert.That((frame.LuckDirX, frame.LuckDirY), Is.EqualTo((1f, 0f)));
+            Assert.That(frame.LuckWidth, Is.EqualTo((float)P("luck.jet_width")));
+            Assert.That(frame.LuckFront, Is.EqualTo((float)jet.Front));
+            Assert.That(frame.LuckFront, Is.GreaterThan(0f));
+            Assert.That(frame.LuckFrontWidth, Is.EqualTo((float)P("luck.front_width")));
             Assert.That(frame.LuckStrength, Is.EqualTo((float)world.LuckStrength));
-            Assert.That(frame.LuckStrength, Is.GreaterThan(0f));
             Assert.That(frame.Luck, Is.EqualTo((float)world.Luck));
             Assert.That((frame.LuckMax, frame.LuckStreamCost, frame.LuckFullLength, frame.LuckMaxSpeed),
                 Is.EqualTo(((float)P("luck.max"), (float)P("luck.stream_cost"), (float)P("luck.full_length"), (float)P("luck.max_speed"))));
             loop.Enqueue(SimCommands.LuckStop());
             loop.ApplyCommands();
-            Assert.That(world.LuckCurrent.On, Is.False);
+            Assert.That(world.LuckJet.On, Is.False);
         }
     }
 }

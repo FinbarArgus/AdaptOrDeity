@@ -512,9 +512,11 @@ namespace AdaptOrDeity.UI
             GUI.Label(new Rect(bar.xMax + 6, r.y - 2, r.width - 96, 20),
                 new GUIContent($"Luck {frame.Luck:0} \u00B7 {hint}",
                     "Luck's points build up slowly over time. Press L, then press in the view and drag: an arrow runs from " +
-                    "the nearest edge of the view to the mouse. Release it and she sends a stream of current along it, as " +
-                    "strong as the arrow is long, paid for when it is sent; it speeds up, flows for a few seconds and coasts " +
-                    "to a stop, carrying food, prey and your creature. Right-click or Esc cancels; L stops aiming."),
+                    "the nearest edge of the view to the mouse. Release it and she sends a stream of current: it comes in " +
+                    "from beyond that edge and runs on along the arrow's line through the water, as strong as the arrow is " +
+                    "long, paid for when it is sent. It speeds up, is driven for a few seconds, then coasts, spreading wider " +
+                    "and slower, carrying food, prey and your creature; it pushes the water ahead of its front aside. " +
+                    "Right-click or Esc cancels; L stops aiming."),
                 _currentText);
         }
 

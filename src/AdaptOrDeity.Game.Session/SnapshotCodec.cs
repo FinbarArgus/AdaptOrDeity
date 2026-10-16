@@ -126,11 +126,13 @@ namespace AdaptOrDeity.Game.Session
             float fullLength = f.LuckFullLength; io.Value(ref fullLength); f.LuckFullLength = fullLength;
             float maxSpeed = f.LuckMaxSpeed; io.Value(ref maxSpeed); f.LuckMaxSpeed = maxSpeed;
             bool luckOn = f.LuckOn; io.Value(ref luckOn); f.LuckOn = luckOn;
-            float luckTailX = f.LuckTailX; io.Value(ref luckTailX); f.LuckTailX = luckTailX;
-            float luckTailY = f.LuckTailY; io.Value(ref luckTailY); f.LuckTailY = luckTailY;
-            float luckHeadX = f.LuckHeadX; io.Value(ref luckHeadX); f.LuckHeadX = luckHeadX;
-            float luckHeadY = f.LuckHeadY; io.Value(ref luckHeadY); f.LuckHeadY = luckHeadY;
-            float luckWidth = f.LuckHalfWidth; io.Value(ref luckWidth); f.LuckHalfWidth = luckWidth;
+            float luckX = f.LuckOriginX; io.Value(ref luckX); f.LuckOriginX = luckX;
+            float luckY = f.LuckOriginY; io.Value(ref luckY); f.LuckOriginY = luckY;
+            float luckDx = f.LuckDirX; io.Value(ref luckDx); f.LuckDirX = luckDx;
+            float luckDy = f.LuckDirY; io.Value(ref luckDy); f.LuckDirY = luckDy;
+            float luckWidth = f.LuckWidth; io.Value(ref luckWidth); f.LuckWidth = luckWidth;
+            float luckFront = f.LuckFront; io.Value(ref luckFront); f.LuckFront = luckFront;
+            float luckFrontWidth = f.LuckFrontWidth; io.Value(ref luckFrontWidth); f.LuckFrontWidth = luckFrontWidth;
             float luckStrength = f.LuckStrength; io.Value(ref luckStrength); f.LuckStrength = luckStrength;
             int packets = f.PacketCount; io.Value(ref packets); f.PacketCount = packets;
             float ground = f.GroundY; io.Value(ref ground); f.GroundY = ground;

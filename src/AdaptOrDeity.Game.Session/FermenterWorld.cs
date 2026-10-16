@@ -641,8 +641,8 @@ namespace AdaptOrDeity.Game.Session
             _food.DriftBodies(Seabed, _freeVx, _freeVy);   // dead bodies drift with the tide around them
             _food.Step(dt, b.X, b.Y, b.GroundVx, b.GroundVy, b.Angle);
             _prey.Step(dt, b.X, b.Y, _freeVx, _freeVy);   // prey swim in the free current
-            _food.Push(_luckCurrent, b.X, b.Y, dt);       // Luck's current carries loose food and prey
-            _prey.Push(_luckCurrent, b.X, b.Y, dt);
+            _food.Push(_luckJet, dt);       // Luck's stream carries loose food and prey
+            _prey.Push(_luckJet, dt);
             _food.KeepOutOf(Seabed);
             _food.ArriveOnFloor(Seabed, dt);
             _prey.KeepOutOf(Seabed);

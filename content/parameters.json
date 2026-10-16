@@ -584,11 +584,11 @@
    "note": "luck points a stream of current costs at full strength, paid when it is sent (in proportion below): a full store sends 10"
   },
   "luck.stream_time": {
-   "value": 6.0,
+   "value": 8.0,
    "units": "s",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "how long Luck's stream flows before it coasts to a stop"
+   "note": "how long Luck drives her stream before it coasts (its front runs about 37 um in that time at full strength)"
   },
   "luck.spin_up": {
    "value": 0.5,
@@ -597,26 +597,40 @@
    "status": "design",
    "note": "time constant of a stream spinning up to its speed (its inertia)"
   },
-  "luck.spin_down": {
+  "luck.spread_time": {
    "value": 3.0,
    "units": "s",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "time constant of a stream coasting to a stop once it has flowed for luck.stream_time"
+   "note": "once Luck stops driving it, the stream spreads at constant momentum (wider and slower) and its width doubles in this time (an eddy diffusivity: at the cell's scale water's own viscosity would spread it in microseconds)"
+  },
+  "luck.friction_time": {
+   "value": 6.0,
+   "units": "s",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "time constant of friction taking a coasting stream's momentum (it ends below 1% of its speed)"
   },
   "luck.max_speed": {
-   "value": 2e-06,
+   "value": 5e-06,
    "units": "m/s",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "flow of Luck's current on its axis at full strength: 2 um/s, faster than the creature swims (~1.5 um/s) and 10x the tide"
+   "note": "flow of Luck's stream on its axis at full strength: 5 um/s, faster than the creature swims (~1.5 um/s) and 25x the tide, so its front (which runs at the flow) crosses the 30 um view while driven"
   },
-  "luck.half_width": {
-   "value": 4e-06,
+  "luck.jet_width": {
+   "value": 3e-06,
    "units": "m",
    "source": "unreferenced_placeholder",
    "status": "design",
-   "note": "half the width of the band of water Luck's current flows along (a few cell radii)"
+   "note": "width (sigma) of the Gaussian profile across Luck's stream while it is driven: about +-6 um of moving water"
+  },
+  "luck.front_width": {
+   "value": 2e-06,
+   "units": "m",
+   "source": "unreferenced_placeholder",
+   "status": "design",
+   "note": "length over which the stream's front rises as it runs in from the edge (the water ahead is pushed aside there)"
   },
   "luck.full_length": {
    "value": 3e-05,

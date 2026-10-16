@@ -357,19 +357,17 @@ namespace AdaptOrDeity.Sim.World
         /// the creature at (cx, cy) moving at (vx, vy), retires packets that left it or are spent, and releases new ones at
         /// its boundary.
         /// </summary>
-        /// <summary>
-        /// Packets loose in the water (not held, stuck to a cell or carried) move with a directed current anchored at
-        /// (<paramref name="anchorX"/>, <paramref name="anchorY"/>) over <paramref name="dt"/>, on top of their drift.
-        /// </summary>
-        public void Push(DirectedCurrent current, double anchorX, double anchorY, double dt)
+        /// <summary>Packets loose in the water (not held, stuck to a cell or carried) move with a jet over
+        /// <paramref name="dt"/>, on top of their drift.</summary>
+        public void Push(Jet jet, double dt)
         {
-            if (!current.On)
+            if (!jet.On)
                 return;
             foreach (var p in _packets)
             {
                 if (!p.Active || p.Frozen || p.Stuck || p.Kind == PacketKind.Carried)
                     continue;
-                current.At(p.X - anchorX, p.Y - anchorY, out double ux, out double uy);
+                jet.At(p.X, p.Y, out double ux, out double uy);
                 p.X += ux * dt;
                 p.Y += uy * dt;
             }
